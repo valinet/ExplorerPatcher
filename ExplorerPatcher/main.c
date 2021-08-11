@@ -1,32 +1,63 @@
 #pragma comment(linker,"\"/manifestdependency:type='win32' \
 name='Microsoft.Windows.Common-Controls' version='6.0.0.0' \
 processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
+#include <valinet/hooking/exeinject.h>
 #include <Windows.h>
 #include <stdio.h>
 #include <tlhelp32.h>
 #include <Psapi.h>
+#include <Shlwapi.h>
+#pragma comment(lib, "Shlwapi.lib")
 
+#define CLASS_NAME TEXT("ExplorerPatcher")
 #define APP_NAME TEXT("Windows Explorer")
 #define NOP 0x90
 #define PATCH_OFFSET 0x8cb33
+
+HANDLE hProcess = NULL;
+HMODULE hMod = NULL;
+LPVOID hInjection = NULL;
+HWND hWnd = NULL;
+
+LRESULT CALLBACK WindowProc(
+    HWND hWnd,
+    UINT uMsg,
+    WPARAM wParam,
+    LPARAM lParam
+)
+{
+    switch (uMsg)
+    {
+    case WM_APP_CRASHED:
+    {
+        TerminateProcess(GetCurrentProcess(), 0);
+    }
+    }
+    return VnWindowProc(
+        hWnd,
+        uMsg,
+        wParam,
+        lParam
+    );
+}
 
 // https://stackoverflow.com/questions/8046097/how-to-check-if-a-process-has-the-administrative-rights
 BOOL IsElevated() {
     BOOL fRet = FALSE;
     HANDLE hToken = NULL;
     if (OpenProcessToken(
-        GetCurrentProcess(), 
-        TOKEN_QUERY, 
+        GetCurrentProcess(),
+        TOKEN_QUERY,
         &hToken
-    )) 
+    ))
     {
         TOKEN_ELEVATION Elevation;
         DWORD cbSize = sizeof(TOKEN_ELEVATION);
         if (GetTokenInformation(
-            hToken, 
+            hToken,
             TokenElevation,
-            &Elevation, 
-            sizeof(Elevation), 
+            &Elevation,
+            sizeof(Elevation),
             &cbSize
         )) {
             fRet = Elevation.TokenIsElevated;
@@ -146,6 +177,18 @@ int WINAPI wWinMain(
     MODULEENTRY32 me32 = { 0 };
     THREADENTRY32 th32 = { 0 };
     TCHAR szExplorerPath[MAX_PATH];
+    FILE* conout;
+    TCHAR szLibPath[MAX_PATH];
+
+#ifdef DEBUG
+    if (!AllocConsole());
+    if (freopen_s(
+        &conout,
+        "CONOUT$",
+        "w",
+        stdout
+    ));
+#endif
 
     if (install_uninstall())
     {
@@ -178,10 +221,10 @@ int WINAPI wWinMain(
         }
 
         if ((hExplorer = OpenProcess(
-            PROCESS_VM_READ | 
-            PROCESS_VM_WRITE | 
-            PROCESS_QUERY_INFORMATION | 
-            PROCESS_VM_OPERATION | 
+            PROCESS_VM_READ |
+            PROCESS_VM_WRITE |
+            PROCESS_QUERY_INFORMATION |
+            PROCESS_VM_OPERATION |
             SYNCHRONIZE,
             FALSE,
             dwExplorerPID
@@ -195,7 +238,7 @@ int WINAPI wWinMain(
             CharLower(szExplorerPath);
             me32.dwSize = sizeof(MODULEENTRY32);
             hSnapshot = CreateToolhelp32Snapshot(
-                TH32CS_SNAPMODULE, 
+                TH32CS_SNAPMODULE,
                 dwExplorerPID
             );
             if (Module32First(hSnapshot, &me32) == TRUE)
@@ -248,7 +291,41 @@ int WINAPI wWinMain(
         {
             DebugActiveProcessStop(dwExplorerPID);
         }
-        return 0;
+
+        GetModuleFileName(
+            GetModuleHandle(NULL),
+            szLibPath,
+            MAX_PATH
+        );
+        PathRemoveFileSpec(szLibPath);
+        lstrcat(
+            szLibPath,
+            L"\\ExplorerPatcherLibrary.dll"
+        );
+        Sleep(2000);
+        return VnInjectAndMonitorProcess(
+            szLibPath,
+            MAX_PATH,
+            "main",
+            TEXT("explorer.exe"),
+            CLASS_NAME,
+            NULL,
+            hInstance,
+            stdout,
+            0,
+            WindowProc,
+            TRUE,
+            0,
+            0,
+            NULL,
+            &hProcess,
+            &hMod,
+            &hInjection,
+            NULL,
+            0,
+            &hWnd,
+            &hWnd
+        );
     }
-	return 0;
+    return 0;
 }

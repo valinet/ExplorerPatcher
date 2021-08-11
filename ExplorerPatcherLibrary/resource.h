@@ -1,6 +1,6 @@
 //{{NO_DEPENDENCIES}}
 // Microsoft Visual C++ generated include file.
-// Used by ExplorerPatcher.rc
+// Used by ExplorerPatcherLibrary.rc
 //
 
 // Next default values for new objects
