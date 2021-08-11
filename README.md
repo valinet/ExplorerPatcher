@@ -2,7 +2,7 @@
 Explorer Patcher is a patcher that enables various stuff in Explorer. For the moment, it includes the following:
 
 * allows using the old taskbar in Windows 11 without the side effects of UndockingDisabled and with fully working search, modern apps showing properly, screen snip still working etc
-* reenables the power menu (Win+X) when using the classic taskbar in Windows 11
+* enables the power user menu (Win+X) when using the classic taskbar in Windows 11
 
 This has been tested only on Windows 11 build 22000.1. It probably does not work on other builds due to different offsets in explorer.exe and its libraries. Once this matures, a solution will be offered for dynamically determining the necessary offsets. As it stands, the application is more in a proof of concept phase.
 
@@ -20,8 +20,8 @@ The application does not currently offer a way to configure its behavior. In the
 
 ## Known issues
 
-* The power menu (Win+X menu) is unskinned - it has the default menu appearance from Windows 11 instead of the look the clock, taskbar etc context menus get; at the moment, I think it boils down to correctly calling `ImmersiveContextMenuHelper::ApplyOwnerDrawToMenu`, but unfortunately I've yet to do it correctly
-* The power menu (Win+X menu) is mapped to Win+F for the moment, as I've yet to have the time to investigate where exactly Win+X is handled (i.e. it is not in `CImmersiveHotkeyNotification::OnMessage`)
+* The power user menu (Win+X menu) is unskinned - it has the default menu appearance from Windows 11 instead of the look the clock, taskbar etc context menus get; at the moment, I think it boils down to correctly calling `ImmersiveContextMenuHelper::ApplyOwnerDrawToMenu`, but unfortunately I've yet to do it correctly
+* The power user menu (Win+X menu) is mapped to Win+F for the moment, as I've yet to have the time to investigate where exactly Win+X is handled (i.e. it is not in `CImmersiveHotkeyNotification::OnMessage`)
 
 ## License
 
