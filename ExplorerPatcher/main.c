@@ -13,11 +13,19 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #define APP_NAME TEXT("Windows Explorer")
 #define NOP 0x90
 #define PATCH_OFFSET 0x8cb33
+#define DELAY 5000
 
 HANDLE hProcess = NULL;
 HMODULE hMod = NULL;
 LPVOID hInjection = NULL;
 HWND hWnd = NULL;
+
+DWORD KillAfter(INT64 timeout)
+{
+    Sleep(timeout);
+    TerminateProcess(GetCurrentProcess(), 0);
+    return 0;
+}
 
 LRESULT CALLBACK WindowProc(
     HWND hWnd,
@@ -302,7 +310,15 @@ int WINAPI wWinMain(
             szLibPath,
             L"\\ExplorerPatcherLibrary.dll"
         );
-        Sleep(2000);
+        Sleep(DELAY);
+        CreateThread(
+            0,
+            0,
+            KillAfter,
+            5000,
+            0,
+            0
+        );
         return VnInjectAndMonitorProcess(
             szLibPath,
             MAX_PATH,
