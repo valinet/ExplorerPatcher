@@ -6,8 +6,11 @@
 #pragma comment(lib, "Psapi.lib") // required by funchook
 #include <Shlwapi.h>
 #pragma comment(lib, "Shlwapi.lib")
+#include <dwmapi.h>
+#pragma comment(lib, "Dwmapi.lib")
 
-
+#define DEBUG
+#undef DEBUG
 
 funchook_t* funchook = NULL;
 HMODULE hModule = NULL;
@@ -61,10 +64,24 @@ static INT64(*ImmersiveContextMenuHelper_ApplyOwnerDrawToMenu)(
     void* data
     );
 
+static void(*ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenu)(
+    HMENU _this,
+    HMENU hWnd,
+    HWND a3
+    );
+
 static INT64(*CLauncherTipContextMenu_GetMenuItemsAsync)(
     void* _this,
     void* rect,
     void** iunk
+    );
+
+static INT64(*CImmersiveContextMenuOwnerDrawHelper_s_ContextMenuWndProc)(
+    HWND hWnd,
+    int a2,
+    HWND a3,
+    int a4,
+    BOOL* a5
     );
 
 DEFINE_GUID(IID_ILauncherTipContextMenu,
@@ -102,6 +119,87 @@ static BOOL(*IsDesktopInputContextFunc)(
 
 HANDLE hThread;
 
+LRESULT CALLBACK CLauncherTipContextMenu_WndProc(
+    _In_ HWND   hWnd,
+    _In_ UINT   uMsg,
+    _In_ WPARAM wParam,
+    _In_ LPARAM lParam
+)
+{
+    LRESULT result;
+
+    if (uMsg == WM_NCCREATE)
+    {
+        CREATESTRUCT* pCs = lParam;
+        if (pCs->lpCreateParams)
+        {
+            *((HWND*)((char*)pCs->lpCreateParams + 0x78)) = hWnd;
+            SetWindowLongPtr(
+                hWnd, 
+                GWLP_USERDATA,
+                pCs->lpCreateParams
+            );
+            result = DefWindowProc(
+                hWnd,
+                uMsg,
+                wParam,
+                lParam
+            );
+        }
+        else
+        {
+            result = 0;
+        }
+    }
+    else
+    {
+        void* _this = GetWindowLongPtr(hWnd, GWLP_USERDATA);
+        if (_this)
+        {
+            BOOL v12 = FALSE;
+            if ((uMsg == WM_DRAWITEM || uMsg == WM_MEASUREITEM) &&
+                CImmersiveContextMenuOwnerDrawHelper_s_ContextMenuWndProc(
+                    hWnd,
+                    uMsg,
+                    wParam,
+                    lParam,
+                    &v12
+                ))
+            {
+                result = 0;
+            }
+            else
+            {
+                result = DefWindowProc(
+                    hWnd,
+                    uMsg,
+                    wParam,
+                    lParam
+                );
+            }
+            if (uMsg == WM_NCDESTROY)
+            {
+                SetWindowLongPtrW(
+                    hWnd, 
+                    GWLP_USERDATA,
+                    0
+                );
+                *((HWND*)((char*)_this + 0x78)) = 0;
+            }
+        }
+        else
+        {
+            result = DefWindowProc(
+                hWnd,
+                uMsg,
+                wParam,
+                lParam
+            );
+        }
+    }
+    return result;
+}
+
 typedef struct
 {
     void* _this;
@@ -115,7 +213,7 @@ DWORD ShowLauncherTipContextMenu(
 {
     WNDCLASS wc = { 0 };
     wc.style = CS_DBLCLKS;
-    wc.lpfnWndProc = DefWindowProc; // CLauncherTipContextMenu_WndProc
+    wc.lpfnWndProc = CLauncherTipContextMenu_WndProc;
     wc.hbrBackground = (HBRUSH)GetStockObject(WHITE_BRUSH);
     wc.hInstance = GetModuleHandle(NULL);
     wc.lpszClassName = CLASS_NAME;
@@ -134,7 +232,7 @@ DWORD ShowLauncherTipContextMenu(
         0,
         0,
         GetModuleHandle(NULL),
-        params->_this,
+        (char*)params->_this - 0x58,
         7
     );
     ShowWindow(hWnd, SW_SHOW);
@@ -149,16 +247,14 @@ DWORD ShowLauncherTipContextMenu(
         goto finalize;
     }
 
-    /*
-    void* v25 = 0;
+    INT64* unknown_array = calloc(4, sizeof(INT64));
     ImmersiveContextMenuHelper_ApplyOwnerDrawToMenu(
         *((HMENU*)((char*)params->_this + 0xe8)),
         hWnd,
         &(params->point),
         0xc,
-        &v25
+        unknown_array
     );
-    */
 
     BOOL res = TrackPopupMenu(
         *((HMENU*)((char*)params->_this + 0xe8)),
@@ -169,6 +265,14 @@ DWORD ShowLauncherTipContextMenu(
         hWnd,
         0
     );
+
+    ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenu(
+        *((HMENU*)((char*)params->_this + 0xe8)),
+        hWnd,
+        &(params->point)
+    );
+    free(unknown_array);
+
     if (res > 0)
     {
         if (res < 4000)
@@ -188,8 +292,6 @@ DWORD ShowLauncherTipContextMenu(
             );
         }
     }
-
-    // ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenu
 
     finalize:
     params->iunk->lpVtbl->Release(params->iunk);
@@ -337,17 +439,21 @@ __declspec(dllexport) DWORD WINAPI main(
     _In_ LPVOID lpParameter
 )
 {
-    /*
+#ifdef DEBUG
     FILE* conout;
     AllocConsole();
-    freopen_s(&conout, "CONOUT$", "w", stdout);
-    */
+    freopen_s(
+        &conout, 
+        "CONOUT$",
+        "w", 
+        stdout
+    );
+#endif
 
     int rv;
     if (!funchook)
     {
         messageWindow = (HWND)lpParameter;
-
 
 
         funchook = funchook_create();
@@ -362,6 +468,9 @@ __declspec(dllexport) DWORD WINAPI main(
 
         HANDLE hTwinuiPcshell = GetModuleHandle(L"twinui.pcshell.dll");
 
+        CImmersiveContextMenuOwnerDrawHelper_s_ContextMenuWndProc = (INT64(*)(HWND, int, HWND, int, BOOL*))
+            ((uintptr_t)hTwinuiPcshell + 0xB0E12);
+
         InternalAddRef = (INT64(*)(void*, INT64))
             ((uintptr_t)hTwinuiPcshell + 0x46650);
 
@@ -370,6 +479,9 @@ __declspec(dllexport) DWORD WINAPI main(
         
         ImmersiveContextMenuHelper_ApplyOwnerDrawToMenu = (INT64(*)(HMENU, HMENU, HWND, unsigned int, void*))
             ((uintptr_t)hTwinuiPcshell + 0x535AF8);
+
+        ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenu = (void(*)(HMENU, HMENU, HWND))
+            ((uintptr_t)hTwinuiPcshell + 0x536300);
         
         CLauncherTipContextMenu_ExecuteShutdownCommand = (void(*)(void*, void*))
             ((uintptr_t)hTwinuiPcshell + 0x514714);

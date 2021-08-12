@@ -9,6 +9,9 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #include <Shlwapi.h>
 #pragma comment(lib, "Shlwapi.lib")
 
+#define DEBUG
+#undef DEBUG
+
 #define CLASS_NAME TEXT("ExplorerPatcher")
 #define APP_NAME TEXT("Windows Explorer")
 #define NOP 0x90
