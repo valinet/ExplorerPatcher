@@ -109,6 +109,7 @@ int install_uninstall()
             szReadName,
             (LPDWORD)(&dwReadBytes)
         );
+        RegCloseKey(hKey);
         if (!wcscmp(szFileName, szReadName))
         {
             if (RegDeleteValue(
