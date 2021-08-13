@@ -19,11 +19,6 @@ To install, save the executable in a safe directory, run it once as an administr
 
 The application does not currently offer a way to configure its behavior. In the mean time, I recommend commenting out whatever you do not like and compile your own executable, as described below (instructions are very simple).
 
-## Known issues
-
-* The power user menu (Win+X menu) is unskinned - it has the default menu appearance from Windows 11 instead of the look the clock, taskbar etc context menus get; at the moment, I think it boils down to correctly calling `ImmersiveContextMenuHelper::ApplyOwnerDrawToMenu`, but unfortunately I've yet to do it correctly
-* The power user menu (Win+X menu) is mapped to Win+F for the moment, as I've yet to have the time to investigate where exactly Win+X is handled (i.e. it is not in `CImmersiveHotkeyNotification::OnMessage`)
-
 ## License
 
 Hooking is done using the excellent [funchook](https://github.com/kubo/funchook) library (GPLv2 with linking exception), which in turn is powered by the [diStorm3](https://github.com/gdabah/distorm/) (3-clause BSD) disassembler. Thus, I am offering this under GNU General Public License Version 2.0, which I believe is compatible.

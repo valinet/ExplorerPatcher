@@ -16,8 +16,8 @@
 funchook_t* funchook = NULL;
 HMODULE hModule = NULL;
 HWND messageWindow = NULL;
-
-
+HANDLE hIsWinXShown = NULL;
+INT64 lockEnsureWinXHotkeyOnlyOnce;
 
 static HWND(WINAPI* CreateWindowInBand)(
     _In_ DWORD dwExStyle, 
@@ -83,6 +83,12 @@ static INT64(*CImmersiveContextMenuOwnerDrawHelper_s_ContextMenuWndProc)(
     HWND a3,
     int a4,
     BOOL* a5
+    );
+
+static INT64(*CTray_HandleGlobalHotkeyFunc)(
+    void* _this,
+    unsigned int a2,
+    unsigned int a3
     );
 
 DEFINE_GUID(IID_ILauncherTipContextMenu,
@@ -249,7 +255,7 @@ interface IImmersiveLauncher10RS
 
 
 
-HANDLE hThread;
+
 
 LRESULT CALLBACK CLauncherTipContextMenu_WndProc(
     _In_ HWND   hWnd,
@@ -434,7 +440,7 @@ DWORD ShowLauncherTipContextMenu(
         0
     );
     free(params);
-    hThread = NULL;
+    hIsWinXShown = NULL;
     return 0;
 }
 
@@ -443,7 +449,7 @@ INT64 CLauncherTipContextMenu_ShowLauncherTipContextMenuHook(
     POINT* pt
 )
 {
-    if (hThread)
+    if (hIsWinXShown)
     {
         goto finalize;
     }
@@ -510,7 +516,7 @@ INT64 CLauncherTipContextMenu_ShowLauncherTipContextMenuHook(
     params->_this = _this;
     params->point = point;
     params->iunk = iunk;
-    hThread = CreateThread(
+    hIsWinXShown = CreateThread(
         0,
         0,
         ShowLauncherTipContextMenu,
@@ -523,6 +529,85 @@ INT64 CLauncherTipContextMenu_ShowLauncherTipContextMenuHook(
     return CLauncherTipContextMenu_ShowLauncherTipContextMenuFunc(_this, pt);
 }
 
+INT64 CTray_HandleGlobalHotkeyHook(
+    void* _this,
+    unsigned int a2,
+    unsigned int a3
+)
+{
+    if (a2 == 590 && IsDesktopInputContextFunc(_this, a2))
+    {
+        // this works just fine but is hacky because using 
+        // the proper way does not work for some reason
+        // see https://github.com/valinet/ExplorerPatcher/issues/3
+        if (hIsWinXShown)
+        {
+            INPUT ip[2];
+            ip[0].type = INPUT_KEYBOARD;
+            ip[0].ki.wScan = 0;
+            ip[0].ki.time = 0;
+            ip[0].ki.dwExtraInfo = 0;
+            ip[0].ki.wVk = VK_ESCAPE;
+            ip[0].ki.dwFlags = 0;
+            ip[1].type = INPUT_KEYBOARD;
+            ip[1].ki.wScan = 0;
+            ip[1].ki.time = 0;
+            ip[1].ki.dwExtraInfo = 0;
+            ip[1].ki.wVk = VK_ESCAPE;
+            ip[1].ki.dwFlags = KEYEVENTF_KEYUP;
+            SendInput(2, ip, sizeof(INPUT));
+            return 0;
+        }
+
+        InterlockedExchange64(&lockEnsureWinXHotkeyOnlyOnce, 1);
+
+        HWND hWnd = GetForegroundWindow();
+        HWND g_ProgWin = FindWindowEx(
+            NULL,
+            NULL,
+            L"Progman",
+            NULL
+        );
+        SetForegroundWindow(g_ProgWin);
+
+        INPUT ip[4];
+        ip[0].type = INPUT_KEYBOARD;
+        ip[0].ki.wScan = 0;
+        ip[0].ki.time = 0;
+        ip[0].ki.dwExtraInfo = 0;
+        ip[0].ki.wVk = VK_LWIN;
+        ip[0].ki.dwFlags = 0;
+        ip[1].type = INPUT_KEYBOARD;
+        ip[1].ki.wScan = 0;
+        ip[1].ki.time = 0;
+        ip[1].ki.dwExtraInfo = 0;
+        ip[1].ki.wVk = 0x51; // 0x46;
+        ip[1].ki.dwFlags = 0;
+        ip[2].type = INPUT_KEYBOARD;
+        ip[2].ki.wScan = 0;
+        ip[2].ki.time = 0;
+        ip[2].ki.dwExtraInfo = 0;
+        ip[2].ki.wVk = 0x51; // 0x46;
+        ip[2].ki.dwFlags = KEYEVENTF_KEYUP;
+        ip[3].type = INPUT_KEYBOARD;
+        ip[3].ki.wScan = 0;
+        ip[3].ki.time = 0;
+        ip[3].ki.dwExtraInfo = 0;
+        ip[3].ki.wVk = VK_LWIN;
+        ip[3].ki.dwFlags = KEYEVENTF_KEYUP;
+        SendInput(4, ip, sizeof(INPUT));
+       
+        SetForegroundWindow(hWnd);
+
+        return 0;
+    }
+    return CTray_HandleGlobalHotkeyFunc(
+        _this,
+        a2,
+        a3
+    );
+}
+
 HRESULT CImmersiveHotkeyNotification_OnMessageHook(
     void* _this,
     INT64 msg,
@@ -530,9 +615,12 @@ HRESULT CImmersiveHotkeyNotification_OnMessageHook(
     INT64 lParam
 )
 {
-    if (wParam == 28 && IsDesktopInputContextFunc(_this, msg)) // 15
+    if (InterlockedExchange64(&lockEnsureWinXHotkeyOnlyOnce, 0) &&
+        wParam == 30 && // 28, 15
+        IsDesktopInputContextFunc(_this, msg)
+    )
     {
-        IUnknown* pMonitor;
+        IUnknown* pMonitor = NULL;
         HRESULT hr = CImmersiveHotkeyNotification_GetMonitorForHotkeyNotificationFunc(
             (char*)_this - 0x68,
             &pMonitor,
@@ -540,7 +628,7 @@ HRESULT CImmersiveHotkeyNotification_OnMessageHook(
         );
         if (SUCCEEDED(hr))
         {
-            IUnknown* pMenu;
+            IUnknown* pMenu = NULL;
             IUnknown_QueryService(
                 pMonitor,
                 &IID_ILauncherTipContextMenu,
@@ -650,7 +738,7 @@ LRESULT CALLBACK OpenStartOnCurentMonitorThreadHook(
             );
 
             HRESULT hr = S_OK;
-            IUnknown* pImmersiveShell;
+            IUnknown* pImmersiveShell = NULL;
             hr = CoCreateInstance(
                 &CLSID_ImmersiveShell,
                 NULL,
@@ -779,6 +867,20 @@ __declspec(dllexport) DWORD WINAPI main(
             0
         );
 
+
+        HANDLE hExplorer = GetModuleHandle(NULL);
+        CTray_HandleGlobalHotkeyFunc = (INT64(*)(void*, unsigned int, unsigned int))
+            ((uintptr_t)hExplorer + 0x117F8);
+        rv = funchook_prepare(
+            funchook,
+            (void**)&CTray_HandleGlobalHotkeyFunc,
+            CTray_HandleGlobalHotkeyHook
+        );
+        if (rv != 0)
+        {
+            FreeLibraryAndExitThread(hModule, rv);
+            return rv;
+        }
 
 
         HANDLE hUser32 = GetModuleHandle(L"user32.dll");
