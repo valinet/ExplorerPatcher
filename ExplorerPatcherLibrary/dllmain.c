@@ -6,9 +6,9 @@
 #pragma comment(lib, "Psapi.lib") // required by funchook
 #include <Shlwapi.h>
 #pragma comment(lib, "Shlwapi.lib")
-#include <dwmapi.h>
-#pragma comment(lib, "Dwmapi.lib")
 #include <windowsx.h>
+#include <Uxtheme.h>
+#pragma comment(lib, "UxTheme.lib")
 
 #define DEBUG
 #undef DEBUG
@@ -569,7 +569,11 @@ HRESULT CImmersiveHotkeyNotification_OnMessageHook(
 
 // Slightly tweaked version of function available in Open Shell 
 // (Open-Shell-Menu\Src\StartMenu\StartMenuHelper\StartMenuHelper.cpp)
-LRESULT CALLBACK HookProgManThread(int code, WPARAM wParam, LPARAM lParam)
+LRESULT CALLBACK OpenStartOnCurentMonitorThreadHook(
+    int code, 
+    WPARAM wParam, 
+    LPARAM lParam
+)
 {
     if (code == HC_ACTION && wParam)
     {
@@ -729,7 +733,7 @@ DWORD OpenStartOnCurentMonitorThread(LPVOID unused)
     );
     HHOOK g_ProgHook = SetWindowsHookEx(
         WH_GETMESSAGE, 
-        HookProgManThread, 
+        OpenStartOnCurentMonitorThreadHook, 
         NULL, 
         progThread
     );
