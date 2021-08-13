@@ -3,6 +3,7 @@ Explorer Patcher is a patcher that enables various stuff in Explorer. For the mo
 
 * allows using the old taskbar in Windows 11 without the side effects of UndockingDisabled and with fully working search, modern apps showing properly, screen snip still working etc
 * enables the power user menu (Win+X) when using the classic taskbar in Windows 11
+* shows the Start menu on the monitor containing the cursor when invoked with the Windows key
 
 This has been tested only on Windows 11 build 22000.1. It probably does not work on other builds due to different offsets in explorer.exe and its libraries. Once this matures, a solution will be offered for dynamically determining the necessary offsets. As it stands, the application is more in a proof of concept phase.
 

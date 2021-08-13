@@ -8,6 +8,7 @@
 #pragma comment(lib, "Shlwapi.lib")
 #include <dwmapi.h>
 #pragma comment(lib, "Dwmapi.lib")
+#include <windowsx.h>
 
 #define DEBUG
 #undef DEBUG
@@ -113,6 +114,137 @@ static BOOL(*IsDesktopInputContextFunc)(
     );
 
 
+
+
+
+DEFINE_GUID(CLSID_ImmersiveShell,
+    0xc2f03a33,
+    0x21f5, 0x47fa, 0xb4, 0xbb,
+    0x15, 0x63, 0x62, 0xa2, 0xf2, 0x39
+);
+
+DEFINE_GUID(SID_IImmersiveMonitorService,
+    0x47094e3a,
+    0x0cf2, 0x430f, 0x80, 0x6f,
+    0xcf, 0x9e, 0x4f, 0x0f, 0x12, 0xdd
+);
+
+DEFINE_GUID(IID_IImmersiveMonitorService,
+    0x4d4c1e64,
+    0xe410, 0x4faa, 0xba, 0xfa,
+    0x59, 0xca, 0x06, 0x9b, 0xfe, 0xc2
+);
+
+DEFINE_GUID(SID_ImmersiveLauncher,
+    0x6f86e01c,
+    0xc649, 0x4d61, 0xbe, 0x23,
+    0xf1, 0x32, 0x2d, 0xde, 0xca, 0x9d
+);
+
+DEFINE_GUID(IID_IImmersiveLauncher10RS,
+    0xd8d60399,
+    0xa0f1, 0xf987, 0x55, 0x51,
+    0x32, 0x1f, 0xd1, 0xb4, 0x98, 0x64
+);
+
+typedef interface IImmersiveMonitorService IImmersiveMonitorService;
+
+typedef struct IImmersiveMonitorServiceVtbl
+{
+    BEGIN_INTERFACE
+
+        HRESULT(STDMETHODCALLTYPE* QueryInterface)(
+            IImmersiveMonitorService* This,
+            /* [in] */ REFIID riid,
+            /* [annotation][iid_is][out] */
+            _COM_Outptr_  void** ppvObject);
+
+    ULONG(STDMETHODCALLTYPE* AddRef)(
+        IImmersiveMonitorService* This);
+
+    ULONG(STDMETHODCALLTYPE* Release)(
+        IImmersiveMonitorService* This);
+
+    HRESULT(STDMETHODCALLTYPE* method3)(
+        IImmersiveMonitorService* This);
+
+    HRESULT(STDMETHODCALLTYPE* method4)(
+        IImmersiveMonitorService* This);
+
+    HRESULT(STDMETHODCALLTYPE* method5)(
+        IImmersiveMonitorService* This);
+
+    HRESULT(STDMETHODCALLTYPE* GetFromHandle)(
+        IImmersiveMonitorService* This,
+        /* [in] */ HMONITOR hMonitor,
+        _COM_Outptr_  IUnknown** ppvObject);
+
+    END_INTERFACE
+} IImmersiveMonitorServiceVtbl;
+
+interface IImmersiveMonitorService
+{
+    CONST_VTBL struct IImmersiveMonitorServiceVtbl* lpVtbl;
+};
+
+
+typedef interface IImmersiveLauncher10RS IImmersiveLauncher10RS;
+
+typedef struct IImmersiveLauncher10RSVtbl
+{
+    BEGIN_INTERFACE
+
+        HRESULT(STDMETHODCALLTYPE* QueryInterface)(
+            IImmersiveLauncher10RS* This,
+            /* [in] */ REFIID riid,
+            /* [annotation][iid_is][out] */
+            _COM_Outptr_  void** ppvObject);
+
+    ULONG(STDMETHODCALLTYPE* AddRef)(
+        IImmersiveLauncher10RS* This);
+
+    ULONG(STDMETHODCALLTYPE* Release)(
+        IImmersiveLauncher10RS* This);
+
+    HRESULT(STDMETHODCALLTYPE* ShowStartView)(
+        IImmersiveLauncher10RS* This,
+        /* [in] */ int method,
+        /* [in] */ int flags);
+
+    HRESULT(STDMETHODCALLTYPE* Dismiss)(
+        IImmersiveLauncher10RS* This);
+
+    HRESULT(STDMETHODCALLTYPE* method5)(
+        IImmersiveLauncher10RS* This);
+
+    HRESULT(STDMETHODCALLTYPE* method6)(
+        IImmersiveLauncher10RS* This);
+
+    HRESULT(STDMETHODCALLTYPE* IsVisible)(
+        IImmersiveLauncher10RS* This,
+        /* [in] */ BOOL* ret);
+
+    HRESULT(STDMETHODCALLTYPE* method8)(
+        IImmersiveLauncher10RS* This);
+
+    HRESULT(STDMETHODCALLTYPE* method9)(
+        IImmersiveLauncher10RS* This);
+
+    HRESULT(STDMETHODCALLTYPE* ConnectToMonitor)(
+        IImmersiveLauncher10RS* This,
+        /* [in] */ IUnknown* monitor);
+
+    HRESULT(STDMETHODCALLTYPE* GetMonitor)(
+        IImmersiveLauncher10RS* This,
+        /* [in] */ IUnknown** monitor);
+
+    END_INTERFACE
+} IImmersiveLauncher10RSVtbl;
+
+interface IImmersiveLauncher10RS
+{
+    CONST_VTBL struct IImmersiveLauncher10RSVtbl* lpVtbl;
+};
 
 
 
@@ -435,6 +567,180 @@ HRESULT CImmersiveHotkeyNotification_OnMessageHook(
     );
 }
 
+// Slightly tweaked version of function available in Open Shell 
+// (Open-Shell-Menu\Src\StartMenu\StartMenuHelper\StartMenuHelper.cpp)
+LRESULT CALLBACK HookProgManThread(int code, WPARAM wParam, LPARAM lParam)
+{
+    if (code == HC_ACTION && wParam)
+    {
+        MSG* msg = (MSG*)lParam;
+        if (msg->message == WM_SYSCOMMAND && (msg->wParam & 0xFFF0) == SC_TASKLIST)
+        {
+            BOOL bShouldCheckHKLM = FALSE;
+            HKEY hKey;
+            if (RegOpenKeyEx(
+                HKEY_CURRENT_USER,
+                TEXT("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartPage"),
+                0,
+                KEY_READ,
+                &hKey
+            ) != ERROR_SUCCESS)
+            {
+                bShouldCheckHKLM = TRUE;
+            }
+            DWORD dwStatus = 0;
+            DWORD dwSize = sizeof(DWORD);
+            if (RegGetValue(
+                hKey,
+                NULL,
+                TEXT("MonitorOverride"),
+                RRF_RT_REG_DWORD,
+                NULL,
+                &dwStatus,
+                (LPDWORD)(&dwSize)
+            ) != ERROR_SUCCESS)
+            {
+                bShouldCheckHKLM = TRUE;
+            }
+            RegCloseKey(hKey);
+            if (bShouldCheckHKLM)
+            {
+                if (RegOpenKeyEx(
+                    HKEY_LOCAL_MACHINE,
+                    TEXT("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartPage"),
+                    0,
+                    KEY_READ,
+                    &hKey
+                ) != ERROR_SUCCESS)
+                {
+                    goto finish;
+                }
+                dwStatus = 0;
+                dwSize = sizeof(DWORD);
+                if (RegGetValue(
+                    hKey,
+                    NULL,
+                    TEXT("MonitorOverride"),
+                    RRF_RT_REG_DWORD,
+                    NULL,
+                    &dwStatus,
+                    (LPDWORD)(&dwSize)
+                ) != ERROR_SUCCESS)
+                {
+                    goto finish;
+                }
+                RegCloseKey(hKey);
+            }
+            if (dwStatus == 1)
+            {
+                goto finish;
+            }
+
+            DWORD pts = GetMessagePos();
+            POINT pt;
+            pt.x = GET_X_LPARAM(pts);
+            pt.y = GET_Y_LPARAM(pts);
+            HMONITOR monitor = MonitorFromPoint(
+                pt, 
+                MONITOR_DEFAULTTONULL
+            );
+
+            HRESULT hr = S_OK;
+            IUnknown* pImmersiveShell;
+            hr = CoCreateInstance(
+                &CLSID_ImmersiveShell,
+                NULL,
+                CLSCTX_INPROC_SERVER,
+                &IID_IServiceProvider,
+                &pImmersiveShell
+            );
+            if (SUCCEEDED(hr))
+            {
+                IImmersiveMonitorService* pMonitorService = NULL;
+                IUnknown_QueryService(
+                    pImmersiveShell,
+                    &SID_IImmersiveMonitorService,
+                    &IID_IImmersiveMonitorService,
+                    &pMonitorService
+                );
+                if (pMonitorService)
+                {
+                    IUnknown* pMonitor = NULL;
+                    pMonitorService->lpVtbl->GetFromHandle(
+                        pMonitorService, 
+                        monitor, 
+                        &pMonitor
+                    );
+                    IImmersiveLauncher10RS* pLauncher = NULL;
+                    IUnknown_QueryService(
+                        pImmersiveShell,
+                        &SID_ImmersiveLauncher,
+                        &IID_IImmersiveLauncher10RS,
+                        &pLauncher
+                    );
+                    if (pLauncher)
+                    {
+                        BOOL bIsVisible = FALSE;
+                        pLauncher->lpVtbl->IsVisible(pLauncher, &bIsVisible);
+                        if (SUCCEEDED(hr))
+                        {
+                            if (!bIsVisible)
+                            {
+                                if (pMonitor)
+                                {
+                                    pLauncher->lpVtbl->ConnectToMonitor(pLauncher, pMonitor);
+                                }
+                                pLauncher->lpVtbl->ShowStartView(pLauncher, 11, 0);
+                            }
+                            else
+                            {
+                                pLauncher->lpVtbl->Dismiss(pLauncher);
+                            }
+                        }
+                        pLauncher->lpVtbl->Release(pLauncher);
+                    }
+                    if (pMonitor)
+                    {
+                        pMonitor->lpVtbl->Release(pMonitor);
+                    }
+                    pMonitorService->lpVtbl->Release(pMonitorService);
+                }
+                pImmersiveShell->lpVtbl->Release(pImmersiveShell);
+            }
+
+            msg->message = WM_NULL;
+        }
+    }
+    finish:
+    return CallNextHookEx(NULL, code, wParam, lParam);
+}
+
+DWORD OpenStartOnCurentMonitorThread(LPVOID unused)
+{
+    HWND g_ProgWin = FindWindowEx(
+        NULL, 
+        NULL, 
+        L"Progman",
+        NULL
+    );
+    DWORD progThread = GetWindowThreadProcessId(
+        g_ProgWin, 
+        NULL
+    );
+    HHOOK g_ProgHook = SetWindowsHookEx(
+        WH_GETMESSAGE, 
+        HookProgManThread, 
+        NULL, 
+        progThread
+    );
+    MSG msg = { 0 };
+    while (GetMessage(&msg, NULL, 0, 0))
+    {
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
+    }
+}
+
 __declspec(dllexport) DWORD WINAPI main(
     _In_ LPVOID lpParameter
 )
@@ -457,6 +763,17 @@ __declspec(dllexport) DWORD WINAPI main(
 
 
         funchook = funchook_create();
+
+
+
+        CreateThread(
+            0,
+            0,
+            OpenStartOnCurentMonitorThread,
+            0,
+            0,
+            0
+        );
 
 
 
