@@ -666,7 +666,7 @@ LRESULT CALLBACK OpenStartOnCurentMonitorThreadHook(
     if (code == HC_ACTION && wParam)
     {
         MSG* msg = (MSG*)lParam;
-        if (msg->message == WM_SYSCOMMAND && (msg->wParam & 0xFFF0) == SC_TASKLIST)
+        if (GetSystemMetrics(SM_CMONITORS) >= 2 && msg->message == WM_SYSCOMMAND && (msg->wParam & 0xFFF0) == SC_TASKLIST)
         {
             BOOL bShouldCheckHKLM = FALSE;
             HKEY hKey;
