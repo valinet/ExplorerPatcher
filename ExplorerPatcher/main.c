@@ -109,7 +109,6 @@ int install_uninstall()
             szReadName,
             (LPDWORD)(&dwReadBytes)
         );
-        RegCloseKey(hKey);
         if (!wcscmp(szFileName, szReadName))
         {
             if (RegDeleteValue(
@@ -151,8 +150,10 @@ int install_uninstall()
                 MB_ICONINFORMATION
             );
         }
+        RegCloseKey(hKey);
         return 1;
     error_setup:
+        RegCloseKey(hKey);
 #ifdef UNICODE
         swprintf(buffer, 200,
 #else

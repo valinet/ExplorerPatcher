@@ -559,8 +559,6 @@ INT64 CTray_HandleGlobalHotkeyHook(
             return 0;
         }
 
-        InterlockedExchange64(&lockEnsureWinXHotkeyOnlyOnce, 1);
-
         HWND hWnd = GetForegroundWindow();
         HWND g_ProgWin = FindWindowEx(
             NULL,
@@ -595,6 +593,7 @@ INT64 CTray_HandleGlobalHotkeyHook(
         ip[3].ki.dwExtraInfo = 0;
         ip[3].ki.wVk = VK_LWIN;
         ip[3].ki.dwFlags = KEYEVENTF_KEYUP;
+        InterlockedExchange64(&lockEnsureWinXHotkeyOnlyOnce, 1);
         SendInput(4, ip, sizeof(INPUT));
        
         SetForegroundWindow(hWnd);
