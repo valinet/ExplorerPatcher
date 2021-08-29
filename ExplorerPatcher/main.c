@@ -964,6 +964,14 @@ int WINAPI wWinMain(
                 //     hExplorer,
                 //     INFINITE
                 // );
+                /*for (UINT i = 0; i < 7; ++i)
+                {
+                    TCHAR title[200], className[200];
+                    GetWindowTextW(GetForegroundWindow(), title, 200);
+                    GetClassNameW(GetForegroundWindow(), className, 200);
+                    wprintf(L"%s %s\n", title, className);
+                    Sleep(1000);
+                }*/
             }
             CloseHandle(hExplorer);
         }
@@ -990,7 +998,35 @@ int WINAPI wWinMain(
             szLibPath,
             L"\\ExplorerPatcherLibrary.dll"
         );
-        Sleep(DELAY);
+        //Sleep(DELAY);
+
+        while (TRUE)
+        {
+            HWND hWnd = FindWindowEx(
+                NULL,
+                NULL,
+                L"Shell_TrayWnd",
+                NULL
+            );
+            if (hWnd)
+            {
+                hWnd = FindWindowEx(
+                    hWnd,
+                    NULL,
+                    L"Start",
+                    NULL
+                );
+                if (hWnd)
+                {
+                    if (IsWindowVisible(hWnd))
+                    {
+                        break;
+                    }
+                }
+            }
+            Sleep(1);
+        }
+
         CreateThread(
             0,
             0,

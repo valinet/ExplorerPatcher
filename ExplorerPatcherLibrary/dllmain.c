@@ -946,6 +946,14 @@ __declspec(dllexport) DWORD WINAPI main(
     int rv;
     if (!funchook)
     {
+        HANDLE hEvent = CreateEvent(0, 1, 1, L"ShellDesktopSwitchEvent");
+        if (hEvent)
+        {
+            SetEvent(hEvent);
+        }
+
+
+
         messageWindow = (HWND)lpParameter;
 
 
@@ -1520,6 +1528,11 @@ __declspec(dllexport) DWORD WINAPI main(
             FreeLibraryAndExitThread(hModule, rv);
             return rv;
         }
+
+
+
+
+
     }
     else
     {
