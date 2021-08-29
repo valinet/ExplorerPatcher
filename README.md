@@ -5,13 +5,11 @@ Explorer Patcher is a patcher that enables various stuff in Explorer. For the mo
 * enables the power user menu (Win+X) when using the classic taskbar in Windows 11
 * shows the Start menu on the monitor containing the cursor when invoked with the Windows key
 
-This has been tested only on Windows 11 build 22000.1. It probably does not work on other builds due to different offsets in explorer.exe and its libraries. Once this matures, a solution will be offered for dynamically determining the necessary offsets. As it stands, the application is more in a proof of concept phase.
+This has been tested only on Windows 11 build 22000.1. ~~It probably does not work on other builds due to different offsets in explorer.exe and its libraries. Once this matures, a solution will be offered for dynamically determining the necessary offsets. As it stands, the application is more in a proof of concept phase.~~ It should work on higher builds, provided that the OS components' structure has not changed too drastically. The library is able to automatically download symbols and determine the offsets for correctly hooking the functions.
 
 A detailed description of how this works is available on my web site [here](https://valinet.ro/2021/08/09/Restore-Windows-11-to-working-Windows-10-UI.html).
 
 Precompiled binaries are available in [Releases](https://github.com/valinet/ExplorerPatcher/releases).
-
-Please help me fix the known issues described below in order to get feature parity with regular Windows 10 releases. As it stands, the application works but it is not perfect, yet.
 
 ## Installation
 
@@ -58,12 +56,19 @@ Steps:
    md build
    cd build
    cmake -G "Visual Studio 16 2019" -A x64 ..
-   cmake --build . --config Release
    ```
 
    If "cmake" is not found as a command, type its full path, or have its folder added to PATH.
 
    Type "Win32" instead of "x64" above, if compiling for x86. The command above works for x64.
+
+   Now, in the `libs\funchook\build` folder, open the file `funchook-static.vcxproj` with any text editor, search and replace all occurences of `<RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>` with `<RuntimeLibrary>MultiThreaded</RuntimeLibrary>`.
+
+   Once done, you can now compile funchook:
+
+   ```
+   cmake --build . --config Release
+   ```
 
 3. Compile ExplorerPatcher
 

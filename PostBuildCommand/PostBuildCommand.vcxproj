@@ -69,16 +69,16 @@
     <NMakeReBuildCommandLine>taskkill /f /im:sihost.exe 2&gt;nul &amp;set errorlevel=0</NMakeReBuildCommandLine>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <NMakeBuildCommandLine>taskkill /f /im:sihost.exe 2&gt;nul &amp;set errorlevel=0</NMakeBuildCommandLine>
+    <NMakeBuildCommandLine>rem taskkill /f /im:sihost.exe 2&gt;nul &amp;set errorlevel=0</NMakeBuildCommandLine>
     <NMakeOutput>PostBuildCommand.exe</NMakeOutput>
     <NMakePreprocessorDefinitions>WIN32;_DEBUG;$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
-    <NMakeReBuildCommandLine>taskkill /f /im:sihost.exe 2&gt;nul &amp;set errorlevel=0</NMakeReBuildCommandLine>
+    <NMakeReBuildCommandLine>rem taskkill /f /im:sihost.exe 2&gt;nul &amp;set errorlevel=0</NMakeReBuildCommandLine>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <NMakeBuildCommandLine>taskkill /f /im:sihost.exe 2&gt;nul &amp;set errorlevel=0</NMakeBuildCommandLine>
+    <NMakeBuildCommandLine>rem taskkill /f /im:sihost.exe 2&gt;nul &amp;set errorlevel=0</NMakeBuildCommandLine>
     <NMakeOutput>PostBuildCommand.exe</NMakeOutput>
     <NMakePreprocessorDefinitions>_DEBUG;$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
-    <NMakeReBuildCommandLine>taskkill /f /im:sihost.exe 2&gt;nul &amp;set errorlevel=0</NMakeReBuildCommandLine>
+    <NMakeReBuildCommandLine>rem taskkill /f /im:sihost.exe 2&gt;nul &amp;set errorlevel=0</NMakeReBuildCommandLine>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <NMakeBuildCommandLine>taskkill /f /im:sihost.exe 2&gt;nul &amp;set errorlevel=0</NMakeBuildCommandLine>

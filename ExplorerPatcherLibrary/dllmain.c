@@ -9,6 +9,81 @@
 #include <windowsx.h>
 #include <Uxtheme.h>
 #pragma comment(lib, "UxTheme.lib")
+#include <valinet/ini/ini.h>
+#include <valinet/pdb/pdb.h>
+#define _LIBVALINET_INCLUDE_UNIVERSAL
+#include <valinet/universal/toast/toast.h>
+
+#define APPID L"Microsoft.Windows.Explorer"
+#define SYMBOLS_RELATIVE_PATH "\\settings.ini"
+#define EXPLORER_SB_NAME "explorer"
+#define EXPLORER_SB_0 "CTray::_HandleGlobalHotkey"
+#define EXPLORER_SB_CNT 1
+#define TWINUI_PCSHELL_SB_NAME "twinui.pcshell"
+#define TWINUI_PCSHELL_SB_0 "CImmersiveContextMenuOwnerDrawHelper::s_ContextMenuWndProc"
+#define TWINUI_PCSHELL_SB_1 "CLauncherTipContextMenu::GetMenuItemsAsync"
+#define TWINUI_PCSHELL_SB_2 "ImmersiveContextMenuHelper::ApplyOwnerDrawToMenu"
+#define TWINUI_PCSHELL_SB_3 "ImmersiveContextMenuHelper::RemoveOwnerDrawFromMenu"
+#define TWINUI_PCSHELL_SB_4 "CLauncherTipContextMenu::_ExecuteShutdownCommand"
+#define TWINUI_PCSHELL_SB_5 "CLauncherTipContextMenu::_ExecuteCommand"
+#define TWINUI_PCSHELL_SB_6 "CLauncherTipContextMenu::ShowLauncherTipContextMenu"
+#define TWINUI_PCSHELL_SB_CNT 7
+#define TWINUI_SB_NAME "twinui"
+#define TWINUI_SB_0 "CImmersiveHotkeyNotification::_GetMonitorForHotkeyNotification"
+#define TWINUI_SB_1 "IsDesktopInputContext"
+#define TWINUI_SB_2 "CImmersiveHotkeyNotification::OnMessage"
+#define TWINUI_SB_CNT 3
+const char* explorer_SN[EXPLORER_SB_CNT] = {
+    EXPLORER_SB_0
+};
+const char* twinui_pcshell_SN[TWINUI_PCSHELL_SB_CNT] = {
+    TWINUI_PCSHELL_SB_0,
+    TWINUI_PCSHELL_SB_1,
+    TWINUI_PCSHELL_SB_2,
+    TWINUI_PCSHELL_SB_3,
+    TWINUI_PCSHELL_SB_4,
+    TWINUI_PCSHELL_SB_5,
+    TWINUI_PCSHELL_SB_6
+};
+const char* twinui_SN[TWINUI_SB_CNT] = {
+    TWINUI_SB_0,
+    TWINUI_SB_1,
+    TWINUI_SB_2
+};
+#pragma pack(push, 1)
+typedef struct symbols_addr
+{
+    DWORD explorer_PTRS[EXPLORER_SB_CNT];
+    DWORD twinui_pcshell_PTRS[TWINUI_PCSHELL_SB_CNT];
+    DWORD twinui_PTRS[TWINUI_SB_CNT];
+} symbols_addr;
+#pragma pack(pop)
+
+wchar_t DownloadSymbolsXML[] =
+L"<toast displayTimestamp=\"2021-08-29T00:00:00.000Z\" scenario=\"reminder\" "
+L"activationType=\"protocol\" launch=\"https://github.com/valinet/ExplorerPatcher\" duration=\"short\">\r\n"
+L"	<visual>\r\n"
+L"		<binding template=\"ToastGeneric\">\r\n"
+L"			<text><![CDATA[Unable to find symbols for OS version %s]]></text>\r\n"
+L"			<text><![CDATA[Downloading and applying symbol information, please wait...]]></text>\r\n"
+L"			<text placement=\"attribution\"><![CDATA[ExplorerPatcher]]></text>\r\n"
+L"		</binding>\r\n"
+L"	</visual>\r\n"
+L"	<audio src=\"ms-winsoundevent:Notification.Default\" loop=\"false\" silent=\"false\"/>\r\n"
+L"</toast>\r\n";
+
+wchar_t DownloadOKXML[] =
+L"<toast displayTimestamp=\"2021-08-29T01:00:00.000Z\" scenario=\"reminder\" "
+L"activationType=\"protocol\" launch=\"https://github.com/valinet/ExplorerPatcher\" duration=\"long\">\r\n"
+L"	<visual>\r\n"
+L"		<binding template=\"ToastGeneric\">\r\n"
+L"			<text><![CDATA[Symbols downloaded and applied successfully! You can now enjoy full application functionality.]]></text>\r\n"
+L"			<text><![CDATA[This notification will not show again until the next OS build update.]]></text>\r\n"
+L"			<text placement=\"attribution\"><![CDATA[ExplorerPatcher]]></text>\r\n"
+L"		</binding>\r\n"
+L"	</visual>\r\n"
+L"	<audio src=\"ms-winsoundevent:Notification.Default\" loop=\"false\" silent=\"false\"/>\r\n"
+L"</toast>\r\n";
 
 #define DEBUG
 #undef DEBUG
@@ -18,6 +93,32 @@ HMODULE hModule = NULL;
 HWND messageWindow = NULL;
 HANDLE hIsWinXShown = NULL;
 INT64 lockEnsureWinXHotkeyOnlyOnce;
+
+typedef LONG NTSTATUS, * PNTSTATUS;
+#define STATUS_SUCCESS (0x00000000)
+
+typedef NTSTATUS(WINAPI* RtlGetVersionPtr)(PRTL_OSVERSIONINFOW);
+
+BOOL GetOSVersion(PRTL_OSVERSIONINFOW lpRovi)
+{
+    HMODULE hMod = GetModuleHandleW(L"ntdll.dll");
+    if (hMod != NULL)
+    {
+        RtlGetVersionPtr fxPtr = (RtlGetVersionPtr)GetProcAddress(
+            hMod,
+            "RtlGetVersion"
+        );
+        if (fxPtr != NULL)
+        {
+            lpRovi->dwOSVersionInfoSize = sizeof(RTL_OSVERSIONINFOW);
+            if (STATUS_SUCCESS == fxPtr(lpRovi))
+            {
+                return TRUE;
+            }
+        }
+    }
+    return FALSE;
+}
 
 static HWND(WINAPI* CreateWindowInBand)(
     _In_ DWORD dwExStyle, 
@@ -42,22 +143,17 @@ static INT64(*CLauncherTipContextMenu_ShowLauncherTipContextMenuFunc)(
     POINT* pt
     );
 
-static void(*CLauncherTipContextMenu_ExecuteCommand)(
+static void(*CLauncherTipContextMenu_ExecuteCommandFunc)(
     void* _this,
     int a2
     );
 
-static void(*CLauncherTipContextMenu_ExecuteShutdownCommand)(
+static void(*CLauncherTipContextMenu_ExecuteShutdownCommandFunc)(
     void* _this,
     void* a2
     );
 
-static INT64(*InternalAddRef)(
-    void* a1,
-    INT64 a2
-    );
-
-static INT64(*ImmersiveContextMenuHelper_ApplyOwnerDrawToMenu)(
+static INT64(*ImmersiveContextMenuHelper_ApplyOwnerDrawToMenuFunc)(
     HMENU h1,
     HMENU h2,
     HWND a3,
@@ -65,19 +161,19 @@ static INT64(*ImmersiveContextMenuHelper_ApplyOwnerDrawToMenu)(
     void* data
     );
 
-static void(*ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenu)(
+static void(*ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc)(
     HMENU _this,
     HMENU hWnd,
     HWND a3
     );
 
-static INT64(*CLauncherTipContextMenu_GetMenuItemsAsync)(
+static INT64(*CLauncherTipContextMenu_GetMenuItemsAsyncFunc)(
     void* _this,
     void* rect,
     void** iunk
     );
 
-static INT64(*CImmersiveContextMenuOwnerDrawHelper_s_ContextMenuWndProc)(
+static INT64(*CImmersiveContextMenuOwnerDrawHelper_s_ContextMenuWndProcFunc)(
     HWND hWnd,
     int a2,
     HWND a3,
@@ -296,7 +392,7 @@ LRESULT CALLBACK CLauncherTipContextMenu_WndProc(
         {
             BOOL v12 = FALSE;
             if ((uMsg == WM_DRAWITEM || uMsg == WM_MEASUREITEM) &&
-                CImmersiveContextMenuOwnerDrawHelper_s_ContextMenuWndProc(
+                CImmersiveContextMenuOwnerDrawHelper_s_ContextMenuWndProcFunc(
                     hWnd,
                     uMsg,
                     wParam,
@@ -386,7 +482,7 @@ DWORD ShowLauncherTipContextMenu(
     }
 
     INT64* unknown_array = calloc(4, sizeof(INT64));
-    ImmersiveContextMenuHelper_ApplyOwnerDrawToMenu(
+    ImmersiveContextMenuHelper_ApplyOwnerDrawToMenuFunc(
         *((HMENU*)((char*)params->_this + 0xe8)),
         hWnd,
         &(params->point),
@@ -404,7 +500,7 @@ DWORD ShowLauncherTipContextMenu(
         0
     );
 
-    ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenu(
+    ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc(
         *((HMENU*)((char*)params->_this + 0xe8)),
         hWnd,
         &(params->point)
@@ -416,7 +512,7 @@ DWORD ShowLauncherTipContextMenu(
         if (res < 4000)
         {
             INT64 info = *(INT64*)((char*)(*(INT64*)((char*)params->_this + 0xa8 - 0x58)) + (INT64)res * 8 - 8);
-            CLauncherTipContextMenu_ExecuteCommand(
+            CLauncherTipContextMenu_ExecuteCommandFunc(
                 (char*)params->_this - 0x58,
                 &info
             );
@@ -424,7 +520,7 @@ DWORD ShowLauncherTipContextMenu(
         else
         {
             INT64 info = *(INT64*)((char*)(*(INT64*)((char*)params->_this + 0xc8 - 0x58)) + ((INT64)res - 4000) * 8);
-            CLauncherTipContextMenu_ExecuteShutdownCommand(
+            CLauncherTipContextMenu_ExecuteShutdownCommandFunc(
                 (char*)params->_this - 0x58,
                 &info
             );
@@ -503,7 +599,7 @@ INT64 CLauncherTipContextMenu_ShowLauncherTipContextMenuHook(
     }
 
     IUnknown* iunk;
-    INT64 r = CLauncherTipContextMenu_GetMenuItemsAsync(
+    INT64 r = CLauncherTipContextMenu_GetMenuItemsAsyncFunc(
         _this,
         &point,
         &iunk
@@ -853,6 +949,7 @@ __declspec(dllexport) DWORD WINAPI main(
         messageWindow = (HWND)lpParameter;
 
 
+
         funchook = funchook_create();
 
 
@@ -867,9 +964,480 @@ __declspec(dllexport) DWORD WINAPI main(
         );
 
 
+
+        DWORD dwRet = 0;
+        char szSettingsPath[MAX_PATH];
+        ZeroMemory(
+            szSettingsPath,
+            (MAX_PATH) * sizeof(char)
+        );
+        TCHAR wszSettingsPath[MAX_PATH];
+        ZeroMemory(
+            wszSettingsPath,
+            (MAX_PATH) * sizeof(TCHAR)
+        );
+        GetModuleFileNameA(
+            hModule,
+            szSettingsPath,
+            MAX_PATH
+        );
+        PathRemoveFileSpecA(szSettingsPath);
+        strcat_s(
+            szSettingsPath,
+            MAX_PATH,
+            SYMBOLS_RELATIVE_PATH
+        );
+        mbstowcs_s(
+            &dwRet,
+            wszSettingsPath,
+            MAX_PATH,
+            szSettingsPath,
+            MAX_PATH
+        );
+
+        symbols_addr symbols_PTRS;
+        ZeroMemory(
+            &symbols_PTRS,
+            sizeof(symbols_addr)
+        );
+        symbols_PTRS.explorer_PTRS[0] = VnGetUInt(
+            TEXT(EXPLORER_SB_NAME),
+            TEXT(EXPLORER_SB_0),
+            0,
+            wszSettingsPath
+        );
+
+        symbols_PTRS.twinui_pcshell_PTRS[0] = VnGetUInt(
+            TEXT(TWINUI_PCSHELL_SB_NAME),
+            TEXT(TWINUI_PCSHELL_SB_0),
+            0,
+            wszSettingsPath
+        );
+        symbols_PTRS.twinui_pcshell_PTRS[1] = VnGetUInt(
+            TEXT(TWINUI_PCSHELL_SB_NAME),
+            TEXT(TWINUI_PCSHELL_SB_1),
+            0,
+            wszSettingsPath
+        );
+        symbols_PTRS.twinui_pcshell_PTRS[2] = VnGetUInt(
+            TEXT(TWINUI_PCSHELL_SB_NAME),
+            TEXT(TWINUI_PCSHELL_SB_2),
+            0,
+            wszSettingsPath
+        );
+        symbols_PTRS.twinui_pcshell_PTRS[3] = VnGetUInt(
+            TEXT(TWINUI_PCSHELL_SB_NAME),
+            TEXT(TWINUI_PCSHELL_SB_3),
+            0,
+            wszSettingsPath
+        );
+        symbols_PTRS.twinui_pcshell_PTRS[4] = VnGetUInt(
+            TEXT(TWINUI_PCSHELL_SB_NAME),
+            TEXT(TWINUI_PCSHELL_SB_4),
+            0,
+            wszSettingsPath
+        );
+        symbols_PTRS.twinui_pcshell_PTRS[5] = VnGetUInt(
+            TEXT(TWINUI_PCSHELL_SB_NAME),
+            TEXT(TWINUI_PCSHELL_SB_5),
+            0,
+            wszSettingsPath
+        );
+        symbols_PTRS.twinui_pcshell_PTRS[6] = VnGetUInt(
+            TEXT(TWINUI_PCSHELL_SB_NAME),
+            TEXT(TWINUI_PCSHELL_SB_6),
+            0,
+            wszSettingsPath
+        );
+
+        symbols_PTRS.twinui_PTRS[0] = VnGetUInt(
+            TEXT(TWINUI_SB_NAME),
+            TEXT(TWINUI_SB_0),
+            0,
+            wszSettingsPath
+        );
+        symbols_PTRS.twinui_PTRS[1] = VnGetUInt(
+            TEXT(TWINUI_SB_NAME),
+            TEXT(TWINUI_SB_1),
+            0,
+            wszSettingsPath
+        );
+        symbols_PTRS.twinui_PTRS[2] = VnGetUInt(
+            TEXT(TWINUI_SB_NAME),
+            TEXT(TWINUI_SB_2),
+            0,
+            wszSettingsPath
+        );
+
+        BOOL bNeedToDownload = FALSE;
+        for (UINT i = 0; i < sizeof(symbols_addr) / sizeof(DWORD); ++i)
+        {
+            if (!((DWORD*)&symbols_PTRS)[i])
+            {
+                bNeedToDownload = TRUE;
+            }
+        }
+        // https://stackoverflow.com/questions/36543301/detecting-windows-10-version/36543774#36543774
+        RTL_OSVERSIONINFOW rovi;
+        if (!GetOSVersion(&rovi))
+        {
+            FreeLibraryAndExitThread(
+                hModule,
+                1
+            );
+            return 1;
+        }
+        // https://stackoverflow.com/questions/47926094/detecting-windows-10-os-build-minor-version
+        DWORD32 ubr = 0, ubr_size = sizeof(DWORD32);
+        HKEY hKey;
+        LONG lRes = RegOpenKeyExW(
+            HKEY_LOCAL_MACHINE,
+            wcschr(
+                wcschr(
+                    wcschr(
+                        UNIFIEDBUILDREVISION_KEY,
+                        '\\'
+                    ) + 1,
+                    '\\'
+                ) + 1,
+                '\\'
+            ) + 1,
+            0,
+            KEY_READ,
+            &hKey
+        );
+        if (lRes == ERROR_SUCCESS)
+        {
+            RegQueryValueExW(
+                hKey,
+                UNIFIEDBUILDREVISION_VALUE,
+                0,
+                NULL,
+                &ubr,
+                &ubr_size
+            );
+        }
+        TCHAR szReportedVersion[MAX_PATH];
+        ZeroMemory(
+            szReportedVersion,
+            (MAX_PATH) * sizeof(TCHAR)
+        );
+        TCHAR szStoredVersion[MAX_PATH];
+        ZeroMemory(
+            szStoredVersion,
+            (MAX_PATH) * sizeof(TCHAR)
+        );
+        wsprintf(
+            szReportedVersion,
+            L"%d.%d.%d.%d",
+            rovi.dwMajorVersion,
+            rovi.dwMinorVersion,
+            rovi.dwBuildNumber,
+            ubr
+        );
+        VnGetString(
+            TEXT("OS"),
+            TEXT("Build"),
+            szStoredVersion,
+            MAX_PATH,
+            MAX_PATH,
+            NULL,
+            wszSettingsPath
+        );
+        if (!bNeedToDownload)
+        {
+            bNeedToDownload = wcscmp(szReportedVersion, szStoredVersion);
+        }
+
+        if (bNeedToDownload)
+        {
+            TCHAR buffer[sizeof(DownloadSymbolsXML) / sizeof(wchar_t) + 30];
+            ZeroMemory(
+                buffer,
+                (sizeof(DownloadSymbolsXML) / sizeof(wchar_t) + 30) * sizeof(TCHAR)
+            );
+            wsprintf(
+                buffer,
+                DownloadSymbolsXML,
+                szReportedVersion
+            );
+            HRESULT hr = S_OK;
+            __x_ABI_CWindows_CData_CXml_CDom_CIXmlDocument* inputXml = NULL;
+            hr = String2IXMLDocument(
+                buffer,
+                wcslen(buffer),
+                &inputXml,
+#ifdef DEBUG
+                stdout
+#else
+                NULL
+#endif
+            );
+            hr = ShowToastMessage(
+                inputXml,
+                APPID,
+                sizeof(APPID) / sizeof(TCHAR) - 1,
+#ifdef DEBUG
+                stdout
+#else
+                NULL
+#endif
+            );
+            char explorer_sb_exe[MAX_PATH];
+            ZeroMemory(
+                explorer_sb_exe,
+                (MAX_PATH) * sizeof(char)
+            );
+            GetWindowsDirectoryA(
+                explorer_sb_exe,
+                MAX_PATH
+            );
+            strcat_s(
+                explorer_sb_exe,
+                MAX_PATH,
+                "\\"
+            );
+            strcat_s(
+                explorer_sb_exe,
+                MAX_PATH,
+                EXPLORER_SB_NAME
+            );
+            strcat_s(
+                explorer_sb_exe,
+                MAX_PATH,
+                ".exe"
+            );
+            if (VnDownloadSymbols(
+                NULL,
+                explorer_sb_exe,
+                szSettingsPath,
+                MAX_PATH
+            ))
+            {
+                FreeLibraryAndExitThread(
+                    hModule,
+                    2
+                );
+                return 2;
+            }
+            if (VnGetSymbols(
+                szSettingsPath,
+                symbols_PTRS.explorer_PTRS,
+                explorer_SN,
+                EXPLORER_SB_CNT
+            ))
+            {
+                FreeLibraryAndExitThread(
+                    hModule,
+                    3
+                );
+                return 3;
+            }
+            VnWriteUInt(
+                TEXT(EXPLORER_SB_NAME),
+                TEXT(EXPLORER_SB_0),
+                symbols_PTRS.explorer_PTRS[0],
+                wszSettingsPath
+            );
+
+            char twinui_pcshell_sb_dll[MAX_PATH];
+            ZeroMemory(
+                twinui_pcshell_sb_dll,
+                (MAX_PATH) * sizeof(char)
+            );
+            GetSystemDirectoryA(
+                twinui_pcshell_sb_dll,
+                MAX_PATH
+            );
+            strcat_s(
+                twinui_pcshell_sb_dll,
+                MAX_PATH,
+                "\\"
+            );
+            strcat_s(
+                twinui_pcshell_sb_dll,
+                MAX_PATH,
+                TWINUI_PCSHELL_SB_NAME
+            );
+            strcat_s(
+                twinui_pcshell_sb_dll,
+                MAX_PATH,
+                ".dll"
+            );
+            if (VnDownloadSymbols(
+                NULL,
+                twinui_pcshell_sb_dll,
+                szSettingsPath,
+                MAX_PATH
+            ))
+            {
+                FreeLibraryAndExitThread(
+                    hModule,
+                    4
+                );
+                return 4;
+            }
+            if (VnGetSymbols(
+                szSettingsPath,
+                symbols_PTRS.twinui_pcshell_PTRS,
+                twinui_pcshell_SN,
+                TWINUI_PCSHELL_SB_CNT
+            ))
+            {
+                FreeLibraryAndExitThread(
+                    hModule,
+                    5
+                );
+                return 5;
+            }
+            VnWriteUInt(
+                TEXT(TWINUI_PCSHELL_SB_NAME),
+                TEXT(TWINUI_PCSHELL_SB_0),
+                symbols_PTRS.twinui_pcshell_PTRS[0],
+                wszSettingsPath
+            );
+            VnWriteUInt(
+                TEXT(TWINUI_PCSHELL_SB_NAME),
+                TEXT(TWINUI_PCSHELL_SB_1),
+                symbols_PTRS.twinui_pcshell_PTRS[1],
+                wszSettingsPath
+            );
+            VnWriteUInt(
+                TEXT(TWINUI_PCSHELL_SB_NAME),
+                TEXT(TWINUI_PCSHELL_SB_2),
+                symbols_PTRS.twinui_pcshell_PTRS[2],
+                wszSettingsPath
+            );
+            VnWriteUInt(
+                TEXT(TWINUI_PCSHELL_SB_NAME),
+                TEXT(TWINUI_PCSHELL_SB_3),
+                symbols_PTRS.twinui_pcshell_PTRS[3],
+                wszSettingsPath
+            );
+            VnWriteUInt(
+                TEXT(TWINUI_PCSHELL_SB_NAME),
+                TEXT(TWINUI_PCSHELL_SB_4),
+                symbols_PTRS.twinui_pcshell_PTRS[4],
+                wszSettingsPath
+            );
+            VnWriteUInt(
+                TEXT(TWINUI_PCSHELL_SB_NAME),
+                TEXT(TWINUI_PCSHELL_SB_5),
+                symbols_PTRS.twinui_pcshell_PTRS[5],
+                wszSettingsPath
+            );
+            VnWriteUInt(
+                TEXT(TWINUI_PCSHELL_SB_NAME),
+                TEXT(TWINUI_PCSHELL_SB_6),
+                symbols_PTRS.twinui_pcshell_PTRS[6],
+                wszSettingsPath
+            );
+
+            char twinui_sb_dll[MAX_PATH];
+            ZeroMemory(
+                twinui_sb_dll,
+                (MAX_PATH) * sizeof(char)
+            );
+            GetSystemDirectoryA(
+                twinui_sb_dll,
+                MAX_PATH
+            );
+            strcat_s(
+                twinui_sb_dll,
+                MAX_PATH,
+                "\\"
+            );
+            strcat_s(
+                twinui_sb_dll,
+                MAX_PATH,
+                TWINUI_SB_NAME
+            );
+            strcat_s(
+                twinui_sb_dll,
+                MAX_PATH,
+                ".dll"
+            );
+            if (VnDownloadSymbols(
+                NULL,
+                twinui_sb_dll,
+                szSettingsPath,
+                MAX_PATH
+            ))
+            {
+                FreeLibraryAndExitThread(
+                    hModule,
+                    6
+                );
+                return 6;
+            }
+            if (VnGetSymbols(
+                szSettingsPath,
+                symbols_PTRS.twinui_PTRS,
+                twinui_SN,
+                TWINUI_SB_CNT
+            ))
+            {
+                FreeLibraryAndExitThread(
+                    hModule,
+                    7
+                );
+                return 7;
+            }
+            VnWriteUInt(
+                TEXT(TWINUI_SB_NAME),
+                TEXT(TWINUI_SB_0),
+                symbols_PTRS.twinui_PTRS[0],
+                wszSettingsPath
+            );
+            VnWriteUInt(
+                TEXT(TWINUI_SB_NAME),
+                TEXT(TWINUI_SB_1),
+                symbols_PTRS.twinui_PTRS[1],
+                wszSettingsPath
+            );
+            VnWriteUInt(
+                TEXT(TWINUI_SB_NAME),
+                TEXT(TWINUI_SB_2),
+                symbols_PTRS.twinui_PTRS[2],
+                wszSettingsPath
+            );
+
+            VnWriteString(
+                TEXT("OS"),
+                TEXT("Build"),
+                szReportedVersion,
+                wszSettingsPath
+            );
+
+            __x_ABI_CWindows_CData_CXml_CDom_CIXmlDocument* inputXml2 = NULL;
+            hr = String2IXMLDocument(
+                DownloadOKXML,
+                wcslen(DownloadOKXML),
+                &inputXml2,
+#ifdef DEBUG
+                stdout
+#else
+                NULL
+#endif
+            );
+            hr = ShowToastMessage(
+                inputXml2,
+                APPID,
+                sizeof(APPID) / sizeof(TCHAR) - 1,
+#ifdef DEBUG
+                stdout
+#else
+                NULL
+#endif
+            );
+        }
+
+
+        
+        
         HANDLE hExplorer = GetModuleHandle(NULL);
         CTray_HandleGlobalHotkeyFunc = (INT64(*)(void*, unsigned int, unsigned int))
-            ((uintptr_t)hExplorer + 0x117F8);
+            ((uintptr_t)hExplorer + symbols_PTRS.explorer_PTRS[0]);
         rv = funchook_prepare(
             funchook,
             (void**)&CTray_HandleGlobalHotkeyFunc,
@@ -890,29 +1458,26 @@ __declspec(dllexport) DWORD WINAPI main(
 
         HANDLE hTwinuiPcshell = GetModuleHandle(L"twinui.pcshell.dll");
 
-        CImmersiveContextMenuOwnerDrawHelper_s_ContextMenuWndProc = (INT64(*)(HWND, int, HWND, int, BOOL*))
-            ((uintptr_t)hTwinuiPcshell + 0xB0E12);
+        CImmersiveContextMenuOwnerDrawHelper_s_ContextMenuWndProcFunc = (INT64(*)(HWND, int, HWND, int, BOOL*))
+            ((uintptr_t)hTwinuiPcshell + symbols_PTRS.twinui_pcshell_PTRS[0]);
 
-        InternalAddRef = (INT64(*)(void*, INT64))
-            ((uintptr_t)hTwinuiPcshell + 0x46650);
+        CLauncherTipContextMenu_GetMenuItemsAsyncFunc = (INT64(*)(void*, void*, void**))
+            ((uintptr_t)hTwinuiPcshell + symbols_PTRS.twinui_pcshell_PTRS[1]);
+        
+        ImmersiveContextMenuHelper_ApplyOwnerDrawToMenuFunc = (INT64(*)(HMENU, HMENU, HWND, unsigned int, void*))
+            ((uintptr_t)hTwinuiPcshell + symbols_PTRS.twinui_pcshell_PTRS[2]);
 
-        CLauncherTipContextMenu_GetMenuItemsAsync = (INT64(*)(void*, void*, void**))
-            ((uintptr_t)hTwinuiPcshell + 0x5051F0);
+        ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc = (void(*)(HMENU, HMENU, HWND))
+            ((uintptr_t)hTwinuiPcshell + symbols_PTRS.twinui_pcshell_PTRS[3]);
         
-        ImmersiveContextMenuHelper_ApplyOwnerDrawToMenu = (INT64(*)(HMENU, HMENU, HWND, unsigned int, void*))
-            ((uintptr_t)hTwinuiPcshell + 0x535AF8);
-
-        ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenu = (void(*)(HMENU, HMENU, HWND))
-            ((uintptr_t)hTwinuiPcshell + 0x536300);
+        CLauncherTipContextMenu_ExecuteShutdownCommandFunc = (void(*)(void*, void*))
+            ((uintptr_t)hTwinuiPcshell + symbols_PTRS.twinui_pcshell_PTRS[4]);
         
-        CLauncherTipContextMenu_ExecuteShutdownCommand = (void(*)(void*, void*))
-            ((uintptr_t)hTwinuiPcshell + 0x514714);
-        
-        CLauncherTipContextMenu_ExecuteCommand = (void(*)(void*, int))
-            ((uintptr_t)hTwinuiPcshell + 0x5143D0);
+        CLauncherTipContextMenu_ExecuteCommandFunc = (void(*)(void*, int))
+            ((uintptr_t)hTwinuiPcshell + symbols_PTRS.twinui_pcshell_PTRS[5]);
         
         CLauncherTipContextMenu_ShowLauncherTipContextMenuFunc = (INT64(*)(void*, POINT*))
-            ((uintptr_t)hTwinuiPcshell + 0x506EE0);
+            ((uintptr_t)hTwinuiPcshell + symbols_PTRS.twinui_pcshell_PTRS[6]);
         rv = funchook_prepare(
             funchook,
             (void**)&CLauncherTipContextMenu_ShowLauncherTipContextMenuFunc,
@@ -929,13 +1494,13 @@ __declspec(dllexport) DWORD WINAPI main(
         HANDLE hTwinui = GetModuleHandle(L"twinui.dll");
 
         CImmersiveHotkeyNotification_GetMonitorForHotkeyNotificationFunc = (INT64(*)(void*, void**, HWND*))
-            ((uintptr_t)hTwinui + 0x24B4A8);
+            ((uintptr_t)hTwinui + symbols_PTRS.twinui_PTRS[0]);
 
         IsDesktopInputContextFunc = (BOOL(*)(void*, void*))
-            ((uintptr_t)hTwinui + 0x24A5C4);
+            ((uintptr_t)hTwinui + symbols_PTRS.twinui_PTRS[1]);
 
         CImmersiveHotkeyNotification_OnMessageFunc = (HRESULT(*)(void*, INT64, INT, INT64))
-            ((uintptr_t)hTwinui + 0xB2A70);
+            ((uintptr_t)hTwinui + symbols_PTRS.twinui_PTRS[2]);
         rv = funchook_prepare(
             funchook,
             (void**)&CImmersiveHotkeyNotification_OnMessageFunc,
