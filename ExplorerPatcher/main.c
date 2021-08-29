@@ -574,6 +574,8 @@ int WINAPI wWinMain(
 
         if (bNeedToDownload)
         {
+            DeleteFile(wszSettingsPath);
+
             char explorer_sb_dll[MAX_PATH];
             ZeroMemory(
                 explorer_sb_dll,
