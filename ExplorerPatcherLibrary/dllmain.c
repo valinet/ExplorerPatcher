@@ -64,6 +64,9 @@ DEFINE_GUID(__uuidof_IAuthUILogonSound,
 #define STOBJECT_SB_0 "SysTrayWndProc"
 #define STOBJECT_SB_1 "HotPlugButtonClick"
 #define STOBJECT_SB_CNT 2
+#define WINDOWSUIFILEEXPLORER_SB_NAME "Windows.UI.FileExplorer"
+#define WINDOWSUIFILEEXPLORER_SB_0 "ContextMenuPresenter::DoContextMenu"
+#define WINDOWSUIFILEEXPLORER_SB_CNT 1
 const char* explorer_SN[EXPLORER_SB_CNT] = {
     EXPLORER_SB_0,
     EXPLORER_SB_1,
@@ -87,6 +90,9 @@ const char* stobject_SN[STOBJECT_SB_CNT] = {
     STOBJECT_SB_0,
     STOBJECT_SB_1
 };
+const char* windowsuifileexplorer_SN[WINDOWSUIFILEEXPLORER_SB_CNT] = {
+    WINDOWSUIFILEEXPLORER_SB_0
+};
 #pragma pack(push, 1)
 typedef struct symbols_addr
 {
@@ -94,6 +100,7 @@ typedef struct symbols_addr
     DWORD twinui_pcshell_PTRS[TWINUI_PCSHELL_SB_CNT];
     DWORD twinui_PTRS[TWINUI_SB_CNT];
     DWORD stobject_PTRS[STOBJECT_SB_CNT];
+    DWORD windowsuifileexplorer_PTRS[WINDOWSUIFILEEXPLORER_SB_CNT];
 } symbols_addr;
 #pragma pack(pop)
 
@@ -287,6 +294,31 @@ static BOOL(*TrackPopupMenuFunc)(
     const RECT* prcRect
 );
 
+
+
+static char(*ContextMenuPresenter_DoContextMenuFunc)(
+    char* _this,
+    INT64 a2,
+    INT a3,
+    void* a4
+    );
+
+char ContextMenuPresenter_DoContextMenuHook(
+    char* _this,
+    INT64 a2,
+    INT a3,
+    void* a4
+)
+{
+    *(((char*)_this + 156)) = 0;
+    ContextMenuPresenter_DoContextMenuFunc(
+        _this,
+        a2,
+        a3,
+        a4
+    );
+    return 1;
+}
 
 
 
@@ -1562,6 +1594,13 @@ __declspec(dllexport) DWORD WINAPI main(
             wszSettingsPath
         );
 
+        symbols_PTRS.windowsuifileexplorer_PTRS[0] = VnGetUInt(
+            TEXT(WINDOWSUIFILEEXPLORER_SB_NAME),
+            TEXT(WINDOWSUIFILEEXPLORER_SB_0),
+            0,
+            wszSettingsPath
+        );
+
         BOOL bNeedToDownload = FALSE;
         for (UINT i = 0; i < sizeof(symbols_addr) / sizeof(DWORD); ++i)
         {
@@ -1978,6 +2017,65 @@ __declspec(dllexport) DWORD WINAPI main(
                 wszSettingsPath
             );
 
+            char windowsuifileexplorer_sb_dll[MAX_PATH];
+            ZeroMemory(
+                windowsuifileexplorer_sb_dll,
+                (MAX_PATH) * sizeof(char)
+            );
+            GetSystemDirectoryA(
+                windowsuifileexplorer_sb_dll,
+                MAX_PATH
+            );
+            strcat_s(
+                windowsuifileexplorer_sb_dll,
+                MAX_PATH,
+                "\\"
+            );
+            strcat_s(
+                windowsuifileexplorer_sb_dll,
+                MAX_PATH,
+                WINDOWSUIFILEEXPLORER_SB_NAME
+            );
+            strcat_s(
+                windowsuifileexplorer_sb_dll,
+                MAX_PATH,
+                ".dll"
+            );
+            printf("Downloading symbols for %s.\n", windowsuifileexplorer_sb_dll);
+            if (VnDownloadSymbols(
+                NULL,
+                windowsuifileexplorer_sb_dll,
+                szSettingsPath,
+                MAX_PATH
+            ))
+            {
+                FreeLibraryAndExitThread(
+                    hModule,
+                    6
+                );
+                return 6;
+            }
+            printf("Reading symbols.\n");
+            if (VnGetSymbols(
+                szSettingsPath,
+                symbols_PTRS.windowsuifileexplorer_PTRS,
+                windowsuifileexplorer_SN,
+                WINDOWSUIFILEEXPLORER_SB_CNT
+            ))
+            {
+                FreeLibraryAndExitThread(
+                    hModule,
+                    7
+                );
+                return 7;
+            }
+            VnWriteUInt(
+                TEXT(WINDOWSUIFILEEXPLORER_SB_NAME),
+                TEXT(WINDOWSUIFILEEXPLORER_SB_0),
+                symbols_PTRS.windowsuifileexplorer_PTRS[0],
+                wszSettingsPath
+            );
+
             VnWriteString(
                 TEXT("OS"),
                 TEXT("Build"),
@@ -2129,6 +2227,33 @@ __declspec(dllexport) DWORD WINAPI main(
             FreeLibraryAndExitThread(hModule, rv);
             return rv;
         }
+
+
+
+        LoadLibrary(L"Windows.UI.FileExplorer.dll");
+        HANDLE hWindowsUIFileExplorer = GetModuleHandle(L"Windows.UI.FileExplorer.dll");
+        ContextMenuPresenter_DoContextMenuFunc = (char(*)(void*))
+            ((uintptr_t)hWindowsUIFileExplorer + symbols_PTRS.windowsuifileexplorer_PTRS[0]);
+        UINT archive_plugin = VnGetUInt(
+            L"ArchiveMenu",
+            L"Enabled",
+            0,
+            wszSettingsPath
+        );
+        if (archive_plugin)
+        {
+            rv = funchook_prepare(
+                funchook,
+                (void**)&ContextMenuPresenter_DoContextMenuFunc,
+                ContextMenuPresenter_DoContextMenuHook
+            );
+            if (rv != 0)
+            {
+                FreeLibraryAndExitThread(hModule, rv);
+                return rv;
+            }
+        }
+
 
 
         rv = funchook_install(funchook, 0);
