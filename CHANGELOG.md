@@ -1,6 +1,14 @@
-# Explorer Patcher Changelog
+# Explorer Patcher Change log
 
 This document includes the same release notes as in the [Releases](https://github.com/valinet/ExplorerPatcher/releases) section on GitHub.
+
+## 22000.168.0.10
+
+Improved Explorer hooking.
+
+The application now comes in the form of a single DLL file (`dxgi.dll`) which you have to place in `%windir%` (usually `C:\Windows`). Restart Explorer and that's it.
+
+Please make sure to uninstall the old version before using this new one.
 
 ## 22000.168.0.9
 

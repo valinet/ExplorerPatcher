@@ -3,6 +3,9 @@
 #include <stdbool.h>
 #include <Windows.h>
 #include <funchook.h>
+#include <distorm.h>
+#include <tlhelp32.h>
+#include <Psapi.h>
 #pragma comment(lib, "Psapi.lib") // required by funchook
 #include <Shlwapi.h>
 #pragma comment(lib, "Shlwapi.lib")
@@ -34,18 +37,28 @@ DEFINE_GUID(__uuidof_IAuthUILogonSound,
     0x4cfc, 0x435a, 0x91, 0xc2,
     0x9d, 0xbd, 0xec, 0xbf, 0xfc, 0x95
 );
+
+#define BYTES_TO_DISASSEMBLE 1000
+
+#define EXIT_CODE_EXPLORER 1
+
 #define OPEN_NAME L"&Open archive"
 #define EXTRACT_NAME L"&Extract to \"%s\\\""
 #define OPEN_CMD L"\"C:\\Program Files\\7-Zip\\7zFM.exe\" %s"
 #define EXTRACT_CMD L"\"C:\\Program Files\\7-Zip\\7zG.exe\" x -o\"%s\" -spe %s"
 
 #define APPID L"Microsoft.Windows.Explorer"
-#define SYMBOLS_RELATIVE_PATH "\\settings.ini"
+#define SYMBOLS_RELATIVE_PATH "\\ExplorerPatcher\\settings.ini"
 #define EXPLORER_SB_NAME "explorer"
 #define EXPLORER_SB_0 "CTray::_HandleGlobalHotkey"
 #define EXPLORER_SB_1 "CTray::v_WndProc"
 #define EXPLORER_SB_2 "CTray::_FireDesktopSwitchIfReady"
-#define EXPLORER_SB_CNT 3
+#define EXPLORER_SB_3 "CTray::Init"
+#define EXPLORER_SB_CNT 4
+#define EXPLORER_PATCH_OFFSET "Offset"
+#define EXPLORER_PATCH_OFFSET_OK "OffsetOK"
+#define EXPLORER_PATCH_OFFSET_STRAT "OffsetStrat"
+#define EXPLORER_PATCH_DIRTY "Dirty"
 #define TWINUI_PCSHELL_SB_NAME "twinui.pcshell"
 #define TWINUI_PCSHELL_SB_0 "CImmersiveContextMenuOwnerDrawHelper::s_ContextMenuWndProc"
 #define TWINUI_PCSHELL_SB_1 "CLauncherTipContextMenu::GetMenuItemsAsync"
@@ -70,7 +83,8 @@ DEFINE_GUID(__uuidof_IAuthUILogonSound,
 const char* explorer_SN[EXPLORER_SB_CNT] = {
     EXPLORER_SB_0,
     EXPLORER_SB_1,
-    EXPLORER_SB_2
+    EXPLORER_SB_2,
+    EXPLORER_SB_3
 };
 const char* twinui_pcshell_SN[TWINUI_PCSHELL_SB_CNT] = {
     TWINUI_PCSHELL_SB_0,
@@ -119,10 +133,23 @@ L"</toast>\r\n";
 
 wchar_t DownloadOKXML[] =
 L"<toast displayTimestamp=\"2021-08-29T01:00:00.000Z\" scenario=\"reminder\" "
+L"activationType=\"protocol\" launch=\"https://github.com/valinet/ExplorerPatcher\" duration=\"short\">\r\n"
+L"	<visual>\r\n"
+L"		<binding template=\"ToastGeneric\">\r\n"
+L"			<text><![CDATA[Symbols downloaded and applied successfully!]]></text>\r\n"
+L"			<text><![CDATA[Now, please wait while dynamic Explorer patching is done...]]></text>\r\n"
+L"			<text placement=\"attribution\"><![CDATA[ExplorerPatcher]]></text>\r\n"
+L"		</binding>\r\n"
+L"	</visual>\r\n"
+L"	<audio src=\"ms-winsoundevent:Notification.Default\" loop=\"false\" silent=\"false\"/>\r\n"
+L"</toast>\r\n";
+
+wchar_t InstallOK[] =
+L"<toast displayTimestamp=\"2021-08-29T01:00:00.000Z\" scenario=\"reminder\" "
 L"activationType=\"protocol\" launch=\"https://github.com/valinet/ExplorerPatcher\" duration=\"long\">\r\n"
 L"	<visual>\r\n"
 L"		<binding template=\"ToastGeneric\">\r\n"
-L"			<text><![CDATA[Symbols downloaded and applied successfully! You can now enjoy full application functionality.]]></text>\r\n"
+L"			<text><![CDATA[Installation succeeded!]]></text>\r\n"
 L"			<text><![CDATA[This notification will not show again until the next OS build update.]]></text>\r\n"
 L"			<text placement=\"attribution\"><![CDATA[ExplorerPatcher]]></text>\r\n"
 L"		</binding>\r\n"
@@ -137,7 +164,6 @@ HWND archivehWnd;
 
 funchook_t* funchook = NULL;
 HMODULE hModule = NULL;
-HWND messageWindow = NULL;
 HANDLE hIsWinXShown = NULL;
 INT64 lockEnsureWinXHotkeyOnlyOnce;
 
@@ -310,6 +336,7 @@ char ContextMenuPresenter_DoContextMenuHook(
     void* a4
 )
 {
+    printf("da\n");
     *(((char*)_this + 156)) = 0;
     ContextMenuPresenter_DoContextMenuFunc(
         _this,
@@ -562,9 +589,9 @@ LRESULT CALLBACK CLauncherTipContextMenu_WndProc(
             }
             else if (res == 1)
             {
-                TCHAR path[MAX_PATH], path_orig[MAX_PATH];
-                ZeroMemory(path, MAX_PATH * sizeof(TCHAR));
-                ZeroMemory(path_orig, MAX_PATH * sizeof(TCHAR));
+                TCHAR path[MAX_PATH + 1], path_orig[MAX_PATH + 1];
+                ZeroMemory(path, (MAX_PATH + 1) * sizeof(TCHAR));
+                ZeroMemory(path_orig, (MAX_PATH + 1) * sizeof(TCHAR));
                 memcpy(path, st->lpData, wcslen(st->lpData) * sizeof(TCHAR));
                 memcpy(path_orig, st->lpData, wcslen(st->lpData) * sizeof(TCHAR));
                 PathUnquoteSpacesW(path_orig);
@@ -1243,6 +1270,7 @@ LRESULT CALLBACK OpenStartOnCurentMonitorThreadHook(
 DWORD ArchiveMenuThread(LPVOID unused)
 {
     Sleep(1000);
+    printf("Started \"Archive menu\" thread.\n");
 
     HRESULT hr = CoInitialize(NULL);
     if (FAILED(hr))
@@ -1313,10 +1341,23 @@ DWORD ArchiveMenuThread(LPVOID unused)
         TranslateMessage(&msg);
         DispatchMessage(&msg);
     }
+
+    printf("Ended \"Archive menu\" thread.\n");
 }
 
 DWORD OpenStartOnCurentMonitorThread(LPVOID unused)
 {
+    HANDLE hEvent = CreateEvent(0, 0, 0, L"ShellDesktopSwitchEvent");
+    if (!hEvent)
+    {
+        printf("Failed to start \"Open Start on current monitor\" thread.\n");
+        return 0;
+    }
+    WaitForSingleObject(
+        hEvent,
+        INFINITE
+    );
+    printf("Started \"Open Start on current monitor\" thread.\n");
     HWND g_ProgWin = FindWindowEx(
         NULL, 
         NULL, 
@@ -1339,11 +1380,14 @@ DWORD OpenStartOnCurentMonitorThread(LPVOID unused)
         TranslateMessage(&msg);
         DispatchMessage(&msg);
     }
+
+    printf("Ended \"Open Start on current monitor\" thread.\n");
 }
 
 DWORD PlayStartupSound(DWORD x)
 {
     Sleep(1000);
+    printf("Started \"Play startup sound\" thread.\n");
 
     HRESULT hr = CoInitialize(NULL);
 
@@ -1383,22 +1427,654 @@ DWORD PlayStartupSound(DWORD x)
         ppv->lpVtbl->PlayIfNecessary(ppv, 1);
         ppv->lpVtbl->Release(ppv);
     }
+
+    printf("Ended \"Play startup sound\" thread.\n");
     return 0;
 }
 
 DWORD SignalShellReady(DWORD x)
 {
-    Sleep(1000);
+    Sleep(2000);
+    printf("Started \"Signal shell ready\" thread.\n");
 
-    HANDLE hEvent = CreateEvent(0, 1, 1, L"ShellDesktopSwitchEvent");
+    HANDLE hEvent = CreateEvent(0, 0, 0, L"ShellDesktopSwitchEvent");
     if (hEvent)
     {
         SetEvent(hEvent);
     }
+
+    printf("Ended \"Signal shell ready\" thread.\n");
     return 0;
 }
 
-__declspec(dllexport) DWORD WINAPI main(
+DWORD DownloadSymbols(TCHAR* wszSettingsPath)
+{
+    Sleep(3000);
+
+    printf("Started \"Download symbols\" thread.\n");
+
+    RTL_OSVERSIONINFOW rovi;
+    if (!GetOSVersion(&rovi))
+    {
+        FreeLibraryAndExitThread(
+            hModule,
+            1
+        );
+        return 1;
+    }
+    DWORD32 ubr = 0, ubr_size = sizeof(DWORD32);
+    HKEY hKey;
+    LONG lRes = RegOpenKeyExW(
+        HKEY_LOCAL_MACHINE,
+        wcschr(
+            wcschr(
+                wcschr(
+                    UNIFIEDBUILDREVISION_KEY,
+                    '\\'
+                ) + 1,
+                '\\'
+            ) + 1,
+            '\\'
+        ) + 1,
+        0,
+        KEY_READ,
+        &hKey
+    );
+    if (lRes == ERROR_SUCCESS)
+    {
+        RegQueryValueExW(
+            hKey,
+            UNIFIEDBUILDREVISION_VALUE,
+            0,
+            NULL,
+            &ubr,
+            &ubr_size
+        );
+    }
+    TCHAR szReportedVersion[MAX_PATH + 1];
+    ZeroMemory(
+        szReportedVersion,
+        (MAX_PATH + 1) * sizeof(TCHAR)
+    );
+    wsprintf(
+        szReportedVersion,
+        L"%d.%d.%d.%d",
+        rovi.dwMajorVersion,
+        rovi.dwMinorVersion,
+        rovi.dwBuildNumber,
+        ubr
+    );
+
+    TCHAR buffer[sizeof(DownloadSymbolsXML) / sizeof(wchar_t) + 30];
+    ZeroMemory(
+        buffer,
+        (sizeof(DownloadSymbolsXML) / sizeof(wchar_t) + 30) * sizeof(TCHAR)
+    );
+    wsprintf(
+        buffer,
+        DownloadSymbolsXML,
+        szReportedVersion
+    );
+    HRESULT hr = S_OK;
+    __x_ABI_CWindows_CData_CXml_CDom_CIXmlDocument* inputXml = NULL;
+    hr = String2IXMLDocument(
+        buffer,
+        wcslen(buffer),
+        &inputXml,
+#ifdef DEBUG
+        stdout
+#else
+        NULL
+#endif
+    );
+    hr = ShowToastMessage(
+        inputXml,
+        APPID,
+        sizeof(APPID) / sizeof(TCHAR) - 1,
+#ifdef DEBUG
+        stdout
+#else
+        NULL
+#endif
+    );
+
+    DWORD dwRet = 0;
+    char szSettingsPath[MAX_PATH + 1];
+    ZeroMemory(
+        szSettingsPath,
+        (MAX_PATH + 1) * sizeof(char)
+    );
+    wcstombs_s(
+        &dwRet,
+        szSettingsPath,
+        MAX_PATH + 1,
+        wszSettingsPath,
+        MAX_PATH + 1
+    );
+    PathRemoveFileSpecA(szSettingsPath);
+    strcat_s(
+        szSettingsPath,
+        MAX_PATH + 1,
+        "\\"
+    );
+
+    printf("Downloading to \"%s\".\n", szSettingsPath);
+
+    symbols_addr symbols_PTRS;
+    ZeroMemory(
+        &symbols_PTRS,
+        sizeof(symbols_addr)
+    );
+
+    char explorer_sb_exe[MAX_PATH];
+    ZeroMemory(
+        explorer_sb_exe,
+        (MAX_PATH) * sizeof(char)
+    );
+    GetWindowsDirectoryA(
+        explorer_sb_exe,
+        MAX_PATH
+    );
+    strcat_s(
+        explorer_sb_exe,
+        MAX_PATH,
+        "\\"
+    );
+    strcat_s(
+        explorer_sb_exe,
+        MAX_PATH,
+        EXPLORER_SB_NAME
+    );
+    strcat_s(
+        explorer_sb_exe,
+        MAX_PATH,
+        ".exe"
+    );
+    printf("Downloading symbols for \"%s\"...\n", explorer_sb_exe);
+    if (VnDownloadSymbols(
+        NULL,
+        explorer_sb_exe,
+        szSettingsPath,
+        MAX_PATH
+    ))
+    {
+        FreeLibraryAndExitThread(
+            hModule,
+            2
+        );
+        return 2;
+    }
+    printf("Reading symbols...\n");
+    if (VnGetSymbols(
+        szSettingsPath,
+        symbols_PTRS.explorer_PTRS,
+        explorer_SN,
+        EXPLORER_SB_CNT
+    ))
+    {
+        FreeLibraryAndExitThread(
+            hModule,
+            3
+        );
+        return 3;
+    }
+    VnWriteUInt(
+        TEXT(EXPLORER_SB_NAME),
+        TEXT(EXPLORER_SB_0),
+        symbols_PTRS.explorer_PTRS[0],
+        wszSettingsPath
+    );
+    VnWriteUInt(
+        TEXT(EXPLORER_SB_NAME),
+        TEXT(EXPLORER_SB_1),
+        symbols_PTRS.explorer_PTRS[1],
+        wszSettingsPath
+    );
+    VnWriteUInt(
+        TEXT(EXPLORER_SB_NAME),
+        TEXT(EXPLORER_SB_2),
+        symbols_PTRS.explorer_PTRS[2],
+        wszSettingsPath
+    );
+    VnWriteUInt(
+        TEXT(EXPLORER_SB_NAME),
+        TEXT(EXPLORER_SB_3),
+        symbols_PTRS.explorer_PTRS[3],
+        wszSettingsPath
+    );
+
+    char twinui_pcshell_sb_dll[MAX_PATH];
+    ZeroMemory(
+        twinui_pcshell_sb_dll,
+        (MAX_PATH) * sizeof(char)
+    );
+    GetSystemDirectoryA(
+        twinui_pcshell_sb_dll,
+        MAX_PATH
+    );
+    strcat_s(
+        twinui_pcshell_sb_dll,
+        MAX_PATH,
+        "\\"
+    );
+    strcat_s(
+        twinui_pcshell_sb_dll,
+        MAX_PATH,
+        TWINUI_PCSHELL_SB_NAME
+    );
+    strcat_s(
+        twinui_pcshell_sb_dll,
+        MAX_PATH,
+        ".dll"
+    );
+    printf("Downloading symbols for \"%s\"...\n", twinui_pcshell_sb_dll);
+    if (VnDownloadSymbols(
+        NULL,
+        twinui_pcshell_sb_dll,
+        szSettingsPath,
+        MAX_PATH
+    ))
+    {
+        FreeLibraryAndExitThread(
+            hModule,
+            4
+        );
+        return 4;
+    }
+    printf("Reading symbols...\n");
+    if (VnGetSymbols(
+        szSettingsPath,
+        symbols_PTRS.twinui_pcshell_PTRS,
+        twinui_pcshell_SN,
+        TWINUI_PCSHELL_SB_CNT
+    ))
+    {
+        FreeLibraryAndExitThread(
+            hModule,
+            5
+        );
+        return 5;
+    }
+    VnWriteUInt(
+        TEXT(TWINUI_PCSHELL_SB_NAME),
+        TEXT(TWINUI_PCSHELL_SB_0),
+        symbols_PTRS.twinui_pcshell_PTRS[0],
+        wszSettingsPath
+    );
+    VnWriteUInt(
+        TEXT(TWINUI_PCSHELL_SB_NAME),
+        TEXT(TWINUI_PCSHELL_SB_1),
+        symbols_PTRS.twinui_pcshell_PTRS[1],
+        wszSettingsPath
+    );
+    VnWriteUInt(
+        TEXT(TWINUI_PCSHELL_SB_NAME),
+        TEXT(TWINUI_PCSHELL_SB_2),
+        symbols_PTRS.twinui_pcshell_PTRS[2],
+        wszSettingsPath
+    );
+    VnWriteUInt(
+        TEXT(TWINUI_PCSHELL_SB_NAME),
+        TEXT(TWINUI_PCSHELL_SB_3),
+        symbols_PTRS.twinui_pcshell_PTRS[3],
+        wszSettingsPath
+    );
+    VnWriteUInt(
+        TEXT(TWINUI_PCSHELL_SB_NAME),
+        TEXT(TWINUI_PCSHELL_SB_4),
+        symbols_PTRS.twinui_pcshell_PTRS[4],
+        wszSettingsPath
+    );
+    VnWriteUInt(
+        TEXT(TWINUI_PCSHELL_SB_NAME),
+        TEXT(TWINUI_PCSHELL_SB_5),
+        symbols_PTRS.twinui_pcshell_PTRS[5],
+        wszSettingsPath
+    );
+    VnWriteUInt(
+        TEXT(TWINUI_PCSHELL_SB_NAME),
+        TEXT(TWINUI_PCSHELL_SB_6),
+        symbols_PTRS.twinui_pcshell_PTRS[6],
+        wszSettingsPath
+    );
+
+    char twinui_sb_dll[MAX_PATH];
+    ZeroMemory(
+        twinui_sb_dll,
+        (MAX_PATH) * sizeof(char)
+    );
+    GetSystemDirectoryA(
+        twinui_sb_dll,
+        MAX_PATH
+    );
+    strcat_s(
+        twinui_sb_dll,
+        MAX_PATH,
+        "\\"
+    );
+    strcat_s(
+        twinui_sb_dll,
+        MAX_PATH,
+        TWINUI_SB_NAME
+    );
+    strcat_s(
+        twinui_sb_dll,
+        MAX_PATH,
+        ".dll"
+    );
+    printf("Downloading symbols for \"%s\"...\n", twinui_sb_dll);
+    if (VnDownloadSymbols(
+        NULL,
+        twinui_sb_dll,
+        szSettingsPath,
+        MAX_PATH
+    ))
+    {
+        FreeLibraryAndExitThread(
+            hModule,
+            6
+        );
+        return 6;
+    }
+    printf("Reading symbols...\n");
+    if (VnGetSymbols(
+        szSettingsPath,
+        symbols_PTRS.twinui_PTRS,
+        twinui_SN,
+        TWINUI_SB_CNT
+    ))
+    {
+        FreeLibraryAndExitThread(
+            hModule,
+            7
+        );
+        return 7;
+    }
+    VnWriteUInt(
+        TEXT(TWINUI_SB_NAME),
+        TEXT(TWINUI_SB_0),
+        symbols_PTRS.twinui_PTRS[0],
+        wszSettingsPath
+    );
+    VnWriteUInt(
+        TEXT(TWINUI_SB_NAME),
+        TEXT(TWINUI_SB_1),
+        symbols_PTRS.twinui_PTRS[1],
+        wszSettingsPath
+    );
+    VnWriteUInt(
+        TEXT(TWINUI_SB_NAME),
+        TEXT(TWINUI_SB_2),
+        symbols_PTRS.twinui_PTRS[2],
+        wszSettingsPath
+    );
+
+    char stobject_sb_dll[MAX_PATH];
+    ZeroMemory(
+        stobject_sb_dll,
+        (MAX_PATH) * sizeof(char)
+    );
+    GetSystemDirectoryA(
+        stobject_sb_dll,
+        MAX_PATH
+    );
+    strcat_s(
+        stobject_sb_dll,
+        MAX_PATH,
+        "\\"
+    );
+    strcat_s(
+        stobject_sb_dll,
+        MAX_PATH,
+        STOBJECT_SB_NAME
+    );
+    strcat_s(
+        stobject_sb_dll,
+        MAX_PATH,
+        ".dll"
+    );
+    printf("Downloading symbols for \"%s\"...\n", stobject_sb_dll);
+    if (VnDownloadSymbols(
+        NULL,
+        stobject_sb_dll,
+        szSettingsPath,
+        MAX_PATH
+    ))
+    {
+        FreeLibraryAndExitThread(
+            hModule,
+            6
+        );
+        return 6;
+    }
+    printf("Reading symbols...\n");
+    if (VnGetSymbols(
+        szSettingsPath,
+        symbols_PTRS.stobject_PTRS,
+        stobject_SN,
+        STOBJECT_SB_CNT
+    ))
+    {
+        FreeLibraryAndExitThread(
+            hModule,
+            7
+        );
+        return 7;
+    }
+    VnWriteUInt(
+        TEXT(STOBJECT_SB_NAME),
+        TEXT(STOBJECT_SB_0),
+        symbols_PTRS.stobject_PTRS[0],
+        wszSettingsPath
+    );
+    VnWriteUInt(
+        TEXT(STOBJECT_SB_NAME),
+        TEXT(STOBJECT_SB_1),
+        symbols_PTRS.stobject_PTRS[1],
+        wszSettingsPath
+    );
+
+    char windowsuifileexplorer_sb_dll[MAX_PATH];
+    ZeroMemory(
+        windowsuifileexplorer_sb_dll,
+        (MAX_PATH) * sizeof(char)
+    );
+    GetSystemDirectoryA(
+        windowsuifileexplorer_sb_dll,
+        MAX_PATH
+    );
+    strcat_s(
+        windowsuifileexplorer_sb_dll,
+        MAX_PATH,
+        "\\"
+    );
+    strcat_s(
+        windowsuifileexplorer_sb_dll,
+        MAX_PATH,
+        WINDOWSUIFILEEXPLORER_SB_NAME
+    );
+    strcat_s(
+        windowsuifileexplorer_sb_dll,
+        MAX_PATH,
+        ".dll"
+    );
+    printf("Downloading symbols for \"%s\"...\n", windowsuifileexplorer_sb_dll);
+    if (VnDownloadSymbols(
+        NULL,
+        windowsuifileexplorer_sb_dll,
+        szSettingsPath,
+        MAX_PATH
+    ))
+    {
+        FreeLibraryAndExitThread(
+            hModule,
+            6
+        );
+        return 6;
+    }
+    printf("Reading symbols...\n");
+    if (VnGetSymbols(
+        szSettingsPath,
+        symbols_PTRS.windowsuifileexplorer_PTRS,
+        windowsuifileexplorer_SN,
+        WINDOWSUIFILEEXPLORER_SB_CNT
+    ))
+    {
+        FreeLibraryAndExitThread(
+            hModule,
+            7
+        );
+        return 7;
+    }
+    VnWriteUInt(
+        TEXT(WINDOWSUIFILEEXPLORER_SB_NAME),
+        TEXT(WINDOWSUIFILEEXPLORER_SB_0),
+        symbols_PTRS.windowsuifileexplorer_PTRS[0],
+        wszSettingsPath
+    );
+
+    VnWriteString(
+        TEXT("OS"),
+        TEXT("Build"),
+        szReportedVersion,
+        wszSettingsPath
+    );
+
+    __x_ABI_CWindows_CData_CXml_CDom_CIXmlDocument* inputXml2 = NULL;
+    hr = String2IXMLDocument(
+        DownloadOKXML,
+        wcslen(DownloadOKXML),
+        &inputXml2,
+#ifdef DEBUG
+        stdout
+#else
+        NULL
+#endif
+    );
+    hr = ShowToastMessage(
+        inputXml2,
+        APPID,
+        sizeof(APPID) / sizeof(TCHAR) - 1,
+#ifdef DEBUG
+        stdout
+#else
+        NULL
+#endif
+    );
+
+    Sleep(4000);
+
+    TCHAR wszExplorerPath[MAX_PATH + 1];
+    wszExplorerPath[0] = L'\"';
+    GetSystemDirectory(wszExplorerPath + 1, MAX_PATH);
+    wcscat_s(wszExplorerPath, MAX_PATH + 1, L"\\rundll32.exe\" \"");
+    GetModuleFileName(hModule, wszExplorerPath + wcslen(wszExplorerPath), MAX_PATH - wcslen(wszExplorerPath));
+    wcscat_s(wszExplorerPath, MAX_PATH, L"\",ZZLaunchExplorer");
+    wprintf(L"Command to launch: \" %s \"\n.", wszExplorerPath);
+    STARTUPINFO si = { sizeof(si) };
+    PROCESS_INFORMATION pi;
+    BOOL b = CreateProcess(
+        NULL,
+        wszExplorerPath,
+        NULL,
+        NULL,
+        TRUE,
+        CREATE_UNICODE_ENVIRONMENT,
+        NULL,
+        NULL,
+        &si,
+        &pi
+    );
+
+    FreeConsole();
+    TerminateProcess(
+        OpenProcess(
+            PROCESS_TERMINATE,
+            FALSE,
+            GetCurrentProcessId()
+        ),
+        EXIT_CODE_EXPLORER
+    );
+}
+
+DWORD DetermineInjectionSuccess(TCHAR* wszSettingsPath)
+{
+    uintptr_t ok = 0;
+    Sleep(3000);
+    printf("Started \"Determine injection success\" thread.\n");
+    HWND hWnd = FindWindowEx(
+        NULL,
+        NULL,
+        L"Shell_TrayWnd",
+        NULL
+    );
+    if (hWnd)
+    {
+        hWnd = FindWindowEx(
+            hWnd,
+            NULL,
+            L"Start",
+            NULL
+        );
+        if (hWnd)
+        {
+            if (IsWindowVisible(hWnd))
+            {
+                ok = 1;
+            }
+        }
+    }
+    VnWriteUInt(
+        TEXT(EXPLORER_SB_NAME),
+        TEXT(EXPLORER_PATCH_OFFSET_OK),
+        ok,
+        wszSettingsPath
+    );
+    VnWriteUInt(
+        TEXT(EXPLORER_SB_NAME),
+        TEXT(EXPLORER_PATCH_DIRTY),
+        0,
+        wszSettingsPath
+    );
+    printf("Attempt status is %d.\n", ok);
+
+    if (ok)
+    {
+        __x_ABI_CWindows_CData_CXml_CDom_CIXmlDocument* inputXml = NULL;
+        HRESULT hr = String2IXMLDocument(
+            InstallOK,
+            wcslen(InstallOK),
+            &inputXml,
+#ifdef DEBUG
+            stdout
+#else
+            NULL
+#endif
+        );
+        hr = ShowToastMessage(
+            inputXml,
+            APPID,
+            sizeof(APPID) / sizeof(TCHAR) - 1,
+#ifdef DEBUG
+            stdout
+#else
+            NULL
+#endif
+        );
+    }
+
+    FreeConsole();
+    TerminateProcess(
+        OpenProcess(
+            PROCESS_TERMINATE,
+            FALSE,
+            GetCurrentProcessId()
+        ),
+        EXIT_CODE_EXPLORER
+    );
+}
+
+DWORD WINAPI main(
     _In_ LPVOID lpParameter
 )
 {
@@ -1416,84 +2092,53 @@ __declspec(dllexport) DWORD WINAPI main(
     int rv;
     if (!funchook)
     {
-        
-        CreateThread(
-            0,
-            0,
-            PlayStartupSound,
-            0,
-            0,
-            0
-        );
-
-
-
-
-        CreateThread(
-            0,
-            0,
-            SignalShellReady,
-            0,
-            0,
-            0
-        );
-
-
-
-
-        messageWindow = (HWND)lpParameter;
-
-
-
         funchook = funchook_create();
+        printf("funchook create %d\n", funchook != 0);
 
 
 
-
-        DWORD dwRet = 0;
-        char szSettingsPath[MAX_PATH];
-        ZeroMemory(
-            szSettingsPath,
-            (MAX_PATH) * sizeof(char)
-        );
-        TCHAR wszSettingsPath[MAX_PATH];
+        TCHAR* wszSettingsPath = malloc((MAX_PATH + 1) * sizeof(TCHAR));
+        if (!wszSettingsPath)
+        {
+            return 0;
+        }
         ZeroMemory(
             wszSettingsPath,
-            (MAX_PATH) * sizeof(TCHAR)
+            (MAX_PATH + 1) * sizeof(TCHAR)
         );
-        GetModuleFileNameA(
-            hModule,
-            szSettingsPath,
-            MAX_PATH
+        SHGetFolderPathW(
+            NULL,
+            CSIDL_APPDATA,
+            NULL,
+            SHGFP_TYPE_CURRENT,
+            wszSettingsPath
         );
-        PathRemoveFileSpecA(szSettingsPath);
-        strcat_s(
-            szSettingsPath,
-            MAX_PATH,
-            SYMBOLS_RELATIVE_PATH
-        );
-        mbstowcs_s(
-            &dwRet,
+        wcscat_s(
             wszSettingsPath,
             MAX_PATH,
-            szSettingsPath,
-            MAX_PATH
+            TEXT(SYMBOLS_RELATIVE_PATH)
         );
+        wprintf(L"Settings path: \"%s\"\n", wszSettingsPath);
 
-
-
-
-        CreateThread(
+#ifndef DEBUG
+        uintptr_t alloc_console = VnGetUInt(
+            TEXT("AllocConsole"),
+            TEXT("General"),
             0,
-            0,
-            OpenStartOnCurentMonitorThread,
-            0,
-            0,
-            0
+            wszSettingsPath
         );
-
-
-
+        if (alloc_console)
+        {
+            FILE* conout;
+            AllocConsole();
+            freopen_s(
+                &conout,
+                "CONOUT$",
+                "w",
+                stdout
+            );
+        }
+#endif
 
         symbols_addr symbols_PTRS;
         ZeroMemory(
@@ -1515,6 +2160,12 @@ __declspec(dllexport) DWORD WINAPI main(
         symbols_PTRS.explorer_PTRS[2] = VnGetUInt(
             TEXT(EXPLORER_SB_NAME),
             TEXT(EXPLORER_SB_2),
+            0,
+            wszSettingsPath
+        );
+        symbols_PTRS.explorer_PTRS[3] = VnGetUInt(
+            TEXT(EXPLORER_SB_NAME),
+            TEXT(EXPLORER_SB_3),
             0,
             wszSettingsPath
         );
@@ -1649,15 +2300,15 @@ __declspec(dllexport) DWORD WINAPI main(
                 &ubr_size
             );
         }
-        TCHAR szReportedVersion[MAX_PATH];
+        TCHAR szReportedVersion[MAX_PATH + 1];
         ZeroMemory(
             szReportedVersion,
-            (MAX_PATH) * sizeof(TCHAR)
+            (MAX_PATH + 1) * sizeof(TCHAR)
         );
-        TCHAR szStoredVersion[MAX_PATH];
+        TCHAR szStoredVersion[MAX_PATH + 1];
         ZeroMemory(
             szStoredVersion,
-            (MAX_PATH) * sizeof(TCHAR)
+            (MAX_PATH + 1) * sizeof(TCHAR)
         );
         wsprintf(
             szReportedVersion,
@@ -1683,431 +2334,15 @@ __declspec(dllexport) DWORD WINAPI main(
 
         if (bNeedToDownload)
         {
-            TCHAR buffer[sizeof(DownloadSymbolsXML) / sizeof(wchar_t) + 30];
-            ZeroMemory(
-                buffer,
-                (sizeof(DownloadSymbolsXML) / sizeof(wchar_t) + 30) * sizeof(TCHAR)
-            );
-            wsprintf(
-                buffer,
-                DownloadSymbolsXML,
-                szReportedVersion
-            );
-            HRESULT hr = S_OK;
-            __x_ABI_CWindows_CData_CXml_CDom_CIXmlDocument* inputXml = NULL;
-            hr = String2IXMLDocument(
-                buffer,
-                wcslen(buffer),
-                &inputXml,
-#ifdef DEBUG
-                stdout
-#else
-                NULL
-#endif
-            );
-            hr = ShowToastMessage(
-                inputXml,
-                APPID,
-                sizeof(APPID) / sizeof(TCHAR) - 1,
-#ifdef DEBUG
-                stdout
-#else
-                NULL
-#endif
-            );
-            char explorer_sb_exe[MAX_PATH];
-            ZeroMemory(
-                explorer_sb_exe,
-                (MAX_PATH) * sizeof(char)
-            );
-            GetWindowsDirectoryA(
-                explorer_sb_exe,
-                MAX_PATH
-            );
-            strcat_s(
-                explorer_sb_exe,
-                MAX_PATH,
-                "\\"
-            );
-            strcat_s(
-                explorer_sb_exe,
-                MAX_PATH,
-                EXPLORER_SB_NAME
-            );
-            strcat_s(
-                explorer_sb_exe,
-                MAX_PATH,
-                ".exe"
-            );
-            printf("Downloading symbols for %s.\n", explorer_sb_exe);
-            if (VnDownloadSymbols(
-                NULL,
-                explorer_sb_exe,
-                szSettingsPath,
-                MAX_PATH
-            ))
-            {
-                FreeLibraryAndExitThread(
-                    hModule,
-                    2
-                );
-                return 2;
-            }
-            printf("Reading symbols.\n");
-            if (VnGetSymbols(
-                szSettingsPath,
-                symbols_PTRS.explorer_PTRS,
-                explorer_SN,
-                EXPLORER_SB_CNT
-            ))
-            {
-                FreeLibraryAndExitThread(
-                    hModule,
-                    3
-                );
-                return 3;
-            }
-            VnWriteUInt(
-                TEXT(EXPLORER_SB_NAME),
-                TEXT(EXPLORER_SB_0),
-                symbols_PTRS.explorer_PTRS[0],
-                wszSettingsPath
-            );
-            VnWriteUInt(
-                TEXT(EXPLORER_SB_NAME),
-                TEXT(EXPLORER_SB_1),
-                symbols_PTRS.explorer_PTRS[1],
-                wszSettingsPath
-            );
-            VnWriteUInt(
-                TEXT(EXPLORER_SB_NAME),
-                TEXT(EXPLORER_SB_2),
-                symbols_PTRS.explorer_PTRS[2],
-                wszSettingsPath
-            );
-
-            char twinui_pcshell_sb_dll[MAX_PATH];
-            ZeroMemory(
-                twinui_pcshell_sb_dll,
-                (MAX_PATH) * sizeof(char)
-            );
-            GetSystemDirectoryA(
-                twinui_pcshell_sb_dll,
-                MAX_PATH
-            );
-            strcat_s(
-                twinui_pcshell_sb_dll,
-                MAX_PATH,
-                "\\"
-            );
-            strcat_s(
-                twinui_pcshell_sb_dll,
-                MAX_PATH,
-                TWINUI_PCSHELL_SB_NAME
-            );
-            strcat_s(
-                twinui_pcshell_sb_dll,
-                MAX_PATH,
-                ".dll"
-            );
-            printf("Downloading symbols for %s.\n", twinui_pcshell_sb_dll);
-            if (VnDownloadSymbols(
-                NULL,
-                twinui_pcshell_sb_dll,
-                szSettingsPath,
-                MAX_PATH
-            ))
-            {
-                FreeLibraryAndExitThread(
-                    hModule,
-                    4
-                );
-                return 4;
-            }
-            printf("Reading symbols.\n");
-            if (VnGetSymbols(
-                szSettingsPath,
-                symbols_PTRS.twinui_pcshell_PTRS,
-                twinui_pcshell_SN,
-                TWINUI_PCSHELL_SB_CNT
-            ))
-            {
-                FreeLibraryAndExitThread(
-                    hModule,
-                    5
-                );
-                return 5;
-            }
-            VnWriteUInt(
-                TEXT(TWINUI_PCSHELL_SB_NAME),
-                TEXT(TWINUI_PCSHELL_SB_0),
-                symbols_PTRS.twinui_pcshell_PTRS[0],
-                wszSettingsPath
-            );
-            VnWriteUInt(
-                TEXT(TWINUI_PCSHELL_SB_NAME),
-                TEXT(TWINUI_PCSHELL_SB_1),
-                symbols_PTRS.twinui_pcshell_PTRS[1],
-                wszSettingsPath
-            );
-            VnWriteUInt(
-                TEXT(TWINUI_PCSHELL_SB_NAME),
-                TEXT(TWINUI_PCSHELL_SB_2),
-                symbols_PTRS.twinui_pcshell_PTRS[2],
-                wszSettingsPath
-            );
-            VnWriteUInt(
-                TEXT(TWINUI_PCSHELL_SB_NAME),
-                TEXT(TWINUI_PCSHELL_SB_3),
-                symbols_PTRS.twinui_pcshell_PTRS[3],
-                wszSettingsPath
-            );
-            VnWriteUInt(
-                TEXT(TWINUI_PCSHELL_SB_NAME),
-                TEXT(TWINUI_PCSHELL_SB_4),
-                symbols_PTRS.twinui_pcshell_PTRS[4],
-                wszSettingsPath
-            );
-            VnWriteUInt(
-                TEXT(TWINUI_PCSHELL_SB_NAME),
-                TEXT(TWINUI_PCSHELL_SB_5),
-                symbols_PTRS.twinui_pcshell_PTRS[5],
-                wszSettingsPath
-            );
-            VnWriteUInt(
-                TEXT(TWINUI_PCSHELL_SB_NAME),
-                TEXT(TWINUI_PCSHELL_SB_6),
-                symbols_PTRS.twinui_pcshell_PTRS[6],
-                wszSettingsPath
-            );
-
-            char twinui_sb_dll[MAX_PATH];
-            ZeroMemory(
-                twinui_sb_dll,
-                (MAX_PATH) * sizeof(char)
-            );
-            GetSystemDirectoryA(
-                twinui_sb_dll,
-                MAX_PATH
-            );
-            strcat_s(
-                twinui_sb_dll,
-                MAX_PATH,
-                "\\"
-            );
-            strcat_s(
-                twinui_sb_dll,
-                MAX_PATH,
-                TWINUI_SB_NAME
-            );
-            strcat_s(
-                twinui_sb_dll,
-                MAX_PATH,
-                ".dll"
-            );
-            printf("Downloading symbols for %s.\n", twinui_sb_dll);
-            if (VnDownloadSymbols(
-                NULL,
-                twinui_sb_dll,
-                szSettingsPath,
-                MAX_PATH
-            ))
-            {
-                FreeLibraryAndExitThread(
-                    hModule,
-                    6
-                );
-                return 6;
-            }
-            printf("Reading symbols.\n");
-            if (VnGetSymbols(
-                szSettingsPath,
-                symbols_PTRS.twinui_PTRS,
-                twinui_SN,
-                TWINUI_SB_CNT
-            ))
-            {
-                FreeLibraryAndExitThread(
-                    hModule,
-                    7
-                );
-                return 7;
-            }
-            VnWriteUInt(
-                TEXT(TWINUI_SB_NAME),
-                TEXT(TWINUI_SB_0),
-                symbols_PTRS.twinui_PTRS[0],
-                wszSettingsPath
-            );
-            VnWriteUInt(
-                TEXT(TWINUI_SB_NAME),
-                TEXT(TWINUI_SB_1),
-                symbols_PTRS.twinui_PTRS[1],
-                wszSettingsPath
-            );
-            VnWriteUInt(
-                TEXT(TWINUI_SB_NAME),
-                TEXT(TWINUI_SB_2),
-                symbols_PTRS.twinui_PTRS[2],
-                wszSettingsPath
-            );
-
-            char stobject_sb_dll[MAX_PATH];
-            ZeroMemory(
-                stobject_sb_dll,
-                (MAX_PATH) * sizeof(char)
-            );
-            GetSystemDirectoryA(
-                stobject_sb_dll,
-                MAX_PATH
-            );
-            strcat_s(
-                stobject_sb_dll,
-                MAX_PATH,
-                "\\"
-            );
-            strcat_s(
-                stobject_sb_dll,
-                MAX_PATH,
-                STOBJECT_SB_NAME
-            );
-            strcat_s(
-                stobject_sb_dll,
-                MAX_PATH,
-                ".dll"
-            );
-            printf("Downloading symbols for %s.\n", stobject_sb_dll);
-            if (VnDownloadSymbols(
-                NULL,
-                stobject_sb_dll,
-                szSettingsPath,
-                MAX_PATH
-            ))
-            {
-                FreeLibraryAndExitThread(
-                    hModule,
-                    6
-                );
-                return 6;
-            }
-            printf("Reading symbols.\n");
-            if (VnGetSymbols(
-                szSettingsPath,
-                symbols_PTRS.stobject_PTRS,
-                stobject_SN,
-                STOBJECT_SB_CNT
-            ))
-            {
-                FreeLibraryAndExitThread(
-                    hModule,
-                    7
-                );
-                return 7;
-            }
-            VnWriteUInt(
-                TEXT(STOBJECT_SB_NAME),
-                TEXT(STOBJECT_SB_0),
-                symbols_PTRS.stobject_PTRS[0],
-                wszSettingsPath
-            );
-            VnWriteUInt(
-                TEXT(STOBJECT_SB_NAME),
-                TEXT(STOBJECT_SB_1),
-                symbols_PTRS.stobject_PTRS[1],
-                wszSettingsPath
-            );
-
-            char windowsuifileexplorer_sb_dll[MAX_PATH];
-            ZeroMemory(
-                windowsuifileexplorer_sb_dll,
-                (MAX_PATH) * sizeof(char)
-            );
-            GetSystemDirectoryA(
-                windowsuifileexplorer_sb_dll,
-                MAX_PATH
-            );
-            strcat_s(
-                windowsuifileexplorer_sb_dll,
-                MAX_PATH,
-                "\\"
-            );
-            strcat_s(
-                windowsuifileexplorer_sb_dll,
-                MAX_PATH,
-                WINDOWSUIFILEEXPLORER_SB_NAME
-            );
-            strcat_s(
-                windowsuifileexplorer_sb_dll,
-                MAX_PATH,
-                ".dll"
-            );
-            printf("Downloading symbols for %s.\n", windowsuifileexplorer_sb_dll);
-            if (VnDownloadSymbols(
-                NULL,
-                windowsuifileexplorer_sb_dll,
-                szSettingsPath,
-                MAX_PATH
-            ))
-            {
-                FreeLibraryAndExitThread(
-                    hModule,
-                    6
-                );
-                return 6;
-            }
-            printf("Reading symbols.\n");
-            if (VnGetSymbols(
-                szSettingsPath,
-                symbols_PTRS.windowsuifileexplorer_PTRS,
-                windowsuifileexplorer_SN,
-                WINDOWSUIFILEEXPLORER_SB_CNT
-            ))
-            {
-                FreeLibraryAndExitThread(
-                    hModule,
-                    7
-                );
-                return 7;
-            }
-            VnWriteUInt(
-                TEXT(WINDOWSUIFILEEXPLORER_SB_NAME),
-                TEXT(WINDOWSUIFILEEXPLORER_SB_0),
-                symbols_PTRS.windowsuifileexplorer_PTRS[0],
-                wszSettingsPath
-            );
-
-            VnWriteString(
-                TEXT("OS"),
-                TEXT("Build"),
-                szReportedVersion,
-                wszSettingsPath
-            );
-
-            __x_ABI_CWindows_CData_CXml_CDom_CIXmlDocument* inputXml2 = NULL;
-            hr = String2IXMLDocument(
-                DownloadOKXML,
-                wcslen(DownloadOKXML),
-                &inputXml2,
-#ifdef DEBUG
-                stdout
-#else
-                NULL
-#endif
-            );
-            hr = ShowToastMessage(
-                inputXml2,
-                APPID,
-                sizeof(APPID) / sizeof(TCHAR) - 1,
-#ifdef DEBUG
-                stdout
-#else
-                NULL
-#endif
-            );
+            printf("Symbols have to be (re)downloaded...\n");
+            CreateThread(0, 0, DownloadSymbols, wszSettingsPath, 0, 0);
+            return 0;
+        }
+        else
+        {
+            printf("Loaded symbols\n");
         }
 
-
-        
         
         HANDLE hExplorer = GetModuleHandle(NULL);
         CTray_HandleGlobalHotkeyFunc = (INT64(*)(void*, unsigned int, unsigned int))
@@ -2136,14 +2371,260 @@ __declspec(dllexport) DWORD WINAPI main(
         }*/
         CTray__FireDesktopSwitchIfReadyFunc = (INT64(*)(HWND, int))
             ((uintptr_t)hExplorer + symbols_PTRS.explorer_PTRS[2]);
+        printf("Setup explorer functions done\n");
+        const char szPayload0[6] = { 0x90, 0x90, 0x90, 0x90, 0x90, 0x90 };
+        const char szPayload1[2] = { 0x90, 0xE9 };
+        UINT start = VnGetUInt(
+            TEXT(EXPLORER_SB_NAME),
+            TEXT(EXPLORER_PATCH_OFFSET),
+            0,
+            wszSettingsPath
+        );
+        UINT ok = VnGetUInt(
+            TEXT(EXPLORER_SB_NAME),
+            TEXT(EXPLORER_PATCH_OFFSET_OK),
+            0,
+            wszSettingsPath
+        );
+        UINT strat = VnGetUInt(
+            TEXT(EXPLORER_SB_NAME),
+            TEXT(EXPLORER_PATCH_OFFSET_STRAT),
+            0,
+            wszSettingsPath
+        );
+        uintptr_t dwInjectedAddr = (uintptr_t)hExplorer;
+        DWORD dwOldValue = 0, dwNumberOfBytes = 0;
+        if (ok)
+        {
+            dwInjectedAddr += symbols_PTRS.explorer_PTRS[3] + start;
+            if (strat == 0)
+            {
+                printf("Results: %d (%d) ", VirtualProtect(
+                    (LPVOID)dwInjectedAddr,
+                    sizeof(szPayload0),
+                    PAGE_EXECUTE_READWRITE,
+                    &dwOldValue
+                ), GetLastError());
+                memcpy(
+                    (LPVOID)dwInjectedAddr,
+                    szPayload0,
+                    sizeof(szPayload0)
+                );
+                printf("Results: %d (%d) ", VirtualProtect(
+                    (LPVOID)dwInjectedAddr,
+                    sizeof(szPayload0),
+                    dwOldValue,
+                    (PDWORD)(&dwNumberOfBytes)
+                ), GetLastError());
+                printf("when altering taskbar code path using strat 1.\n");
+            }
+            else if (strat == 1)
+            {
+                printf("Results: %d (%d) ", VirtualProtect(
+                    (LPVOID)dwInjectedAddr,
+                    sizeof(szPayload1),
+                    PAGE_EXECUTE_READWRITE,
+                    &dwOldValue
+                ), GetLastError());
+                memcpy(
+                    (LPVOID)dwInjectedAddr,
+                    szPayload1,
+                    sizeof(szPayload1)
+                );
+                printf("%d (%d) ", VirtualProtect(
+                    (LPVOID)dwInjectedAddr,
+                    sizeof(szPayload1),
+                    dwOldValue,
+                    (PDWORD)(&dwNumberOfBytes)
+                ), GetLastError());
+                printf("when altering taskbar code path using strat 1.\n");
+            }
+        }
+        else
+        {
+            UINT dirty = VnGetUInt(
+                TEXT(EXPLORER_SB_NAME),
+                TEXT(EXPLORER_PATCH_DIRTY),
+                0,
+                wszSettingsPath
+            );
+            if (dirty)
+            {
+                FreeConsole();
+                TerminateProcess(
+                    OpenProcess(
+                        PROCESS_TERMINATE,
+                        FALSE,
+                        GetCurrentProcessId()
+                    ),
+                    EXIT_CODE_EXPLORER
+                );
+            }
+
+            uintptr_t CTray_Init = dwInjectedAddr + (uintptr_t)symbols_PTRS.explorer_PTRS[3];
+            char m[BYTES_TO_DISASSEMBLE];
+            VirtualProtect(
+                (LPVOID)CTray_Init,
+                BYTES_TO_DISASSEMBLE,
+                PAGE_EXECUTE_READ,
+                &dwOldValue
+            );
+            memcpy(
+                m,
+                (LPVOID)CTray_Init,
+                BYTES_TO_DISASSEMBLE
+            );
+            VirtualProtect(
+                (LPVOID)CTray_Init,
+                BYTES_TO_DISASSEMBLE,
+                dwOldValue,
+                (PDWORD)(&dwNumberOfBytes)
+            );
+            printf("Copied %d bytes to disassemble.\n", BYTES_TO_DISASSEMBLE);
+            _DecodedInst decodedInstructions[1000];
+            UINT decodedInstructionsCount = 0;
+            _DecodeResult res = distorm_decode(
+                0,
+                (const unsigned char*)m,
+                BYTES_TO_DISASSEMBLE,
+                Decode64Bits,
+                decodedInstructions,
+                1000,
+                &decodedInstructionsCount
+            );
+            printf("Disassembled bytes.\n");
+            BOOL found = FALSE;
+            for (UINT i = 0; i < decodedInstructionsCount; ++i)
+            {
+                if ((!strcmp(decodedInstructions[i].mnemonic.p, "JZ") ||
+                    !strcmp(decodedInstructions[i].mnemonic.p, "JNZ")) &&
+                    decodedInstructions[i].offset > start)
+                {
+                    found = TRUE;
+                    start = decodedInstructions[i].offset;
+                    printf("Attempting offset %lld with strat %lld...\n", decodedInstructions[i].offset, strat);
+                    if (strat == 0)
+                    {
+                        memcpy(
+                            m + start,
+                            szPayload0,
+                            sizeof(szPayload0)
+                        );
+                    }
+                    else if (strat == 1)
+                    {
+                        memcpy(
+                            m + start,
+                            szPayload1,
+                            sizeof(szPayload1)
+                        );
+                    }
+                    break;
+                }
+            }
+            if (!found)
+            {
+                start = 0;
+                strat++;
+            }
+#ifdef DEBUG
+            /*res = distorm_decode(
+                0,
+                (const unsigned char*)m,
+                BYTES_TO_DISASSEMBLE,
+                Decode64Bits,
+                decodedInstructions,
+                1000,
+                &decodedInstructionsCount
+            );
+            for (UINT i = 0; i < decodedInstructionsCount; ++i)
+            {
+                printf(
+                    "0x%p\t%s\t%s\n",
+                    decodedInstructions[i].offset,
+                    decodedInstructions[i].mnemonic.p,
+                    decodedInstructions[i].instructionHex.p
+                );
+            }*/
+#endif
+            VirtualProtect(
+                (LPVOID)CTray_Init,
+                BYTES_TO_DISASSEMBLE,
+                PAGE_EXECUTE_READWRITE,
+                &dwOldValue
+            );
+            memcpy(
+                (LPVOID)CTray_Init,
+                m,
+                BYTES_TO_DISASSEMBLE
+            );
+            VirtualProtect(
+                (LPVOID)CTray_Init,
+                BYTES_TO_DISASSEMBLE,
+                dwOldValue,
+                (PDWORD)(&dwNumberOfBytes)
+            );
+            UINT new_ok = VnGetUInt(
+                TEXT(EXPLORER_SB_NAME),
+                TEXT(EXPLORER_PATCH_OFFSET_OK),
+                0,
+                wszSettingsPath
+            );
+            if (!new_ok)
+            {
+                VnWriteUInt(
+                    TEXT(EXPLORER_SB_NAME),
+                    TEXT(EXPLORER_PATCH_OFFSET),
+                    start,
+                    wszSettingsPath
+                );
+                VnWriteUInt(
+                    TEXT(EXPLORER_SB_NAME),
+                    TEXT(EXPLORER_PATCH_OFFSET_STRAT),
+                    strat,
+                    wszSettingsPath
+                );
+            }
+            TCHAR wszExplorerPath[MAX_PATH + 1];
+            wszExplorerPath[0] = L'\"';
+            GetSystemDirectory(wszExplorerPath + 1, MAX_PATH);
+            wcscat_s(wszExplorerPath, MAX_PATH + 1, L"\\rundll32.exe\" \"");
+            GetModuleFileName(hModule, wszExplorerPath + wcslen(wszExplorerPath), MAX_PATH - wcslen(wszExplorerPath));
+            wcscat_s(wszExplorerPath, MAX_PATH, L"\",ZZLaunchExplorerDelayed");
+            wprintf(L"Command to launch: \" %s \"\n.", wszExplorerPath);
+            STARTUPINFO si = { sizeof(si) };
+            PROCESS_INFORMATION pi;
+            BOOL b = CreateProcess(
+                NULL,
+                wszExplorerPath,
+                NULL,
+                NULL,
+                TRUE,
+                CREATE_UNICODE_ENVIRONMENT,
+                NULL,
+                NULL,
+                &si,
+                &pi
+            );
+            VnWriteUInt(
+                TEXT(EXPLORER_SB_NAME),
+                TEXT(EXPLORER_PATCH_DIRTY),
+                1,
+                wszSettingsPath
+            );
+            FreeConsole();
+            CreateThread(0, 0, DetermineInjectionSuccess, wszSettingsPath, 0, 0);
+            return 0;
+        }
 
 
+        LoadLibraryW(L"user32.dll");
         HANDLE hUser32 = GetModuleHandle(L"user32.dll");
-
         if (hUser32) CreateWindowInBand = GetProcAddress(hUser32, "CreateWindowInBand");
+        printf("Setup user32 functions done\n");
 
 
-        LoadLibrary("twinui.pcshell.dll");
+        LoadLibraryW(L"twinui.pcshell.dll");
         HANDLE hTwinuiPcshell = GetModuleHandle(L"twinui.pcshell.dll");
 
         CImmersiveContextMenuOwnerDrawHelper_s_ContextMenuWndProcFunc = (INT64(*)(HWND, int, HWND, int, BOOL*))
@@ -2176,9 +2657,10 @@ __declspec(dllexport) DWORD WINAPI main(
             FreeLibraryAndExitThread(hModule, rv);
             return rv;
         }
+        printf("Setup twinui.pcshell functions done\n");
 
 
-        LoadLibrary(L"twinui.dll");
+        LoadLibraryW(L"twinui.dll");
         HANDLE hTwinui = GetModuleHandle(L"twinui.dll");
 
         CImmersiveHotkeyNotification_GetMonitorForHotkeyNotificationFunc = (INT64(*)(void*, void**, HWND*))
@@ -2199,10 +2681,11 @@ __declspec(dllexport) DWORD WINAPI main(
             FreeLibraryAndExitThread(hModule, rv);
             return rv;
         }
+        printf("Setup twinui functions done\n");
 
 
 
-        LoadLibrary(L"stobject.dll");
+        LoadLibraryW(L"stobject.dll");
         HANDLE hStobject = GetModuleHandle(L"stobject.dll");
         SysTrayWndProcFunc = (INT64(*)(HWND, UINT, WPARAM, LPARAM))
             ((uintptr_t)hStobject + symbols_PTRS.stobject_PTRS[0]);
@@ -2227,20 +2710,21 @@ __declspec(dllexport) DWORD WINAPI main(
             FreeLibraryAndExitThread(hModule, rv);
             return rv;
         }
+        printf("Setup stobject functions done\n");
 
 
 
-        LoadLibrary(L"Windows.UI.FileExplorer.dll");
+        LoadLibraryW(L"Windows.UI.FileExplorer.dll");
         HANDLE hWindowsUIFileExplorer = GetModuleHandle(L"Windows.UI.FileExplorer.dll");
         ContextMenuPresenter_DoContextMenuFunc = (char(*)(void*))
             ((uintptr_t)hWindowsUIFileExplorer + symbols_PTRS.windowsuifileexplorer_PTRS[0]);
-        UINT archive_plugin = VnGetUInt(
-            L"ArchiveMenu",
-            L"Enabled",
+        UINT bAllowImmersiveContextMenus = VnGetUInt(
+            L"General",
+            L"AllowImmersiveContextMenus",
             0,
             wszSettingsPath
         );
-        if (archive_plugin)
+        if (!bAllowImmersiveContextMenus)
         {
             rv = funchook_prepare(
                 funchook,
@@ -2253,6 +2737,7 @@ __declspec(dllexport) DWORD WINAPI main(
                 return rv;
             }
         }
+        printf("Setup Windows.UI.FileExplorer functions done\n");
 
 
 
@@ -2262,17 +2747,68 @@ __declspec(dllexport) DWORD WINAPI main(
             FreeLibraryAndExitThread(hModule, rv);
             return rv;
         }
+        printf("Installed hooks.\n");
+
+
+
+        HANDLE hEvent = CreateEventEx(
+            0, 
+            L"ShellDesktopSwitchEvent",
+            CREATE_EVENT_MANUAL_RESET,
+            EVENT_ALL_ACCESS
+        );
+        ResetEvent(hEvent);
+        printf("Created ShellDesktopSwitchEvent event.\n");
+        
+
+
+
+        CreateThread(
+            0,
+            0,
+            PlayStartupSound,
+            0,
+            0,
+            0
+        );
+        printf("Play startup sound thread...\n");
+
+
+
+        CreateThread(
+            0,
+            0,
+            SignalShellReady,
+            0,
+            0,
+            0
+        );
+        printf("Signal shell ready...\n");
 
 
 
 
-        UINT archive_plugin = VnGetUInt(
+        CreateThread(
+            0,
+            0,
+            OpenStartOnCurentMonitorThread,
+            0,
+            0,
+            0
+        );
+        printf("Open Start on monitor thread\n");
+
+
+
+
+
+        UINT bEnableArchivePlugin = VnGetUInt(
             L"ArchiveMenu",
             L"Enabled",
             0,
             wszSettingsPath
         );
-        if (archive_plugin)
+        if (bEnableArchivePlugin)
         {
             CreateThread(
                 0,
@@ -2306,6 +2842,166 @@ __declspec(dllexport) DWORD WINAPI main(
     return 0;
 }
 
+__declspec(dllexport) CALLBACK ZZLaunchExplorer(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLine, int nCmdShow)
+{
+    Sleep(100);
+    TCHAR* wszSettingsPath = malloc((MAX_PATH + 1) * sizeof(TCHAR));
+    if (!wszSettingsPath)
+    {
+        return 0;
+    }
+    ZeroMemory(
+        wszSettingsPath,
+        (MAX_PATH + 1) * sizeof(TCHAR)
+    );
+    SHGetFolderPathW(
+        NULL,
+        CSIDL_APPDATA,
+        NULL,
+        SHGFP_TYPE_CURRENT,
+        wszSettingsPath
+    );
+    wcscat_s(
+        wszSettingsPath,
+        MAX_PATH,
+        TEXT(SYMBOLS_RELATIVE_PATH)
+    );
+    VnWriteUInt(
+        TEXT(EXPLORER_SB_NAME),
+        TEXT(EXPLORER_PATCH_DIRTY),
+        0,
+        wszSettingsPath
+    );
+    TCHAR wszExplorerPath[MAX_PATH + 1];
+    GetWindowsDirectory(wszExplorerPath, MAX_PATH + 1);
+    wcscat_s(wszExplorerPath, MAX_PATH + 1, L"\\explorer.exe");
+    STARTUPINFO si = { sizeof(si) };
+    PROCESS_INFORMATION pi;
+    BOOL b = CreateProcess(
+        NULL,
+        wszExplorerPath,
+        NULL,
+        NULL,
+        TRUE,
+        CREATE_UNICODE_ENVIRONMENT,
+        NULL,
+        NULL,
+        &si,
+        &pi
+    );
+    FreeConsole();
+    TerminateProcess(
+        OpenProcess(
+            PROCESS_TERMINATE,
+            FALSE,
+            GetCurrentProcessId()
+        ),
+        0
+    );
+}
+
+__declspec(dllexport) CALLBACK ZZLaunchExplorerDelayed(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLine, int nCmdShow)
+{
+    Sleep(5000);
+    ZZLaunchExplorer(hWnd, hInstance, lpszCmdLine, nCmdShow);
+}
+
+static HRESULT(*ApplyCompatResolutionQuirkingFunc)(void*, void*);
+__declspec(dllexport) HRESULT ApplyCompatResolutionQuirking(void* p1, void* p2)
+{
+    return ApplyCompatResolutionQuirkingFunc(p1, p2);
+}
+static HRESULT(*CompatStringFunc)(void*, void*, void*, BOOL);
+__declspec(dllexport) HRESULT CompatString(void* p1, void* p2, void* p3, BOOL p4)
+{
+    return CompatStringFunc(p1, p2, p3, p4);
+}
+static HRESULT(*CompatValueFunc)(void*, void*);
+__declspec(dllexport) HRESULT CompatValue(void* p1, void* p2)
+{
+    return CompatValueFunc(p1, p2);
+}
+static HRESULT(*CreateDXGIFactoryFunc)(void*, void**);
+__declspec(dllexport) HRESULT CreateDXGIFactory(void* p1, void** p2)
+{
+    return CreateDXGIFactoryFunc(p1, p2);
+}
+static HRESULT(*CreateDXGIFactory1Func)(void*, void**);
+__declspec(dllexport) HRESULT CreateDXGIFactory1(void* p1, void** p2)
+{
+    return CreateDXGIFactory1Func(p1, p2);
+}
+static HRESULT(*CreateDXGIFactory2Func)(UINT, void*, void**);
+__declspec(dllexport) HRESULT CreateDXGIFactory2(UINT p1, void* p2, void** p3)
+{
+    return CreateDXGIFactory2Func(p1, p2, p3);
+}
+static HRESULT(*DXGID3D10CreateDeviceFunc)();
+__declspec(dllexport) HRESULT DXGID3D10CreateDevice() {
+    return DXGID3D10CreateDeviceFunc();
+}
+static HRESULT(*DXGID3D10CreateLayeredDeviceFunc)();
+__declspec(dllexport) HRESULT DXGID3D10CreateLayeredDevice()
+{
+    return DXGID3D10CreateLayeredDeviceFunc();
+}
+static HRESULT(*DXGID3D10GetLayeredDeviceSizeFunc)();
+__declspec(dllexport) HRESULT DXGID3D10GetLayeredDeviceSize()
+{
+    return DXGID3D10GetLayeredDeviceSizeFunc();
+}
+static HRESULT(*DXGID3D10RegisterLayersFunc)();
+__declspec(dllexport) HRESULT DXGID3D10RegisterLayers()
+{
+    return DXGID3D10RegisterLayersFunc();
+}
+static HRESULT(*DXGIDeclareAdapterRemovalSupportFunc)();
+__declspec(dllexport) HRESULT DXGIDeclareAdapterRemovalSupport()
+{
+    return DXGIDeclareAdapterRemovalSupportFunc();
+}
+static HRESULT(*DXGIDumpJournalFunc)(void*);
+__declspec(dllexport) HRESULT DXGIDumpJournal(void* p1)
+{
+    return DXGIDumpJournalFunc(p1);
+}
+static HRESULT(*DXGIGetDebugInterface1Func)(UINT, void*, void**);
+__declspec(dllexport) HRESULT DXGIGetDebugInterface1(UINT p1, void* p2, void* p3)
+{
+    return DXGIGetDebugInterface1Func(p1, p2, p3);
+}
+static HRESULT(*DXGIReportAdapterConfigurationFunc)();
+__declspec(dllexport) HRESULT DXGIReportAdapterConfiguration(void* p1)
+{
+    return DXGIReportAdapterConfigurationFunc(p1);
+}
+static HRESULT(*PIXBeginCaptureFunc)(INT64, void*);
+__declspec(dllexport) HRESULT PIXBeginCapture(INT64 p1, void* p2)
+{
+    return PIXBeginCaptureFunc(p1, p2);
+}
+static HRESULT(*PIXEndCaptureFunc)();
+__declspec(dllexport) HRESULT PIXEndCapture()
+{
+    return PIXEndCaptureFunc();
+}
+static HRESULT(*PIXGetCaptureStateFunc)();
+__declspec(dllexport) HRESULT PIXGetCaptureState()
+{
+    return PIXGetCaptureState();
+}
+static HRESULT(*SetAppCompatStringPointerFunc)(SIZE_T, void*);
+__declspec(dllexport) HRESULT SetAppCompatStringPointer(SIZE_T p1, void* p2)
+{
+    return SetAppCompatStringPointerFunc(p1, p2);
+}
+static HRESULT(*UpdateHMDEmulationStatusFunc)(char);
+__declspec(dllexport) HRESULT UpdateHMDEmulationStatus(char p1)
+{
+    return UpdateHMDEmulationStatusFunc(p1);
+}
+
+
 BOOL WINAPI DllMain(
     _In_ HINSTANCE hinstDLL,
     _In_ DWORD     fdwReason,
@@ -2317,6 +3013,47 @@ BOOL WINAPI DllMain(
     case DLL_PROCESS_ATTACH:
         DisableThreadLibraryCalls(hinstDLL);
         hModule = hinstDLL;
+        TCHAR exeName[MAX_PATH + 1];
+        GetProcessImageFileNameW(
+            OpenProcess(
+                PROCESS_QUERY_INFORMATION,
+                FALSE,
+                GetCurrentProcessId()
+            ),
+            exeName,
+            MAX_PATH
+        );
+        PathStripPath(exeName);
+        if (!wcscmp(exeName, L"rundll32.exe"))
+        {
+            break;
+        }
+        TCHAR wszSystemPath[MAX_PATH + 1];
+        GetSystemDirectory(wszSystemPath, MAX_PATH + 1);
+        wcscat_s(wszSystemPath, MAX_PATH + 1, L"\\dxgi.dll");
+        HMODULE hModule = LoadLibraryW(wszSystemPath);
+#pragma warning(disable : 6387)
+        ApplyCompatResolutionQuirkingFunc = GetProcAddress(hModule, "ApplyCompatResolutionQuirking");
+        CompatStringFunc = GetProcAddress(hModule, "CompatString");
+        CompatValueFunc = GetProcAddress(hModule, "CompatValue");
+        CreateDXGIFactoryFunc = GetProcAddress(hModule, "CreateDXGIFactory");
+        CreateDXGIFactory1Func = GetProcAddress(hModule, "CreateDXGIFactory1");
+        CreateDXGIFactory2Func = GetProcAddress(hModule, "CreateDXGIFactory2");
+        DXGID3D10CreateDeviceFunc = GetProcAddress(hModule, "DXGID3D10CreateDevice");
+        DXGID3D10CreateLayeredDeviceFunc = GetProcAddress(hModule, "DXGID3D10CreateLayeredDevice");
+        DXGID3D10GetLayeredDeviceSizeFunc = GetProcAddress(hModule, "DXGID3D10GetLayeredDeviceSize");
+        DXGID3D10RegisterLayersFunc = GetProcAddress(hModule, "DXGID3D10RegisterLayers");
+        DXGIDeclareAdapterRemovalSupportFunc = GetProcAddress(hModule, "DXGIDeclareAdapterRemovalSupport");
+        DXGIDumpJournalFunc = GetProcAddress(hModule, "DXGIDumpJournal");
+        DXGIGetDebugInterface1Func = GetProcAddress(hModule, "DXGIGetDebugInterface1");
+        DXGIReportAdapterConfigurationFunc = GetProcAddress(hModule, "DXGIReportAdapterConfiguration");
+        PIXBeginCaptureFunc = GetProcAddress(hModule, "PIXBeginCapture");
+        PIXEndCaptureFunc = GetProcAddress(hModule, "PIXEndCapture");
+        PIXGetCaptureStateFunc = GetProcAddress(hModule, "PIXGetCaptureState");
+        SetAppCompatStringPointerFunc = GetProcAddress(hModule, "SetAppCompatStringPointer");
+        UpdateHMDEmulationStatusFunc = GetProcAddress(hModule, "UpdateHMDEmulationStatus");
+        main(0);
+#pragma warning(default : 6387)
         break;
     case DLL_THREAD_ATTACH:
         break;

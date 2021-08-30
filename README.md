@@ -16,13 +16,32 @@ A changelog is available [here](https://github.com/valinet/ExplorerPatcher/blob/
 
 A detailed description of how this works is available on my web site [here](https://valinet.ro/2021/08/09/Restore-Windows-11-to-working-Windows-10-UI.html).
 
-Precompiled binaries are available in [Releases](https://github.com/valinet/ExplorerPatcher/releases).
+The application comes in the form of a dynamic-link library (DLL). Precompiled binaries are available in [Releases](https://github.com/valinet/ExplorerPatcher/releases).
 
 ## Installation
 
-To install, save the executable in a safe directory, run it once as an administrator to have it register as [Taskman](https://www.geoffchappell.com/notes/windows/shell/explorer/taskman.htm) for Explorer and just restart Explorer or reboot.
+Simply copy the downloaded DLL named `dxgi.dll` to `%windir%` (usually `C:\Windows`) and restart Explorer.
 
-The application does not currently offer a way to configure its behavior. In the mean time, I recommend commenting out whatever you do not like and compile your own executable, as described below (instructions are very simple).
+At first launch, the application will notify you about missing symbols and will automatically download them from Microsoft. Then, it will try to determine some patch offsets for Explorer. The process involves automatically restarting Explorer a couple of times and evaluating the results. Please be patient and let this do its job; you will know it is done when you will see the old taskbar instead of the new one. Also, the application will show a notification to let you know it is done.
+
+Downloaded symbols and application configuration is saved in the `%appdata%\ExplorerPatcher` folder.
+
+To uninstall, simply delete `dxgi.dll` from `%windir%`.
+
+#### How does this work?
+
+The mechanism the application gets loaded is by exploiting the DLL search order in Windows. I take advantage of the fact that Explorer is one of the few system processes located in `%windir%` and not in `%windir%\System32`, so it does not affect most apps. Also, `%windir%` is not in the search path. Read more about this technique [here](https://itm4n.github.io/windows-dll-hijacking-clarified/). The main advantage here is that you do not have to keep an extra process running in the memory; plus, due to the diverse nature of how Explorer is launched, hooking it can be difficult.
+
+I picked `dxgi.dll` because it is not on the `HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager\KnownDLLs` list, because it has few exports and is loaded very early by Explorer, when calling the `DXGIDeclareAdapterRemovalSupport()` function.
+
+## Configuration
+
+The `settings.ini` file contains, among the offsets for the various hooked/exploited functions, a few parameters that you can tweak:
+
+* `General\AllowImmersiveContextMenus = 1` will show the new context menus in Explorer instead of the legacy one
+* `General\AllocConsole = 1` will show a console when the application runs (useful for diagnostics).
+
+To change whether Start opens on the monitor the mouse is on, configure this registry setting (DWORD): `HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StartPage\MonitorOverride`: 0 = enable, 1 or not created = default, disable.
 
 ## License
 

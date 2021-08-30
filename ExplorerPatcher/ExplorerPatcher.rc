@@ -51,8 +51,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 22000,168,0,9
- PRODUCTVERSION 22000,168,0,9
+ FILEVERSION 22000,168,0,10
+ PRODUCTVERSION 22000,168,0,10
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -60,7 +60,7 @@ VS_VERSION_INFO VERSIONINFO
  FILEFLAGS 0x0L
 #endif
  FILEOS 0x40004L
- FILETYPE 0x1L
+ FILETYPE 0x2L
  FILESUBTYPE 0x0L
 BEGIN
     BLOCK "StringFileInfo"
@@ -68,13 +68,13 @@ BEGIN
         BLOCK "040904b0"
         BEGIN
             VALUE "CompanyName", "VALINET Solutions SRL"
-            VALUE "FileDescription", "ExplorerPatcher Daemon"
-            VALUE "FileVersion", "22000.168.0.9"
-            VALUE "InternalName", "ExplorerPatcher.exe"
+            VALUE "FileDescription", "ExplorerPatcher"
+            VALUE "FileVersion", "22000.168.0.10"
+            VALUE "InternalName", "ExplorerPatcher.dll"
             VALUE "LegalCopyright", "Copyright (C) 2006-2021 VALINET Solutions SRL. All rights reserved."
-            VALUE "OriginalFilename", "ExplorerPatcher.exe"
+            VALUE "OriginalFilename", "ExplorerPatcher.dll"
             VALUE "ProductName", "ExplorerPatcher"
-            VALUE "ProductVersion", "22000.168.0.9"
+            VALUE "ProductVersion", "22000.168.0.10"
         END
     END
     BLOCK "VarFileInfo"
