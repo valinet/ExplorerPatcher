@@ -24,6 +24,16 @@ DEFINE_GUID(__uuidof_ITaskbarList,
     0xFD6D, 0x11d0, 0x95, 0x8A,
     0x00, 0x60, 0x97, 0xC9, 0xA0, 0x90
 );
+DEFINE_GUID(__uuidof_AuthUILogonSound,
+    0x0A0D018EE,
+    0x1100, 0x4389, 0xAB, 0x44,
+    0x46, 0x4F, 0xAF, 0x00, 0x12, 0x88
+);
+DEFINE_GUID(__uuidof_IAuthUILogonSound,
+    0xc35243ea,
+    0x4cfc, 0x435a, 0x91, 0xc2,
+    0x9d, 0xbd, 0xec, 0xbf, 0xfc, 0x95
+);
 #define OPEN_NAME L"&Open archive"
 #define EXTRACT_NAME L"&Extract to \"%s\\\""
 #define OPEN_CMD L"\"C:\\Program Files\\7-Zip\\7zFM.exe\" %s"
@@ -33,7 +43,9 @@ DEFINE_GUID(__uuidof_ITaskbarList,
 #define SYMBOLS_RELATIVE_PATH "\\settings.ini"
 #define EXPLORER_SB_NAME "explorer"
 #define EXPLORER_SB_0 "CTray::_HandleGlobalHotkey"
-#define EXPLORER_SB_CNT 1
+#define EXPLORER_SB_1 "CTray::v_WndProc"
+#define EXPLORER_SB_2 "CTray::_FireDesktopSwitchIfReady"
+#define EXPLORER_SB_CNT 3
 #define TWINUI_PCSHELL_SB_NAME "twinui.pcshell"
 #define TWINUI_PCSHELL_SB_0 "CImmersiveContextMenuOwnerDrawHelper::s_ContextMenuWndProc"
 #define TWINUI_PCSHELL_SB_1 "CLauncherTipContextMenu::GetMenuItemsAsync"
@@ -49,7 +61,9 @@ DEFINE_GUID(__uuidof_ITaskbarList,
 #define TWINUI_SB_2 "CImmersiveHotkeyNotification::OnMessage"
 #define TWINUI_SB_CNT 3
 const char* explorer_SN[EXPLORER_SB_CNT] = {
-    EXPLORER_SB_0
+    EXPLORER_SB_0,
+    EXPLORER_SB_1,
+    EXPLORER_SB_2
 };
 const char* twinui_pcshell_SN[TWINUI_PCSHELL_SB_CNT] = {
     TWINUI_PCSHELL_SB_0,
@@ -202,6 +216,19 @@ static INT64(*CTray_HandleGlobalHotkeyFunc)(
     void* _this,
     unsigned int a2,
     unsigned int a3
+    );
+
+static INT64(*CTray_v_WndProcFunc)(
+    void* _this,
+    _In_ HWND   hWnd,
+    _In_ UINT   uMsg,
+    _In_ WPARAM wParam,
+    _In_ LPARAM lParam
+    );
+
+static INT64(*CTray__FireDesktopSwitchIfReadyFunc)(
+    void* _this,
+    unsigned int a2
     );
 
 DEFINE_GUID(IID_ILauncherTipContextMenu,
@@ -363,6 +390,41 @@ typedef struct IImmersiveLauncher10RSVtbl
 interface IImmersiveLauncher10RS
 {
     CONST_VTBL struct IImmersiveLauncher10RSVtbl* lpVtbl;
+};
+
+
+
+
+
+
+typedef interface AuthUILogonSound AuthUILogonSound;
+
+typedef struct AuthUILogonSoundVtbl
+{
+    BEGIN_INTERFACE
+
+    HRESULT(STDMETHODCALLTYPE* QueryInterface)(
+        AuthUILogonSound* This,
+        /* [in] */ REFIID riid,
+        /* [annotation][iid_is][out] */
+        _COM_Outptr_  void** ppvObject);
+
+    ULONG(STDMETHODCALLTYPE* AddRef)(
+        AuthUILogonSound* This);
+
+    ULONG(STDMETHODCALLTYPE* Release)(
+        AuthUILogonSound* This);
+
+    HRESULT(STDMETHODCALLTYPE* PlayIfNecessary)(
+        AuthUILogonSound* This,
+        /* [in] */ INT64 a1);
+
+    END_INTERFACE
+} AuthUILogonSoundVtbl;
+
+interface AuthUILogonSound
+{
+    CONST_VTBL struct AuthUILogonSoundVtbl* lpVtbl;
 };
 
 
@@ -814,6 +876,29 @@ INT64 CTray_HandleGlobalHotkeyHook(
     );
 }
 
+BOOL notFirstTimeCTray_v_WndProcHook = FALSE;
+INT64 CTray_v_WndProcHook(
+    void* _this,
+    _In_ HWND   hWnd,
+    _In_ UINT   uMsg,
+    _In_ WPARAM wParam,
+    _In_ LPARAM lParam
+)
+{
+    if (!notFirstTimeCTray_v_WndProcHook)
+    {
+        notFirstTimeCTray_v_WndProcHook = TRUE;
+        CTray__FireDesktopSwitchIfReadyFunc(_this, 2);
+    }
+    return CTray_v_WndProcFunc(
+        _this,
+        hWnd,
+        uMsg,
+        wParam,
+        lParam
+    );
+}
+
 HRESULT CImmersiveHotkeyNotification_OnMessageHook(
     void* _this,
     INT64 msg,
@@ -1114,6 +1199,63 @@ DWORD OpenStartOnCurentMonitorThread(LPVOID unused)
     }
 }
 
+DWORD PlayStartupSound(DWORD x)
+{
+    Sleep(1000);
+
+    HRESULT hr = CoInitialize(NULL);
+
+    /*HKEY hKey2;
+    LONG lRes2 = RegOpenKeyExW(
+        HKEY_LOCAL_MACHINE,
+        L"Software\\Microsoft\\Windows\\CurrentVersion\\Authentication\\LogonUI\\LogonSoundPlayed",
+        0,
+        KEY_READ,
+        &hKey2
+    );
+    if (lRes2 == ERROR_SUCCESS)
+    {
+        DWORD val = 5;
+        DWORD szval = 4;
+        lRes2 = RegQueryValueExW(
+            hKey2,
+            L"SoundPlayed",
+            0,
+            NULL,
+            &val,
+            &szval
+        );
+        printf("SoundPlayed: %d %d\n", val, lRes2);
+    }*/
+
+    AuthUILogonSound* ppv;
+    hr = CoCreateInstance(
+        &__uuidof_AuthUILogonSound,
+        0,
+        1,
+        &__uuidof_IAuthUILogonSound,
+        &ppv
+    );
+    if (SUCCEEDED(hr))
+    {
+        ppv->lpVtbl->PlayIfNecessary(ppv, 1);
+        ppv->lpVtbl->Release(ppv);
+    }
+    return 0;
+}
+
+DWORD SignalShellReady(DWORD x)
+{
+    Sleep(1000);
+
+    HANDLE hEvent = CreateEvent(0, 1, 1, L"ShellDesktopSwitchEvent");
+    if (hEvent)
+    {
+        SetEvent(hEvent);
+    }
+    return 0;
+}
+
 __declspec(dllexport) DWORD WINAPI main(
     _In_ LPVOID lpParameter
 )
@@ -1132,11 +1274,28 @@ __declspec(dllexport) DWORD WINAPI main(
     int rv;
     if (!funchook)
     {
-        HANDLE hEvent = CreateEvent(0, 1, 1, L"ShellDesktopSwitchEvent");
-        if (hEvent)
-        {
-            SetEvent(hEvent);
-        }
+        
+        CreateThread(
+            0,
+            0,
+            PlayStartupSound,
+            0,
+            0,
+            0
+        );
+
+
+
+
+        CreateThread(
+            0,
+            0,
+            SignalShellReady,
+            0,
+            0,
+            0
+        );
+
 
 
 
@@ -1181,26 +1340,6 @@ __declspec(dllexport) DWORD WINAPI main(
 
 
 
-        UINT archive_plugin = VnGetUInt(
-            L"ArchiveMenu",
-            L"Enabled",
-            0,
-            wszSettingsPath
-        );
-        if (archive_plugin)
-        {
-            CreateThread(
-                0,
-                0,
-                ArchiveMenuThread,
-                0,
-                0,
-                0
-            );
-        }
-
-
-
 
         CreateThread(
             0,
@@ -1222,6 +1361,18 @@ __declspec(dllexport) DWORD WINAPI main(
         symbols_PTRS.explorer_PTRS[0] = VnGetUInt(
             TEXT(EXPLORER_SB_NAME),
             TEXT(EXPLORER_SB_0),
+            0,
+            wszSettingsPath
+        );
+        symbols_PTRS.explorer_PTRS[1] = VnGetUInt(
+            TEXT(EXPLORER_SB_NAME),
+            TEXT(EXPLORER_SB_1),
+            0,
+            wszSettingsPath
+        );
+        symbols_PTRS.explorer_PTRS[2] = VnGetUInt(
+            TEXT(EXPLORER_SB_NAME),
+            TEXT(EXPLORER_SB_2),
             0,
             wszSettingsPath
         );
@@ -1458,6 +1609,18 @@ __declspec(dllexport) DWORD WINAPI main(
                 symbols_PTRS.explorer_PTRS[0],
                 wszSettingsPath
             );
+            VnWriteUInt(
+                TEXT(EXPLORER_SB_NAME),
+                TEXT(EXPLORER_SB_1),
+                symbols_PTRS.explorer_PTRS[1],
+                wszSettingsPath
+            );
+            VnWriteUInt(
+                TEXT(EXPLORER_SB_NAME),
+                TEXT(EXPLORER_SB_2),
+                symbols_PTRS.explorer_PTRS[2],
+                wszSettingsPath
+            );
 
             char twinui_pcshell_sb_dll[MAX_PATH];
             ZeroMemory(
@@ -1667,6 +1830,20 @@ __declspec(dllexport) DWORD WINAPI main(
             FreeLibraryAndExitThread(hModule, rv);
             return rv;
         }
+        CTray_v_WndProcFunc = (INT64(*)(void*, HWND, UINT, WPARAM, LPARAM))
+            ((uintptr_t)hExplorer + symbols_PTRS.explorer_PTRS[1]);
+        /*rv = funchook_prepare(
+            funchook,
+            (void**)&CTray_v_WndProcFunc,
+            CTray_v_WndProcHook
+        );
+        if (rv != 0)
+        {
+            FreeLibraryAndExitThread(hModule, rv);
+            return rv;
+        }*/
+        CTray__FireDesktopSwitchIfReadyFunc = (INT64(*)(HWND, int))
+            ((uintptr_t)hExplorer + symbols_PTRS.explorer_PTRS[2]);
 
 
         HANDLE hUser32 = GetModuleHandle(L"user32.dll");
@@ -1743,7 +1920,23 @@ __declspec(dllexport) DWORD WINAPI main(
 
 
 
-
+        UINT archive_plugin = VnGetUInt(
+            L"ArchiveMenu",
+            L"Enabled",
+            0,
+            wszSettingsPath
+        );
+        if (archive_plugin)
+        {
+            CreateThread(
+                0,
+                0,
+                ArchiveMenuThread,
+                0,
+                0,
+                0
+            );
+        }
     }
     else
     {
