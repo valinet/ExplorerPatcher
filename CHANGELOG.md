@@ -2,6 +2,10 @@
 
 This document includes the same release notes as in the [Releases](https://github.com/valinet/ExplorerPatcher/releases) section on GitHub.
 
+## 22000.168.0.8
+
+The popup menu for "Safe to Remove Hardware" is now skinned in the same  style as the Win+X menu and the taskbar context menus, in order to  improve UI consistency.
+
 ## 22000.168.0.7
 
 Enables compatibility with [ArchiveMenu](https://github.com/valinet/archivemenu).
