@@ -60,6 +60,10 @@ DEFINE_GUID(__uuidof_IAuthUILogonSound,
 #define TWINUI_SB_1 "IsDesktopInputContext"
 #define TWINUI_SB_2 "CImmersiveHotkeyNotification::OnMessage"
 #define TWINUI_SB_CNT 3
+#define STOBJECT_SB_NAME "stobject"
+#define STOBJECT_SB_0 "SysTrayWndProc"
+#define STOBJECT_SB_1 "HotPlugButtonClick"
+#define STOBJECT_SB_CNT 2
 const char* explorer_SN[EXPLORER_SB_CNT] = {
     EXPLORER_SB_0,
     EXPLORER_SB_1,
@@ -79,12 +83,17 @@ const char* twinui_SN[TWINUI_SB_CNT] = {
     TWINUI_SB_1,
     TWINUI_SB_2
 };
+const char* stobject_SN[STOBJECT_SB_CNT] = {
+    STOBJECT_SB_0,
+    STOBJECT_SB_1
+};
 #pragma pack(push, 1)
 typedef struct symbols_addr
 {
     DWORD explorer_PTRS[EXPLORER_SB_CNT];
     DWORD twinui_pcshell_PTRS[TWINUI_PCSHELL_SB_CNT];
     DWORD twinui_PTRS[TWINUI_SB_CNT];
+    DWORD stobject_PTRS[STOBJECT_SB_CNT];
 } symbols_addr;
 #pragma pack(pop)
 
@@ -259,6 +268,24 @@ static BOOL(*IsDesktopInputContextFunc)(
     void* p2
     );
 
+
+
+static INT64(*SysTrayWndProcFunc)(
+    _In_ HWND   hWnd,
+    _In_ UINT   uMsg,
+    _In_ WPARAM wParam,
+    _In_ LPARAM lParam
+    );
+
+static BOOL(*TrackPopupMenuFunc)(
+    HMENU      hMenu,
+    UINT       uFlags,
+    int        x,
+    int        y,
+    int        nReserved,
+    HWND       hWnd,
+    const RECT* prcRect
+);
 
 
 
@@ -605,6 +632,87 @@ LRESULT CALLBACK CLauncherTipContextMenu_WndProc(
         }
     }
     return result;
+}
+
+HWND lastSysTrayhWnd;
+
+BOOL TrackPopupMenuHook(
+    HMENU      hMenu,
+    UINT       uFlags,
+    int        x,
+    int        y,
+    int        nReserved,
+    HWND       hWnd,
+    const RECT* prcRect
+)
+{
+    if (hWnd != lastSysTrayhWnd)
+    {
+        return TrackPopupMenuFunc(
+            hMenu,
+            uFlags,
+            x,
+            y,
+            nReserved,
+            hWnd,
+            prcRect
+        );
+    }
+    INT64* unknown_array = calloc(4, sizeof(INT64));
+    POINT pt;
+    pt.x = x;
+    pt.y = y;
+    ImmersiveContextMenuHelper_ApplyOwnerDrawToMenuFunc(
+        hMenu,
+        hWnd,
+        &(pt),
+        0xc,
+        unknown_array
+    );
+    BOOL b = TrackPopupMenuFunc(
+        hMenu,
+        uFlags,
+        x,
+        y,
+        nReserved,
+        hWnd,
+        prcRect
+    );
+    ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc(
+        hMenu,
+        hWnd,
+        &(pt)
+    );
+    free(unknown_array);
+    return b;
+}
+
+INT64 SysTrayWndProcHook(
+    _In_ HWND   hWnd,
+    _In_ UINT   uMsg,
+    _In_ WPARAM wParam,
+    _In_ LPARAM lParam
+)
+{
+    lastSysTrayhWnd = hWnd;
+    BOOL v12 = FALSE;
+    if ((uMsg == WM_DRAWITEM || uMsg == WM_MEASUREITEM) &&
+        CImmersiveContextMenuOwnerDrawHelper_s_ContextMenuWndProcFunc(
+            hWnd,
+            uMsg,
+            wParam,
+            lParam,
+            &v12
+        ))
+    {
+        return 0;
+    }
+    return SysTrayWndProcFunc(
+        hWnd,
+        uMsg,
+        wParam,
+        lParam
+    );
 }
 
 typedef struct
@@ -1439,6 +1547,19 @@ __declspec(dllexport) DWORD WINAPI main(
             wszSettingsPath
         );
 
+        symbols_PTRS.stobject_PTRS[0] = VnGetUInt(
+            TEXT(STOBJECT_SB_NAME),
+            TEXT(STOBJECT_SB_0),
+            0,
+            wszSettingsPath
+        );
+        symbols_PTRS.stobject_PTRS[1] = VnGetUInt(
+            TEXT(STOBJECT_SB_NAME),
+            TEXT(STOBJECT_SB_1),
+            0,
+            wszSettingsPath
+        );
+
         BOOL bNeedToDownload = FALSE;
         for (UINT i = 0; i < sizeof(symbols_addr) / sizeof(DWORD); ++i)
         {
@@ -1577,6 +1698,7 @@ __declspec(dllexport) DWORD WINAPI main(
                 MAX_PATH,
                 ".exe"
             );
+            printf("Downloading symbols for %s.\n", explorer_sb_exe);
             if (VnDownloadSymbols(
                 NULL,
                 explorer_sb_exe,
@@ -1590,6 +1712,7 @@ __declspec(dllexport) DWORD WINAPI main(
                 );
                 return 2;
             }
+            printf("Reading symbols.\n");
             if (VnGetSymbols(
                 szSettingsPath,
                 symbols_PTRS.explorer_PTRS,
@@ -1646,6 +1769,7 @@ __declspec(dllexport) DWORD WINAPI main(
                 MAX_PATH,
                 ".dll"
             );
+            printf("Downloading symbols for %s.\n", twinui_pcshell_sb_dll);
             if (VnDownloadSymbols(
                 NULL,
                 twinui_pcshell_sb_dll,
@@ -1659,6 +1783,7 @@ __declspec(dllexport) DWORD WINAPI main(
                 );
                 return 4;
             }
+            printf("Reading symbols.\n");
             if (VnGetSymbols(
                 szSettingsPath,
                 symbols_PTRS.twinui_pcshell_PTRS,
@@ -1739,6 +1864,7 @@ __declspec(dllexport) DWORD WINAPI main(
                 MAX_PATH,
                 ".dll"
             );
+            printf("Downloading symbols for %s.\n", twinui_sb_dll);
             if (VnDownloadSymbols(
                 NULL,
                 twinui_sb_dll,
@@ -1752,6 +1878,7 @@ __declspec(dllexport) DWORD WINAPI main(
                 );
                 return 6;
             }
+            printf("Reading symbols.\n");
             if (VnGetSymbols(
                 szSettingsPath,
                 symbols_PTRS.twinui_PTRS,
@@ -1781,6 +1908,71 @@ __declspec(dllexport) DWORD WINAPI main(
                 TEXT(TWINUI_SB_NAME),
                 TEXT(TWINUI_SB_2),
                 symbols_PTRS.twinui_PTRS[2],
+                wszSettingsPath
+            );
+
+            char stobject_sb_dll[MAX_PATH];
+            ZeroMemory(
+                stobject_sb_dll,
+                (MAX_PATH) * sizeof(char)
+            );
+            GetSystemDirectoryA(
+                stobject_sb_dll,
+                MAX_PATH
+            );
+            strcat_s(
+                stobject_sb_dll,
+                MAX_PATH,
+                "\\"
+            );
+            strcat_s(
+                stobject_sb_dll,
+                MAX_PATH,
+                STOBJECT_SB_NAME
+            );
+            strcat_s(
+                stobject_sb_dll,
+                MAX_PATH,
+                ".dll"
+            );
+            printf("Downloading symbols for %s.\n", stobject_sb_dll);
+            if (VnDownloadSymbols(
+                NULL,
+                stobject_sb_dll,
+                szSettingsPath,
+                MAX_PATH
+            ))
+            {
+                FreeLibraryAndExitThread(
+                    hModule,
+                    6
+                );
+                return 6;
+            }
+            printf("Reading symbols.\n");
+            if (VnGetSymbols(
+                szSettingsPath,
+                symbols_PTRS.stobject_PTRS,
+                stobject_SN,
+                STOBJECT_SB_CNT
+            ))
+            {
+                FreeLibraryAndExitThread(
+                    hModule,
+                    7
+                );
+                return 7;
+            }
+            VnWriteUInt(
+                TEXT(STOBJECT_SB_NAME),
+                TEXT(STOBJECT_SB_0),
+                symbols_PTRS.stobject_PTRS[0],
+                wszSettingsPath
+            );
+            VnWriteUInt(
+                TEXT(STOBJECT_SB_NAME),
+                TEXT(STOBJECT_SB_1),
+                symbols_PTRS.stobject_PTRS[1],
                 wszSettingsPath
             );
 
@@ -1851,7 +2043,7 @@ __declspec(dllexport) DWORD WINAPI main(
         if (hUser32) CreateWindowInBand = GetProcAddress(hUser32, "CreateWindowInBand");
 
 
-
+        LoadLibrary("twinui.pcshell.dll");
         HANDLE hTwinuiPcshell = GetModuleHandle(L"twinui.pcshell.dll");
 
         CImmersiveContextMenuOwnerDrawHelper_s_ContextMenuWndProcFunc = (INT64(*)(HWND, int, HWND, int, BOOL*))
@@ -1886,7 +2078,7 @@ __declspec(dllexport) DWORD WINAPI main(
         }
 
 
-
+        LoadLibrary(L"twinui.dll");
         HANDLE hTwinui = GetModuleHandle(L"twinui.dll");
 
         CImmersiveHotkeyNotification_GetMonitorForHotkeyNotificationFunc = (INT64(*)(void*, void**, HWND*))
@@ -1908,6 +2100,33 @@ __declspec(dllexport) DWORD WINAPI main(
             return rv;
         }
 
+
+
+        LoadLibrary(L"stobject.dll");
+        HANDLE hStobject = GetModuleHandle(L"stobject.dll");
+        SysTrayWndProcFunc = (INT64(*)(HWND, UINT, WPARAM, LPARAM))
+            ((uintptr_t)hStobject + symbols_PTRS.stobject_PTRS[0]);
+        rv = funchook_prepare(
+            funchook,
+            (void**)&SysTrayWndProcFunc,
+            SysTrayWndProcHook
+        );
+        if (rv != 0)
+        {
+            FreeLibraryAndExitThread(hModule, rv);
+            return rv;
+        }
+        TrackPopupMenuFunc = TrackPopupMenu;
+        rv = funchook_prepare(
+            funchook,
+            (void**)&TrackPopupMenuFunc,
+            TrackPopupMenuHook
+        );
+        if (rv != 0)
+        {
+            FreeLibraryAndExitThread(hModule, rv);
+            return rv;
+        }
 
 
         rv = funchook_install(funchook, 0);
