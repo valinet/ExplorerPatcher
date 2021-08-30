@@ -476,6 +476,7 @@ LRESULT CALLBACK CLauncherTipContextMenu_WndProc(
         POINT pt;
         GetCursorPos(&pt);
 
+        HWND prevhWnd = GetForegroundWindow();
         SetForegroundWindow(hWnd);
 
         HMENU hMenu = CreatePopupMenu();
@@ -517,6 +518,7 @@ LRESULT CALLBACK CLauncherTipContextMenu_WndProc(
             &(pt)
         );
         free(unknown_array);
+        SetForegroundWindow(prevhWnd);
 
         if (res == 1 || res == 2)
         {
