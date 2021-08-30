@@ -5,7 +5,7 @@ Explorer Patcher is a patcher that enables various stuff in Explorer. For the mo
 * enables the power user menu (Win+X) when using the classic taskbar in Windows 11
 * shows the Start menu on the monitor containing the cursor when invoked with the Windows key
 
-This heas been tested on the following builds:
+This has been tested on the following builds:
 
 * 22000.1 - works as advertised, tested with `Start_ShowClassicMode` which shows the Windows 10 Start menu; taskbar works, Win+X works and is skinned, WiFi flyout works, battery flyout works, no delay at logon
 * 22000.168 - works as advertised, Start button opens Windows 11 Start menu (a half broken Windows 10 menu can be restored by copying `StartMenuExperienceHost.exe` and its DLLs from 22000.1); taskbar works, Win+X works and is skinned, WiFi flyout DOES NOT work (use control center aka gear icon or [enable Windows 8 network flyout](https://winaero.com/change-network-icon-click-action-in-windows-10/?utm_source=software&utm_medium=in-app&utm_campaign=winaerotweaker&utm_content=networkflyout) instead, battery flyout DOES NOT work (use [Battery Mode](https://en.bmode.tarcode.ru/) utility), control center icon works, no delay at logon (!!!)

@@ -2,6 +2,10 @@
 
 This document includes the same release notes as in the [Releases](https://github.com/valinet/ExplorerPatcher/releases) section on GitHub.
 
+## 22000.168.0.7
+
+Enables compatibility with [ArchiveMenu](https://github.com/valinet/archivemenu).
+
 ## 22000.168.0.6
 
 Fixes [#5](https://github.com/valinet/ExplorerPatcher/issues/5) (removes the delay at logon on newer builds like 22000.168; the bug is similar to the effect introduced by `UndockingDisabled` on these newer builds).

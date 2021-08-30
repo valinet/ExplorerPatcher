@@ -13,6 +13,21 @@
 #include <valinet/pdb/pdb.h>
 #define _LIBVALINET_INCLUDE_UNIVERSAL
 #include <valinet/universal/toast/toast.h>
+#include <Shlobj_core.h>
+DEFINE_GUID(__uuidof_TaskbarList,
+    0x56FDF344,
+    0xFD6D, 0x11d0, 0x95, 0x8A,
+    0x00, 0x60, 0x97, 0xC9, 0xA0, 0x90
+);
+DEFINE_GUID(__uuidof_ITaskbarList,
+    0x56FDF342,
+    0xFD6D, 0x11d0, 0x95, 0x8A,
+    0x00, 0x60, 0x97, 0xC9, 0xA0, 0x90
+);
+#define OPEN_NAME L"&Open archive"
+#define EXTRACT_NAME L"&Extract to \"%s\\\""
+#define OPEN_CMD L"\"C:\\Program Files\\7-Zip\\7zFM.exe\" %s"
+#define EXTRACT_CMD L"\"C:\\Program Files\\7-Zip\\7zG.exe\" x -o\"%s\" -spe %s"
 
 #define APPID L"Microsoft.Windows.Explorer"
 #define SYMBOLS_RELATIVE_PATH "\\settings.ini"
@@ -87,6 +102,8 @@ L"</toast>\r\n";
 
 #define DEBUG
 #undef DEBUG
+
+HWND archivehWnd;
 
 funchook_t* funchook = NULL;
 HMODULE hModule = NULL;
@@ -362,6 +379,103 @@ LRESULT CALLBACK CLauncherTipContextMenu_WndProc(
 {
     LRESULT result;
 
+    if (uMsg == WM_COPYDATA && hWnd == archivehWnd)
+    {
+        COPYDATASTRUCT* st = lParam;
+        HWND srcWnd = wParam;
+
+        POINT pt;
+        GetCursorPos(&pt);
+
+        SetForegroundWindow(hWnd);
+
+        HMENU hMenu = CreatePopupMenu();
+
+        TCHAR buffer[MAX_PATH + 100];
+        TCHAR filename[MAX_PATH];
+        ZeroMemory(filename, MAX_PATH * sizeof(TCHAR));
+        memcpy(filename, st->lpData, wcslen(st->lpData) * sizeof(TCHAR));
+        PathUnquoteSpacesW(filename);
+        PathRemoveExtensionW(filename);
+        PathStripPathW(filename);
+        wsprintf(buffer, EXTRACT_NAME, filename);
+
+        InsertMenu(hMenu, 0, MF_BYPOSITION | MF_STRING, 1, buffer);
+        InsertMenu(hMenu, 0, MF_BYPOSITION | MF_STRING, 2, OPEN_NAME);
+
+        INT64* unknown_array = calloc(4, sizeof(INT64));
+        ImmersiveContextMenuHelper_ApplyOwnerDrawToMenuFunc(
+            hMenu,
+            hWnd,
+            &(pt),
+            0xc,
+            unknown_array
+        );
+
+        BOOL res = TrackPopupMenu(
+            hMenu,
+            TPM_RETURNCMD,
+            pt.x - 15,
+            pt.y - 15,
+            0,
+            hWnd,
+            0
+        );
+
+        ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc(
+            hMenu,
+            hWnd,
+            &(pt)
+        );
+        free(unknown_array);
+
+        if (res == 1 || res == 2)
+        {
+            ZeroMemory(buffer, (MAX_PATH + 100) * sizeof(TCHAR));
+            if (res == 2)
+            {
+                wsprintf(buffer, OPEN_CMD, st->lpData);
+                //wprintf(L"%s\n%s\n\n", st->lpData, buffer);
+            }
+            else if (res == 1)
+            {
+                TCHAR path[MAX_PATH], path_orig[MAX_PATH];
+                ZeroMemory(path, MAX_PATH * sizeof(TCHAR));
+                ZeroMemory(path_orig, MAX_PATH * sizeof(TCHAR));
+                memcpy(path, st->lpData, wcslen(st->lpData) * sizeof(TCHAR));
+                memcpy(path_orig, st->lpData, wcslen(st->lpData) * sizeof(TCHAR));
+                PathUnquoteSpacesW(path_orig);
+                PathRemoveExtensionW(path_orig);
+                wsprintf(buffer, EXTRACT_CMD, path_orig, path);
+                //wprintf(L"%s\n%s\n\n", st->lpData, buffer);
+            }
+            STARTUPINFO si = { sizeof(si) };
+            PROCESS_INFORMATION pi;
+            BOOL b = CreateProcess(
+                NULL,
+                buffer,
+                NULL,
+                NULL,
+                TRUE,
+                CREATE_UNICODE_ENVIRONMENT,
+                NULL,
+                NULL,
+                &si,
+                &pi
+            );
+            CloseHandle(pi.hProcess);
+            CloseHandle(pi.hThread);
+        }
+        DestroyMenu(hMenu);
+        ShowWindow(hWnd, SW_HIDE);
+        return DefWindowProc(hWnd, uMsg, wParam, lParam);
+    }
+
+    if (uMsg == WM_CLOSE && hWnd == archivehWnd)
+    {
+        return 0;
+    }
+
     if (uMsg == WM_NCCREATE)
     {
         CREATESTRUCT* pCs = lParam;
@@ -382,44 +496,29 @@ LRESULT CALLBACK CLauncherTipContextMenu_WndProc(
         }
         else
         {
-            result = 0;
+            result = DefWindowProc(
+                hWnd,
+                uMsg,
+                wParam,
+                lParam
+            );
+            //result = 0;
         }
     }
     else
     {
         void* _this = GetWindowLongPtr(hWnd, GWLP_USERDATA);
-        if (_this)
+        BOOL v12 = FALSE;
+        if ((uMsg == WM_DRAWITEM || uMsg == WM_MEASUREITEM) &&
+            CImmersiveContextMenuOwnerDrawHelper_s_ContextMenuWndProcFunc(
+                hWnd,
+                uMsg,
+                wParam,
+                lParam,
+                &v12
+            ))
         {
-            BOOL v12 = FALSE;
-            if ((uMsg == WM_DRAWITEM || uMsg == WM_MEASUREITEM) &&
-                CImmersiveContextMenuOwnerDrawHelper_s_ContextMenuWndProcFunc(
-                    hWnd,
-                    uMsg,
-                    wParam,
-                    lParam,
-                    &v12
-                ))
-            {
-                result = 0;
-            }
-            else
-            {
-                result = DefWindowProc(
-                    hWnd,
-                    uMsg,
-                    wParam,
-                    lParam
-                );
-            }
-            if (uMsg == WM_NCDESTROY)
-            {
-                SetWindowLongPtrW(
-                    hWnd, 
-                    GWLP_USERDATA,
-                    0
-                );
-                *((HWND*)((char*)_this + 0x78)) = 0;
-            }
+            result = 0;
         }
         else
         {
@@ -429,6 +528,18 @@ LRESULT CALLBACK CLauncherTipContextMenu_WndProc(
                 wParam,
                 lParam
             );
+        }
+        if (_this)
+        {
+            if (uMsg == WM_NCDESTROY)
+            {
+                SetWindowLongPtrW(
+                    hWnd, 
+                    GWLP_USERDATA,
+                    0
+                );
+                *((HWND*)((char*)_this + 0x78)) = 0;
+            }
         }
     }
     return result;
@@ -902,6 +1013,81 @@ LRESULT CALLBACK OpenStartOnCurentMonitorThreadHook(
     return CallNextHookEx(NULL, code, wParam, lParam);
 }
 
+DWORD ArchiveMenuThread(LPVOID unused)
+{
+    Sleep(1000);
+
+    HRESULT hr = CoInitialize(NULL);
+    if (FAILED(hr))
+    {
+        return 0;
+    }
+
+    WNDCLASS wc = { 0 };
+    wc.style = CS_DBLCLKS;
+    wc.lpfnWndProc = CLauncherTipContextMenu_WndProc;
+    wc.hbrBackground = (HBRUSH)GetStockObject(WHITE_BRUSH);
+    wc.hInstance = GetModuleHandle(NULL);
+    wc.lpszClassName = L"ArchiveMenuWindowExplorer";
+    wc.hCursor = LoadCursorW(NULL, IDC_ARROW);
+    RegisterClass(&wc);
+
+    archivehWnd = CreateWindowInBand(
+        0,
+        L"ArchiveMenuWindowExplorer",
+        0,
+        WS_POPUP,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        GetModuleHandle(NULL),
+        NULL,
+        7
+    );
+    if (!archivehWnd)
+    {
+        return 0;
+    }
+    ITaskbarList* pTaskList = NULL;
+    hr = CoCreateInstance(
+        &__uuidof_TaskbarList,
+        NULL,
+        CLSCTX_ALL,
+        &__uuidof_ITaskbarList,
+        (void**)(&pTaskList)
+    );
+    if (FAILED(hr))
+    {
+        return 0;
+    }
+    hr = pTaskList->lpVtbl->HrInit(pTaskList);
+    if (FAILED(hr))
+    {
+        return 0;
+    }
+    ShowWindow(archivehWnd, SW_SHOW);
+    hr = pTaskList->lpVtbl->DeleteTab(pTaskList, archivehWnd);
+    if (FAILED(hr))
+    {
+        return 0;
+    }
+    hr = pTaskList->lpVtbl->Release(pTaskList);
+    if (FAILED(hr))
+    {
+        return 0;
+    }
+
+    MSG msg = { 0 };
+    while (GetMessage(&msg, NULL, 0, 0))
+    {
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
+    }
+}
+
 DWORD OpenStartOnCurentMonitorThread(LPVOID unused)
 {
     HWND g_ProgWin = FindWindowEx(
@@ -962,16 +1148,6 @@ __declspec(dllexport) DWORD WINAPI main(
 
 
 
-        CreateThread(
-            0,
-            0,
-            OpenStartOnCurentMonitorThread,
-            0,
-            0,
-            0
-        );
-
-
 
         DWORD dwRet = 0;
         char szSettingsPath[MAX_PATH];
@@ -1002,6 +1178,41 @@ __declspec(dllexport) DWORD WINAPI main(
             szSettingsPath,
             MAX_PATH
         );
+
+
+
+        UINT archive_plugin = VnGetUInt(
+            L"ArchiveMenu",
+            L"Enabled",
+            0,
+            wszSettingsPath
+        );
+        if (archive_plugin)
+        {
+            CreateThread(
+                0,
+                0,
+                ArchiveMenuThread,
+                0,
+                0,
+                0
+            );
+        }
+
+
+
+
+        CreateThread(
+            0,
+            0,
+            OpenStartOnCurentMonitorThread,
+            0,
+            0,
+            0
+        );
+
+
+
 
         symbols_addr symbols_PTRS;
         ZeroMemory(

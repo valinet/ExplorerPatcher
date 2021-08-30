@@ -63,10 +63,10 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <NMakeBuildCommandLine>rem taskkill /f /im:explorer.exe 2&gt;nul &amp;set errorlevel=0</NMakeBuildCommandLine>
+    <NMakeBuildCommandLine>taskkill /f /im:explorer.exe 2&gt;nul &amp;set errorlevel=0</NMakeBuildCommandLine>
     <NMakeOutput>PreBuildCommand.exe</NMakeOutput>
     <NMakePreprocessorDefinitions>NDEBUG;$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
-    <NMakeReBuildCommandLine>rem taskkill /f /im:explorer.exe 2&gt;nul &amp;set errorlevel=0</NMakeReBuildCommandLine>
+    <NMakeReBuildCommandLine>taskkill /f /im:explorer.exe 2&gt;nul &amp;set errorlevel=0</NMakeReBuildCommandLine>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <NMakeBuildCommandLine>rem taskkill /f /im:explorer.exe 2&gt;nul &amp;set errorlevel=0</NMakeBuildCommandLine>
