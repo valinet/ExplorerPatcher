@@ -47,6 +47,7 @@ DEFINE_GUID(__uuidof_IAuthUILogonSound,
 #define OPEN_CMD L"\"C:\\Program Files\\7-Zip\\7zFM.exe\" %s"
 #define EXTRACT_CMD L"\"C:\\Program Files\\7-Zip\\7zG.exe\" x -o\"%s\" -spe %s"
 
+#define INJECTION_SUCCESS_TIMEOUT 3000
 #define APPID L"Microsoft.Windows.Explorer"
 #define SYMBOLS_RELATIVE_PATH "\\ExplorerPatcher\\settings.ini"
 #define EXPLORER_SB_NAME "explorer"
@@ -1932,7 +1933,7 @@ DWORD DownloadSymbols(TCHAR* wszSettingsPath)
 DWORD DetermineInjectionSuccess(TCHAR* wszSettingsPath)
 {
     uintptr_t ok = 0;
-    Sleep(3000);
+    Sleep(INJECTION_SUCCESS_TIMEOUT);
     printf("Started \"Determine injection success\" thread.\n");
     HWND hWnd = FindWindowEx(
         NULL,
@@ -2839,7 +2840,7 @@ __declspec(dllexport) CALLBACK ZZLaunchExplorer(HWND hWnd, HINSTANCE hInstance, 
 
 __declspec(dllexport) CALLBACK ZZLaunchExplorerDelayed(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLine, int nCmdShow)
 {
-    Sleep(5000);
+    Sleep(INJECTION_SUCCESS_TIMEOUT + 2000);
     ZZLaunchExplorer(hWnd, hInstance, lpszCmdLine, nCmdShow);
 }
 
