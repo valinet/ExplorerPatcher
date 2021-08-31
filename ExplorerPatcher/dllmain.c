@@ -2724,7 +2724,12 @@ __declspec(dllexport) DWORD WINAPI main(
             0,
             wszSettingsPath
         );
-        if (!bAllowImmersiveContextMenus)
+        if (!bAllowImmersiveContextMenus && 
+            rovi.dwMajorVersion >= 10 && 
+            rovi.dwMinorVersion >= 0 && 
+            rovi.dwBuildNumber >= 22000 &&
+            ubr >= 65
+            )
         {
             rv = funchook_prepare(
                 funchook,
