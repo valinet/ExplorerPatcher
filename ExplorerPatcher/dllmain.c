@@ -1102,62 +1102,19 @@ LRESULT CALLBACK OpenStartOnCurentMonitorThreadHook(
         MSG* msg = (MSG*)lParam;
         if (GetSystemMetrics(SM_CMONITORS) >= 2 && msg->message == WM_SYSCOMMAND && (msg->wParam & 0xFFF0) == SC_TASKLIST)
         {
-            BOOL bShouldCheckHKLM = FALSE;
-            HKEY hKey;
-            if (RegOpenKeyEx(
-                HKEY_CURRENT_USER,
-                TEXT("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartPage"),
-                0,
-                KEY_READ,
-                &hKey
-            ) != ERROR_SUCCESS)
-            {
-                bShouldCheckHKLM = TRUE;
-            }
             DWORD dwStatus = 0;
             DWORD dwSize = sizeof(DWORD);
-            if (RegGetValue(
-                hKey,
-                NULL,
+            HMODULE hModule = GetModuleHandle(TEXT("Shlwapi"));
+            FARPROC SHRegGetValueFromHKCUHKLMFunc = GetProcAddress(hModule, "SHRegGetValueFromHKCUHKLM");
+            LSTATUS x = 0;
+            if (!SHRegGetValueFromHKCUHKLMFunc || SHRegGetValueFromHKCUHKLMFunc(
+                TEXT("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartPage"),
                 TEXT("MonitorOverride"),
-                RRF_RT_REG_DWORD,
+                SRRF_RT_REG_DWORD,
                 NULL,
                 &dwStatus,
                 (LPDWORD)(&dwSize)
-            ) != ERROR_SUCCESS)
-            {
-                bShouldCheckHKLM = TRUE;
-            }
-            RegCloseKey(hKey);
-            if (bShouldCheckHKLM)
-            {
-                if (RegOpenKeyEx(
-                    HKEY_LOCAL_MACHINE,
-                    TEXT("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartPage"),
-                    0,
-                    KEY_READ,
-                    &hKey
-                ) != ERROR_SUCCESS)
-                {
-                    goto finish;
-                }
-                dwStatus = 0;
-                dwSize = sizeof(DWORD);
-                if (RegGetValue(
-                    hKey,
-                    NULL,
-                    TEXT("MonitorOverride"),
-                    RRF_RT_REG_DWORD,
-                    NULL,
-                    &dwStatus,
-                    (LPDWORD)(&dwSize)
-                ) != ERROR_SUCCESS)
-                {
-                    goto finish;
-                }
-                RegCloseKey(hKey);
-            }
-            if (dwStatus == 1)
+            ) != ERROR_SUCCESS || dwStatus == 1)
             {
                 goto finish;
             }
