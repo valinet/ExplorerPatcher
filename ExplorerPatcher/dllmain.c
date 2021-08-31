@@ -1417,8 +1417,8 @@ DWORD PlayStartupSound(DWORD x)
     AuthUILogonSound* ppv;
     hr = CoCreateInstance(
         &__uuidof_AuthUILogonSound,
-        0,
-        1,
+        NULL,
+        CLSCTX_INPROC_SERVER,
         &__uuidof_IAuthUILogonSound,
         &ppv
     );
