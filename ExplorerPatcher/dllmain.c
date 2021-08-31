@@ -1386,7 +1386,7 @@ DWORD OpenStartOnCurentMonitorThread(LPVOID unused)
 
 DWORD PlayStartupSound(DWORD x)
 {
-    Sleep(1000);
+    Sleep(2000);
     printf("Started \"Play startup sound\" thread.\n");
 
     HRESULT hr = CoInitialize(NULL);
