@@ -2074,7 +2074,7 @@ DWORD DetermineInjectionSuccess(TCHAR* wszSettingsPath)
     );
 }
 
-DWORD WINAPI main(
+__declspec(dllexport) DWORD WINAPI main(
     _In_ LPVOID lpParameter
 )
 {
