@@ -165,7 +165,6 @@ HWND archivehWnd;
 funchook_t* funchook = NULL;
 HMODULE hModule = NULL;
 HANDLE hIsWinXShown = NULL;
-INT64 lockEnsureWinXHotkeyOnlyOnce;
 
 typedef LONG NTSTATUS, * PNTSTATUS;
 #define STATUS_SUCCESS (0x00000000)
@@ -410,6 +409,31 @@ typedef struct IImmersiveMonitorServiceVtbl
         IImmersiveMonitorService* This,
         /* [in] */ HMONITOR hMonitor,
         _COM_Outptr_  IUnknown** ppvObject);
+
+    HRESULT(STDMETHODCALLTYPE* method6)(
+        IImmersiveMonitorService* This);
+
+    HRESULT(STDMETHODCALLTYPE* method7)(
+        IImmersiveMonitorService* This);
+
+    HRESULT(STDMETHODCALLTYPE* QueryService)(
+        IImmersiveMonitorService* This,
+        HMONITOR hMonitor,
+        GUID*,
+        GUID*,
+        void** ppvObject
+        );
+
+    HRESULT(STDMETHODCALLTYPE* method9)(
+        IImmersiveMonitorService* This);
+
+    HRESULT(STDMETHODCALLTYPE* QueryServiceFromWindow)(
+        IImmersiveMonitorService* This,
+        HWND hWnd,
+        GUID* a3,
+        GUID* a4,
+        void** ppvObject
+        );
 
     END_INTERFACE
 } IImmersiveMonitorServiceVtbl;
@@ -783,6 +807,8 @@ typedef struct
     IUnknown* iunk;
 } ShowLauncherTipContextMenuParameters;
 
+HWND hWinXWnd;
+
 DWORD ShowLauncherTipContextMenu(
     ShowLauncherTipContextMenuParameters* params
 )
@@ -796,7 +822,7 @@ DWORD ShowLauncherTipContextMenu(
     wc.hCursor = LoadCursorW(NULL, IDC_ARROW);
     RegisterClass(&wc);
 
-    HWND hWnd = CreateWindowInBand(
+    hWinXWnd = CreateWindowInBand(
         0,
         CLASS_NAME,
         0,
@@ -811,8 +837,8 @@ DWORD ShowLauncherTipContextMenu(
         (char*)params->_this - 0x58,
         7
     );
-    ShowWindow(hWnd, SW_SHOW);
-    SetForegroundWindow(hWnd);
+    ShowWindow(hWinXWnd, SW_SHOW);
+    SetForegroundWindow(hWinXWnd);
 
     while (!(*((HMENU*)((char*)params->_this + 0xe8))))
     {
@@ -826,7 +852,7 @@ DWORD ShowLauncherTipContextMenu(
     INT64* unknown_array = calloc(4, sizeof(INT64));
     ImmersiveContextMenuHelper_ApplyOwnerDrawToMenuFunc(
         *((HMENU*)((char*)params->_this + 0xe8)),
-        hWnd,
+        hWinXWnd,
         &(params->point),
         0xc,
         unknown_array
@@ -838,13 +864,13 @@ DWORD ShowLauncherTipContextMenu(
         params->point.x,
         params->point.y,
         0,
-        hWnd,
+        hWinXWnd,
         0
     );
 
     ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc(
         *((HMENU*)((char*)params->_this + 0xe8)),
-        hWnd,
+        hWinXWnd,
         &(params->point)
     );
     free(unknown_array);
@@ -872,7 +898,7 @@ DWORD ShowLauncherTipContextMenu(
     finalize:
     params->iunk->lpVtbl->Release(params->iunk);
     SendMessage(
-        hWnd,
+        hWinXWnd,
         WM_CLOSE,
         0,
         0
@@ -880,6 +906,50 @@ DWORD ShowLauncherTipContextMenu(
     free(params);
     hIsWinXShown = NULL;
     return 0;
+}
+
+POINT GetDefaultWinXPosition()
+{
+    POINT point, ptCursor;
+    GetCursorPos(&ptCursor);
+    MONITORINFO mi;
+    mi.cbSize = sizeof(MONITORINFO);
+    GetMonitorInfo(
+        MonitorFromPoint(
+            ptCursor,
+            MONITOR_DEFAULTTONEAREST
+        ),
+        &mi
+    );
+    // https://stackoverflow.com/questions/44746234/programatically-get-windows-taskbar-info-autohidden-state-taskbar-coordinates
+    APPBARDATA abd;
+    abd.cbSize = sizeof(APPBARDATA);
+    SHAppBarMessage(ABM_GETTASKBARPOS, &abd);
+    if (abd.rc.left < 5 && abd.rc.top > 5)
+    {
+        // TB_POS_BOTTOM
+        point.x = mi.rcMonitor.left;
+        point.y = mi.rcMonitor.bottom;
+    }
+    else if (abd.rc.left < 5 && abd.rc.top < 5 && abd.rc.right > abd.rc.bottom)
+    {
+        // TB_POS_TOP
+        point.x = mi.rcMonitor.left;
+        point.y = mi.rcMonitor.top;
+    }
+    else if (abd.rc.left < 5 && abd.rc.top < 5 && abd.rc.right < abd.rc.bottom)
+    {
+        // TB_POS_LEFT
+        point.x = mi.rcMonitor.left;
+        point.y = mi.rcMonitor.top;
+    }
+    else if (abd.rc.left > 5 && abd.rc.top < 5)
+    {
+        // TB_POS_RIGHT
+        point.x = mi.rcMonitor.right;
+        point.y = mi.rcMonitor.top;
+    }
+    return point;
 }
 
 INT64 CLauncherTipContextMenu_ShowLauncherTipContextMenuHook(
@@ -899,45 +969,7 @@ INT64 CLauncherTipContextMenu_ShowLauncherTipContextMenuHook(
     }
     else
     {
-        POINT ptCursor;
-        GetCursorPos(&ptCursor);
-        MONITORINFO mi;
-        mi.cbSize = sizeof(MONITORINFO);
-        GetMonitorInfo(
-            MonitorFromPoint(
-                ptCursor, 
-                MONITOR_DEFAULTTONEAREST
-            ), 
-            &mi
-        );
-        // https://stackoverflow.com/questions/44746234/programatically-get-windows-taskbar-info-autohidden-state-taskbar-coordinates
-        APPBARDATA abd;
-        abd.cbSize = sizeof(APPBARDATA);
-        SHAppBarMessage(ABM_GETTASKBARPOS, &abd);
-        if (abd.rc.left < 5 && abd.rc.top > 5)
-        {
-            // TB_POS_BOTTOM
-            point.x = mi.rcMonitor.left;
-            point.y = mi.rcMonitor.bottom;
-        }
-        else if (abd.rc.left < 5 && abd.rc.top < 5 && abd.rc.right > abd.rc.bottom)
-        {
-            // TB_POS_TOP
-            point.x = mi.rcMonitor.left;
-            point.y = mi.rcMonitor.top;
-        }
-        else if (abd.rc.left < 5 && abd.rc.top < 5 && abd.rc.right < abd.rc.bottom)
-        {
-            // TB_POS_LEFT
-            point.x = mi.rcMonitor.left;
-            point.y = mi.rcMonitor.top;
-        }
-        else if (abd.rc.left > 5 && abd.rc.top < 5)
-        {
-            // TB_POS_RIGHT
-            point.x = mi.rcMonitor.right;
-            point.y = mi.rcMonitor.top;
-        }
+        point = GetDefaultWinXPosition();
     }
 
     IUnknown* iunk;
@@ -980,62 +1012,36 @@ INT64 CTray_HandleGlobalHotkeyHook(
         // see https://github.com/valinet/ExplorerPatcher/issues/3
         if (hIsWinXShown)
         {
-            INPUT ip[2];
-            ip[0].type = INPUT_KEYBOARD;
-            ip[0].ki.wScan = 0;
-            ip[0].ki.time = 0;
-            ip[0].ki.dwExtraInfo = 0;
-            ip[0].ki.wVk = VK_ESCAPE;
-            ip[0].ki.dwFlags = 0;
-            ip[1].type = INPUT_KEYBOARD;
-            ip[1].ki.wScan = 0;
-            ip[1].ki.time = 0;
-            ip[1].ki.dwExtraInfo = 0;
-            ip[1].ki.wVk = VK_ESCAPE;
-            ip[1].ki.dwFlags = KEYEVENTF_KEYUP;
-            SendInput(2, ip, sizeof(INPUT));
-            return 0;
+            SendMessage(hWinXWnd, WM_CLOSE, 0, 0);
         }
-
-        HWND hWnd = GetForegroundWindow();
-        HWND g_ProgWin = FindWindowEx(
-            NULL,
-            NULL,
-            L"Progman",
-            NULL
-        );
-        SetForegroundWindow(g_ProgWin);
-
-        INPUT ip[4];
-        ip[0].type = INPUT_KEYBOARD;
-        ip[0].ki.wScan = 0;
-        ip[0].ki.time = 0;
-        ip[0].ki.dwExtraInfo = 0;
-        ip[0].ki.wVk = VK_LWIN;
-        ip[0].ki.dwFlags = 0;
-        ip[1].type = INPUT_KEYBOARD;
-        ip[1].ki.wScan = 0;
-        ip[1].ki.time = 0;
-        ip[1].ki.dwExtraInfo = 0;
-        ip[1].ki.wVk = 0x51; // 0x46;
-        ip[1].ki.dwFlags = 0;
-        ip[2].type = INPUT_KEYBOARD;
-        ip[2].ki.wScan = 0;
-        ip[2].ki.time = 0;
-        ip[2].ki.dwExtraInfo = 0;
-        ip[2].ki.wVk = 0x51; // 0x46;
-        ip[2].ki.dwFlags = KEYEVENTF_KEYUP;
-        ip[3].type = INPUT_KEYBOARD;
-        ip[3].ki.wScan = 0;
-        ip[3].ki.time = 0;
-        ip[3].ki.dwExtraInfo = 0;
-        ip[3].ki.wVk = VK_LWIN;
-        ip[3].ki.dwFlags = KEYEVENTF_KEYUP;
-        InterlockedExchange64(&lockEnsureWinXHotkeyOnlyOnce, 1);
-        SendInput(4, ip, sizeof(INPUT));
-       
-        SetForegroundWindow(hWnd);
-
+        else
+        {
+            HWND hWnd = FindWindowEx(
+                NULL,
+                NULL,
+                L"Shell_TrayWnd",
+                NULL
+            );
+            if (hWnd)
+            {
+                hWnd = FindWindowEx(
+                    hWnd,
+                    NULL,
+                    L"Start",
+                    NULL
+                );
+                if (hWnd)
+                {
+                    POINT pt = GetDefaultWinXPosition();
+                    PostMessage(
+                        hWnd,
+                        WM_CONTEXTMENU,
+                        hWnd,
+                        MAKELPARAM(pt.x, pt.y)
+                    );
+                }
+            }
+        }
         return 0;
     }
     return CTray_HandleGlobalHotkeyFunc(
@@ -1075,38 +1081,6 @@ HRESULT CImmersiveHotkeyNotification_OnMessageHook(
     INT64 lParam
 )
 {
-    if (InterlockedExchange64(&lockEnsureWinXHotkeyOnlyOnce, 0) &&
-        wParam == 30 && // 28, 15
-        IsDesktopInputContextFunc(_this, msg)
-    )
-    {
-        IUnknown* pMonitor = NULL;
-        HRESULT hr = CImmersiveHotkeyNotification_GetMonitorForHotkeyNotificationFunc(
-            (char*)_this - 0x68,
-            &pMonitor,
-            0
-        );
-        if (SUCCEEDED(hr))
-        {
-            IUnknown* pMenu = NULL;
-            IUnknown_QueryService(
-                pMonitor,
-                &IID_ILauncherTipContextMenu,
-                &IID_ILauncherTipContextMenu,
-                &pMenu
-            );
-            if (pMenu)
-            {
-                CLauncherTipContextMenu_ShowLauncherTipContextMenuHook(
-                    pMenu,
-                    0
-                );
-                pMenu->lpVtbl->Release(pMenu);
-            }
-        }
-        return 0;
-    }
-
     return CImmersiveHotkeyNotification_OnMessageFunc(
         _this,
         msg,
