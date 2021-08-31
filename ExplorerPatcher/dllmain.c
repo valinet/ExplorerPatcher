@@ -1552,6 +1552,7 @@ DWORD DownloadSymbols(TCHAR* wszSettingsPath)
         MAX_PATH + 1
     );
     PathRemoveFileSpecA(szSettingsPath);
+    CreateDirectoryA(szSettingsPath, NULL);
     strcat_s(
         szSettingsPath,
         MAX_PATH + 1,
