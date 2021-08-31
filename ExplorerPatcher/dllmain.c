@@ -1090,6 +1090,72 @@ HRESULT CImmersiveHotkeyNotification_OnMessageHook(
     );
 }
 
+void OpenStartOnMonitor(HMONITOR monitor)
+{
+    HRESULT hr = S_OK;
+    IUnknown* pImmersiveShell = NULL;
+    hr = CoCreateInstance(
+        &CLSID_ImmersiveShell,
+        NULL,
+        CLSCTX_INPROC_SERVER,
+        &IID_IServiceProvider,
+        &pImmersiveShell
+    );
+    if (SUCCEEDED(hr))
+    {
+        IImmersiveMonitorService* pMonitorService = NULL;
+        IUnknown_QueryService(
+            pImmersiveShell,
+            &SID_IImmersiveMonitorService,
+            &IID_IImmersiveMonitorService,
+            &pMonitorService
+        );
+        if (pMonitorService)
+        {
+            IUnknown* pMonitor = NULL;
+            pMonitorService->lpVtbl->GetFromHandle(
+                pMonitorService,
+                monitor,
+                &pMonitor
+            );
+            IImmersiveLauncher10RS* pLauncher = NULL;
+            IUnknown_QueryService(
+                pImmersiveShell,
+                &SID_ImmersiveLauncher,
+                &IID_IImmersiveLauncher10RS,
+                &pLauncher
+            );
+            if (pLauncher)
+            {
+                BOOL bIsVisible = FALSE;
+                pLauncher->lpVtbl->IsVisible(pLauncher, &bIsVisible);
+                if (SUCCEEDED(hr))
+                {
+                    if (!bIsVisible)
+                    {
+                        if (pMonitor)
+                        {
+                            pLauncher->lpVtbl->ConnectToMonitor(pLauncher, pMonitor);
+                        }
+                        pLauncher->lpVtbl->ShowStartView(pLauncher, 11, 0);
+                    }
+                    else
+                    {
+                        pLauncher->lpVtbl->Dismiss(pLauncher);
+                    }
+                }
+                pLauncher->lpVtbl->Release(pLauncher);
+            }
+            if (pMonitor)
+            {
+                pMonitor->lpVtbl->Release(pMonitor);
+            }
+            pMonitorService->lpVtbl->Release(pMonitorService);
+        }
+        pImmersiveShell->lpVtbl->Release(pImmersiveShell);
+    }
+}
+
 // Slightly tweaked version of function available in Open Shell 
 // (Open-Shell-Menu\Src\StartMenu\StartMenuHelper\StartMenuHelper.cpp)
 LRESULT CALLBACK OpenStartOnCurentMonitorThreadHook(
@@ -1107,7 +1173,6 @@ LRESULT CALLBACK OpenStartOnCurentMonitorThreadHook(
             DWORD dwSize = sizeof(DWORD);
             HMODULE hModule = GetModuleHandle(TEXT("Shlwapi"));
             FARPROC SHRegGetValueFromHKCUHKLMFunc = GetProcAddress(hModule, "SHRegGetValueFromHKCUHKLM");
-            LSTATUS x = 0;
             if (!SHRegGetValueFromHKCUHKLMFunc || SHRegGetValueFromHKCUHKLMFunc(
                 TEXT("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartPage"),
                 TEXT("MonitorOverride"),
@@ -1125,72 +1190,10 @@ LRESULT CALLBACK OpenStartOnCurentMonitorThreadHook(
             pt.x = GET_X_LPARAM(pts);
             pt.y = GET_Y_LPARAM(pts);
             HMONITOR monitor = MonitorFromPoint(
-                pt, 
+                pt,
                 MONITOR_DEFAULTTONULL
             );
-
-            HRESULT hr = S_OK;
-            IUnknown* pImmersiveShell = NULL;
-            hr = CoCreateInstance(
-                &CLSID_ImmersiveShell,
-                NULL,
-                CLSCTX_INPROC_SERVER,
-                &IID_IServiceProvider,
-                &pImmersiveShell
-            );
-            if (SUCCEEDED(hr))
-            {
-                IImmersiveMonitorService* pMonitorService = NULL;
-                IUnknown_QueryService(
-                    pImmersiveShell,
-                    &SID_IImmersiveMonitorService,
-                    &IID_IImmersiveMonitorService,
-                    &pMonitorService
-                );
-                if (pMonitorService)
-                {
-                    IUnknown* pMonitor = NULL;
-                    pMonitorService->lpVtbl->GetFromHandle(
-                        pMonitorService, 
-                        monitor, 
-                        &pMonitor
-                    );
-                    IImmersiveLauncher10RS* pLauncher = NULL;
-                    IUnknown_QueryService(
-                        pImmersiveShell,
-                        &SID_ImmersiveLauncher,
-                        &IID_IImmersiveLauncher10RS,
-                        &pLauncher
-                    );
-                    if (pLauncher)
-                    {
-                        BOOL bIsVisible = FALSE;
-                        pLauncher->lpVtbl->IsVisible(pLauncher, &bIsVisible);
-                        if (SUCCEEDED(hr))
-                        {
-                            if (!bIsVisible)
-                            {
-                                if (pMonitor)
-                                {
-                                    pLauncher->lpVtbl->ConnectToMonitor(pLauncher, pMonitor);
-                                }
-                                pLauncher->lpVtbl->ShowStartView(pLauncher, 11, 0);
-                            }
-                            else
-                            {
-                                pLauncher->lpVtbl->Dismiss(pLauncher);
-                            }
-                        }
-                        pLauncher->lpVtbl->Release(pLauncher);
-                    }
-                    if (pMonitor)
-                    {
-                        pMonitor->lpVtbl->Release(pMonitor);
-                    }
-                    pMonitorService->lpVtbl->Release(pMonitorService);
-                }
-                pImmersiveShell->lpVtbl->Release(pImmersiveShell);
-            }
+            OpenStartOnMonitor(monitor);
 
             msg->message = WM_NULL;
         }
@@ -1316,35 +1319,57 @@ DWORD OpenStartOnCurentMonitorThread(LPVOID unused)
     printf("Ended \"Open Start on current monitor\" thread.\n");
 }
 
-DWORD PlayStartupSound(DWORD x)
+DWORD OpenStartAtLogon(DWORD unused)
+{
+    HANDLE hEvent = CreateEvent(0, 0, 0, L"ShellDesktopSwitchEvent");
+    if (!hEvent)
+    {
+        printf("Failed to start \"Open Start at Logon\" thread.\n");
+        return 0;
+    }
+    WaitForSingleObject(
+        hEvent,
+        INFINITE
+    );
+    printf("Started \"Open Start at Logon\" thread.\n");
+
+    DWORD dwStatus = 0;
+    DWORD dwSize = sizeof(DWORD);
+    HMODULE hModule = GetModuleHandle(TEXT("Shlwapi"));
+    FARPROC SHRegGetValueFromHKCUHKLMFunc = GetProcAddress(hModule, "SHRegGetValueFromHKCUHKLM");
+    if (!SHRegGetValueFromHKCUHKLMFunc || SHRegGetValueFromHKCUHKLMFunc(
+        TEXT("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartPage"),
+        TEXT("OpenAtLogon"),
+        SRRF_RT_REG_DWORD,
+        NULL,
+        &dwStatus,
+        (LPDWORD)(&dwSize)
+    ) != ERROR_SUCCESS || dwStatus == 0)
+    {
+        return 0;
+    }
+
+    POINT pt;
+    pt.x = 0;
+    pt.y = 0;
+    HMONITOR monitor = MonitorFromPoint(
+        pt,
+        MONITOR_DEFAULTTOPRIMARY
+    );
+    OpenStartOnMonitor(monitor);
+
+    printf("Ended \"Open Start at Logon\" thread.\n");
+}
+
+DWORD PlayStartupSound(DWORD unused)
 {
     Sleep(2000);
     printf("Started \"Play startup sound\" thread.\n");
 
     HRESULT hr = CoInitialize(NULL);
 
-    /*HKEY hKey2;
-    LONG lRes2 = RegOpenKeyExW(
-        HKEY_LOCAL_MACHINE,
-        L"Software\\Microsoft\\Windows\\CurrentVersion\\Authentication\\LogonUI\\LogonSoundPlayed",
-        0,
-        KEY_READ,
-        &hKey2
-    );
-    if (lRes2 == ERROR_SUCCESS)
-    {
-        DWORD val = 5;
-        DWORD szval = 4;
-        lRes2 = RegQueryValueExW(
-            hKey2,
-            L"SoundPlayed",
-            0,
-            NULL,
-            &val,
-            &szval
-        );
-        printf("SoundPlayed: %d %d\n", val, lRes2);
-    }*/
+    // this checks Software\\Microsoft\\Windows\\CurrentVersion\\Authentication\\LogonUI\\LogonSoundPlayed
+    // and then plays the startup sound
 
     AuthUILogonSound* ppv;
     hr = CoCreateInstance(
@@ -1364,7 +1389,7 @@ DWORD PlayStartupSound(DWORD x)
     return 0;
 }
 
-DWORD SignalShellReady(DWORD x)
+DWORD SignalShellReady(DWORD unused)
 {
     Sleep(2000);
     printf("Started \"Signal shell ready\" thread.\n");
