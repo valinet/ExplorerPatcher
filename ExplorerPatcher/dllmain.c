@@ -17,6 +17,7 @@
 #define _LIBVALINET_INCLUDE_UNIVERSAL
 #include <valinet/universal/toast/toast.h>
 #include <Shlobj_core.h>
+#pragma comment(lib, "Comctl32.lib")
 DEFINE_GUID(__uuidof_TaskbarList,
     0x56FDF344,
     0xFD6D, 0x11d0, 0x95, 0x8A,
@@ -913,42 +914,72 @@ POINT GetDefaultWinXPosition()
 {
     POINT point, ptCursor;
     GetCursorPos(&ptCursor);
+    HMONITOR hMonitor = MonitorFromPoint(ptCursor, MONITOR_DEFAULTTOPRIMARY);
     MONITORINFO mi;
     mi.cbSize = sizeof(MONITORINFO);
     GetMonitorInfo(
         MonitorFromPoint(
             ptCursor,
-            MONITOR_DEFAULTTONEAREST
+            MONITOR_DEFAULTTOPRIMARY
         ),
         &mi
     );
-    // https://stackoverflow.com/questions/44746234/programatically-get-windows-taskbar-info-autohidden-state-taskbar-coordinates
-    APPBARDATA abd;
-    abd.cbSize = sizeof(APPBARDATA);
-    SHAppBarMessage(ABM_GETTASKBARPOS, &abd);
-    if (abd.rc.left < 5 && abd.rc.top > 5)
+    HWND hWnd = FindWindowEx(
+        NULL,
+        NULL,
+        L"Shell_TrayWnd",
+        NULL
+    );
+    if (MonitorFromWindow(hWnd, MONITOR_DEFAULTTOPRIMARY) != hMonitor)
     {
-        // TB_POS_BOTTOM
-        point.x = mi.rcMonitor.left;
-        point.y = mi.rcMonitor.bottom;
+        hWnd = FindWindowEx(
+            NULL,
+            NULL,
+            L"Shell_SecondaryTrayWnd",
+            NULL
+        );
+        while (hWnd)
+        {
+            if (MonitorFromWindow(hWnd, MONITOR_DEFAULTTOPRIMARY) == hMonitor)
+            {
+                break;
+            }
+            hWnd = FindWindowEx(
+                NULL,
+                hWnd,
+                L"Shell_SecondaryTrayWnd",
+                NULL
+            );
+        }
     }
-    else if (abd.rc.left < 5 && abd.rc.top < 5 && abd.rc.right > abd.rc.bottom)
+    if (hWnd)
     {
-        // TB_POS_TOP
-        point.x = mi.rcMonitor.left;
-        point.y = mi.rcMonitor.top;
-    }
-    else if (abd.rc.left < 5 && abd.rc.top < 5 && abd.rc.right < abd.rc.bottom)
-    {
-        // TB_POS_LEFT
-        point.x = mi.rcMonitor.left;
-        point.y = mi.rcMonitor.top;
-    }
-    else if (abd.rc.left > 5 && abd.rc.top < 5)
-    {
-        // TB_POS_RIGHT
-        point.x = mi.rcMonitor.right;
-        point.y = mi.rcMonitor.top;
+        RECT rc;
+        GetWindowRect(hWnd, &rc);
+        if (rc.left - mi.rcMonitor.left == 0)
+        {
+            point.x = mi.rcMonitor.left;
+            if (rc.top - mi.rcMonitor.top == 0)
+            {
+                point.y = mi.rcMonitor.top;
+            }
+            else
+            {
+                point.y = mi.rcMonitor.bottom;
+            }
+        }
+        else
+        {
+            point.x = mi.rcMonitor.right;
+            if (rc.top - mi.rcMonitor.top == 0)
+            {
+                point.y = mi.rcMonitor.top;
+            }
+            else
+            {
+                point.y = mi.rcMonitor.bottom;
+            }
+        }
     }
     return point;
 }
