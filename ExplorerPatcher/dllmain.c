@@ -2964,6 +2964,15 @@ __declspec(dllexport) HRESULT UpdateHMDEmulationStatus(char p1)
     return UpdateHMDEmulationStatusFunc(p1);
 }
 
+static INT64(*StartDocked_LauncherFrame_OnVisibilityChangedFunc)(void*, INT64, void*);
+
+static INT64(*StartDocked_LauncherFrame_ShowAllApps)(void* _this);
+
+INT64 StartDocked_LauncherFrame_OnVisibilityChangedHook(void* _this, INT64 a2, void* VisibilityChangedEventArguments)
+{
+    INT64 r = StartDocked_LauncherFrame_OnVisibilityChangedFunc(_this, a2, VisibilityChangedEventArguments);
+    StartDocked_LauncherFrame_ShowAllApps(_this);
+}
 
 BOOL WINAPI DllMain(
     _In_ HINSTANCE hinstDLL,
@@ -2987,10 +2996,6 @@ BOOL WINAPI DllMain(
             MAX_PATH
         );
         PathStripPath(exeName);
-        if (!wcscmp(exeName, L"rundll32.exe"))
-        {
-            break;
-        }
         TCHAR wszSystemPath[MAX_PATH + 1];
         GetSystemDirectory(wszSystemPath, MAX_PATH + 1);
         wcscat_s(wszSystemPath, MAX_PATH + 1, L"\\dxgi.dll");
@@ -3015,7 +3020,42 @@ BOOL WINAPI DllMain(
         PIXGetCaptureStateFunc = GetProcAddress(hModule, "PIXGetCaptureState");
         SetAppCompatStringPointerFunc = GetProcAddress(hModule, "SetAppCompatStringPointer");
         UpdateHMDEmulationStatusFunc = GetProcAddress(hModule, "UpdateHMDEmulationStatus");
-        main(0);
+        if (!wcscmp(exeName, L"explorer.exe"))
+        {
+            main(0);
+        }
+        else if (!wcscmp(exeName, L"StartMenuExperienceHost.exe"))
+        {
+            funchook = funchook_create();
+
+            int rv;
+
+            LoadLibraryW(L"StartDocked.dll");
+            HANDLE hStartDocked = GetModuleHandle(L"StartDocked.dll");
+            StartDocked_LauncherFrame_ShowAllApps = (INT64(*)(void*))
+                ((uintptr_t)hStartDocked + 0x188EBC);
+            StartDocked_LauncherFrame_OnVisibilityChangedFunc = (INT64(*)(void*, INT64, void*))
+                ((uintptr_t)hStartDocked + 0x187120);
+            rv = funchook_prepare(
+                funchook,
+                (void**)&StartDocked_LauncherFrame_OnVisibilityChangedFunc,
+                StartDocked_LauncherFrame_OnVisibilityChangedHook
+            );
+            if (rv != 0)
+            {
+                exit(0);
+                FreeLibraryAndExitThread(hModule, rv);
+                return rv;
+            }
+
+            rv = funchook_install(funchook, 0);
+            if (rv != 0)
+            {
+                exit(0);
+                FreeLibraryAndExitThread(hModule, rv);
+                return rv;
+            }
+        }
 #pragma warning(default : 6387)
         break;
     case DLL_THREAD_ATTACH:
