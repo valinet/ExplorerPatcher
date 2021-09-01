@@ -913,6 +913,8 @@ DWORD ShowLauncherTipContextMenu(
 POINT GetDefaultWinXPosition()
 {
     POINT point, ptCursor;
+    point.x = 0;
+    point.y = 0;
     GetCursorPos(&ptCursor);
     HMONITOR hMonitor = MonitorFromPoint(ptCursor, MONITOR_DEFAULTTOPRIMARY);
     MONITORINFO mi;
@@ -924,33 +926,37 @@ POINT GetDefaultWinXPosition()
         ),
         &mi
     );
-    HWND hWnd = FindWindowEx(
-        NULL,
-        NULL,
-        L"Shell_TrayWnd",
-        NULL
-    );
-    if (MonitorFromWindow(hWnd, MONITOR_DEFAULTTOPRIMARY) != hMonitor)
+    HWND hWnd = NULL;
+    do
+    {
+        hWnd = FindWindowEx(
+            NULL,
+            hWnd,
+            L"Shell_SecondaryTrayWnd",
+            NULL
+        );
+        if (MonitorFromWindow(hWnd, MONITOR_DEFAULTTOPRIMARY) == hMonitor)
+        {
+            break;
+        }
+    } while (hWnd);
+    if (!hWnd)
     {
         hWnd = FindWindowEx(
             NULL,
             NULL,
-            L"Shell_SecondaryTrayWnd",
+            L"Shell_TrayWnd",
             NULL
         );
-        while (hWnd)
-        {
-            if (MonitorFromWindow(hWnd, MONITOR_DEFAULTTOPRIMARY) == hMonitor)
-            {
-                break;
-            }
-            hWnd = FindWindowEx(
-                NULL,
-                hWnd,
-                L"Shell_SecondaryTrayWnd",
-                NULL
-            );
-        }
+        ptCursor.x = 0;
+        ptCursor.y = 0;
+        GetMonitorInfo(
+            MonitorFromPoint(
+                ptCursor,
+                MONITOR_DEFAULTTOPRIMARY
+            ),
+            &mi
+        );
     }
     if (hWnd)
     {
