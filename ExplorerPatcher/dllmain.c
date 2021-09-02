@@ -506,14 +506,14 @@ static BOOL(*TrackPopupMenuFunc)(
 
 
 static INT64(*ContextMenuPresenter_DoContextMenuFunc)(
-    char* _this,
+    void* _this,
     INT64 a2,
     INT a3,
     void* a4
     );
 
 INT64 ContextMenuPresenter_DoContextMenuHook(
-    char* _this,
+    void* _this,
     INT64 a2,
     INT a3,
     void* a4
@@ -3271,7 +3271,7 @@ __declspec(dllexport) DWORD WINAPI main(
 
         LoadLibraryW(L"Windows.UI.FileExplorer.dll");
         HANDLE hWindowsUIFileExplorer = GetModuleHandle(L"Windows.UI.FileExplorer.dll");
-        ContextMenuPresenter_DoContextMenuFunc = (INT64(*)(void*))
+        ContextMenuPresenter_DoContextMenuFunc = (INT64(*)(void*, INT64, INT, void*))
             ((uintptr_t)hWindowsUIFileExplorer + symbols_PTRS.windowsuifileexplorer_PTRS[0]);
         UINT bAllowImmersiveContextMenus = VnGetUInt(
             L"General",
