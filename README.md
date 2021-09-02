@@ -16,7 +16,7 @@ Current functionality enabled by this patcher includes:
 
 It has been developed on and tested to work against the latest build, 22000.168. It should work on newer builds as well as long as the internal structure does not change too much (hopefully Microsoft won't remove all the legacy code).
 
-A changelog is available [here](https://github.com/valinet/ExplorerPatcher/blob/master/CHANGELOG.md). A few screenshots are available [here](https://github.com/valinet/ExplorerPatcher/blob/master/res).
+A changelog is available [here](https://github.com/valinet/ExplorerPatcher/blob/master/CHANGELOG.md). A few screenshots are available [here](https://github.com/valinet/ExplorerPatcher/blob/master/res/SCREENSHOTS.md).
 
 A detailed description of how this works is available on my web site [here](https://valinet.ro/2021/08/09/Restore-Windows-11-to-working-Windows-10-UI.html).
 
