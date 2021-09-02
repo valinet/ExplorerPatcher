@@ -14,7 +14,7 @@ Current functionality enabled by this patcher includes:
 * disables the logon delay which happened if you were to enable the classic taskbar using `UndockingDisabled`
 * play log on sound, if enabled
 
-It has been developed on and tested to work against the latest build, 22000.168. It should work on newer builds as well as long as the internal structure does not change too much (hopefully Microsoft won't remove all the legacy code).
+It has been developed on and tested to work against the latest build, 22000.176. It should work on newer builds as well as long as the internal structure does not change too much (hopefully Microsoft won't remove all the legacy code).
 
 A changelog is available [here](https://github.com/valinet/ExplorerPatcher/blob/master/CHANGELOG.md).
 
@@ -24,7 +24,7 @@ The application comes in the form of a dynamic-link library (DLL). Precompiled b
 
 Screenshots: [<1>](https://gist.githubusercontent.com/valinet/d0f72ff09773702584e77c46065b95e0/raw/94036ed3e38218b87744a29ae5c40b06be637daf/ep_img0.png)
 
-(*) There is a bug currently in Windows 11 22000.168 where search may not open properly on other monitors. This is not because of this patcher, and will probably (hopefully) be fixed by Microsoft in a future build.
+(*) There is a bug currently in Windows 11 22000.176 where search may not open properly on other monitors. This is not because of this patcher, and will probably (hopefully) be fixed by Microsoft in a future build.
 
 ## Installation
 
