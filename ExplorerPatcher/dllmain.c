@@ -70,7 +70,8 @@ DEFINE_GUID(__uuidof_IAuthUILogonSound,
 #define TWINUI_PCSHELL_SB_4 "CLauncherTipContextMenu::_ExecuteShutdownCommand"
 #define TWINUI_PCSHELL_SB_5 "CLauncherTipContextMenu::_ExecuteCommand"
 #define TWINUI_PCSHELL_SB_6 "CLauncherTipContextMenu::ShowLauncherTipContextMenu"
-#define TWINUI_PCSHELL_SB_CNT 7
+#define TWINUI_PCSHELL_SB_7 "winrt::Windows::Internal::Shell::implementation::MeetAndChatManager::OnMessage"
+#define TWINUI_PCSHELL_SB_CNT 8
 #define TWINUI_SB_NAME "twinui"
 #define TWINUI_SB_0 "CImmersiveHotkeyNotification::_GetMonitorForHotkeyNotification"
 #define TWINUI_SB_1 "IsDesktopInputContext"
@@ -106,7 +107,8 @@ const char* twinui_pcshell_SN[TWINUI_PCSHELL_SB_CNT] = {
     TWINUI_PCSHELL_SB_3,
     TWINUI_PCSHELL_SB_4,
     TWINUI_PCSHELL_SB_5,
-    TWINUI_PCSHELL_SB_6
+    TWINUI_PCSHELL_SB_6,
+    TWINUI_PCSHELL_SB_7
 };
 const char* twinui_SN[TWINUI_SB_CNT] = {
     TWINUI_SB_0,
@@ -393,6 +395,11 @@ static HWND(WINAPI* CreateWindowInBand)(
     );
 
 
+static INT64(*winrt_Windows_Internal_Shell_implementation_MeetAndChatManager_OnMessageFunc)(
+    void* _this,
+    INT64 a2,
+    INT a3
+    );
 
 static INT64(*CLauncherTipContextMenu_ShowLauncherTipContextMenuFunc)(
     void* _this,
@@ -1090,24 +1097,9 @@ DWORD ShowLauncherTipContextMenu(
     return 0;
 }
 
-POINT GetDefaultWinXPosition(BOOL bUseRcWork, BOOL* lpBottom, BOOL* lpRight)
+HWND GetMonitorInfoFromPointForTaskbarFlyoutActivation(POINT ptCursor, DWORD dwFlags, LPMONITORINFO lpMi)
 {
-    if (lpBottom) *lpBottom = FALSE;
-    if (lpRight) *lpRight = FALSE;
-    POINT point, ptCursor;
-    point.x = 0;
-    point.y = 0;
-    GetCursorPos(&ptCursor);
-    HMONITOR hMonitor = MonitorFromPoint(ptCursor, MONITOR_DEFAULTTOPRIMARY);
-    MONITORINFO mi;
-    mi.cbSize = sizeof(MONITORINFO);
-    GetMonitorInfo(
-        MonitorFromPoint(
-            ptCursor,
-            MONITOR_DEFAULTTOPRIMARY
-        ),
-        &mi
-    );
+    HMONITOR hMonitor = MonitorFromPoint(ptCursor, dwFlags);
     HWND hWnd = NULL;
     do
     {
@@ -1117,8 +1109,18 @@ POINT GetDefaultWinXPosition(BOOL bUseRcWork, BOOL* lpBottom, BOOL* lpRight)
             L"Shell_SecondaryTrayWnd",
             NULL
         );
-        if (MonitorFromWindow(hWnd, MONITOR_DEFAULTTOPRIMARY) == hMonitor)
+        if (MonitorFromWindow(hWnd, dwFlags) == hMonitor)
         {
+            if (lpMi)
+            {
+                GetMonitorInfo(
+                    MonitorFromPoint(
+                        ptCursor,
+                        dwFlags
+                    ),
+                    lpMi
+                );
+            }
             break;
         }
     } while (hWnd);
@@ -1132,14 +1134,36 @@ POINT GetDefaultWinXPosition(BOOL bUseRcWork, BOOL* lpBottom, BOOL* lpRight)
         );
         ptCursor.x = 0;
         ptCursor.y = 0;
-        GetMonitorInfo(
-            MonitorFromPoint(
-                ptCursor,
-                MONITOR_DEFAULTTOPRIMARY
-            ),
-            &mi
-        );
+        if (lpMi)
+        {
+            GetMonitorInfo(
+                MonitorFromPoint(
+                    ptCursor,
+                    dwFlags
+                ),
+                lpMi
+            );
+        }
     }
+    return hWnd;
+}
+
+POINT GetDefaultWinXPosition(BOOL bUseRcWork, BOOL* lpBottom, BOOL* lpRight)
+{
+    if (lpBottom) *lpBottom = FALSE;
+    if (lpRight) *lpRight = FALSE;
+    POINT point;
+    point.x = 0;
+    point.y = 0;
+    POINT ptCursor;
+    GetCursorPos(&ptCursor);
+    MONITORINFO mi;
+    mi.cbSize = sizeof(MONITORINFO);
+    HWND hWnd = GetMonitorInfoFromPointForTaskbarFlyoutActivation(
+        ptCursor, 
+        MONITOR_DEFAULTTOPRIMARY, 
+        &mi
+    );
     if (hWnd)
     {
         RECT rc;
@@ -1215,6 +1239,52 @@ POINT GetDefaultWinXPosition(BOOL bUseRcWork, BOOL* lpBottom, BOOL* lpRight)
         }
     }
     return point;
+}
+
+INT64 winrt_Windows_Internal_Shell_implementation_MeetAndChatManager_OnMessageHook(
+    void* _this,
+    INT64 a2,
+    INT a3
+)
+{
+    if (a2 == 786 && a3 == 107)
+    {
+        POINT ptCursor;
+        GetCursorPos(&ptCursor);
+        HWND hWnd = GetMonitorInfoFromPointForTaskbarFlyoutActivation(
+            ptCursor,
+            MONITOR_DEFAULTTOPRIMARY,
+            NULL
+        );
+        HWND prev_hWnd = hWnd;
+        if (hWnd)
+        {
+            hWnd = FindWindowEx(hWnd, NULL, TEXT("TrayNotifyWnd"), NULL);
+            if (hWnd)
+            {
+                hWnd = FindWindowEx(hWnd, NULL, TEXT("TrayClockWClass"), NULL);
+            }
+            if (!hWnd)
+            {
+                hWnd = FindWindowEx(prev_hWnd, NULL, TEXT("ClockButton"), NULL);
+            }
+            if (hWnd)
+            {
+                RECT rc;
+                GetWindowRect(hWnd, &rc);
+                HWND g_ProgWin = FindWindowEx(
+                    NULL,
+                    NULL,
+                    L"Progman",
+                    NULL
+                );
+                SetForegroundWindow(g_ProgWin);
+                PostMessage(hWnd, WM_LBUTTONDOWN, 0, 0);
+                PostMessage(hWnd, WM_LBUTTONUP, 0, 0);
+            }
+        }
+    }
+    return 0;
 }
 
 INT64 CLauncherTipContextMenu_ShowLauncherTipContextMenuHook(
@@ -1653,11 +1723,16 @@ DWORD PlayStartupSound(DWORD unused)
     return 0;
 }
 
-DWORD SignalShellReady(DWORD unused)
+DWORD SignalShellReady(DWORD wait)
 {
+    if (wait)
+    {
+        Sleep(wait);
+    }
+
     printf("Started \"Signal shell ready\" thread.\n");
 
-    while (TRUE)
+    while (!wait && TRUE)
     {
         HWND hWnd = FindWindowEx(
             NULL,
@@ -1684,7 +1759,10 @@ DWORD SignalShellReady(DWORD unused)
         Sleep(100);
     }
 
-    Sleep(300);
+    if (!wait)
+    {
+        Sleep(600);
+    }
 
     HANDLE hEvent = CreateEvent(0, 0, 0, L"ShellDesktopSwitchEvent");
     if (hEvent)
@@ -1991,6 +2069,12 @@ DWORD DownloadSymbols(TCHAR* wszSettingsPath)
         TEXT(TWINUI_PCSHELL_SB_NAME),
         TEXT(TWINUI_PCSHELL_SB_6),
         symbols_PTRS.twinui_pcshell_PTRS[6],
+        wszSettingsPath
+    );
+    VnWriteUInt(
+        TEXT(TWINUI_PCSHELL_SB_NAME),
+        TEXT(TWINUI_PCSHELL_SB_7),
+        symbols_PTRS.twinui_pcshell_PTRS[7],
         wszSettingsPath
     );
 
@@ -2630,6 +2714,12 @@ __declspec(dllexport) DWORD WINAPI main(
             0,
             wszSettingsPath
         );
+        symbols_PTRS.twinui_pcshell_PTRS[7] = VnGetUInt(
+            TEXT(TWINUI_PCSHELL_SB_NAME),
+            TEXT(TWINUI_PCSHELL_SB_7),
+            0,
+            wszSettingsPath
+        );
 
         symbols_PTRS.twinui_PTRS[0] = VnGetUInt(
             TEXT(TWINUI_SB_NAME),
@@ -3212,6 +3302,19 @@ __declspec(dllexport) DWORD WINAPI main(
             FreeLibraryAndExitThread(hModule, rv);
             return rv;
         }
+
+        winrt_Windows_Internal_Shell_implementation_MeetAndChatManager_OnMessageFunc = (INT64(*)(void*, POINT*))
+            ((uintptr_t)hTwinuiPcshell + symbols_PTRS.twinui_pcshell_PTRS[7]);
+        rv = funchook_prepare(
+            funchook,
+            (void**)&winrt_Windows_Internal_Shell_implementation_MeetAndChatManager_OnMessageFunc,
+            winrt_Windows_Internal_Shell_implementation_MeetAndChatManager_OnMessageHook
+        );
+        if (rv != 0)
+        {
+            FreeLibraryAndExitThread(hModule, rv);
+            return rv;
+        }
         printf("Setup twinui.pcshell functions done\n");
 
 
@@ -3335,11 +3438,17 @@ __declspec(dllexport) DWORD WINAPI main(
 
 
 
+        UINT delay = VnGetUInt(
+            TEXT("General"),
+            TEXT("ExplorerReadyDelay"),
+            0,
+            wszSettingsPath
+        );
         CreateThread(
             0,
             0,
             SignalShellReady,
-            0,
+            delay,
             0,
             0
         );
