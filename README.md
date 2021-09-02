@@ -30,6 +30,10 @@ Simply copy the downloaded DLL named `dxgi.dll` to `%windir%` (usually `C:\Windo
 
 At first launch, the application will notify you about missing symbols and will automatically download them from Microsoft. Then, it will try to determine some patch offsets for Explorer. The process involves automatically restarting Explorer a couple of times and evaluating the results. Please be patient and let this do its job; you will know it is done when you will see the old taskbar instead of the new one. Also, the application will show a notification to let you know it is done.
 
+Downloaded symbols and application configuration is saved in the `%appdata%\ExplorerPatcher` folder.
+
+Beware that the symbols are pretty large (around 500MB), so make sure that you have a good, fast Internet connection. If you want to avoid this though, I have uploaded my `settings.ini` files [here](https://github.com/valinet/ExplorerPatcher/blob/master/configs), so you can use it directly and spare some time. Make sure to download a file that matches your OS build, as otherwise things might not work properly. Just download the file and place it in the `%appdata%\ExplorerPatcher` folder and you should be good to go.
+
 When it is done, the classic taskbar will be available and fully functioning, but you will notice the system tray misses the status icons. Those can be easily enabled by opening `Run` and going to `%windir%\explorer.exe shell:::{05d7b0f4-2121-4eff-bf6b-ed3f69b894d9}\SystemIcons` and enabling each system icon you wish from there. For a list of other useful registry settings that can help you make the most out of this application, like disabling taskbar grouping, read [here](https://github.com/valinet/ExplorerPatcher/issues/9).
 
 After you get the classic taskbar working, to make it work with the Start menu and search and enable related functionality, copy the DLL to the following 2 locations as well:
@@ -39,7 +43,7 @@ After you get the classic taskbar working, to make it work with the Start menu a
 
 After that is done, kill both `StartMenuExperienceHost.exe` and `SearchHost.exe` from Task Manager, or simply log out and back in or restart the computer.
 
-Downloaded symbols and application configuration is saved in the `%appdata%\ExplorerPatcher` folder.
+
 
 To uninstall, simply delete `dxgi.dll` from all the directories above. If you get a "file in use" error when attempting to do so, simply rename it everywhere to `dxgia.dll`, reboot the computer and then delete the renamed DLL.
 
