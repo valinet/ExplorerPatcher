@@ -145,6 +145,18 @@ typedef struct symbols_addr
 } symbols_addr;
 #pragma pack(pop)
 
+wchar_t TestToastXML[] =
+L"<toast displayTimestamp=\"2021-08-29T00:00:00.000Z\" scenario=\"reminder\" "
+L"activationType=\"protocol\" launch=\"https://github.com/valinet/ExplorerPatcher\" duration=\"%s\">\r\n"
+L"	<visual>\r\n"
+L"		<binding template=\"ToastGeneric\">\r\n"
+L"			<text><![CDATA[%s]]></text>\r\n"
+L"			<text placement=\"attribution\"><![CDATA[ExplorerPatcher]]></text>\r\n"
+L"		</binding>\r\n"
+L"	</visual>\r\n"
+L"	<audio src=\"ms-winsoundevent:Notification.Default\" loop=\"false\" silent=\"false\"/>\r\n"
+L"</toast>\r\n";
+
 wchar_t DownloadSymbolsXML[] =
 L"<toast displayTimestamp=\"2021-08-29T00:00:00.000Z\" scenario=\"reminder\" "
 L"activationType=\"protocol\" launch=\"https://github.com/valinet/ExplorerPatcher\" duration=\"short\">\r\n"
@@ -217,6 +229,114 @@ BOOL GetOSVersion(PRTL_OSVERSIONINFOW lpRovi)
         }
     }
     return FALSE;
+}
+
+LRESULT CALLBACK BalloonWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+    if (msg == WM_CREATE)
+    {
+        LPCREATESTRUCT lpCs = lParam;
+
+        NOTIFYICONDATA ni = { 0 };
+        ni.cbSize = sizeof(ni);
+        ni.hWnd = hWnd;
+        ni.uID = 1;
+        ni.uFlags = NIF_INFO;
+        ni.dwInfoFlags = NIIF_INFO;
+        ni.uTimeout = 2000;
+        _tcscpy_s(ni.szInfo, _countof(ni.szInfo), lpCs->lpCreateParams);
+        _tcscpy_s(ni.szInfoTitle, _countof(ni.szInfoTitle), _T("ExplorerPatcher"));
+
+        Shell_NotifyIcon(NIM_ADD, &ni);
+
+        free(lpCs->lpCreateParams);
+
+        exit(0);
+    }
+    else
+    {
+        return DefWindowProc(hWnd, msg, wParam, lParam);
+    }
+    return 0;
+}
+
+__declspec(dllexport) CALLBACK ZZTestBalloon(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLine, int nCmdShow)
+{
+    TCHAR* lpwszCmdLine = calloc((strlen(lpszCmdLine) + 1), sizeof(TCHAR));
+    if (!lpwszCmdLine) exit(0);
+    size_t numChConv = 0;
+    mbstowcs_s(&numChConv, lpwszCmdLine, strlen(lpszCmdLine) + 1, lpszCmdLine, strlen(lpszCmdLine) + 1);
+
+    WNDCLASSEX wc;
+    HWND hwnd;
+    MSG msg;
+
+    wc.cbSize = sizeof(WNDCLASSEX);
+    wc.style = 0;
+    wc.lpfnWndProc = BalloonWndProc;
+    wc.cbClsExtra = 0;
+    wc.cbWndExtra = 0;
+    wc.hInstance = hInstance;
+    wc.hIcon = LoadIcon(NULL, IDI_APPLICATION);
+    wc.hCursor = LoadCursor(NULL, IDC_ARROW);
+    wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+    wc.lpszMenuName = NULL;
+    wc.lpszClassName = L"ExplorerPatcherBalloon";
+    wc.hIconSm = LoadIcon(NULL, IDI_APPLICATION);
+
+    if (!RegisterClassEx(&wc)) {
+        return 0;
+    }
+
+    hwnd = CreateWindowEx(0, L"ExplorerPatcherBalloon", L"",
+        0, 0, 0, 0, 0,
+        HWND_MESSAGE, NULL, hInstance, lpwszCmdLine);
+
+    while (GetMessage(&msg, NULL, 0, 0) > 0) {
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
+    }
+}
+
+__declspec(dllexport) CALLBACK ZZTestToast(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLine, int nCmdShow)
+{
+    TCHAR* lpwszCmdLine = calloc((strlen(lpszCmdLine) + 1), sizeof(TCHAR));
+    if (!lpwszCmdLine) exit(0);
+    size_t numChConv = 0;
+    mbstowcs_s(&numChConv, lpwszCmdLine, strlen(lpszCmdLine) + 1, lpszCmdLine, strlen(lpszCmdLine) + 1);
+    TCHAR* buffer = calloc((sizeof(TestToastXML) / sizeof(wchar_t) + strlen(lpszCmdLine) + 10), sizeof(TCHAR));
+    if (buffer)
+    {
+        wsprintf(
+            buffer,
+            TestToastXML,
+            L"short",
+            lpwszCmdLine
+        );
+        HRESULT hr = S_OK;
+        __x_ABI_CWindows_CData_CXml_CDom_CIXmlDocument* inputXml = NULL;
+        hr = String2IXMLDocument(
+            buffer,
+            wcslen(buffer),
+            &inputXml,
+#ifdef DEBUG
+            stdout
+#else
+            NULL
+#endif
+        );
+        hr = ShowToastMessage(
+            inputXml,
+            APPID,
+            sizeof(APPID) / sizeof(TCHAR) - 1,
+#ifdef DEBUG
+            stdout
+#else
+            NULL
+#endif
+        );
+        free(buffer);
+    }
+    free(lpwszCmdLine);
 }
 
 __declspec(dllexport) CALLBACK ZZLaunchExplorer(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLine, int nCmdShow)
