@@ -4,3 +4,6 @@
 [submodule "libs/funchook"]
 	path = libs/funchook
 	url = https://github.com/kubo/funchook
+[submodule "libs/Detours"]
+	path = libs/Detours
+	url = https://github.com/microsoft/Detours
