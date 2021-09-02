@@ -1656,8 +1656,36 @@ DWORD PlayStartupSound(DWORD unused)
 
 DWORD SignalShellReady(DWORD unused)
 {
-    Sleep(2000);
     printf("Started \"Signal shell ready\" thread.\n");
+
+    while (TRUE)
+    {
+        HWND hWnd = FindWindowEx(
+            NULL,
+            NULL,
+            L"Shell_TrayWnd",
+            NULL
+        );
+        if (hWnd)
+        {
+            hWnd = FindWindowEx(
+                hWnd,
+                NULL,
+                L"Start",
+                NULL
+            );
+            if (hWnd)
+            {
+                if (IsWindowVisible(hWnd))
+                {
+                    break;
+                }
+            }
+        }
+        Sleep(100);
+    }
+
+    Sleep(300);
 
     HANDLE hEvent = CreateEvent(0, 0, 0, L"ShellDesktopSwitchEvent");
     if (hEvent)
