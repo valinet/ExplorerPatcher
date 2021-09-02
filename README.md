@@ -1,5 +1,5 @@
 # Explorer Patcher for Windows 11
-This application aims to bring back a productive working environment on Windows 11, but restoring dormant functionalities from Windows 10 in the newest OS builds.
+This application aims to bring back a productive working environment on Windows 11, by restoring dormant functionalities from Windows 10 in the newest OS builds.
 
 Current functionality enabled by this patcher includes:
 
