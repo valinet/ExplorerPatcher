@@ -3326,7 +3326,8 @@ __declspec(dllexport) DWORD WINAPI main(
                 );
                 instruction <<= 8;
                 instruction >>= 13;
-                instruction &= 0b00010100000000000000000000000000;
+                instruction &= 0b00010111111111111111111111111111;
+                instruction |= 0b00010100000000000000000000000000;
                 memcpy(
                     (LPVOID)dwInjectedAddr,
                     &instruction,
