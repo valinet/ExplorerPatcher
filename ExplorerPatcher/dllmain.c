@@ -2584,6 +2584,31 @@ DWORD DownloadSymbols(TCHAR* wszSettingsPath)
 #endif
     );
 
+    VnWriteUInt(
+        TEXT(EXPLORER_SB_NAME),
+        TEXT(EXPLORER_PATCH_OFFSET_OK),
+        0,
+        wszSettingsPath
+    );
+    VnWriteUInt(
+        TEXT(EXPLORER_SB_NAME),
+        TEXT(EXPLORER_PATCH_DIRTY),
+        0,
+        wszSettingsPath
+    );
+    VnWriteUInt(
+        TEXT(EXPLORER_SB_NAME),
+        TEXT(EXPLORER_PATCH_OFFSET_STRAT),
+        0,
+        wszSettingsPath
+    );
+    VnWriteUInt(
+        TEXT(EXPLORER_SB_NAME),
+        TEXT(EXPLORER_PATCH_OFFSET),
+        0,
+        wszSettingsPath
+    );
+
     Sleep(4000);
 
     TCHAR wszExplorerPath[MAX_PATH + 1];
