@@ -3,6 +3,8 @@
 #error This application only supports the amd64 or ARM64 architectures. Compilation aborted.
 #endif
 #endif
+#define STRAT_REPLACE_ANY_TYPE_OF_JUMP_WITH_NOP 0
+#define STRAT_REPLACE_ANY_TYPE_OF_JUMP_WITH_ALWAYS_JUMP 1
 #define HOOK_WITH_FUNCHOOK 0
 #define HOOK_WITH_DETOURS 1
 #define HOW_TO_HOOK HOOK_WITH_FUNCHOOK
@@ -3242,7 +3244,8 @@ __declspec(dllexport) DWORD WINAPI main(
         if (ok)
         {
             dwInjectedAddr += symbols_PTRS.explorer_PTRS[3] + start;
-            if (strat == 0)
+#ifdef _M_AMD64
+            if (strat == STRAT_REPLACE_ANY_TYPE_OF_JUMP_WITH_NOP)
             {
                 printf("Results: %d (%d) ", VirtualProtect(
                     (LPVOID)dwInjectedAddr,
@@ -3263,7 +3266,7 @@ __declspec(dllexport) DWORD WINAPI main(
                 ), GetLastError());
                 printf("when altering taskbar code path using strat 1.\n");
             }
-            else if (strat == 1)
+            else if (strat == STRAT_REPLACE_ANY_TYPE_OF_JUMP_WITH_ALWAYS_JUMP)
             {
                 printf("Results: %d (%d) ", VirtualProtect(
                     (LPVOID)dwInjectedAddr,
@@ -3284,6 +3287,60 @@ __declspec(dllexport) DWORD WINAPI main(
                 ), GetLastError());
                 printf("when altering taskbar code path using strat 1.\n");
             }
+#elif _M_ARM64
+            if (strat == STRAT_REPLACE_ANY_TYPE_OF_JUMP_WITH_NOP)
+            {
+                uint32_t instruction = 0xD503201F;
+                printf("Results: %d (%d) ", VirtualProtect(
+                    (LPVOID)dwInjectedAddr,
+                    sizeof(uint32_t),
+                    PAGE_EXECUTE_READWRITE,
+                    &dwOldValue
+                ), GetLastError());
+                memcpy(
+                    (LPVOID)dwInjectedAddr,
+                    &instruction,
+                    sizeof(uint32_t)
+                );
+                printf("%d (%d) ", VirtualProtect(
+                    (LPVOID)dwInjectedAddr,
+                    sizeof(uint32_t),
+                    dwOldValue,
+                    (PDWORD)(&dwNumberOfBytes)
+                ), GetLastError());
+                printf("when altering taskbar code path using strat 1.\n");
+            }
+            else if (strat == STRAT_REPLACE_ANY_TYPE_OF_JUMP_WITH_ALWAYS_JUMP)
+            {
+                uint32_t instruction;
+                printf("Results: %d (%d) ", VirtualProtect(
+                    (LPVOID)dwInjectedAddr,
+                    sizeof(uint32_t),
+                    PAGE_EXECUTE_READWRITE,
+                    &dwOldValue
+                ), GetLastError());
+                memcpy(
+                    &instruction,
+                    (LPVOID)dwInjectedAddr,
+                    sizeof(uint32_t)
+                );
+                instruction <<= 8;
+                instruction >>= 13;
+                instruction &= 0b00010100000000000000000000000000;
+                memcpy(
+                    (LPVOID)dwInjectedAddr,
+                    &instruction,
+                    sizeof(uint32_t)
+                );
+                printf("%d (%d) ", VirtualProtect(
+                    (LPVOID)dwInjectedAddr,
+                    sizeof(uint32_t),
+                    dwOldValue,
+                    (PDWORD)(&dwNumberOfBytes)
+                ), GetLastError());
+                printf("when altering taskbar code path using strat 1.\n");
+            }
+#endif
         }
         else
         {
