@@ -1,5 +1,5 @@
 # Explorer Patcher for Windows 11
-This application aims to bring back a productive working environment on Windows 11, but restoring dormant functionalities from Windows 10 in the newest OS builds.
+This application aims to bring back a productive working environment on Windows 11, by restoring dormant functionalities from Windows 10 in the newest OS builds.
 
 Current functionality enabled by this patcher includes:
 
@@ -21,6 +21,8 @@ A changelog is available [here](https://github.com/valinet/ExplorerPatcher/blob/
 A detailed description of how this works is available on my web site [here](https://valinet.ro/2021/08/09/Restore-Windows-11-to-working-Windows-10-UI.html).
 
 The application comes in the form of a dynamic-link library (DLL). Precompiled binaries are available in [Releases](https://github.com/valinet/ExplorerPatcher/releases).
+
+Screenshots: [<1>](https://gist.githubusercontent.com/valinet/d0f72ff09773702584e77c46065b95e0/raw/94036ed3e38218b87744a29ae5c40b06be637daf/ep_img0.png)
 
 (*) There is a bug currently in Windows 11 22000.168 where search may not open properly on other monitors. This is not because of this patcher, and will probably (hopefully) be fixed by Microsoft in a future build.
 
