@@ -1,17 +1,20 @@
-# Explorer Patcher
-Explorer Patcher is a patcher that enables various stuff in Explorer. For the moment, it includes the following:
+# Explorer Patcher for Windows 11
+This application aims to bring back a productive working environment on Windows 11, but restoring dormant functionalities from Windows 10 in the newest OS builds.
 
-* allows using the old taskbar in Windows 11 without the side effects of UndockingDisabled and with fully working search, modern apps showing properly, screen snip still working etc
-* enables the power user menu (Win+X) when using the classic taskbar in Windows 11
-* shows the Start menu on the monitor containing the cursor when invoked with the Windows key
-* enable old context menus on newer builds
+Current functionality enabled by this patcher includes:
 
-This has been tested on the following builds:
+* use the classic taskbar from Windows 10 (without the nasty effects of `UndockingDisabled`)
+* restores the classic power user menu (`Win+X`) when using the classic taskbar
+* ability for the Start menu and search to align to the left when using the classic taskbar (it follows the setting `Left`/`Center` in `Settings\Personalization\Taskbar\Taskbar behaviors\Taskbar alignment`)
+* ability for the Start menu to show the app list by default when opening
+* ability to customize the maximum number of "Most used" apps displayed in the app list in Start
+* ability to show the Start menu on the monitor containing the cursor when you press the Windows key*
+* disable the new context menus in File Explorer and restore the classic ones
+* skin the "Safe to Remove Hardware" pop-up to match the context menus of the taskbar
+* disables the logon delay which happened if you were to enable the classic taskbar using `UndockingDisabled`
+* play log on sound, if enabled
 
-* 22000.1 - works as advertised, tested with `Start_ShowClassicMode` which shows the Windows 10 Start menu; taskbar works, Win+X works and is skinned, WiFi flyout works, battery flyout works, no delay at logon
-* 22000.168 - works as advertised, Start button opens Windows 11 Start menu (a half broken Windows 10 menu can be restored by copying `StartMenuExperienceHost.exe` and its DLLs from 22000.1); taskbar works, Win+X works and is skinned, WiFi flyout DOES NOT work (use control center aka gear icon or [enable Windows 8 network flyout](https://winaero.com/change-network-icon-click-action-in-windows-10/?utm_source=software&utm_medium=in-app&utm_campaign=winaerotweaker&utm_content=networkflyout) instead, battery flyout DOES NOT work (use [Battery Mode](https://en.bmode.tarcode.ru/) utility), control center icon works, no delay at logon (!!!)
-
-It should work on newer builds as well as long as the internal structure does not change too much (hopefully they don't remove all the legacy code), I am rolling with them at the moment and try to keep it working on the most recent CU (as of this time, 22000.168).
+It has been developed on and tested to work against the latest build, 22000.168. It should work on newer builds as well as long as the internal structure does not change too much (hopefully Microsoft won't remove all the legacy code).
 
 A changelog is available [here](https://github.com/valinet/ExplorerPatcher/blob/master/CHANGELOG.md).
 
@@ -19,19 +22,30 @@ A detailed description of how this works is available on my web site [here](http
 
 The application comes in the form of a dynamic-link library (DLL). Precompiled binaries are available in [Releases](https://github.com/valinet/ExplorerPatcher/releases).
 
+(*) There is a bug currently in Windows 11 22000.168 where search may not open properly on other monitors. This is not because of this patcher, and will probably (hopefully) be fixed by Microsoft in a future build.
+
 ## Installation
 
 Simply copy the downloaded DLL named `dxgi.dll` to `%windir%` (usually `C:\Windows`) and restart Explorer.
 
 At first launch, the application will notify you about missing symbols and will automatically download them from Microsoft. Then, it will try to determine some patch offsets for Explorer. The process involves automatically restarting Explorer a couple of times and evaluating the results. Please be patient and let this do its job; you will know it is done when you will see the old taskbar instead of the new one. Also, the application will show a notification to let you know it is done.
 
+When it is done, the classic taskbar will be available and fully functioning, but you will notice the system tray misses the status icons. Those can be easily enabled by opening `Run` and going to `%windir%\explorer.exe shell:::{05d7b0f4-2121-4eff-bf6b-ed3f69b894d9}\SystemIcons` and enabling each system icon you wish from there. For a list of other useful registry settings that can help you make the most out of this application, like disabling taskbar grouping, read [here](https://github.com/valinet/ExplorerPatcher/issues/9).
+
+After you get the classic taskbar working, to make it work with the Start menu and search and enable related functionality, copy the DLL to the following 2 locations as well:
+
+* `C:\Windows\SystemApps\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy`
+* `C:\Windows\SystemApps\MicrosoftWindows.Client.CBS_cw5n1h2txyewy`
+
+After that is done, kill both `StartMenuExperienceHost.exe` and `SearchHost.exe` from Task Manager, or simply log out and back in or restart the computer.
+
 Downloaded symbols and application configuration is saved in the `%appdata%\ExplorerPatcher` folder.
 
-To uninstall, simply delete `dxgi.dll` from `%windir%`.
+To uninstall, simply delete `dxgi.dll` from all the directories above. If you get a "file in use" error when attempting to do so, simply rename it everywhere to `dxgia.dll`, reboot the computer and then delete the renamed DLL.
 
 #### How does this work?
 
-The mechanism the application gets loaded is by exploiting the DLL search order in Windows. I take advantage of the fact that Explorer is one of the few system processes located in `%windir%` and not in `%windir%\System32`, so it does not affect most apps. Also, `%windir%` is not first in the search path. Read more about this technique [here](https://itm4n.github.io/windows-dll-hijacking-clarified/). The main advantage here is that you do not have to keep an extra process running in the memory; plus, due to the diverse nature of how Explorer is launched, hooking it can be difficult.
+The way the application gets loaded is by exploiting the DLL search order in Windows. I take advantage of the fact that Explorer is one of the few system processes located in `%windir%` and not in `%windir%\System32`, so it does not affect most apps. Also, `%windir%` is not first in the search path. Read more about this technique [here](https://itm4n.github.io/windows-dll-hijacking-clarified/). The main advantage here is that you do not have to keep an extra process running in the memory; plus, due to the diverse nature of how Explorer is launched, hooking it can be difficult.
 
 I picked `dxgi.dll` because it is not on the `HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager\KnownDLLs` list, because it has few exports and is loaded very early by Explorer, when calling the `DXGIDeclareAdapterRemovalSupport()` function.
 
@@ -42,7 +56,7 @@ The `settings.ini` file contains, among the offsets for the various hooked/explo
 * `General\AllowImmersiveContextMenus = 1` will show the new context menus in Explorer instead of the legacy one
 * `General\AllocConsole = 1` will show a console when the application runs (useful for diagnostics).
 
-To change whether Start opens on the monitor the mouse is on, configure this registry setting (DWORD): `HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StartPage\MonitorOverride`: 0 = enable, 1 or not created = default, disable.
+The rest of the parameters that you can tweak and have them work with the application are located in the registry and are described [here](https://github.com/valinet/ExplorerPatcher/issues/9).
 
 ## License
 

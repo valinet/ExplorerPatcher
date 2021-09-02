@@ -2,9 +2,17 @@
 
 This document includes the same release notes as in the [Releases](https://github.com/valinet/ExplorerPatcher/releases) section on GitHub.
 
+## 22000.168.0.14
+
+* Start menu and search now respect the taskbar alignment setting
+* Ability to customize the number of "Most used" apps in the Start menu apps list
+* Symbols are automatically downloaded for Start menu and search; to have the application work with those two, place the DLL in the following additional 2 locations:
+  * `C:\Windows\SystemApps\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy`
+  * `C:\Windows\SystemApps\MicrosoftWindows.Client.CBS_cw5n1h2txyewy`
+
 ## 22000.168.0.12
 
-* Support for showing the app list by default in the Windows 11 Start menu; to enable this feature, copy the DLL to `C:\Windows\SystemApps\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy` and restart Explorer.
+* Support for showing the app list by default in the Windows 11 Start menu; to enable this feature, copy the DLL to `C:\Windows\SystemApps\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy` and restart Explorer (works only on 22000.168 for the moment, will be generally available after more testing is performed).
 * `Win+X` is now shown correctly on multi monitor setups
 * Other bug fixes
 
@@ -47,25 +55,11 @@ Offsets are now determined at runtime
 
 The application was tested on builds 22000.1 and 22000.168.
 
-- Library downloads and parses symbols in order to determine
-   function hooking offsets at runtime and saves the data in a
-   "settings.ini" file located in the application folder for future
-   use; the file is invalidated when a new OS build is detected
-- The main executable attempts to determine the location where a
-   jump has to be patched out so that Explorer remains on the 'show
-   old taskbar' code path; it will systematically patch each jz/jnz
-   instruction and will check whether Explorer still runs fine, and,
-   if it does so and does not crash, whether the old taskbar got
-   actually shown; once the offset is determined, it is saved in the
-   "settings.ini" file for future use
-- Please have an unmetered active working Internet connection when
-   running for the first time
-- Messages from the patcher (i.e. install/uninstall successful
-   message, symbol downloading message) will now display in a toast
-   (Windows 10 notification) if possible; when Explorer is not
-   running, it falls back to using standard MessageBox'es
-- Disabled the pre/post build command that restarted sihost.exe in
-   Debug builds
+- Library downloads and parses symbols in order to determine function hooking offsets at runtime and saves the data in a "settings.ini" file located in the application folder for future use; the file is invalidated when a new OS build is detected
+- The main executable attempts to determine the location where a jump has to be patched out so that Explorer remains on the 'show old taskbar' code path; it will systematically patch each jz/jnz instruction and will check whether Explorer still runs fine, and, if it does so and does not crash, whether the old taskbar got actually shown; once the offset is determined, it is saved in the "settings.ini" file for future use
+- Please have an unmetered active working Internet connection when running for the first time
+- Messages from the patcher (i.e. install/uninstall successful message, symbol downloading message) will now display in a toast (Windows 10 notification) if possible; when Explorer is not running, it falls back to using standard MessageBox'es
+- Disabled the pre/post build command that restarted sihost.exe in Debug builds
 
 ## 22000.1.0.4
 

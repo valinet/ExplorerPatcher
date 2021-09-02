@@ -48,6 +48,7 @@ DEFINE_GUID(__uuidof_IAuthUILogonSound,
 #define OPEN_CMD L"\"C:\\Program Files\\7-Zip\\7zFM.exe\" %s"
 #define EXTRACT_CMD L"\"C:\\Program Files\\7-Zip\\7zG.exe\" x -o\"%s\" -spe %s"
 
+#define REGPATH_OTHERS "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\ExplorerPatcher"
 #define INJECTION_SUCCESS_TIMEOUT 3000
 #define APPID L"Microsoft.Windows.Explorer"
 #define SYMBOLS_RELATIVE_PATH "\\ExplorerPatcher\\settings.ini"
@@ -82,6 +83,16 @@ DEFINE_GUID(__uuidof_IAuthUILogonSound,
 #define WINDOWSUIFILEEXPLORER_SB_NAME "Windows.UI.FileExplorer"
 #define WINDOWSUIFILEEXPLORER_SB_0 "ContextMenuPresenter::DoContextMenu"
 #define WINDOWSUIFILEEXPLORER_SB_CNT 1
+#define WINDOWSUIXAML_SB_NAME "Windows.UI.Xaml"
+#define WINDOWSUIXAML_SB_0 "CJupiterWindow::StaticCoreWindowSubclassProc"
+#define WINDOWSUIXAML_SB_CNT 1
+#define STARTDOCKED_SB_NAME "StartDocked"
+#define STARTDOCKED_SB_0 "Windows::UI::Core::IVisibilityChangedEventArgs::Visible::get"
+#define STARTDOCKED_SB_1 "StartDocked::LauncherFrame::ShowAllApps"
+#define STARTDOCKED_SB_2 "StartDocked::LauncherFrame::OnVisibilityChanged"
+#define STARTDOCKED_SB_3 "StartDocked::SystemListPolicyProvider::GetMaximumFrequentApps"
+#define STARTDOCKED_SB_4 "StartDocked::StartSizingFrame::StartSizingFrame"
+#define STARTDOCKED_SB_CNT 5
 const char* explorer_SN[EXPLORER_SB_CNT] = {
     EXPLORER_SB_0,
     EXPLORER_SB_1,
@@ -109,6 +120,16 @@ const char* stobject_SN[STOBJECT_SB_CNT] = {
 const char* windowsuifileexplorer_SN[WINDOWSUIFILEEXPLORER_SB_CNT] = {
     WINDOWSUIFILEEXPLORER_SB_0
 };
+const char* windowsuixaml_SN[WINDOWSUIFILEEXPLORER_SB_CNT] = {
+    WINDOWSUIXAML_SB_0
+};
+const char* startdocked_SN[STARTDOCKED_SB_CNT] = {
+    STARTDOCKED_SB_0,
+    STARTDOCKED_SB_1,
+    STARTDOCKED_SB_2,
+    STARTDOCKED_SB_3,
+    STARTDOCKED_SB_4
+};
 #pragma pack(push, 1)
 typedef struct symbols_addr
 {
@@ -117,6 +138,8 @@ typedef struct symbols_addr
     DWORD twinui_PTRS[TWINUI_SB_CNT];
     DWORD stobject_PTRS[STOBJECT_SB_CNT];
     DWORD windowsuifileexplorer_PTRS[WINDOWSUIFILEEXPLORER_SB_CNT];
+    DWORD windowsuixaml_PTRS[WINDOWSUIXAML_SB_CNT];
+    DWORD startdocked_PTRS[STARTDOCKED_SB_CNT];
 } symbols_addr;
 #pragma pack(pop)
 
@@ -192,6 +215,165 @@ BOOL GetOSVersion(PRTL_OSVERSIONINFOW lpRovi)
         }
     }
     return FALSE;
+}
+
+__declspec(dllexport) CALLBACK ZZLaunchExplorer(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLine, int nCmdShow)
+{
+    Sleep(100);
+    TCHAR* wszSettingsPath = malloc((MAX_PATH + 1) * sizeof(TCHAR));
+    if (!wszSettingsPath)
+    {
+        return 0;
+    }
+    ZeroMemory(
+        wszSettingsPath,
+        (MAX_PATH + 1) * sizeof(TCHAR)
+    );
+    SHGetFolderPathW(
+        NULL,
+        CSIDL_APPDATA,
+        NULL,
+        SHGFP_TYPE_CURRENT,
+        wszSettingsPath
+    );
+    wcscat_s(
+        wszSettingsPath,
+        MAX_PATH,
+        TEXT(SYMBOLS_RELATIVE_PATH)
+    );
+    VnWriteUInt(
+        TEXT(EXPLORER_SB_NAME),
+        TEXT(EXPLORER_PATCH_DIRTY),
+        0,
+        wszSettingsPath
+    );
+    TCHAR wszExplorerPath[MAX_PATH + 1];
+    GetWindowsDirectory(wszExplorerPath, MAX_PATH + 1);
+    wcscat_s(wszExplorerPath, MAX_PATH + 1, L"\\explorer.exe");
+    STARTUPINFO si = { sizeof(si) };
+    PROCESS_INFORMATION pi;
+    BOOL b = CreateProcess(
+        NULL,
+        wszExplorerPath,
+        NULL,
+        NULL,
+        TRUE,
+        CREATE_UNICODE_ENVIRONMENT,
+        NULL,
+        NULL,
+        &si,
+        &pi
+    );
+    FreeConsole();
+    TerminateProcess(
+        OpenProcess(
+            PROCESS_TERMINATE,
+            FALSE,
+            GetCurrentProcessId()
+        ),
+        0
+    );
+}
+
+__declspec(dllexport) CALLBACK ZZLaunchExplorerDelayed(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLine, int nCmdShow)
+{
+    Sleep(INJECTION_SUCCESS_TIMEOUT + 2000);
+    ZZLaunchExplorer(hWnd, hInstance, lpszCmdLine, nCmdShow);
+}
+
+static HRESULT(*ApplyCompatResolutionQuirkingFunc)(void*, void*);
+__declspec(dllexport) HRESULT ApplyCompatResolutionQuirking(void* p1, void* p2)
+{
+    return ApplyCompatResolutionQuirkingFunc(p1, p2);
+}
+static HRESULT(*CompatStringFunc)(void*, void*, void*, BOOL);
+__declspec(dllexport) HRESULT CompatString(void* p1, void* p2, void* p3, BOOL p4)
+{
+    return CompatStringFunc(p1, p2, p3, p4);
+}
+static HRESULT(*CompatValueFunc)(void*, void*);
+__declspec(dllexport) HRESULT CompatValue(void* p1, void* p2)
+{
+    return CompatValueFunc(p1, p2);
+}
+static HRESULT(*CreateDXGIFactoryFunc)(void*, void**);
+__declspec(dllexport) HRESULT CreateDXGIFactory(void* p1, void** p2)
+{
+    return CreateDXGIFactoryFunc(p1, p2);
+}
+static HRESULT(*CreateDXGIFactory1Func)(void*, void**);
+__declspec(dllexport) HRESULT CreateDXGIFactory1(void* p1, void** p2)
+{
+    return CreateDXGIFactory1Func(p1, p2);
+}
+static HRESULT(*CreateDXGIFactory2Func)(UINT, void*, void**);
+__declspec(dllexport) HRESULT CreateDXGIFactory2(UINT p1, void* p2, void** p3)
+{
+    return CreateDXGIFactory2Func(p1, p2, p3);
+}
+static HRESULT(*DXGID3D10CreateDeviceFunc)();
+__declspec(dllexport) HRESULT DXGID3D10CreateDevice() {
+    return DXGID3D10CreateDeviceFunc();
+}
+static HRESULT(*DXGID3D10CreateLayeredDeviceFunc)();
+__declspec(dllexport) HRESULT DXGID3D10CreateLayeredDevice()
+{
+    return DXGID3D10CreateLayeredDeviceFunc();
+}
+static HRESULT(*DXGID3D10GetLayeredDeviceSizeFunc)();
+__declspec(dllexport) HRESULT DXGID3D10GetLayeredDeviceSize()
+{
+    return DXGID3D10GetLayeredDeviceSizeFunc();
+}
+static HRESULT(*DXGID3D10RegisterLayersFunc)();
+__declspec(dllexport) HRESULT DXGID3D10RegisterLayers()
+{
+    return DXGID3D10RegisterLayersFunc();
+}
+static HRESULT(*DXGIDeclareAdapterRemovalSupportFunc)();
+__declspec(dllexport) HRESULT DXGIDeclareAdapterRemovalSupport()
+{
+    return DXGIDeclareAdapterRemovalSupportFunc();
+}
+static HRESULT(*DXGIDumpJournalFunc)(void*);
+__declspec(dllexport) HRESULT DXGIDumpJournal(void* p1)
+{
+    return DXGIDumpJournalFunc(p1);
+}
+static HRESULT(*DXGIGetDebugInterface1Func)(UINT, void*, void**);
+__declspec(dllexport) HRESULT DXGIGetDebugInterface1(UINT p1, void* p2, void* p3)
+{
+    return DXGIGetDebugInterface1Func(p1, p2, p3);
+}
+static HRESULT(*DXGIReportAdapterConfigurationFunc)();
+__declspec(dllexport) HRESULT DXGIReportAdapterConfiguration(void* p1)
+{
+    return DXGIReportAdapterConfigurationFunc(p1);
+}
+static HRESULT(*PIXBeginCaptureFunc)(INT64, void*);
+__declspec(dllexport) HRESULT PIXBeginCapture(INT64 p1, void* p2)
+{
+    return PIXBeginCaptureFunc(p1, p2);
+}
+static HRESULT(*PIXEndCaptureFunc)();
+__declspec(dllexport) HRESULT PIXEndCapture()
+{
+    return PIXEndCaptureFunc();
+}
+static HRESULT(*PIXGetCaptureStateFunc)();
+__declspec(dllexport) HRESULT PIXGetCaptureState()
+{
+    return PIXGetCaptureState();
+}
+static HRESULT(*SetAppCompatStringPointerFunc)(SIZE_T, void*);
+__declspec(dllexport) HRESULT SetAppCompatStringPointer(SIZE_T p1, void* p2)
+{
+    return SetAppCompatStringPointerFunc(p1, p2);
+}
+static HRESULT(*UpdateHMDEmulationStatusFunc)(char);
+__declspec(dllexport) HRESULT UpdateHMDEmulationStatus(char p1)
+{
+    return UpdateHMDEmulationStatusFunc(p1);
 }
 
 static HWND(WINAPI* CreateWindowInBand)(
@@ -337,7 +519,6 @@ char ContextMenuPresenter_DoContextMenuHook(
     void* a4
 )
 {
-    printf("da\n");
     *(((char*)_this + 156)) = 0;
     ContextMenuPresenter_DoContextMenuFunc(
         _this,
@@ -910,8 +1091,10 @@ DWORD ShowLauncherTipContextMenu(
     return 0;
 }
 
-POINT GetDefaultWinXPosition()
+POINT GetDefaultWinXPosition(BOOL bUseRcWork, BOOL* lpBottom, BOOL* lpRight)
 {
+    if (lpBottom) *lpBottom = FALSE;
+    if (lpRight) *lpRight = FALSE;
     POINT point, ptCursor;
     point.x = 0;
     point.y = 0;
@@ -964,26 +1147,71 @@ POINT GetDefaultWinXPosition()
         GetWindowRect(hWnd, &rc);
         if (rc.left - mi.rcMonitor.left == 0)
         {
-            point.x = mi.rcMonitor.left;
-            if (rc.top - mi.rcMonitor.top == 0)
+            if (bUseRcWork)
             {
-                point.y = mi.rcMonitor.top;
+                point.x = mi.rcWork.left;
             }
             else
             {
-                point.y = mi.rcMonitor.bottom;
+                point.x = mi.rcMonitor.left;
+            }
+            if (rc.top - mi.rcMonitor.top == 0)
+            {
+                if (bUseRcWork)
+                {
+                    point.y = mi.rcWork.top;
+                }
+                else
+                {
+                    point.y = mi.rcMonitor.top;
+                }
+            }
+            else
+            {
+                if (lpBottom) *lpBottom = TRUE;
+                if (bUseRcWork)
+                {
+                    point.y = mi.rcWork.bottom;
+                }
+                else
+                {
+                    point.y = mi.rcMonitor.bottom;
+                }
             }
         }
         else
         {
-            point.x = mi.rcMonitor.right;
-            if (rc.top - mi.rcMonitor.top == 0)
+            if (lpRight) *lpRight = TRUE;
+            if (bUseRcWork)
             {
-                point.y = mi.rcMonitor.top;
+                point.x = mi.rcWork.right;
             }
             else
             {
-                point.y = mi.rcMonitor.bottom;
+                point.x = mi.rcMonitor.right;
+            }
+            if (rc.top - mi.rcMonitor.top == 0)
+            {
+                if (bUseRcWork)
+                {
+                    point.y = mi.rcWork.top;
+                }
+                else
+                {
+                    point.y = mi.rcMonitor.top;
+                }
+            }
+            else
+            {
+                if (lpBottom) *lpBottom = TRUE;
+                if (bUseRcWork)
+                {
+                    point.y = mi.rcWork.bottom;
+                }
+                else
+                {
+                    point.y = mi.rcMonitor.bottom;
+                }
             }
         }
     }
@@ -1007,7 +1235,7 @@ INT64 CLauncherTipContextMenu_ShowLauncherTipContextMenuHook(
     }
     else
     {
-        point = GetDefaultWinXPosition();
+        point = GetDefaultWinXPosition(FALSE, NULL, NULL);
     }
 
     IUnknown* iunk;
@@ -1070,7 +1298,7 @@ INT64 CTray_HandleGlobalHotkeyHook(
                 );
                 if (hWnd)
                 {
-                    POINT pt = GetDefaultWinXPosition();
+                    POINT pt = GetDefaultWinXPosition(FALSE, NULL, NULL);
                     PostMessage(
                         hWnd,
                         WM_CONTEXTMENU,
@@ -1134,7 +1362,7 @@ void OpenStartOnMonitor(HMONITOR monitor)
     hr = CoCreateInstance(
         &CLSID_ImmersiveShell,
         NULL,
-        CLSCTX_INPROC_SERVER,
+        CLSCTX_NO_CODE_DOWNLOAD | CLSCTX_LOCAL_SERVER,
         &IID_IServiceProvider,
         &pImmersiveShell
     );
@@ -1561,6 +1789,9 @@ DWORD DownloadSymbols(TCHAR* wszSettingsPath)
         sizeof(symbols_addr)
     );
 
+
+
+
     char explorer_sb_exe[MAX_PATH];
     ZeroMemory(
         explorer_sb_exe,
@@ -1637,6 +1868,9 @@ DWORD DownloadSymbols(TCHAR* wszSettingsPath)
         symbols_PTRS.explorer_PTRS[3],
         wszSettingsPath
     );
+
+
+
 
     char twinui_pcshell_sb_dll[MAX_PATH];
     ZeroMemory(
@@ -1733,6 +1967,9 @@ DWORD DownloadSymbols(TCHAR* wszSettingsPath)
         wszSettingsPath
     );
 
+
+
+
     char twinui_sb_dll[MAX_PATH];
     ZeroMemory(
         twinui_sb_dll,
@@ -1804,6 +2041,9 @@ DWORD DownloadSymbols(TCHAR* wszSettingsPath)
         wszSettingsPath
     );
 
+
+
+
     char stobject_sb_dll[MAX_PATH];
     ZeroMemory(
         stobject_sb_dll,
@@ -1869,6 +2109,9 @@ DWORD DownloadSymbols(TCHAR* wszSettingsPath)
         wszSettingsPath
     );
 
+
+
+
     char windowsuifileexplorer_sb_dll[MAX_PATH];
     ZeroMemory(
         windowsuifileexplorer_sb_dll,
@@ -1927,6 +2170,159 @@ DWORD DownloadSymbols(TCHAR* wszSettingsPath)
         symbols_PTRS.windowsuifileexplorer_PTRS[0],
         wszSettingsPath
     );
+
+
+
+
+    char startdocked_sb_dll[MAX_PATH];
+    ZeroMemory(
+        startdocked_sb_dll,
+        (MAX_PATH) * sizeof(char)
+    );
+    GetWindowsDirectoryA(
+        startdocked_sb_dll,
+        MAX_PATH
+    );
+    strcat_s(
+        startdocked_sb_dll,
+        MAX_PATH,
+        "\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\"
+    );
+    strcat_s(
+        startdocked_sb_dll,
+        MAX_PATH,
+        STARTDOCKED_SB_NAME
+    );
+    strcat_s(
+        startdocked_sb_dll,
+        MAX_PATH,
+        ".dll"
+    );
+    printf("Downloading symbols for \"%s\"...\n", startdocked_sb_dll);
+    if (VnDownloadSymbols(
+        NULL,
+        startdocked_sb_dll,
+        szSettingsPath,
+        MAX_PATH
+    ))
+    {
+        FreeLibraryAndExitThread(
+            hModule,
+            6
+        );
+        return 6;
+    }
+    printf("Reading symbols...\n");
+    if (VnGetSymbols(
+        szSettingsPath,
+        symbols_PTRS.startdocked_PTRS,
+        startdocked_SN,
+        STARTDOCKED_SB_CNT
+    ))
+    {
+        printf("error...\n");
+        FreeLibraryAndExitThread(
+            hModule,
+            7
+        );
+        return 7;
+    }
+    VnWriteUInt(
+        TEXT(STARTDOCKED_SB_NAME),
+        TEXT(STARTDOCKED_SB_0),
+        symbols_PTRS.startdocked_PTRS[0],
+        wszSettingsPath
+    );
+    VnWriteUInt(
+        TEXT(STARTDOCKED_SB_NAME),
+        TEXT(STARTDOCKED_SB_1),
+        symbols_PTRS.startdocked_PTRS[1],
+        wszSettingsPath
+    );
+    VnWriteUInt(
+        TEXT(STARTDOCKED_SB_NAME),
+        TEXT(STARTDOCKED_SB_2),
+        symbols_PTRS.startdocked_PTRS[2],
+        wszSettingsPath
+    );
+    VnWriteUInt(
+        TEXT(STARTDOCKED_SB_NAME),
+        TEXT(STARTDOCKED_SB_3),
+        symbols_PTRS.startdocked_PTRS[3],
+        wszSettingsPath
+    );
+    VnWriteUInt(
+        TEXT(STARTDOCKED_SB_NAME),
+        TEXT(STARTDOCKED_SB_4),
+        symbols_PTRS.startdocked_PTRS[4],
+        wszSettingsPath
+    );
+
+
+
+
+    char windowsuixaml_sb_dll[MAX_PATH];
+    ZeroMemory(
+        windowsuixaml_sb_dll,
+        (MAX_PATH) * sizeof(char)
+    );
+    GetSystemDirectoryA(
+        windowsuixaml_sb_dll,
+        MAX_PATH
+    );
+    strcat_s(
+        windowsuixaml_sb_dll,
+        MAX_PATH,
+        "\\"
+    );
+    strcat_s(
+        windowsuixaml_sb_dll,
+        MAX_PATH,
+        WINDOWSUIXAML_SB_NAME
+    );
+    strcat_s(
+        windowsuixaml_sb_dll,
+        MAX_PATH,
+        ".dll"
+    );
+    printf("Downloading symbols for \"%s\"...\n", windowsuixaml_sb_dll);
+    if (VnDownloadSymbols(
+        NULL,
+        windowsuixaml_sb_dll,
+        szSettingsPath,
+        MAX_PATH
+    ))
+    {
+        FreeLibraryAndExitThread(
+            hModule,
+            6
+        );
+        return 6;
+    }
+    printf("Reading symbols...\n");
+    if (VnGetSymbols(
+        szSettingsPath,
+        symbols_PTRS.windowsuixaml_PTRS,
+        windowsuixaml_SN,
+        WINDOWSUIXAML_SB_CNT
+    ))
+    {
+        FreeLibraryAndExitThread(
+            hModule,
+            7
+        );
+        return 7;
+    }
+    VnWriteUInt(
+        TEXT(WINDOWSUIXAML_SB_NAME),
+        TEXT(WINDOWSUIXAML_SB_0),
+        symbols_PTRS.windowsuixaml_PTRS[0],
+        wszSettingsPath
+    );
+
+
+
+
 
     VnWriteString(
         TEXT("OS"),
@@ -2246,6 +2642,143 @@ __declspec(dllexport) DWORD WINAPI main(
             0,
             wszSettingsPath
         );
+
+        HKEY hKeySettings;
+        DWORD dwDisposition;
+
+        RegCreateKeyExW(
+            HKEY_CURRENT_USER,
+            TEXT(REGPATH_OTHERS) L"\\" TEXT(WINDOWSUIXAML_SB_NAME),
+            0,
+            NULL,
+            REG_OPTION_NON_VOLATILE,
+            KEY_WRITE,
+            NULL,
+            &hKeySettings,
+            &dwDisposition
+        );
+        symbols_PTRS.windowsuixaml_PTRS[0] = VnGetUInt(
+            TEXT(WINDOWSUIXAML_SB_NAME),
+            TEXT(WINDOWSUIXAML_SB_0),
+            0,
+            wszSettingsPath
+        );
+        if (hKeySettings)
+        {
+            RegSetValueExW(
+                hKeySettings,
+                TEXT(WINDOWSUIXAML_SB_0),
+                0,
+                REG_DWORD,
+                &(symbols_PTRS.windowsuixaml_PTRS[0]),
+                sizeof(DWORD)
+            );
+        }
+        if (hKeySettings)
+        {
+            RegCloseKey(hKeySettings);
+        }
+
+        RegCreateKeyExW(
+            HKEY_CURRENT_USER,
+            TEXT(REGPATH_OTHERS) L"\\" TEXT(STARTDOCKED_SB_NAME),
+            0,
+            NULL,
+            REG_OPTION_NON_VOLATILE,
+            KEY_WRITE,
+            NULL,
+            &hKeySettings,
+            &dwDisposition
+        );
+        symbols_PTRS.startdocked_PTRS[0] = VnGetUInt(
+            TEXT(STARTDOCKED_SB_NAME),
+            TEXT(STARTDOCKED_SB_0),
+            0,
+            wszSettingsPath
+        );
+        if (hKeySettings)
+        {
+            RegSetValueExW(
+                hKeySettings,
+                TEXT(STARTDOCKED_SB_0),
+                0,
+                REG_DWORD,
+                &(symbols_PTRS.startdocked_PTRS[0]),
+                sizeof(DWORD)
+            );
+        }
+        symbols_PTRS.startdocked_PTRS[1] = VnGetUInt(
+            TEXT(STARTDOCKED_SB_NAME),
+            TEXT(STARTDOCKED_SB_1),
+            0,
+            wszSettingsPath
+        );
+        if (hKeySettings)
+        {
+            RegSetValueExW(
+                hKeySettings,
+                TEXT(STARTDOCKED_SB_1),
+                0,
+                REG_DWORD,
+                &(symbols_PTRS.startdocked_PTRS[1]),
+                sizeof(DWORD)
+            );
+        }
+        symbols_PTRS.startdocked_PTRS[2] = VnGetUInt(
+            TEXT(STARTDOCKED_SB_NAME),
+            TEXT(STARTDOCKED_SB_2),
+            0,
+            wszSettingsPath
+        );
+        if (hKeySettings)
+        {
+            RegSetValueExW(
+                hKeySettings,
+                TEXT(STARTDOCKED_SB_2),
+                0,
+                REG_DWORD,
+                &(symbols_PTRS.startdocked_PTRS[2]),
+                sizeof(DWORD)
+            );
+        }
+        symbols_PTRS.startdocked_PTRS[3] = VnGetUInt(
+            TEXT(STARTDOCKED_SB_NAME),
+            TEXT(STARTDOCKED_SB_3),
+            0,
+            wszSettingsPath
+        );
+        if (hKeySettings)
+        {
+            RegSetValueExW(
+                hKeySettings,
+                TEXT(STARTDOCKED_SB_3),
+                0,
+                REG_DWORD,
+                &(symbols_PTRS.startdocked_PTRS[3]),
+                sizeof(DWORD)
+            );
+        }
+        symbols_PTRS.startdocked_PTRS[4] = VnGetUInt(
+            TEXT(STARTDOCKED_SB_NAME),
+            TEXT(STARTDOCKED_SB_4),
+            0,
+            wszSettingsPath
+        );
+        if (hKeySettings)
+        {
+            RegSetValueExW(
+                hKeySettings,
+                TEXT(STARTDOCKED_SB_4),
+                0,
+                REG_DWORD,
+                &(symbols_PTRS.startdocked_PTRS[4]),
+                sizeof(DWORD)
+            );
+        }
+        if (hKeySettings)
+        {
+            RegCloseKey(hKeySettings);
+        }
 
         BOOL bNeedToDownload = FALSE;
         for (UINT i = 0; i < sizeof(symbols_addr) / sizeof(DWORD); ++i)
@@ -2842,173 +3375,337 @@ __declspec(dllexport) DWORD WINAPI main(
     return 0;
 }
 
-__declspec(dllexport) CALLBACK ZZLaunchExplorer(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLine, int nCmdShow)
+DWORD MonitorSettingsChanges(BOOL bIsStart)
 {
-    Sleep(100);
-    TCHAR* wszSettingsPath = malloc((MAX_PATH + 1) * sizeof(TCHAR));
-    if (!wszSettingsPath)
+    HMODULE hModule = LoadLibraryW(L"Shlwapi.dll");
+    if (hModule)
     {
-        return 0;
+        FARPROC SHRegGetValueFromHKCUHKLMFunc = GetProcAddress(hModule, "SHRegGetValueFromHKCUHKLM");
+        DWORD dwSize = sizeof(DWORD);
+        LONG lRes = ERROR_SUCCESS;
+        HKEY hKeyCU, hKeyLM;
+
+        dwSize = sizeof(DWORD);
+        DWORD dwInitialTaskbarAl = 0, dwTaskbarAl = 0, dwInitialTaskbarAlWas = 0;
+        if (!SHRegGetValueFromHKCUHKLMFunc || SHRegGetValueFromHKCUHKLMFunc(
+            TEXT("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced"),
+            TEXT("TaskbarAl"),
+            SRRF_RT_REG_DWORD,
+            NULL,
+            &dwInitialTaskbarAl,
+            (LPDWORD)(&dwSize)
+        ) != ERROR_SUCCESS)
+        {
+            dwInitialTaskbarAl = 0;
+        }
+        else
+        {
+            dwInitialTaskbarAlWas = 1;
+        }
+
+        dwSize = sizeof(DWORD);
+        DWORD dwInitialMaximumFrequentApps = 6, dwMaximumFrequentApps = 6, dwInitialMaximumFrequentAppsWas = 0;
+        if (!SHRegGetValueFromHKCUHKLMFunc || SHRegGetValueFromHKCUHKLMFunc(
+            TEXT("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced"),
+            TEXT("Start_MaximumFrequentApps"),
+            SRRF_RT_REG_DWORD,
+            NULL,
+            &dwInitialMaximumFrequentApps,
+            (LPDWORD)(&dwSize)
+        ) != ERROR_SUCCESS)
+        {
+            dwInitialMaximumFrequentApps = 6;
+        }
+        else
+        {
+            dwInitialMaximumFrequentAppsWas = 1;
+        }
+
+        while (TRUE)
+        {
+            lRes = RegOpenKeyExW(
+                HKEY_CURRENT_USER,
+                TEXT("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced"),
+                0,
+                KEY_READ,
+                &hKeyCU
+            );
+            if (lRes != ERROR_SUCCESS)
+            {
+                return 0;
+            }
+            HANDLE hEvHKCU = CreateEvent(NULL, FALSE, FALSE, NULL);
+            RegNotifyChangeKeyValue(
+                hKeyCU,
+                FALSE,
+                REG_NOTIFY_CHANGE_LAST_SET,
+                hEvHKCU,
+                TRUE
+            );
+
+            lRes = RegOpenKeyExW(
+                HKEY_LOCAL_MACHINE,
+                TEXT("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced"),
+                0,
+                KEY_READ,
+                &hKeyLM
+            );
+            if (lRes != ERROR_SUCCESS)
+            {
+                return 0;
+            }
+            HANDLE hEvHKLM = CreateEvent(NULL, FALSE, FALSE, NULL);
+            RegNotifyChangeKeyValue(
+                hKeyLM,
+                FALSE,
+                REG_NOTIFY_CHANGE_LAST_SET,
+                hEvHKLM,
+                TRUE
+            );
+
+            HANDLE hEvents[2];
+            hEvents[0] = hEvHKCU;
+            hEvents[1] = hEvHKLM;
+            DWORD rv = WaitForMultipleObjects(
+                2,
+                hEvents,
+                FALSE,
+                INFINITE
+            );
+            if (rv == WAIT_OBJECT_0)
+            {
+                dwSize = sizeof(DWORD);
+                lRes = RegQueryValueExW(
+                    hKeyCU,
+                    TEXT("TaskbarAl"),
+                    0,
+                    NULL,
+                    &dwTaskbarAl,
+                    &dwSize
+                );
+                if (lRes != ERROR_SUCCESS && dwInitialTaskbarAlWas)
+                {
+                    exit(0);
+                }
+                if (lRes == ERROR_SUCCESS && dwTaskbarAl != dwInitialTaskbarAl)
+                {
+                    exit(0);
+                }
+
+                if (bIsStart)
+                {
+                    dwSize = sizeof(DWORD);
+                    lRes = RegQueryValueExW(
+                        hKeyCU,
+                        TEXT("Start_MaximumFrequentApps"),
+                        0,
+                        NULL,
+                        &dwMaximumFrequentApps,
+                        &dwSize
+                    );
+                    if (lRes != ERROR_SUCCESS && dwInitialMaximumFrequentAppsWas)
+                    {
+                        exit(0);
+                    }
+                    if (lRes == ERROR_SUCCESS && dwMaximumFrequentApps != dwInitialMaximumFrequentApps)
+                    {
+                        exit(0);
+                    }
+                }
+            }
+            else if (rv == WAIT_OBJECT_0 + 1)
+            {
+                dwSize = sizeof(DWORD);
+                lRes = RegQueryValueExW(
+                    hKeyCU,
+                    TEXT("TaskbarAl"),
+                    0,
+                    NULL,
+                    &dwTaskbarAl,
+                    &dwSize
+                );
+                if (lRes != ERROR_SUCCESS)
+                {
+                    dwSize = sizeof(DWORD);
+                    lRes = RegQueryValueExW(
+                        hKeyLM,
+                        TEXT("TaskbarAl"),
+                        0,
+                        NULL,
+                        &dwTaskbarAl,
+                        &dwSize
+                    );
+                    if (lRes != ERROR_SUCCESS && dwInitialTaskbarAlWas)
+                    {
+                        exit(0);
+                    }
+                    if (lRes == ERROR_SUCCESS && dwTaskbarAl != dwInitialTaskbarAl)
+                    {
+                        exit(0);
+                    }
+                }
+
+                if (bIsStart)
+                {
+                    dwSize = sizeof(DWORD);
+                    lRes = RegQueryValueExW(
+                        hKeyCU,
+                        TEXT("Start_MaximumFrequentApps"),
+                        0,
+                        NULL,
+                        &dwMaximumFrequentApps,
+                        &dwSize
+                    );
+                    if (lRes != ERROR_SUCCESS)
+                    {
+                        dwSize = sizeof(DWORD);
+                        lRes = RegQueryValueExW(
+                            hKeyLM,
+                            TEXT("Start_MaximumFrequentApps"),
+                            0,
+                            NULL,
+                            &dwMaximumFrequentApps,
+                            &dwSize
+                        );
+                        if (lRes != ERROR_SUCCESS && dwInitialMaximumFrequentAppsWas)
+                        {
+                            exit(0);
+                        }
+                        if (lRes == ERROR_SUCCESS && dwMaximumFrequentApps != dwInitialMaximumFrequentApps)
+                        {
+                            exit(0);
+                        }
+                    }
+                }
+            }
+
+            CloseHandle(hEvHKCU);
+            CloseHandle(hEvHKLM);
+            RegCloseKey(hKeyCU);
+            RegCloseKey(hKeyLM);
+        }
     }
-    ZeroMemory(
-        wszSettingsPath,
-        (MAX_PATH + 1) * sizeof(TCHAR)
-    );
-    SHGetFolderPathW(
-        NULL,
-        CSIDL_APPDATA,
-        NULL,
-        SHGFP_TYPE_CURRENT,
-        wszSettingsPath
-    );
-    wcscat_s(
-        wszSettingsPath,
-        MAX_PATH,
-        TEXT(SYMBOLS_RELATIVE_PATH)
-    );
-    VnWriteUInt(
-        TEXT(EXPLORER_SB_NAME),
-        TEXT(EXPLORER_PATCH_DIRTY),
-        0,
-        wszSettingsPath
-    );
-    TCHAR wszExplorerPath[MAX_PATH + 1];
-    GetWindowsDirectory(wszExplorerPath, MAX_PATH + 1);
-    wcscat_s(wszExplorerPath, MAX_PATH + 1, L"\\explorer.exe");
-    STARTUPINFO si = { sizeof(si) };
-    PROCESS_INFORMATION pi;
-    BOOL b = CreateProcess(
-        NULL,
-        wszExplorerPath,
-        NULL,
-        NULL,
-        TRUE,
-        CREATE_UNICODE_ENVIRONMENT,
-        NULL,
-        NULL,
-        &si,
-        &pi
-    );
-    FreeConsole();
-    TerminateProcess(
-        OpenProcess(
-            PROCESS_TERMINATE,
-            FALSE,
-            GetCurrentProcessId()
-        ),
-        0
-    );
-}
-
-__declspec(dllexport) CALLBACK ZZLaunchExplorerDelayed(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLine, int nCmdShow)
-{
-    Sleep(INJECTION_SUCCESS_TIMEOUT + 2000);
-    ZZLaunchExplorer(hWnd, hInstance, lpszCmdLine, nCmdShow);
-}
-
-static HRESULT(*ApplyCompatResolutionQuirkingFunc)(void*, void*);
-__declspec(dllexport) HRESULT ApplyCompatResolutionQuirking(void* p1, void* p2)
-{
-    return ApplyCompatResolutionQuirkingFunc(p1, p2);
-}
-static HRESULT(*CompatStringFunc)(void*, void*, void*, BOOL);
-__declspec(dllexport) HRESULT CompatString(void* p1, void* p2, void* p3, BOOL p4)
-{
-    return CompatStringFunc(p1, p2, p3, p4);
-}
-static HRESULT(*CompatValueFunc)(void*, void*);
-__declspec(dllexport) HRESULT CompatValue(void* p1, void* p2)
-{
-    return CompatValueFunc(p1, p2);
-}
-static HRESULT(*CreateDXGIFactoryFunc)(void*, void**);
-__declspec(dllexport) HRESULT CreateDXGIFactory(void* p1, void** p2)
-{
-    return CreateDXGIFactoryFunc(p1, p2);
-}
-static HRESULT(*CreateDXGIFactory1Func)(void*, void**);
-__declspec(dllexport) HRESULT CreateDXGIFactory1(void* p1, void** p2)
-{
-    return CreateDXGIFactory1Func(p1, p2);
-}
-static HRESULT(*CreateDXGIFactory2Func)(UINT, void*, void**);
-__declspec(dllexport) HRESULT CreateDXGIFactory2(UINT p1, void* p2, void** p3)
-{
-    return CreateDXGIFactory2Func(p1, p2, p3);
-}
-static HRESULT(*DXGID3D10CreateDeviceFunc)();
-__declspec(dllexport) HRESULT DXGID3D10CreateDevice() {
-    return DXGID3D10CreateDeviceFunc();
-}
-static HRESULT(*DXGID3D10CreateLayeredDeviceFunc)();
-__declspec(dllexport) HRESULT DXGID3D10CreateLayeredDevice()
-{
-    return DXGID3D10CreateLayeredDeviceFunc();
-}
-static HRESULT(*DXGID3D10GetLayeredDeviceSizeFunc)();
-__declspec(dllexport) HRESULT DXGID3D10GetLayeredDeviceSize()
-{
-    return DXGID3D10GetLayeredDeviceSizeFunc();
-}
-static HRESULT(*DXGID3D10RegisterLayersFunc)();
-__declspec(dllexport) HRESULT DXGID3D10RegisterLayers()
-{
-    return DXGID3D10RegisterLayersFunc();
-}
-static HRESULT(*DXGIDeclareAdapterRemovalSupportFunc)();
-__declspec(dllexport) HRESULT DXGIDeclareAdapterRemovalSupport()
-{
-    return DXGIDeclareAdapterRemovalSupportFunc();
-}
-static HRESULT(*DXGIDumpJournalFunc)(void*);
-__declspec(dllexport) HRESULT DXGIDumpJournal(void* p1)
-{
-    return DXGIDumpJournalFunc(p1);
-}
-static HRESULT(*DXGIGetDebugInterface1Func)(UINT, void*, void**);
-__declspec(dllexport) HRESULT DXGIGetDebugInterface1(UINT p1, void* p2, void* p3)
-{
-    return DXGIGetDebugInterface1Func(p1, p2, p3);
-}
-static HRESULT(*DXGIReportAdapterConfigurationFunc)();
-__declspec(dllexport) HRESULT DXGIReportAdapterConfiguration(void* p1)
-{
-    return DXGIReportAdapterConfigurationFunc(p1);
-}
-static HRESULT(*PIXBeginCaptureFunc)(INT64, void*);
-__declspec(dllexport) HRESULT PIXBeginCapture(INT64 p1, void* p2)
-{
-    return PIXBeginCaptureFunc(p1, p2);
-}
-static HRESULT(*PIXEndCaptureFunc)();
-__declspec(dllexport) HRESULT PIXEndCapture()
-{
-    return PIXEndCaptureFunc();
-}
-static HRESULT(*PIXGetCaptureStateFunc)();
-__declspec(dllexport) HRESULT PIXGetCaptureState()
-{
-    return PIXGetCaptureState();
-}
-static HRESULT(*SetAppCompatStringPointerFunc)(SIZE_T, void*);
-__declspec(dllexport) HRESULT SetAppCompatStringPointer(SIZE_T p1, void* p2)
-{
-    return SetAppCompatStringPointerFunc(p1, p2);
-}
-static HRESULT(*UpdateHMDEmulationStatusFunc)(char);
-__declspec(dllexport) HRESULT UpdateHMDEmulationStatus(char p1)
-{
-    return UpdateHMDEmulationStatusFunc(p1);
 }
 
 static INT64(*StartDocked_LauncherFrame_OnVisibilityChangedFunc)(void*, INT64, void*);
 
-static INT64(*StartDocked_LauncherFrame_ShowAllApps)(void* _this);
+static INT64(*StartDocked_LauncherFrame_ShowAllAppsFunc)(void* _this);
+
+static char(*Windows_UI_Core_IVisibilityChangedEventArgs_Visible_getFunc)(void*);
 
 INT64 StartDocked_LauncherFrame_OnVisibilityChangedHook(void* _this, INT64 a2, void* VisibilityChangedEventArguments)
 {
     INT64 r = StartDocked_LauncherFrame_OnVisibilityChangedFunc(_this, a2, VisibilityChangedEventArguments);
-    StartDocked_LauncherFrame_ShowAllApps(_this);
+    HMODULE hModule = LoadLibraryW(L"Shlwapi.dll");
+    if (hModule)
+    {
+        DWORD dwStatus = 0, dwSize = sizeof(DWORD);
+        FARPROC SHRegGetValueFromHKCUHKLMFunc = GetProcAddress(hModule, "SHRegGetValueFromHKCUHKLM");
+        if (!SHRegGetValueFromHKCUHKLMFunc || SHRegGetValueFromHKCUHKLMFunc(
+            TEXT("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartPage"),
+            TEXT("MakeAllAppsDefault"),
+            SRRF_RT_REG_DWORD,
+            NULL,
+            &dwStatus,
+            (LPDWORD)(&dwSize)
+        ) != ERROR_SUCCESS)
+        {
+            dwStatus = 0;
+        }
+        FreeLibrary(hModule);
+        if (dwStatus)
+        {
+            if (Windows_UI_Core_IVisibilityChangedEventArgs_Visible_getFunc(VisibilityChangedEventArguments))
+            {
+                StartDocked_LauncherFrame_ShowAllAppsFunc(_this);
+            }
+        }
+    }
+    return r;
+}
+
+INT64 maximumFreqApps;
+
+INT64(*StartDocked_SystemListPolicyProvider_GetMaximumFrequentAppsFunc)(void*);
+
+INT64 StartDocked_SystemListPolicyProvider_GetMaximumFrequentAppsHook(void* _this)
+{
+    return maximumFreqApps;
+}
+
+INT64(*StartDocked_StartSizingFrame_StartSizingFrameFunc)(void* _this);
+
+INT64 StartDocked_StartSizingFrame_StartSizingFrameHook(void* _this)
+{
+    INT64 rv = StartDocked_StartSizingFrame_StartSizingFrameFunc(_this);
+    HMODULE hModule = LoadLibraryW(L"Shlwapi.dll");
+    if (hModule)
+    {
+        DWORD dwStatus = 0, dwSize = sizeof(DWORD);
+        FARPROC SHRegGetValueFromHKCUHKLMFunc = GetProcAddress(hModule, "SHRegGetValueFromHKCUHKLM");
+        if (!SHRegGetValueFromHKCUHKLMFunc || SHRegGetValueFromHKCUHKLMFunc(
+            TEXT("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced"),
+            TEXT("TaskbarAl"),
+            SRRF_RT_REG_DWORD,
+            NULL,
+            &dwStatus,
+            (LPDWORD)(&dwSize)
+        ) != ERROR_SUCCESS)
+        {
+            dwStatus = 0;
+        }
+        FreeLibrary(hModule);
+        *(((char*)_this + 387)) = dwStatus;
+    }
+    return rv;
+}
+
+static LRESULT(*CJupiterWindow_StaticCoreWindowSubclassProcFunc)(
+    HWND hWnd,
+    UINT uMsg,
+    WPARAM wParam,
+    LPARAM lParam);
+
+LRESULT CJupiterWindow_StaticCoreWindowSubclassProcHook(
+    HWND hWnd,
+    UINT uMsg,
+    WPARAM wParam,
+    LPARAM lParam)
+{
+    if (uMsg == WM_WINDOWPOSCHANGING)
+    {
+        HMODULE hModule = LoadLibraryW(L"Shlwapi.dll");
+        if (hModule)
+        {
+            DWORD dwStatus = 0, dwSize = sizeof(DWORD);
+            FARPROC SHRegGetValueFromHKCUHKLMFunc = GetProcAddress(hModule, "SHRegGetValueFromHKCUHKLM");
+            if (!SHRegGetValueFromHKCUHKLMFunc || SHRegGetValueFromHKCUHKLMFunc(
+                TEXT("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced"),
+                TEXT("TaskbarAl"),
+                SRRF_RT_REG_DWORD,
+                NULL,
+                &dwStatus,
+                (LPDWORD)(&dwSize)
+            ) != ERROR_SUCCESS)
+            {
+                dwStatus = 0;
+            }
+            FreeLibrary(hModule);
+            if (!dwStatus)
+            {
+                BOOL bIsAtBottom = FALSE, bIsAtRight = FALSE;
+                POINT pt = GetDefaultWinXPosition(TRUE, &bIsAtBottom, &bIsAtRight);
+                RECT rc;
+                GetWindowRect(hWnd, &rc);
+                LPWINDOWPOS wp = lParam;
+                wp->x = pt.x - (bIsAtRight ? (rc.right - rc.left) : 0);
+                wp->y = pt.y - (bIsAtBottom ? (rc.bottom - rc.top) : 0);
+                wp->flags &= ~SWP_NOMOVE;
+                return 0;
+            }
+        }
+    }
+    return CJupiterWindow_StaticCoreWindowSubclassProcFunc(hWnd, uMsg, wParam, lParam);
 }
 
 BOOL WINAPI DllMain(
@@ -3061,18 +3758,162 @@ BOOL WINAPI DllMain(
         {
             main(0);
         }
+#pragma warning(default : 6387)
+        else if (!wcscmp(exeName, L"SearchHost.exe"))
+        {
+            funchook = funchook_create();
+
+            int rv;
+
+            DWORD dwVal0 = 0x1F1920;
+
+            HMODULE hModule = LoadLibraryW(L"Shlwapi.dll");
+            if (hModule)
+            {
+                FARPROC SHRegGetValueFromHKCUHKLMFunc = GetProcAddress(hModule, "SHRegGetValueFromHKCUHKLM");
+                DWORD dwSize;
+                if (SHRegGetValueFromHKCUHKLMFunc)
+                {
+
+                    dwSize = sizeof(DWORD);
+                    SHRegGetValueFromHKCUHKLMFunc(
+                        TEXT(REGPATH_OTHERS) TEXT("\\") TEXT(WINDOWSUIXAML_SB_NAME),
+                        TEXT(WINDOWSUIXAML_SB_0),
+                        SRRF_RT_REG_DWORD,
+                        NULL,
+                        &dwVal0,
+                        (LPDWORD)(&dwSize)
+                    );
+
+                }
+                FreeLibrary(hModule);
+            }
+
+            LoadLibraryW(L"Windows.UI.Xaml.dll");
+            HANDLE hWindowsUIXaml = GetModuleHandle(L"Windows.UI.Xaml.dll");
+            CJupiterWindow_StaticCoreWindowSubclassProcFunc = (INT64(*)(void*))
+                ((uintptr_t)hWindowsUIXaml + dwVal0);
+            rv = funchook_prepare(
+                funchook,
+                (void**)&CJupiterWindow_StaticCoreWindowSubclassProcFunc,
+                CJupiterWindow_StaticCoreWindowSubclassProcHook
+            );
+            if (rv != 0)
+            {
+                FreeLibraryAndExitThread(hModule, rv);
+                return rv;
+            }
+
+            CreateThread(
+                0,
+                0,
+                MonitorSettingsChanges,
+                FALSE,
+                0,
+                0
+            );
+
+            rv = funchook_install(funchook, 0);
+            if (rv != 0)
+            {
+#pragma warning(disable : 6387)
+                FreeLibraryAndExitThread(hModule, rv);
+#pragma warning(default : 6387)
+                return rv;
+            }
+        }
         else if (!wcscmp(exeName, L"StartMenuExperienceHost.exe"))
         {
             funchook = funchook_create();
 
             int rv;
 
+            DWORD dwVal0 = 0x62254, dwVal1 = 0x188EBC, dwVal2 = 0x187120, dwVal3 = 0x3C10, dwVal4 = 0x160AEC;
+
+            HMODULE hModule = LoadLibraryW(L"Shlwapi.dll");
+            if (hModule)
+            {
+                DWORD dwStatus = 0, dwSize = sizeof(DWORD);
+                FARPROC SHRegGetValueFromHKCUHKLMFunc = GetProcAddress(hModule, "SHRegGetValueFromHKCUHKLM");
+                if (!SHRegGetValueFromHKCUHKLMFunc || SHRegGetValueFromHKCUHKLMFunc(
+                    TEXT("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced"),
+                    TEXT("Start_MaximumFrequentApps"),
+                    SRRF_RT_REG_DWORD,
+                    NULL,
+                    &dwStatus,
+                    (LPDWORD)(&dwSize)
+                ) != ERROR_SUCCESS)
+                {
+                    dwStatus = 6;
+                }
+                maximumFreqApps = dwStatus;
+
+                if (SHRegGetValueFromHKCUHKLMFunc)
+                {
+
+                    dwSize = sizeof(DWORD);
+                    SHRegGetValueFromHKCUHKLMFunc(
+                        TEXT(REGPATH_OTHERS) TEXT("\\") TEXT(STARTDOCKED_SB_NAME),
+                        TEXT(STARTDOCKED_SB_0),
+                        SRRF_RT_REG_DWORD,
+                        NULL,
+                        &dwVal0,
+                        (LPDWORD)(&dwSize)
+                    );
+                    SHRegGetValueFromHKCUHKLMFunc(
+                        TEXT(REGPATH_OTHERS) TEXT("\\") TEXT(STARTDOCKED_SB_NAME),
+                        TEXT(STARTDOCKED_SB_1),
+                        SRRF_RT_REG_DWORD,
+                        NULL,
+                        &dwVal1,
+                        (LPDWORD)(&dwSize)
+                    );
+                    SHRegGetValueFromHKCUHKLMFunc(
+                        TEXT(REGPATH_OTHERS) TEXT("\\") TEXT(STARTDOCKED_SB_NAME),
+                        TEXT(STARTDOCKED_SB_2),
+                        SRRF_RT_REG_DWORD,
+                        NULL,
+                        &dwVal2,
+                        (LPDWORD)(&dwSize)
+                    );
+                    SHRegGetValueFromHKCUHKLMFunc(
+                        TEXT(REGPATH_OTHERS) TEXT("\\") TEXT(STARTDOCKED_SB_NAME),
+                        TEXT(STARTDOCKED_SB_3),
+                        SRRF_RT_REG_DWORD,
+                        NULL,
+                        &dwVal3,
+                        (LPDWORD)(&dwSize)
+                    );
+                    SHRegGetValueFromHKCUHKLMFunc(
+                        TEXT(REGPATH_OTHERS) TEXT("\\") TEXT(STARTDOCKED_SB_NAME),
+                        TEXT(STARTDOCKED_SB_4),
+                        SRRF_RT_REG_DWORD,
+                        NULL,
+                        &dwVal4,
+                        (LPDWORD)(&dwSize)
+                    );
+
+                }
+                FreeLibrary(hModule);
+            }
+
+            CreateThread(
+                0,
+                0,
+                MonitorSettingsChanges,
+                TRUE,
+                0,
+                0
+            );
+
             LoadLibraryW(L"StartDocked.dll");
             HANDLE hStartDocked = GetModuleHandle(L"StartDocked.dll");
-            StartDocked_LauncherFrame_ShowAllApps = (INT64(*)(void*))
-                ((uintptr_t)hStartDocked + 0x188EBC);
+            Windows_UI_Core_IVisibilityChangedEventArgs_Visible_getFunc = (INT64(*)(void*))
+                ((uintptr_t)hStartDocked + dwVal0);
+            StartDocked_LauncherFrame_ShowAllAppsFunc = (INT64(*)(void*))
+                ((uintptr_t)hStartDocked + dwVal1);
             StartDocked_LauncherFrame_OnVisibilityChangedFunc = (INT64(*)(void*, INT64, void*))
-                ((uintptr_t)hStartDocked + 0x187120);
+                ((uintptr_t)hStartDocked + dwVal2);
             rv = funchook_prepare(
                 funchook,
                 (void**)&StartDocked_LauncherFrame_OnVisibilityChangedFunc,
@@ -3080,7 +3921,30 @@ BOOL WINAPI DllMain(
             );
             if (rv != 0)
             {
-                exit(0);
+                FreeLibraryAndExitThread(hModule, rv);
+                return rv;
+            }
+            StartDocked_SystemListPolicyProvider_GetMaximumFrequentAppsFunc = (INT64(*)(void*, INT64, void*))
+                ((uintptr_t)hStartDocked + dwVal3);
+            rv = funchook_prepare(
+                funchook,
+                (void**)&StartDocked_SystemListPolicyProvider_GetMaximumFrequentAppsFunc,
+                StartDocked_SystemListPolicyProvider_GetMaximumFrequentAppsHook
+            );
+            if (rv != 0)
+            {
+                FreeLibraryAndExitThread(hModule, rv);
+                return rv;
+            }
+            StartDocked_StartSizingFrame_StartSizingFrameFunc = (INT64(*)(void*, INT64, void*))
+                ((uintptr_t)hStartDocked + dwVal4);
+            rv = funchook_prepare(
+                funchook,
+                (void**)&StartDocked_StartSizingFrame_StartSizingFrameFunc,
+                StartDocked_StartSizingFrame_StartSizingFrameHook
+            );
+            if (rv != 0)
+            {
                 FreeLibraryAndExitThread(hModule, rv);
                 return rv;
             }
@@ -3088,12 +3952,12 @@ BOOL WINAPI DllMain(
             rv = funchook_install(funchook, 0);
             if (rv != 0)
             {
-                exit(0);
+#pragma warning(disable : 6387)
                 FreeLibraryAndExitThread(hModule, rv);
+#pragma warning(default : 6387)
                 return rv;
             }
         }
-#pragma warning(default : 6387)
         break;
     case DLL_THREAD_ATTACH:
         break;
