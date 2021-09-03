@@ -141,7 +141,7 @@ DEFINE_GUID(__uuidof_IAuthUILogonSound,
 #define WINDOWSUIXAML_SB_0 "CJupiterWindow::StaticCoreWindowSubclassProc"
 #define WINDOWSUIXAML_SB_CNT 1
 #define STARTDOCKED_SB_NAME "StartDocked"
-#define STARTDOCKED_SB_0 "Windows::UI::Core::IVisibilityChangedEventArgs::Visible::get"
+#define STARTDOCKED_SB_0 "StartDocked::LauncherFrame::ShowAllApps"
 #define STARTDOCKED_SB_1 "StartDocked::LauncherFrame::ShowAllApps"
 #define STARTDOCKED_SB_2 "StartDocked::LauncherFrame::OnVisibilityChanged"
 #define STARTDOCKED_SB_3 "StartDocked::SystemListPolicyProvider::GetMaximumFrequentApps"
@@ -3991,10 +3991,10 @@ INT64 StartDocked_LauncherFrame_OnVisibilityChangedHook(void* _this, INT64 a2, v
         FreeLibrary(hModule);
         if (dwStatus)
         {
-            if (Windows_UI_Core_IVisibilityChangedEventArgs_Visible_getFunc(VisibilityChangedEventArguments))
-            {
+            //if (Windows_UI_Core_IVisibilityChangedEventArgs_Visible_getFunc(VisibilityChangedEventArguments))
+            //{
                 StartDocked_LauncherFrame_ShowAllAppsFunc(_this);
-            }
+            //}
         }
     }
     return r;
