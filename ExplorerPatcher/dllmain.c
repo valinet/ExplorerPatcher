@@ -2825,9 +2825,9 @@ __declspec(dllexport) DWORD WINAPI main(
         wprintf(L"Settings path: \"%s\"\n", wszSettingsPath);
 
 #ifndef DEBUG
-        uintptr_t alloc_console = VnGetUInt(
-            TEXT("AllocConsole"),
+        UINT alloc_console = VnGetUInt(
             TEXT("General"),
+            TEXT("AllocConsole"),
             0,
             wszSettingsPath
         );
