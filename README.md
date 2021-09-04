@@ -22,7 +22,7 @@ A detailed description of how this works is available on my web site [here](http
 
 The application comes in the form of a dynamic-link library (DLL). Precompiled binaries are available in [Releases](https://github.com/valinet/ExplorerPatcher/releases).
 
-Screenshots: [<1>](https://gist.githubusercontent.com/valinet/d0f72ff09773702584e77c46065b95e0/raw/94036ed3e38218b87744a29ae5c40b06be637daf/ep_img0.png)
+Screenshots: [<1>](https://gist.githubusercontent.com/valinet/d0f72ff09773702584e77c46065b95e0/raw/94036ed3e38218b87744a29ae5c40b06be637daf/ep_img0.png) [<2>](https://user-images.githubusercontent.com/6503598/131937638-d513ca72-ead7-459b-a8ce-619fb302b7da.png)
 
 (*) There is a bug currently in Windows 11 22000.176 where search may not open properly on other monitors. This is not because of this patcher, and will probably (hopefully) be fixed by Microsoft in a future build.
 
