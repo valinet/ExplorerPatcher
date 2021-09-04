@@ -14,7 +14,7 @@ Current functionality enabled by this patcher includes:
 * disables the logon delay which happened if you were to enable the classic taskbar using `UndockingDisabled`
 * play log on sound, if enabled
 
-It has been developed on and tested to work against the latest build, 22000.176. It should work on newer builds as well as long as the internal structure does not change too much (hopefully Microsoft won't remove all the legacy code).
+It has been developed on and tested to work against the latest builds, 22000.176 and 22449.1000 (Insider Preview). It should work on newer builds as well as long as the internal structure does not change too much (hopefully Microsoft won't remove all the legacy code).
 
 A changelog is available [here](https://github.com/valinet/ExplorerPatcher/blob/master/CHANGELOG.md).
 
