@@ -10,6 +10,7 @@ Current functionality enabled by this patcher includes:
 * ability to customize the maximum number of "Most used" apps displayed in the app list in Start
 * ability to show the Start menu on the monitor containing the cursor when you press the Windows key*
 * disable the new context menus in File Explorer and restore the classic ones
+* disable the "modern search box" in File Explorer and revert to the proper working one from initial Windows 10 builds (or from Windows 7 and 8)
 * skin the "Safe to Remove Hardware" pop-up to match the context menus of the taskbar
 * disables the logon delay which happened if you were to enable the classic taskbar using `UndockingDisabled`
 * play log on sound, if enabled
@@ -30,9 +31,9 @@ Screenshots: [<1>](https://gist.githubusercontent.com/valinet/d0f72ff09773702584
 
 Simply copy the downloaded DLL named `dxgi.dll` to `%windir%` (usually `C:\Windows`) and restart Explorer.
 
-At first launch, the application will notify you about missing symbols and will automatically download them from Microsoft. Then, it will try to determine some patch offsets for Explorer. The process involves automatically restarting Explorer a couple of times and evaluating the results. Please be patient and let this do its job; you will know it is done when you will see the old taskbar instead of the new one. Also, the application will show a notification to let you know it is done.
+At first launch, the application will notify you about missing symbols and will automatically download them from Microsoft. When this is done, a notification will show informing you that everything's done and Explorer will restart and display the old taskbar.
 
-When it is done, the classic taskbar will be available and fully functioning, but you will notice the system tray misses the status icons. Those can be easily enabled by opening `Run` and going to `%windir%\explorer.exe shell:::{05d7b0f4-2121-4eff-bf6b-ed3f69b894d9}\SystemIcons` and enabling each system icon you wish from there. For a list of other useful registry settings that can help you make the most out of this application, like disabling taskbar grouping, read [here](https://github.com/valinet/ExplorerPatcher/issues/9).
+After Explorer restarts, the classic taskbar will be available and fully functioning, but you will notice the system tray misses the status icons. Those can be easily enabled by opening `Run` and going to `%windir%\explorer.exe shell:::{05d7b0f4-2121-4eff-bf6b-ed3f69b894d9}\SystemIcons` and enabling each system icon you wish from there. For a list of other useful registry settings that can help you make the most out of this application, like disabling taskbar grouping, read [here](https://github.com/valinet/ExplorerPatcher/issues/9).
 
 After you get the classic taskbar working, to make it work with the Start menu and search and enable related functionality, copy the DLL to the following 2 locations as well:
 
@@ -41,9 +42,17 @@ After you get the classic taskbar working, to make it work with the Start menu a
 
 After that is done, kill both `StartMenuExperienceHost.exe` and `SearchHost.exe` from Task Manager, or simply log out and back in or restart the computer.
 
+Two of the applets in the system tray do not work in this mode: battery and network. To replace the battery applet, I recommend the much more capable [Battery Mode](https://en.bmode.tarcode.ru/) application which has very good integration and allows showing both classic power modes and Windows 10 power schemes (better battery, better performance etc), changing the display brightness (for laptop screens AND monitors) etc. To replace the network icon, I recommend using the control center to switch networks and keep the legacy icon only as an indicator. You can also have it open the "Network" section in the Settings app as described [here](https://winaero.com/change-network-icon-click-action-in-windows-10).
+
 Downloaded symbols and application configuration is saved in the `%appdata%\ExplorerPatcher` folder.
 
 To uninstall, simply delete `dxgi.dll` from all the directories above. If you get a "file in use" error when attempting to do so, simply rename it everywhere to `dxgia.dll`, reboot the computer and then delete the renamed DLL.
+
+#### A note on antivirus false positives
+
+The DLL you download may trigger a false positive alert in your antivirus program. This is fairly normal, a sign that the product you are using is decently capable, since it features detection methods a bit more advanced than what was state of the art in 1999. The program being flagged is usually done through heuristic analysis, not via a database of know viruses. That means that the antivirus program thinks that due to the nature of the code in this application, it likely may be a virus, a program that the user does not really mean to run. Injecting code into other executables is rarely done by legitimate programs. One such kind of legitimate programs is this patcher, that you deliberately choose to run and let it alter Explorer's code and memory in a controlled manner so that you achieve a certain effect. Thus, this patcher falls in the category of false positives: your antivirus thought such a program was not something you meant to run, but that's not the case this time.
+
+If you still feel a bit iffy running this, then that's why the source code is available on the web site. You can take a look and even compile the DLL yourself and make an informed decision when running the software. Never run untrusted binaries from questionable sources, especially when you lack access to the source code and a way to reproduce that binary.
 
 #### How does this work?
 
@@ -56,6 +65,7 @@ I picked `dxgi.dll` because it is not on the `HKEY_LOCAL_MACHINE\SYSTEM\CurrentC
 The `settings.ini` file contains, among the offsets for the various hooked/exploited functions, a few parameters that you can tweak:
 
 * `General\AllowImmersiveContextMenus = 1` will show the new context menus in Explorer instead of the legacy one
+* `General\AllowModernSearchBox = 1` will leave the modern search box enabled in File Explorer
 * `General\AllocConsole = 1` will show a console when the application runs (useful for diagnostics).
 
 The rest of the parameters that you can tweak and have them work with the application are located in the registry and are described [here](https://github.com/valinet/ExplorerPatcher/issues/9).

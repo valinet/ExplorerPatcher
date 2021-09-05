@@ -2,6 +2,26 @@
 
 This document includes the same release notes as in the [Releases](https://github.com/valinet/ExplorerPatcher/releases) section on GitHub.
 
+## 22449.1000.0.18
+
+Tested on the following builds: 22449.1000, 22000.176, 22000.1.
+
+New in this version:
+
+* Ability to disable the "modern search box" in File Explorer and uses the classic functional search from early Windows 10 versions or Windows 7/8. To disable this and still use the new search, set `General\AllowModernSearchBox = 1` in `settings.ini`
+
+Fixes:
+
+* Much improved algorithm for enabling the classic taskbar after symbols have downloaded on newer builds
+* Restored compatibility with RTM build of Windows 11 (22000.1)
+
+## 22449.1000.0.16
+
+New in this version:
+
+- Compatibility with OS build 22449.1000.0.16.
+- Fixed bug that prevented console from showing when the `AllocConsole` setting was specified in `settings.ini`
+
 ## 22000.168.0.14
 
 * Start menu and search now respect the taskbar alignment setting

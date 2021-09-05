@@ -108,8 +108,8 @@ DEFINE_GUID(__uuidof_IAuthUILogonSound,
 #define EXPLORER_SB_NAME "explorer"
 #define EXPLORER_SB_0 "CTray::_HandleGlobalHotkey"
 #define EXPLORER_SB_1 "CTray::v_WndProc"
-#define EXPLORER_SB_2 "CTray::_FireDesktopSwitchIfReady"
-#define EXPLORER_SB_3 "CTray::Init"
+#define EXPLORER_SB_2 "CTray::Init"
+#define EXPLORER_SB_3 "winrt::impl::consume_WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensions2*::IsExtensionAvailable" // should be always last
 #define EXPLORER_SB_CNT 4
 #define EXPLORER_PATCH_OFFSET "Offset"
 #define EXPLORER_PATCH_OFFSET_OK "OffsetOK"
@@ -123,7 +123,7 @@ DEFINE_GUID(__uuidof_IAuthUILogonSound,
 #define TWINUI_PCSHELL_SB_4 "CLauncherTipContextMenu::_ExecuteShutdownCommand"
 #define TWINUI_PCSHELL_SB_5 "CLauncherTipContextMenu::_ExecuteCommand"
 #define TWINUI_PCSHELL_SB_6 "CLauncherTipContextMenu::ShowLauncherTipContextMenu"
-#define TWINUI_PCSHELL_SB_7 "winrt::Windows::Internal::Shell::implementation::MeetAndChatManager::OnMessage"
+#define TWINUI_PCSHELL_SB_7 "winrt::Windows::Internal::Shell::implementation::MeetAndChatManager::OnMessage" // should be always last
 #define TWINUI_PCSHELL_SB_CNT 8
 #define TWINUI_SB_NAME "twinui"
 #define TWINUI_SB_0 "CImmersiveHotkeyNotification::_GetMonitorForHotkeyNotification"
@@ -147,6 +147,10 @@ DEFINE_GUID(__uuidof_IAuthUILogonSound,
 #define STARTDOCKED_SB_3 "StartDocked::SystemListPolicyProvider::GetMaximumFrequentApps"
 #define STARTDOCKED_SB_4 "StartDocked::StartSizingFrame::StartSizingFrame"
 #define STARTDOCKED_SB_CNT 5
+#define EXPLORERFRAME_SB_NAME "ExplorerFrame"
+#define EXPLORERFRAME_SB_0 "CUniversalSearchBand::IsModernSearchBoxEnabled"
+#define EXPLORERFRAME_SB_CNT 1
+
 const char* explorer_SN[EXPLORER_SB_CNT] = {
     EXPLORER_SB_0,
     EXPLORER_SB_1,
@@ -185,6 +189,9 @@ const char* startdocked_SN[STARTDOCKED_SB_CNT] = {
     STARTDOCKED_SB_3,
     STARTDOCKED_SB_4
 };
+const char* explorerframe_SN[EXPLORERFRAME_SB_CNT] = {
+    EXPLORERFRAME_SB_0
+};
 #pragma pack(push, 1)
 typedef struct symbols_addr
 {
@@ -195,6 +202,7 @@ typedef struct symbols_addr
     DWORD windowsuifileexplorer_PTRS[WINDOWSUIFILEEXPLORER_SB_CNT];
     DWORD windowsuixaml_PTRS[WINDOWSUIXAML_SB_CNT];
     DWORD startdocked_PTRS[STARTDOCKED_SB_CNT];
+    DWORD explorerframe_PTRS[EXPLORERFRAME_SB_CNT];
 } symbols_addr;
 #pragma pack(pop)
 
@@ -635,10 +643,20 @@ static INT64(*CTray_v_WndProcFunc)(
     _In_ LPARAM lParam
     );
 
-static INT64(*CTray__FireDesktopSwitchIfReadyFunc)(
+static char(*winrt_impl_consume_WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensions2_winrt_WindowsUdk_ApplicationModel_AppExtensions_XamlExtensions_IsExtensionAvailableFunc)(
     void* _this,
-    unsigned int a2
+    void* a2,
+    void* a3
     );
+
+char winrt_impl_consume_WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensions2_winrt_WindowsUdk_ApplicationModel_AppExtensions_XamlExtensions_IsExtensionAvailableHook(
+    void* _this,
+    void* a2,
+    void* a3
+)
+{
+    return FALSE;
+}
 
 DEFINE_GUID(IID_ILauncherTipContextMenu,
     0xb8c1db5f,
@@ -710,6 +728,16 @@ INT64 ContextMenuPresenter_DoContextMenuHook(
         a3,
         a4
     );
+}
+
+
+
+
+static BOOL(*CUniversalSearchBand_IsModernSearchBoxEnabledFunc)(void*, INT64, INT64);
+
+BOOL CUniversalSearchBand_IsModernSearchBoxEnabledHook(void* _this, INT64 a2, INT64 a3)
+{
+    return FALSE;
 }
 
 
@@ -1563,7 +1591,6 @@ INT64 CTray_HandleGlobalHotkeyHook(
     );
 }
 
-BOOL notFirstTimeCTray_v_WndProcHook = FALSE;
 INT64 CTray_v_WndProcHook(
     void* _this,
     _In_ HWND   hWnd,
@@ -1572,11 +1599,6 @@ INT64 CTray_v_WndProcHook(
     _In_ LPARAM lParam
 )
 {
-    if (!notFirstTimeCTray_v_WndProcHook)
-    {
-        notFirstTimeCTray_v_WndProcHook = TRUE;
-        CTray__FireDesktopSwitchIfReadyFunc(_this, 2);
-    }
     return CTray_v_WndProcFunc(
         _this,
         hWnd,
@@ -2113,18 +2135,32 @@ DWORD DownloadSymbols(TCHAR* wszSettingsPath)
         return 2;
     }
     printf("Reading symbols...\n");
-    if (VnGetSymbols(
+    int rv = 0;
+    if (rv = VnGetSymbols(
         szSettingsPath,
         symbols_PTRS.explorer_PTRS,
         explorer_SN,
         EXPLORER_SB_CNT
     ))
     {
-        FreeLibraryAndExitThread(
-            hModule,
-            3
-        );
-        return 3;
+        printf("Chosen Explorer patching method: dynamic (%d).\n", rv);
+        if (VnGetSymbols(
+            szSettingsPath,
+            symbols_PTRS.explorer_PTRS,
+            explorer_SN,
+            EXPLORER_SB_CNT - 1
+        ))
+        {
+            FreeLibraryAndExitThread(
+                hModule,
+                3
+            );
+            return 3;
+        }
+    }
+    else
+    {
+        printf("Chosen Explorer patching method: static.\n");
     }
     VnWriteUInt(
         TEXT(EXPLORER_SB_NAME),
@@ -2150,7 +2186,6 @@ DWORD DownloadSymbols(TCHAR* wszSettingsPath)
         symbols_PTRS.explorer_PTRS[3],
         wszSettingsPath
     );
-
 
 
 
@@ -2200,11 +2235,20 @@ DWORD DownloadSymbols(TCHAR* wszSettingsPath)
         TWINUI_PCSHELL_SB_CNT
     ))
     {
-        FreeLibraryAndExitThread(
-            hModule,
-            5
-        );
-        return 5;
+        printf("Hooking Win+C is not available for this build.\n");
+        if (VnGetSymbols(
+            szSettingsPath,
+            symbols_PTRS.twinui_pcshell_PTRS,
+            twinui_pcshell_SN,
+            TWINUI_PCSHELL_SB_CNT - 1
+        ))
+        {
+            FreeLibraryAndExitThread(
+                hModule,
+                5
+            );
+            return 5;
+        }
     }
     VnWriteUInt(
         TEXT(TWINUI_PCSHELL_SB_NAME),
@@ -2549,6 +2593,68 @@ DWORD DownloadSymbols(TCHAR* wszSettingsPath)
 
 
 
+    char explorerframe_sb_dll[MAX_PATH];
+    ZeroMemory(
+        explorerframe_sb_dll,
+        (MAX_PATH) * sizeof(char)
+    );
+    GetSystemDirectoryA(
+        explorerframe_sb_dll,
+        MAX_PATH
+    );
+    strcat_s(
+        explorerframe_sb_dll,
+        MAX_PATH,
+        "\\"
+    );
+    strcat_s(
+        explorerframe_sb_dll,
+        MAX_PATH,
+        EXPLORERFRAME_SB_NAME
+    );
+    strcat_s(
+        explorerframe_sb_dll,
+        MAX_PATH,
+        ".dll"
+    );
+    printf("Downloading symbols for \"%s\"...\n", explorerframe_sb_dll);
+    if (VnDownloadSymbols(
+        NULL,
+        explorerframe_sb_dll,
+        szSettingsPath,
+        MAX_PATH
+    ))
+    {
+        FreeLibraryAndExitThread(
+            hModule,
+            6
+        );
+        return 6;
+    }
+    printf("Reading symbols...\n");
+    if (VnGetSymbols(
+        szSettingsPath,
+        symbols_PTRS.explorerframe_PTRS,
+        explorerframe_SN,
+        EXPLORERFRAME_SB_CNT
+    ))
+    {
+        FreeLibraryAndExitThread(
+            hModule,
+            7
+        );
+        return 7;
+    }
+    VnWriteUInt(
+        TEXT(EXPLORERFRAME_SB_NAME),
+        TEXT(EXPLORERFRAME_SB_0),
+        symbols_PTRS.explorerframe_PTRS[0],
+        wszSettingsPath
+    );
+
+
+
+
     char windowsuixaml_sb_dll[MAX_PATH];
     ZeroMemory(
         windowsuixaml_sb_dll,
@@ -2612,6 +2718,8 @@ DWORD DownloadSymbols(TCHAR* wszSettingsPath)
 
 
 
+
+
     VnWriteString(
         TEXT("OS"),
         TEXT("Build"),
@@ -2619,27 +2727,54 @@ DWORD DownloadSymbols(TCHAR* wszSettingsPath)
         wszSettingsPath
     );
 
-    __x_ABI_CWindows_CData_CXml_CDom_CIXmlDocument* inputXml2 = NULL;
-    hr = String2IXMLDocument(
-        DownloadOKXML,
-        wcslen(DownloadOKXML),
-        &inputXml2,
+    if (symbols_PTRS.explorer_PTRS[EXPLORER_SB_CNT - 1])
+    {
+        __x_ABI_CWindows_CData_CXml_CDom_CIXmlDocument* inputXml = NULL;
+        HRESULT hr = String2IXMLDocument(
+            InstallOK,
+            wcslen(InstallOK),
+            &inputXml,
+    #ifdef DEBUG
+            stdout
+    #else
+            NULL
+    #endif
+        );
+        hr = ShowToastMessage(
+            inputXml,
+            APPID,
+            sizeof(APPID) / sizeof(TCHAR) - 1,
+    #ifdef DEBUG
+            stdout
+    #else
+            NULL
+    #endif
+        );
+    }
+    else
+    {
+        __x_ABI_CWindows_CData_CXml_CDom_CIXmlDocument* inputXml2 = NULL;
+        hr = String2IXMLDocument(
+            DownloadOKXML,
+            wcslen(DownloadOKXML),
+            &inputXml2,
 #ifdef DEBUG
-        stdout
+            stdout
 #else
-        NULL
+            NULL
 #endif
-    );
-    hr = ShowToastMessage(
-        inputXml2,
-        APPID,
-        sizeof(APPID) / sizeof(TCHAR) - 1,
+        );
+        hr = ShowToastMessage(
+            inputXml2,
+            APPID,
+            sizeof(APPID) / sizeof(TCHAR) - 1,
 #ifdef DEBUG
-        stdout
+            stdout
 #else
-        NULL
+            NULL
 #endif
-    );
+        );
+    }
 
     VnWriteUInt(
         TEXT(EXPLORER_SB_NAME),
@@ -3099,10 +3234,20 @@ __declspec(dllexport) DWORD WINAPI main(
             RegCloseKey(hKeySettings);
         }
 
+        symbols_PTRS.explorerframe_PTRS[0] = VnGetUInt(
+            TEXT(EXPLORERFRAME_SB_NAME),
+            TEXT(EXPLORERFRAME_SB_0),
+            0,
+            wszSettingsPath
+        );
+
         BOOL bNeedToDownload = FALSE;
         for (UINT i = 0; i < sizeof(symbols_addr) / sizeof(DWORD); ++i)
         {
-            if (!((DWORD*)&symbols_PTRS)[i])
+            if (!((DWORD*)&symbols_PTRS)[i] && 
+                (((DWORD*)&symbols_PTRS) + i) != symbols_PTRS.explorer_PTRS + EXPLORER_SB_CNT - 1 &&
+                (((DWORD*)&symbols_PTRS) + i) != symbols_PTRS.twinui_pcshell_PTRS + TWINUI_PCSHELL_SB_CNT - 1
+                )
             {
                 bNeedToDownload = TRUE;
             }
@@ -3216,292 +3361,306 @@ __declspec(dllexport) DWORD WINAPI main(
             FreeLibraryAndExitThread(hModule, rv);
             return rv;
         }*/
-        CTray__FireDesktopSwitchIfReadyFunc = (INT64(*)(HWND, int))
-            ((uintptr_t)hExplorer + symbols_PTRS.explorer_PTRS[2]);
-        printf("Setup explorer functions done\n");
-        const char szPayload0[6] = { 0x90, 0x90, 0x90, 0x90, 0x90, 0x90 };
-        const char szPayload1[2] = { 0x90, 0xE9 };
-        UINT start = VnGetUInt(
-            TEXT(EXPLORER_SB_NAME),
-            TEXT(EXPLORER_PATCH_OFFSET),
-            0,
-            wszSettingsPath
-        );
-        UINT ok = VnGetUInt(
-            TEXT(EXPLORER_SB_NAME),
-            TEXT(EXPLORER_PATCH_OFFSET_OK),
-            0,
-            wszSettingsPath
-        );
-        UINT strat = VnGetUInt(
-            TEXT(EXPLORER_SB_NAME),
-            TEXT(EXPLORER_PATCH_OFFSET_STRAT),
-            0,
-            wszSettingsPath
-        );
-        uintptr_t dwInjectedAddr = (uintptr_t)hExplorer;
-        DWORD dwOldValue = 0, dwNumberOfBytes = 0;
-        if (ok)
+        if (symbols_PTRS.explorer_PTRS[EXPLORER_SB_CNT - 1])
         {
-            dwInjectedAddr += symbols_PTRS.explorer_PTRS[3] + start;
-#ifdef _M_AMD64
-            if (strat == STRAT_REPLACE_ANY_TYPE_OF_JUMP_WITH_NOP)
+            winrt_impl_consume_WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensions2_winrt_WindowsUdk_ApplicationModel_AppExtensions_XamlExtensions_IsExtensionAvailableFunc = (char(*)(void*, void*, void*))
+                ((uintptr_t)hExplorer + symbols_PTRS.explorer_PTRS[EXPLORER_SB_CNT - 1]);
+            rv = funchook_prepare(
+                funchook,
+                (void**)&winrt_impl_consume_WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensions2_winrt_WindowsUdk_ApplicationModel_AppExtensions_XamlExtensions_IsExtensionAvailableFunc,
+                winrt_impl_consume_WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensions2_winrt_WindowsUdk_ApplicationModel_AppExtensions_XamlExtensions_IsExtensionAvailableHook
+            );
+            if (rv != 0)
             {
-                printf("Results: %d (%d) ", VirtualProtect(
-                    (LPVOID)dwInjectedAddr,
-                    sizeof(szPayload0),
-                    PAGE_EXECUTE_READWRITE,
-                    &dwOldValue
-                ), GetLastError());
-                memcpy(
-                    (LPVOID)dwInjectedAddr,
-                    szPayload0,
-                    sizeof(szPayload0)
-                );
-                printf("Results: %d (%d) ", VirtualProtect(
-                    (LPVOID)dwInjectedAddr,
-                    sizeof(szPayload0),
-                    dwOldValue,
-                    (PDWORD)(&dwNumberOfBytes)
-                ), GetLastError());
-                printf("when altering taskbar code path using strat 1.\n");
+                FreeLibraryAndExitThread(hModule, rv);
+                return rv;
             }
-            else if (strat == STRAT_REPLACE_ANY_TYPE_OF_JUMP_WITH_ALWAYS_JUMP)
-            {
-                printf("Results: %d (%d) ", VirtualProtect(
-                    (LPVOID)dwInjectedAddr,
-                    sizeof(szPayload1),
-                    PAGE_EXECUTE_READWRITE,
-                    &dwOldValue
-                ), GetLastError());
-                memcpy(
-                    (LPVOID)dwInjectedAddr,
-                    szPayload1,
-                    sizeof(szPayload1)
-                );
-                printf("%d (%d) ", VirtualProtect(
-                    (LPVOID)dwInjectedAddr,
-                    sizeof(szPayload1),
-                    dwOldValue,
-                    (PDWORD)(&dwNumberOfBytes)
-                ), GetLastError());
-                printf("when altering taskbar code path using strat 1.\n");
-            }
-#elif _M_ARM64
-            if (strat == STRAT_REPLACE_ANY_TYPE_OF_JUMP_WITH_NOP)
-            {
-                uint32_t instruction = 0xD503201F;
-                printf("Results: %d (%d) ", VirtualProtect(
-                    (LPVOID)dwInjectedAddr,
-                    sizeof(uint32_t),
-                    PAGE_EXECUTE_READWRITE,
-                    &dwOldValue
-                ), GetLastError());
-                memcpy(
-                    (LPVOID)dwInjectedAddr,
-                    &instruction,
-                    sizeof(uint32_t)
-                );
-                printf("%d (%d) ", VirtualProtect(
-                    (LPVOID)dwInjectedAddr,
-                    sizeof(uint32_t),
-                    dwOldValue,
-                    (PDWORD)(&dwNumberOfBytes)
-                ), GetLastError());
-                printf("when altering taskbar code path using strat 1.\n");
-            }
-            else if (strat == STRAT_REPLACE_ANY_TYPE_OF_JUMP_WITH_ALWAYS_JUMP)
-            {
-                uint32_t instruction;
-                printf("Results: %d (%d) ", VirtualProtect(
-                    (LPVOID)dwInjectedAddr,
-                    sizeof(uint32_t),
-                    PAGE_EXECUTE_READWRITE,
-                    &dwOldValue
-                ), GetLastError());
-                memcpy(
-                    &instruction,
-                    (LPVOID)dwInjectedAddr,
-                    sizeof(uint32_t)
-                );
-                instruction <<= 8;
-                instruction >>= 13;
-                instruction &= 0b00010111111111111111111111111111;
-                instruction |= 0b00010100000000000000000000000000;
-                memcpy(
-                    (LPVOID)dwInjectedAddr,
-                    &instruction,
-                    sizeof(uint32_t)
-                );
-                printf("%d (%d) ", VirtualProtect(
-                    (LPVOID)dwInjectedAddr,
-                    sizeof(uint32_t),
-                    dwOldValue,
-                    (PDWORD)(&dwNumberOfBytes)
-                ), GetLastError());
-                printf("when altering taskbar code path using strat 1.\n");
-            }
-#endif
         }
         else
         {
-            UINT dirty = VnGetUInt(
+            const char szPayload0[6] = { 0x90, 0x90, 0x90, 0x90, 0x90, 0x90 };
+            const char szPayload1[2] = { 0x90, 0xE9 };
+            UINT start = VnGetUInt(
                 TEXT(EXPLORER_SB_NAME),
-                TEXT(EXPLORER_PATCH_DIRTY),
+                TEXT(EXPLORER_PATCH_OFFSET),
                 0,
                 wszSettingsPath
             );
-            if (dirty)
-            {
-                FreeConsole();
-                TerminateProcess(
-                    OpenProcess(
-                        PROCESS_TERMINATE,
-                        FALSE,
-                        GetCurrentProcessId()
-                    ),
-                    EXIT_CODE_EXPLORER
-                );
-            }
-
-            uintptr_t CTray_Init = dwInjectedAddr + (uintptr_t)symbols_PTRS.explorer_PTRS[3];
-            char m[BYTES_TO_DISASSEMBLE];
-            VirtualProtect(
-                (LPVOID)CTray_Init,
-                BYTES_TO_DISASSEMBLE,
-                PAGE_EXECUTE_READ,
-                &dwOldValue
-            );
-            memcpy(
-                m,
-                (LPVOID)CTray_Init,
-                BYTES_TO_DISASSEMBLE
-            );
-            VirtualProtect(
-                (LPVOID)CTray_Init,
-                BYTES_TO_DISASSEMBLE,
-                dwOldValue,
-                (PDWORD)(&dwNumberOfBytes)
-            );
-            printf("Copied %d bytes to disassemble.\n", BYTES_TO_DISASSEMBLE);
-#if HOW_TO_HOOK == HOOK_WITH_FUNCHOOK
-            _DecodedInst decodedInstructions[1000];
-            UINT decodedInstructionsCount = 0;
-            _DecodeResult res = distorm_decode(
-                0,
-                (const unsigned char*)m,
-                BYTES_TO_DISASSEMBLE,
-                Decode64Bits,
-                decodedInstructions,
-                1000,
-                &decodedInstructionsCount
-            );
-            printf("Disassembled bytes.\n");
-            BOOL found = FALSE;
-            for (UINT i = 0; i < decodedInstructionsCount; ++i)
-            {
-                if ((!strcmp(decodedInstructions[i].mnemonic.p, "JZ") ||
-                    !strcmp(decodedInstructions[i].mnemonic.p, "JNZ")) &&
-                    decodedInstructions[i].offset > start)
-                {
-                    found = TRUE;
-                    start = decodedInstructions[i].offset;
-                    printf("Attempting offset %lld with strat %lld...\n", decodedInstructions[i].offset, strat);
-                    if (strat == 0)
-                    {
-                        memcpy(
-                            m + start,
-                            szPayload0,
-                            sizeof(szPayload0)
-                        );
-                    }
-                    else if (strat == 1)
-                    {
-                        memcpy(
-                            m + start,
-                            szPayload1,
-                            sizeof(szPayload1)
-                        );
-                    }
-                    break;
-                }
-            }
-            if (!found)
-            {
-                start = 0;
-                strat++;
-            }
-#endif
-            VirtualProtect(
-                (LPVOID)CTray_Init,
-                BYTES_TO_DISASSEMBLE,
-                PAGE_EXECUTE_READWRITE,
-                &dwOldValue
-            );
-            memcpy(
-                (LPVOID)CTray_Init,
-                m,
-                BYTES_TO_DISASSEMBLE
-            );
-            VirtualProtect(
-                (LPVOID)CTray_Init,
-                BYTES_TO_DISASSEMBLE,
-                dwOldValue,
-                (PDWORD)(&dwNumberOfBytes)
-            );
-            UINT new_ok = VnGetUInt(
+            UINT ok = VnGetUInt(
                 TEXT(EXPLORER_SB_NAME),
                 TEXT(EXPLORER_PATCH_OFFSET_OK),
                 0,
                 wszSettingsPath
             );
-            if (!new_ok)
-            {
-                VnWriteUInt(
-                    TEXT(EXPLORER_SB_NAME),
-                    TEXT(EXPLORER_PATCH_OFFSET),
-                    start,
-                    wszSettingsPath
-                );
-                VnWriteUInt(
-                    TEXT(EXPLORER_SB_NAME),
-                    TEXT(EXPLORER_PATCH_OFFSET_STRAT),
-                    strat,
-                    wszSettingsPath
-                );
-            }
-            TCHAR wszExplorerPath[MAX_PATH + 1];
-            wszExplorerPath[0] = L'\"';
-            GetSystemDirectory(wszExplorerPath + 1, MAX_PATH);
-            wcscat_s(wszExplorerPath, MAX_PATH + 1, L"\\rundll32.exe\" \"");
-            GetModuleFileName(hModule, wszExplorerPath + wcslen(wszExplorerPath), MAX_PATH - wcslen(wszExplorerPath));
-            wcscat_s(wszExplorerPath, MAX_PATH, L"\",ZZLaunchExplorerDelayed");
-            wprintf(L"Command to launch: \" %s \"\n.", wszExplorerPath);
-            STARTUPINFO si = { sizeof(si) };
-            PROCESS_INFORMATION pi;
-            BOOL b = CreateProcess(
-                NULL,
-                wszExplorerPath,
-                NULL,
-                NULL,
-                TRUE,
-                CREATE_UNICODE_ENVIRONMENT,
-                NULL,
-                NULL,
-                &si,
-                &pi
-            );
-            VnWriteUInt(
+            UINT strat = VnGetUInt(
                 TEXT(EXPLORER_SB_NAME),
-                TEXT(EXPLORER_PATCH_DIRTY),
-                1,
+                TEXT(EXPLORER_PATCH_OFFSET_STRAT),
+                0,
                 wszSettingsPath
             );
-            FreeConsole();
-            CreateThread(0, 0, DetermineInjectionSuccess, wszSettingsPath, 0, 0);
-            return 0;
-        }
+            uintptr_t dwInjectedAddr = (uintptr_t)hExplorer;
+            DWORD dwOldValue = 0, dwNumberOfBytes = 0;
+            if (ok)
+            {
+                dwInjectedAddr += symbols_PTRS.explorer_PTRS[2] + start;
+#ifdef _M_AMD64
+                if (strat == STRAT_REPLACE_ANY_TYPE_OF_JUMP_WITH_NOP)
+                {
+                    printf("Results: %d (%d) ", VirtualProtect(
+                        (LPVOID)dwInjectedAddr,
+                        sizeof(szPayload0),
+                        PAGE_EXECUTE_READWRITE,
+                        &dwOldValue
+                    ), GetLastError());
+                    memcpy(
+                        (LPVOID)dwInjectedAddr,
+                        szPayload0,
+                        sizeof(szPayload0)
+                    );
+                    printf("Results: %d (%d) ", VirtualProtect(
+                        (LPVOID)dwInjectedAddr,
+                        sizeof(szPayload0),
+                        dwOldValue,
+                        (PDWORD)(&dwNumberOfBytes)
+                    ), GetLastError());
+                    printf("when altering taskbar code path using strat 1.\n");
+                }
+                else if (strat == STRAT_REPLACE_ANY_TYPE_OF_JUMP_WITH_ALWAYS_JUMP)
+                {
+                    printf("Results: %d (%d) ", VirtualProtect(
+                        (LPVOID)dwInjectedAddr,
+                        sizeof(szPayload1),
+                        PAGE_EXECUTE_READWRITE,
+                        &dwOldValue
+                    ), GetLastError());
+                    memcpy(
+                        (LPVOID)dwInjectedAddr,
+                        szPayload1,
+                        sizeof(szPayload1)
+                    );
+                    printf("%d (%d) ", VirtualProtect(
+                        (LPVOID)dwInjectedAddr,
+                        sizeof(szPayload1),
+                        dwOldValue,
+                        (PDWORD)(&dwNumberOfBytes)
+                    ), GetLastError());
+                    printf("when altering taskbar code path using strat 1.\n");
+                }
+#elif _M_ARM64
+                if (strat == STRAT_REPLACE_ANY_TYPE_OF_JUMP_WITH_NOP)
+                {
+                    uint32_t instruction = 0xD503201F;
+                    printf("Results: %d (%d) ", VirtualProtect(
+                        (LPVOID)dwInjectedAddr,
+                        sizeof(uint32_t),
+                        PAGE_EXECUTE_READWRITE,
+                        &dwOldValue
+                    ), GetLastError());
+                    memcpy(
+                        (LPVOID)dwInjectedAddr,
+                        &instruction,
+                        sizeof(uint32_t)
+                    );
+                    printf("%d (%d) ", VirtualProtect(
+                        (LPVOID)dwInjectedAddr,
+                        sizeof(uint32_t),
+                        dwOldValue,
+                        (PDWORD)(&dwNumberOfBytes)
+                    ), GetLastError());
+                    printf("when altering taskbar code path using strat 1.\n");
+                }
+                else if (strat == STRAT_REPLACE_ANY_TYPE_OF_JUMP_WITH_ALWAYS_JUMP)
+                {
+                    uint32_t instruction;
+                    printf("Results: %d (%d) ", VirtualProtect(
+                        (LPVOID)dwInjectedAddr,
+                        sizeof(uint32_t),
+                        PAGE_EXECUTE_READWRITE,
+                        &dwOldValue
+                    ), GetLastError());
+                    memcpy(
+                        &instruction,
+                        (LPVOID)dwInjectedAddr,
+                        sizeof(uint32_t)
+                    );
+                    instruction <<= 8;
+                    instruction >>= 13;
+                    instruction &= 0b00010111111111111111111111111111;
+                    instruction |= 0b00010100000000000000000000000000;
+                    memcpy(
+                        (LPVOID)dwInjectedAddr,
+                        &instruction,
+                        sizeof(uint32_t)
+                    );
+                    printf("%d (%d) ", VirtualProtect(
+                        (LPVOID)dwInjectedAddr,
+                        sizeof(uint32_t),
+                        dwOldValue,
+                        (PDWORD)(&dwNumberOfBytes)
+                    ), GetLastError());
+                    printf("when altering taskbar code path using strat 1.\n");
+                }
+#endif
+            }
+            else
+            {
+                UINT dirty = VnGetUInt(
+                    TEXT(EXPLORER_SB_NAME),
+                    TEXT(EXPLORER_PATCH_DIRTY),
+                    0,
+                    wszSettingsPath
+                );
+                if (dirty)
+                {
+                    FreeConsole();
+                    TerminateProcess(
+                        OpenProcess(
+                            PROCESS_TERMINATE,
+                            FALSE,
+                            GetCurrentProcessId()
+                        ),
+                        EXIT_CODE_EXPLORER
+                    );
+                }
 
+                uintptr_t CTray_Init = dwInjectedAddr + (uintptr_t)symbols_PTRS.explorer_PTRS[2];
+                char m[BYTES_TO_DISASSEMBLE];
+                VirtualProtect(
+                    (LPVOID)CTray_Init,
+                    BYTES_TO_DISASSEMBLE,
+                    PAGE_EXECUTE_READ,
+                    &dwOldValue
+                );
+                memcpy(
+                    m,
+                    (LPVOID)CTray_Init,
+                    BYTES_TO_DISASSEMBLE
+                );
+                VirtualProtect(
+                    (LPVOID)CTray_Init,
+                    BYTES_TO_DISASSEMBLE,
+                    dwOldValue,
+                    (PDWORD)(&dwNumberOfBytes)
+                );
+                printf("Copied %d bytes to disassemble.\n", BYTES_TO_DISASSEMBLE);
+#if HOW_TO_HOOK == HOOK_WITH_FUNCHOOK
+                _DecodedInst decodedInstructions[1000];
+                UINT decodedInstructionsCount = 0;
+                _DecodeResult res = distorm_decode(
+                    0,
+                    (const unsigned char*)m,
+                    BYTES_TO_DISASSEMBLE,
+                    Decode64Bits,
+                    decodedInstructions,
+                    1000,
+                    &decodedInstructionsCount
+                );
+                printf("Disassembled bytes.\n");
+                BOOL found = FALSE;
+                for (UINT i = 0; i < decodedInstructionsCount; ++i)
+                {
+                    if ((!strcmp(decodedInstructions[i].mnemonic.p, "JZ") ||
+                        !strcmp(decodedInstructions[i].mnemonic.p, "JNZ")) &&
+                        decodedInstructions[i].offset > start)
+                    {
+                        found = TRUE;
+                        start = decodedInstructions[i].offset;
+                        printf("Attempting offset %lld with strat %lld...\n", decodedInstructions[i].offset, strat);
+                        if (strat == 0)
+                        {
+                            memcpy(
+                                m + start,
+                                szPayload0,
+                                sizeof(szPayload0)
+                            );
+                        }
+                        else if (strat == 1)
+                        {
+                            memcpy(
+                                m + start,
+                                szPayload1,
+                                sizeof(szPayload1)
+                            );
+                        }
+                        break;
+                    }
+                }
+                if (!found)
+                {
+                    start = 0;
+                    strat++;
+                }
+#endif
+                VirtualProtect(
+                    (LPVOID)CTray_Init,
+                    BYTES_TO_DISASSEMBLE,
+                    PAGE_EXECUTE_READWRITE,
+                    &dwOldValue
+                );
+                memcpy(
+                    (LPVOID)CTray_Init,
+                    m,
+                    BYTES_TO_DISASSEMBLE
+                );
+                VirtualProtect(
+                    (LPVOID)CTray_Init,
+                    BYTES_TO_DISASSEMBLE,
+                    dwOldValue,
+                    (PDWORD)(&dwNumberOfBytes)
+                );
+                UINT new_ok = VnGetUInt(
+                    TEXT(EXPLORER_SB_NAME),
+                    TEXT(EXPLORER_PATCH_OFFSET_OK),
+                    0,
+                    wszSettingsPath
+                );
+                if (!new_ok)
+                {
+                    VnWriteUInt(
+                        TEXT(EXPLORER_SB_NAME),
+                        TEXT(EXPLORER_PATCH_OFFSET),
+                        start,
+                        wszSettingsPath
+                    );
+                    VnWriteUInt(
+                        TEXT(EXPLORER_SB_NAME),
+                        TEXT(EXPLORER_PATCH_OFFSET_STRAT),
+                        strat,
+                        wszSettingsPath
+                    );
+                }
+                TCHAR wszExplorerPath[MAX_PATH + 1];
+                wszExplorerPath[0] = L'\"';
+                GetSystemDirectory(wszExplorerPath + 1, MAX_PATH);
+                wcscat_s(wszExplorerPath, MAX_PATH + 1, L"\\rundll32.exe\" \"");
+                GetModuleFileName(hModule, wszExplorerPath + wcslen(wszExplorerPath), MAX_PATH - wcslen(wszExplorerPath));
+                wcscat_s(wszExplorerPath, MAX_PATH, L"\",ZZLaunchExplorerDelayed");
+                wprintf(L"Command to launch: \" %s \"\n.", wszExplorerPath);
+                STARTUPINFO si = { sizeof(si) };
+                PROCESS_INFORMATION pi;
+                BOOL b = CreateProcess(
+                    NULL,
+                    wszExplorerPath,
+                    NULL,
+                    NULL,
+                    TRUE,
+                    CREATE_UNICODE_ENVIRONMENT,
+                    NULL,
+                    NULL,
+                    &si,
+                    &pi
+                );
+                VnWriteUInt(
+                    TEXT(EXPLORER_SB_NAME),
+                    TEXT(EXPLORER_PATCH_DIRTY),
+                    1,
+                    wszSettingsPath
+                );
+                FreeConsole();
+                CreateThread(0, 0, DetermineInjectionSuccess, wszSettingsPath, 0, 0);
+                return 0;
+            }
+        }
 
         LoadLibraryW(L"user32.dll");
         HANDLE hUser32 = GetModuleHandle(L"user32.dll");
@@ -3543,17 +3702,20 @@ __declspec(dllexport) DWORD WINAPI main(
             return rv;
         }
 
-        winrt_Windows_Internal_Shell_implementation_MeetAndChatManager_OnMessageFunc = (INT64(*)(void*, POINT*))
-            ((uintptr_t)hTwinuiPcshell + symbols_PTRS.twinui_pcshell_PTRS[7]);
-        rv = funchook_prepare(
-            funchook,
-            (void**)&winrt_Windows_Internal_Shell_implementation_MeetAndChatManager_OnMessageFunc,
-            winrt_Windows_Internal_Shell_implementation_MeetAndChatManager_OnMessageHook
-        );
-        if (rv != 0)
+        if (symbols_PTRS.twinui_pcshell_PTRS[TWINUI_PCSHELL_SB_CNT - 1])
         {
-            FreeLibraryAndExitThread(hModule, rv);
-            return rv;
+            winrt_Windows_Internal_Shell_implementation_MeetAndChatManager_OnMessageFunc = (INT64(*)(void*, POINT*))
+                ((uintptr_t)hTwinuiPcshell + symbols_PTRS.twinui_pcshell_PTRS[TWINUI_PCSHELL_SB_CNT - 1]);
+            rv = funchook_prepare(
+                funchook,
+                (void**)&winrt_Windows_Internal_Shell_implementation_MeetAndChatManager_OnMessageFunc,
+                winrt_Windows_Internal_Shell_implementation_MeetAndChatManager_OnMessageHook
+            );
+            if (rv != 0)
+            {
+                FreeLibraryAndExitThread(hModule, rv);
+                return rv;
+            }
         }
         printf("Setup twinui.pcshell functions done\n");
 
@@ -3642,6 +3804,32 @@ __declspec(dllexport) DWORD WINAPI main(
         }
         printf("Setup Windows.UI.FileExplorer functions done\n");
 
+
+
+        LoadLibraryW(L"ExplorerFrame.dll");
+        HANDLE hExplorerFrame = GetModuleHandle(L"ExplorerFrame.dll");
+        CUniversalSearchBand_IsModernSearchBoxEnabledFunc = (BOOL(*)(void*, INT64, INT64))
+            ((uintptr_t)hExplorerFrame + symbols_PTRS.explorerframe_PTRS[0]);
+        UINT bAllowModernSearchBox = VnGetUInt(
+            L"General",
+            L"AllowModernSearchBox",
+            0,
+            wszSettingsPath
+        );
+        if (!bAllowModernSearchBox)
+        {
+            rv = funchook_prepare(
+                funchook,
+                (void**)&CUniversalSearchBand_IsModernSearchBoxEnabledFunc,
+                CUniversalSearchBand_IsModernSearchBoxEnabledHook
+            );
+            if (rv != 0)
+            {
+                FreeLibraryAndExitThread(hModule, rv);
+                return rv;
+            }
+        }
+        printf("Setup ExplorerFrame functions done\n");
 
 
         rv = funchook_install(funchook, 0);
