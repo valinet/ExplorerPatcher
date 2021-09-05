@@ -14,6 +14,7 @@ Fixes:
 
 * Much improved algorithm for enabling the classic taskbar after symbols have downloaded on newer builds
 * Restored compatibility with RTM build of Windows 11 (22000.1)
+* Fixes the "modern search box" not working correctly when the DLL is used in `C:\Windows\SystemApps\MicrosoftWindows.Client.CBS_cw5n1h2txyewy`
 
 ## 22449.1000.0.16
 
