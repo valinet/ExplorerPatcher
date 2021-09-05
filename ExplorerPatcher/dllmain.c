@@ -4257,15 +4257,20 @@ LRESULT CJupiterWindow_StaticCoreWindowSubclassProcHook(
             FreeLibrary(hModule);
             if (!dwStatus)
             {
-                BOOL bIsAtBottom = FALSE, bIsAtRight = FALSE;
-                POINT pt = GetDefaultWinXPosition(TRUE, &bIsAtBottom, &bIsAtRight);
                 RECT rc;
                 GetWindowRect(hWnd, &rc);
-                LPWINDOWPOS wp = lParam;
-                wp->x = pt.x - (bIsAtRight ? (rc.right - rc.left) : 0);
-                wp->y = pt.y - (bIsAtBottom ? (rc.bottom - rc.top) : 0);
-                wp->flags &= ~SWP_NOMOVE;
-                return 0;
+                if (rc.top > 10) // this differentiates between the search 
+                                 // interface (Win+Q) and the search box in
+                                 // Explorer
+                {
+                    BOOL bIsAtBottom = FALSE, bIsAtRight = FALSE;
+                    POINT pt = GetDefaultWinXPosition(TRUE, &bIsAtBottom, &bIsAtRight);
+                    LPWINDOWPOS wp = lParam;
+                    wp->x = pt.x - (bIsAtRight ? (rc.right - rc.left) : 0);
+                    wp->y = pt.y - (bIsAtBottom ? (rc.bottom - rc.top) : 0);
+                    wp->flags &= ~SWP_NOMOVE;
+                    return 0;
+                }
             }
         }
     }
