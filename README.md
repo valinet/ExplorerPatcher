@@ -44,7 +44,7 @@ After that is done, kill both `StartMenuExperienceHost.exe` and `SearchHost.exe`
 
 Two of the applets in the system tray do not work in this mode: battery and network. To replace the battery applet, I recommend the much more capable [Battery Mode](https://en.bmode.tarcode.ru/) application which has very good integration and allows showing both classic power modes and Windows 10 power schemes (better battery, better performance etc), changing the display brightness (for laptop screens AND monitors) etc. To replace the network icon, I recommend using the control center to switch networks and keep the legacy icon only as an indicator. You can also have it open the "Network" section in the Settings app as described [here](https://winaero.com/change-network-icon-click-action-in-windows-10).
 
-If you want to disable the rounded corners of the windows in Windows 11, I recommend you one of my other utilities available [here](https://github.com/valinet/Win11DisableRoundedCorners).
+If you want to disable the blue highlight in the context menu and return to the classic gray highlight from early Windows 11 builds, read [here](https://github.com/valinet/ExplorerPatcher/issues/18). Also, if you want to disable the rounded corners of the windows in Windows 11, I recommend you one of my other utilities available [here](https://github.com/valinet/Win11DisableRoundedCorners).
 
 Downloaded symbols and application configuration is saved in the `%appdata%\ExplorerPatcher` folder.
 
