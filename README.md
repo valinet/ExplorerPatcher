@@ -31,7 +31,7 @@ Screenshots: [<1>](https://gist.githubusercontent.com/valinet/d0f72ff09773702584
 
 Simply copy the downloaded DLL named `dxgi.dll` to `%windir%` (usually `C:\Windows`) and restart Explorer.
 
-At first launch, the application will notify you about missing symbols and will automatically download them from Microsoft. When this is done, a notification will show informing you that everything's done and Explorer will restart and display the old taskbar.
+At first launch, the application will notify you about missing symbols and will automatically download them from Microsoft. When this is done, a notification will show informing you that everything's done and Explorer will restart and display the old taskbar. Note that for those with relevant toast display turned off, this process may be done automatically without any notification. Normally giving it 5 mins will suffice.
 
 After Explorer restarts, the classic taskbar will be available and fully functioning, but you will notice the system tray misses the status icons. Those can be easily enabled by opening `Run` and going to `%windir%\explorer.exe shell:::{05d7b0f4-2121-4eff-bf6b-ed3f69b894d9}\SystemIcons` and enabling each system icon you wish from there. For a list of other useful registry settings that can help you make the most out of this application, like disabling taskbar grouping, read [here](https://github.com/valinet/ExplorerPatcher/issues/9).
 
