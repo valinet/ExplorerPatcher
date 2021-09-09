@@ -2978,6 +2978,11 @@ __declspec(dllexport) DWORD WINAPI main(
             );
         }
 #endif
+        HMODULE hSws = LoadLibraryW(L"SimpleWindowSwitcher.dll");
+        if (hSws)
+        {
+            printf("Loaded Simple Window Switcher.\n");
+        }
 
         symbols_addr symbols_PTRS;
         ZeroMemory(
