@@ -1150,7 +1150,7 @@ BOOL TrackPopupMenuHook(
     );
     BOOL b = TrackPopupMenuFunc(
         hMenu,
-        uFlags,
+        uFlags | TPM_RIGHTBUTTON,
         x,
         y,
         nReserved,
@@ -1254,7 +1254,7 @@ DWORD ShowLauncherTipContextMenu(
 
     BOOL res = TrackPopupMenu(
         *((HMENU*)((char*)params->_this + 0xe8)),
-        TPM_RETURNCMD,
+        TPM_RETURNCMD | TPM_RIGHTBUTTON,
         params->point.x,
         params->point.y,
         0,
