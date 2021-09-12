@@ -44,7 +44,7 @@ After you get the classic taskbar working, to make it work with the Start menu a
 * `C:\Windows\SystemApps\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy`
 * `C:\Windows\SystemApps\MicrosoftWindows.Client.CBS_cw5n1h2txyewy`
 
-After that is done, kill both `StartMenuExperienceHost.exe` and `SearchHost.exe` from Task Manager, or simply log out and back in or restart the computer.
+After that is done, kill both `StartMenuExperienceHost.exe` and `SearchHost.exe` from Task Manager, or simply log out and back in or restart the computer. To kill these from the terminal instead, run `taskkill /F /IM "StartMenuExperienceHost.exe" /IM "SearchHost.exe"` from either cmd or powershell/pwsh.
 
 Two of the applets in the system tray do not work in this mode: battery and network. To replace the battery applet, I recommend the much more capable [Battery Mode](https://en.bmode.tarcode.ru/) application which has very good integration and allows showing both classic power modes and Windows 10 power schemes (better battery, better performance etc), changing the display brightness (for laptop screens AND monitors) etc. To replace the network icon, I recommend using the control center to switch networks and keep the legacy icon only as an indicator. You can also have it open the "Network" section in the Settings app as described [here](https://winaero.com/change-network-icon-click-action-in-windows-10).
 
