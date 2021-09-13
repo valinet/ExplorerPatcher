@@ -550,7 +550,7 @@ __declspec(dllexport) HRESULT PIXEndCapture()
 static HRESULT(*PIXGetCaptureStateFunc)();
 __declspec(dllexport) HRESULT PIXGetCaptureState()
 {
-    return PIXGetCaptureState();
+    return PIXGetCaptureStateFunc();
 }
 static HRESULT(*SetAppCompatStringPointerFunc)(SIZE_T, void*);
 __declspec(dllexport) HRESULT SetAppCompatStringPointer(SIZE_T p1, void* p2)
