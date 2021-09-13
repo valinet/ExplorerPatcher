@@ -35,7 +35,7 @@ Screenshots: [<1>](https://gist.githubusercontent.com/valinet/d0f72ff09773702584
 
 Simply copy the downloaded DLL named `dxgi.dll` to `%windir%` (usually `C:\Windows`) and restart Explorer.
 
-At first launch, the application will notify you about missing symbols and will automatically download them from Microsoft. When this is done, a notification will show informing you that everything's done and Explorer will restart and display the old taskbar. Note that for those with relevant toast display turned off, this process may be done automatically without any notification. Normally giving it 5 mins will suffice.
+At first launch, the application will notify you about missing symbols and will automatically download them from Microsoft. When this is done, a notification will show informing you that everything's done and Explorer will restart and display the old taskbar. Plase note that these notifications are issued using Windows 10's built-in toast notifications mechanism. If you have this turned off, you won't see a notification, but the background process will go on just fine; you will know everything is done when you'll see the classic taskbar instead of the new one.
 
 After Explorer restarts, the classic taskbar will be available and fully functioning, but you will notice the system tray misses the status icons. Those can be easily enabled by opening `Run` and going to `%windir%\explorer.exe shell:::{05d7b0f4-2121-4eff-bf6b-ed3f69b894d9}\SystemIcons` and enabling each system icon you wish from there. For a list of other useful registry settings that can help you make the most out of this application, like disabling taskbar grouping, read [here](https://github.com/valinet/ExplorerPatcher/issues/9).
 
@@ -44,7 +44,7 @@ After you get the classic taskbar working, to make it work with the Start menu a
 * `C:\Windows\SystemApps\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy`
 * `C:\Windows\SystemApps\MicrosoftWindows.Client.CBS_cw5n1h2txyewy`
 
-After that is done, kill both `StartMenuExperienceHost.exe` and `SearchHost.exe` from Task Manager, or simply log out and back in or restart the computer. To kill these from the terminal instead, run `taskkill /F /IM "StartMenuExperienceHost.exe" /IM "SearchHost.exe"` from either cmd or powershell/pwsh.
+After that is done, kill both `StartMenuExperienceHost.exe`, `SearchHost.exe` and 'TextInputHost.exe` from Task Manager, or simply log out and back in or restart the computer. Or, kill them using the `taskkill` command. Type in an administrative command window: `taskkill /F /IM "StartMenuExperienceHost.exe" /IM "SearchHost.exe" /IM "TextInputHost.exe"`.
 
 Two of the applets in the system tray do not work in this mode: battery and network. To replace the battery applet, I recommend the much more capable [Battery Mode](https://en.bmode.tarcode.ru/) application which has very good integration and allows showing both classic power modes and Windows 10 power schemes (better battery, better performance etc), changing the display brightness (for laptop screens AND monitors) etc. To replace the network icon, I recommend using the control center to switch networks and keep the legacy icon only as an indicator. You can also have it open the "Network" section in the Settings app as described [here](https://winaero.com/change-network-icon-click-action-in-windows-10).
 
