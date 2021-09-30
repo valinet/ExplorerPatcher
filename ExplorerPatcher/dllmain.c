@@ -754,7 +754,7 @@ void PositionStartMenuForMonitor(HMONITOR hMonitor, DWORD location)
                 p[i] = nimpl;
             }
         }
-        (*(void(**)(INT64, HMONITOR, INT64(***)(), INT64))(*v13 + 48))(v13, hMonitor, &p, 0);
+        hr = (*(HRESULT(**)(INT64, HMONITOR, INT64(***)(), INT64))(*v13 + 48))(v13, hMonitor, &p, 0);
         free(p);
     }
     if (SUCCEEDED(hr))
