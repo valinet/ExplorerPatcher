@@ -2,6 +2,23 @@
 
 This document includes the same release notes as in the [Releases](https://github.com/valinet/ExplorerPatcher/releases) section on GitHub.
 
+## 22000.194.0.20
+
+Tested on build: 22000.194.
+
+* Huge code refactoring, improved memory patching
+* Updated README with better description of the software and how to use it
+* Drastically reduced the number of symbols required (around 40MB to download, instead of over 400MB previously)
+* Improved Start menu and search positioning, now it is not necessary to have the DLL in `C:\Windows\SystemApps\MicrosoftWindows.Client.CBS_cw5n1h2txyewy`, please remove it from there.
+* Skin "Bluetooth" pop-up menu
+* Option to hide the search bar in File Explorer completely
+* Option to disable the control center button in the taskbar
+* Removed the option to disable the modern search box in File Explorer. Instead, you now run a command which disables it globally on your user account (works in "Open" dialogs as well); read [here](https://github.com/valinet/ExplorerPatcher#disable-the-modern-search-box-in-File-Explorer)
+* Removed the option to disable the immersive (new) context menu in File Explorer. Instead, you now run a command which disables it globally on your user account; read [here](https://github.com/valinet/ExplorerPatcher#disable-the-immersive-context-menu)
+* Ability to disable command bar is described [here](https://github.com/valinet/ExplorerPatcher#disable-the-command-bar-in-File-Explorer)
+* Option to apply Mica effect on File Explorer windows (requires `StartIsBack64.dll`), read [here](https://github.com/valinet/ExplorerPatcher#configuration)
+* Option to skin system tray icons to match Windows 11 style (requires `StartisBack64.dll`), read [here](https://github.com/valinet/ExplorerPatcher#configuration)
+
 ## 22449.1000.0.18
 
 Tested on the following builds: 22449.1000, 22000.176, 22000.1.

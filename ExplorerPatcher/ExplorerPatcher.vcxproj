@@ -193,10 +193,26 @@
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="ArchiveMenu.c" />
     <ClCompile Include="dllmain.c" />
+    <ClCompile Include="HideExplorerSearchBar.c" />
+    <ClCompile Include="SettingsMonitor.c" />
+    <ClCompile Include="StartMenu.c" />
+    <ClCompile Include="StartupSound.c" />
+    <ClCompile Include="symbols.c" />
+    <ClCompile Include="utility.c" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="ArchiveMenu.h" />
+    <ClInclude Include="dxgi_imp.h" />
+    <ClInclude Include="HideExplorerSearchBar.h" />
+    <ClInclude Include="hooking.h" />
     <ClInclude Include="resource.h" />
+    <ClInclude Include="SettingsMonitor.h" />
+    <ClInclude Include="StartMenu.h" />
+    <ClInclude Include="StartupSound.h" />
+    <ClInclude Include="symbols.h" />
+    <ClInclude Include="utility.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="ExplorerPatcher.rc" />
