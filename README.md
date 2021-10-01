@@ -145,11 +145,11 @@ Also, if you chose to place the patcher in `C:\Windows\SystemApps\Microsoft.Wind
 
 * Open Start menu to "All apps" directly (replace with 0 to disable)
 ```
-reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\StartPage /f /v "MakeAllAppsDefault" /t REG_DWORD /d 1
+reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\StartPage" /f /v "MakeAllAppsDefault" /t REG_DWORD /d 1
 ```
 * Show only 4 most recent apps (change the number to customize)
 ```
-reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced /f /v "Start_MaximumFrequentApps" /t REG_DWORD /d 4
+reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /f /v "Start_MaximumFrequentApps" /t REG_DWORD /d 4
 ```
 
 ## More configuration
