@@ -59,7 +59,9 @@ L"</toast>\r\n";
 
 DWORD DownloadSymbols(DownloadSymbolsParams* params)
 {
-    TCHAR* wszSettingsPath = params->wszSettingsPath;
+    HKEY hKey;
+    DWORD dwDisposition;
+
     HMODULE hModule = params->hModule;
 
     Sleep(3000);
@@ -115,27 +117,30 @@ DWORD DownloadSymbols(DownloadSymbolsParams* params)
 #endif
     );
 
-    DWORD dwRet = 0;
-    char szSettingsPath[MAX_PATH + 1];
+
+    char szSettingsPath[MAX_PATH];
     ZeroMemory(
         szSettingsPath,
-        (MAX_PATH + 1) * sizeof(char)
+        MAX_PATH * sizeof(char)
     );
-    wcstombs_s(
-        &dwRet,
+    SHGetFolderPathA(
+        NULL,
+        CSIDL_APPDATA,
+        NULL,
+        SHGFP_TYPE_CURRENT,
+        szSettingsPath
+    );
+    strcat_s(
         szSettingsPath,
-        MAX_PATH + 1,
-        wszSettingsPath,
-        MAX_PATH + 1
+        MAX_PATH,
+        SYMBOLS_RELATIVE_PATH
     );
-    PathRemoveFileSpecA(szSettingsPath);
     CreateDirectoryA(szSettingsPath, NULL);
     strcat_s(
         szSettingsPath,
-        MAX_PATH + 1,
+        MAX_PATH,
         "\\"
     );
-
     printf("Downloading to \"%s\".\n", szSettingsPath);
 
     symbols_addr symbols_PTRS;
@@ -208,54 +213,90 @@ DWORD DownloadSymbols(DownloadSymbolsParams* params)
             return 5;
         }
     }
-    VnWriteUInt(
-        TEXT(TWINUI_PCSHELL_SB_NAME),
+    RegCreateKeyExW(
+        HKEY_CURRENT_USER,
+        TEXT(REGPATH) L"\\" TEXT(TWINUI_PCSHELL_SB_NAME),
+        0,
+        NULL,
+        REG_OPTION_NON_VOLATILE,
+        KEY_WRITE,
+        NULL,
+        &hKey,
+        &dwDisposition
+    );
+    if (!hKey)
+    {
+        FreeLibraryAndExitThread(
+            hModule,
+            9
+        );
+        return 9;
+    }
+    RegSetValueExW(
+        hKey,
         TEXT(TWINUI_PCSHELL_SB_0),
-        symbols_PTRS.twinui_pcshell_PTRS[0],
-        wszSettingsPath
+        0,
+        REG_DWORD,
+        &(symbols_PTRS.twinui_pcshell_PTRS[0]),
+        sizeof(DWORD)
     );
-    VnWriteUInt(
-        TEXT(TWINUI_PCSHELL_SB_NAME),
+    RegSetValueExW(
+        hKey,
         TEXT(TWINUI_PCSHELL_SB_1),
-        symbols_PTRS.twinui_pcshell_PTRS[1],
-        wszSettingsPath
+        0,
+        REG_DWORD,
+        &(symbols_PTRS.twinui_pcshell_PTRS[1]),
+        sizeof(DWORD)
     );
-    VnWriteUInt(
-        TEXT(TWINUI_PCSHELL_SB_NAME),
+    RegSetValueExW(
+        hKey,
         TEXT(TWINUI_PCSHELL_SB_2),
-        symbols_PTRS.twinui_pcshell_PTRS[2],
-        wszSettingsPath
+        0,
+        REG_DWORD,
+        &(symbols_PTRS.twinui_pcshell_PTRS[2]),
+        sizeof(DWORD)
     );
-    VnWriteUInt(
-        TEXT(TWINUI_PCSHELL_SB_NAME),
+    RegSetValueExW(
+        hKey,
         TEXT(TWINUI_PCSHELL_SB_3),
-        symbols_PTRS.twinui_pcshell_PTRS[3],
-        wszSettingsPath
+        0,
+        REG_DWORD,
+        &(symbols_PTRS.twinui_pcshell_PTRS[3]),
+        sizeof(DWORD)
     );
-    VnWriteUInt(
-        TEXT(TWINUI_PCSHELL_SB_NAME),
+    RegSetValueExW(
+        hKey,
         TEXT(TWINUI_PCSHELL_SB_4),
-        symbols_PTRS.twinui_pcshell_PTRS[4],
-        wszSettingsPath
+        0,
+        REG_DWORD,
+        &(symbols_PTRS.twinui_pcshell_PTRS[4]),
+        sizeof(DWORD)
     );
-    VnWriteUInt(
-        TEXT(TWINUI_PCSHELL_SB_NAME),
+    RegSetValueExW(
+        hKey,
         TEXT(TWINUI_PCSHELL_SB_5),
-        symbols_PTRS.twinui_pcshell_PTRS[5],
-        wszSettingsPath
+        0,
+        REG_DWORD,
+        &(symbols_PTRS.twinui_pcshell_PTRS[5]),
+        sizeof(DWORD)
     );
-    VnWriteUInt(
-        TEXT(TWINUI_PCSHELL_SB_NAME),
+    RegSetValueExW(
+        hKey,
         TEXT(TWINUI_PCSHELL_SB_6),
-        symbols_PTRS.twinui_pcshell_PTRS[6],
-        wszSettingsPath
+        0,
+        REG_DWORD,
+        &(symbols_PTRS.twinui_pcshell_PTRS[6]),
+        sizeof(DWORD)
     );
-    VnWriteUInt(
-        TEXT(TWINUI_PCSHELL_SB_NAME),
+    RegSetValueExW(
+        hKey,
         TEXT(TWINUI_PCSHELL_SB_7),
-        symbols_PTRS.twinui_pcshell_PTRS[7],
-        wszSettingsPath
+        0,
+        REG_DWORD,
+        &(symbols_PTRS.twinui_pcshell_PTRS[7]),
+        sizeof(DWORD)
     );
+    RegCloseKey(hKey);
 
 
 
@@ -312,49 +353,101 @@ DWORD DownloadSymbols(DownloadSymbolsParams* params)
         );
         return 7;
     }
-    VnWriteUInt(
-        TEXT(STARTDOCKED_SB_NAME),
+    RegCreateKeyExW(
+        HKEY_CURRENT_USER,
+        TEXT(REGPATH) L"\\" TEXT(STARTDOCKED_SB_NAME),
+        0,
+        NULL,
+        REG_OPTION_NON_VOLATILE,
+        KEY_WRITE,
+        NULL,
+        &hKey,
+        &dwDisposition
+    );
+    if (!hKey)
+    {
+        FreeLibraryAndExitThread(
+            hModule,
+            8
+        );
+        return 8;
+    }
+    RegSetValueExW(
+        hKey,
         TEXT(STARTDOCKED_SB_0),
-        symbols_PTRS.startdocked_PTRS[0],
-        wszSettingsPath
+        0,
+        REG_DWORD,
+        &(symbols_PTRS.startdocked_PTRS[0]),
+        sizeof(DWORD)
     );
-    VnWriteUInt(
-        TEXT(STARTDOCKED_SB_NAME),
+    RegSetValueExW(
+        hKey,
         TEXT(STARTDOCKED_SB_1),
-        symbols_PTRS.startdocked_PTRS[1],
-        wszSettingsPath
+        0,
+        REG_DWORD,
+        &(symbols_PTRS.startdocked_PTRS[1]),
+        sizeof(DWORD)
     );
-    VnWriteUInt(
-        TEXT(STARTDOCKED_SB_NAME),
+    RegSetValueExW(
+        hKey,
         TEXT(STARTDOCKED_SB_2),
-        symbols_PTRS.startdocked_PTRS[2],
-        wszSettingsPath
+        0,
+        REG_DWORD,
+        &(symbols_PTRS.startdocked_PTRS[2]),
+        sizeof(DWORD)
     );
-    VnWriteUInt(
-        TEXT(STARTDOCKED_SB_NAME),
+    RegSetValueExW(
+        hKey,
         TEXT(STARTDOCKED_SB_3),
-        symbols_PTRS.startdocked_PTRS[3],
-        wszSettingsPath
+        0,
+        REG_DWORD,
+        &(symbols_PTRS.startdocked_PTRS[3]),
+        sizeof(DWORD)
     );
-    VnWriteUInt(
-        TEXT(STARTDOCKED_SB_NAME),
+    RegSetValueExW(
+        hKey,
         TEXT(STARTDOCKED_SB_4),
-        symbols_PTRS.startdocked_PTRS[4],
-        wszSettingsPath
+        0,
+        REG_DWORD,
+        &(symbols_PTRS.startdocked_PTRS[4]),
+        sizeof(DWORD)
     );
+    RegCloseKey(hKey);
 
 
 
 
 
 
-
-    VnWriteString(
-        TEXT("OS"),
-        TEXT("Build"),
+    RegCreateKeyExW(
+        HKEY_CURRENT_USER,
+        TEXT(REGPATH),
+        0,
+        NULL,
+        REG_OPTION_NON_VOLATILE,
+        KEY_WRITE,
+        NULL,
+        &hKey,
+        &dwDisposition
+    );
+    if (!hKey)
+    {
+        FreeLibraryAndExitThread(
+            hModule,
+            10
+        );
+        return 10;
+    }
+    RegSetValueExW(
+        hKey,
+        TEXT("szOSBuild"),
+        0,
+        REG_SZ,
         szReportedVersion,
-        wszSettingsPath
+        wcslen(szReportedVersion) * sizeof(TCHAR)
     );
+    RegCloseKey(hKey);
+
 
     if (symbols_PTRS.twinui_pcshell_PTRS[0])
     {
@@ -407,192 +500,144 @@ DWORD DownloadSymbols(DownloadSymbolsParams* params)
 
     Sleep(4000);
 
-    TCHAR wszExplorerPath[MAX_PATH + 1];
-    wszExplorerPath[0] = L'\"';
-    GetSystemDirectory(wszExplorerPath + 1, MAX_PATH);
-    wcscat_s(wszExplorerPath, MAX_PATH + 1, L"\\rundll32.exe\" \"");
-    GetModuleFileName(hModule, wszExplorerPath + wcslen(wszExplorerPath), MAX_PATH - wcslen(wszExplorerPath));
-    wcscat_s(wszExplorerPath, MAX_PATH, L"\",ZZLaunchExplorer");
-    wprintf(L"Command to launch: \" %s \"\n.", wszExplorerPath);
-    STARTUPINFO si = { sizeof(si) };
-    PROCESS_INFORMATION pi;
-    BOOL b = CreateProcess(
-        NULL,
-        wszExplorerPath,
-        NULL,
-        NULL,
-        TRUE,
-        CREATE_UNICODE_ENVIRONMENT,
-        NULL,
-        NULL,
-        &si,
-        &pi
-    );
-
-    FreeConsole();
-    TerminateProcess(
-        OpenProcess(
-            PROCESS_TERMINATE,
-            FALSE,
-            GetCurrentProcessId()
-        ),
-        EXIT_CODE_EXPLORER
-    );
+    exit(0);
 }
 
-BOOL LoadSymbols(symbols_addr* symbols_PTRS, TCHAR* wszSettingsPath)
+BOOL LoadSymbols(symbols_addr* symbols_PTRS)
 {
-    symbols_PTRS->twinui_pcshell_PTRS[0] = VnGetUInt(
-        TEXT(TWINUI_PCSHELL_SB_NAME),
-        TEXT(TWINUI_PCSHELL_SB_0),
-        0,
-        wszSettingsPath
-    );
-    symbols_PTRS->twinui_pcshell_PTRS[1] = VnGetUInt(
-        TEXT(TWINUI_PCSHELL_SB_NAME),
-        TEXT(TWINUI_PCSHELL_SB_1),
-        0,
-        wszSettingsPath
-    );
-    symbols_PTRS->twinui_pcshell_PTRS[2] = VnGetUInt(
-        TEXT(TWINUI_PCSHELL_SB_NAME),
-        TEXT(TWINUI_PCSHELL_SB_2),
-        0,
-        wszSettingsPath
-    );
-    symbols_PTRS->twinui_pcshell_PTRS[3] = VnGetUInt(
-        TEXT(TWINUI_PCSHELL_SB_NAME),
-        TEXT(TWINUI_PCSHELL_SB_3),
-        0,
-        wszSettingsPath
-    );
-    symbols_PTRS->twinui_pcshell_PTRS[4] = VnGetUInt(
-        TEXT(TWINUI_PCSHELL_SB_NAME),
-        TEXT(TWINUI_PCSHELL_SB_4),
-        0,
-        wszSettingsPath
-    );
-    symbols_PTRS->twinui_pcshell_PTRS[5] = VnGetUInt(
-        TEXT(TWINUI_PCSHELL_SB_NAME),
-        TEXT(TWINUI_PCSHELL_SB_5),
-        0,
-        wszSettingsPath
-    );
-    symbols_PTRS->twinui_pcshell_PTRS[6] = VnGetUInt(
-        TEXT(TWINUI_PCSHELL_SB_NAME),
-        TEXT(TWINUI_PCSHELL_SB_6),
-        0,
-        wszSettingsPath
-    );
-    symbols_PTRS->twinui_pcshell_PTRS[7] = VnGetUInt(
-        TEXT(TWINUI_PCSHELL_SB_NAME),
-        TEXT(TWINUI_PCSHELL_SB_7),
-        0,
-        wszSettingsPath
-    );
-    HKEY hKeySettings;
+    HKEY hKey;
     DWORD dwDisposition;
+    DWORD dwSize = sizeof(DWORD);
 
     RegCreateKeyExW(
         HKEY_CURRENT_USER,
-        TEXT(REGPATH_OTHERS) L"\\" TEXT(STARTDOCKED_SB_NAME),
+        TEXT(REGPATH) L"\\" TEXT(TWINUI_PCSHELL_SB_NAME),
         0,
         NULL,
         REG_OPTION_NON_VOLATILE,
-        KEY_WRITE,
+        KEY_READ,
         NULL,
-        &hKeySettings,
+        &hKey,
         &dwDisposition
     );
-    symbols_PTRS->startdocked_PTRS[0] = VnGetUInt(
-        TEXT(STARTDOCKED_SB_NAME),
+    RegQueryValueExW(
+        hKey,
+        TEXT(TWINUI_PCSHELL_SB_0),
+        0,
+        NULL,
+        &(symbols_PTRS->twinui_pcshell_PTRS[0]),
+        &dwSize
+    );
+    RegQueryValueExW(
+        hKey,
+        TEXT(TWINUI_PCSHELL_SB_1),
+        0,
+        NULL,
+        &(symbols_PTRS->twinui_pcshell_PTRS[1]),
+        &dwSize
+    );
+    RegQueryValueExW(
+        hKey,
+        TEXT(TWINUI_PCSHELL_SB_2),
+        0,
+        NULL,
+        &(symbols_PTRS->twinui_pcshell_PTRS[2]),
+        &dwSize
+    );
+    RegQueryValueExW(
+        hKey,
+        TEXT(TWINUI_PCSHELL_SB_3),
+        0,
+        NULL,
+        &(symbols_PTRS->twinui_pcshell_PTRS[3]),
+        &dwSize
+    );
+    RegQueryValueExW(
+        hKey,
+        TEXT(TWINUI_PCSHELL_SB_4),
+        0,
+        NULL,
+        &(symbols_PTRS->twinui_pcshell_PTRS[4]),
+        &dwSize
+    );
+    RegQueryValueExW(
+        hKey,
+        TEXT(TWINUI_PCSHELL_SB_5),
+        0,
+        NULL,
+        &(symbols_PTRS->twinui_pcshell_PTRS[5]),
+        &dwSize
+    );
+    RegQueryValueExW(
+        hKey,
+        TEXT(TWINUI_PCSHELL_SB_6),
+        0,
+        NULL,
+        &(symbols_PTRS->twinui_pcshell_PTRS[6]),
+        &dwSize
+    );
+    RegQueryValueExW(
+        hKey,
+        TEXT(TWINUI_PCSHELL_SB_7),
+        0,
+        NULL,
+        &(symbols_PTRS->twinui_pcshell_PTRS[7]),
+        &dwSize
+    );
+    RegCloseKey(hKey);
+
+    RegCreateKeyExW(
+        HKEY_CURRENT_USER,
+        TEXT(REGPATH) L"\\" TEXT(STARTDOCKED_SB_NAME),
+        0,
+        NULL,
+        REG_OPTION_NON_VOLATILE,
+        KEY_READ,
+        NULL,
+        &hKey,
+        &dwDisposition
+    );
+    RegQueryValueExW(
+        hKey,
         TEXT(STARTDOCKED_SB_0),
         0,
-        wszSettingsPath
+        NULL,
+        &(symbols_PTRS->startdocked_PTRS[0]),
+        &dwSize
     );
-    if (hKeySettings)
-    {
-        RegSetValueExW(
-            hKeySettings,
-            TEXT(STARTDOCKED_SB_0),
-            0,
-            REG_DWORD,
-            &(symbols_PTRS->startdocked_PTRS[0]),
-            sizeof(DWORD)
-        );
-    }
-    symbols_PTRS->startdocked_PTRS[1] = VnGetUInt(
-        TEXT(STARTDOCKED_SB_NAME),
+    RegQueryValueExW(
+        hKey,
         TEXT(STARTDOCKED_SB_1),
         0,
-        wszSettingsPath
+        NULL,
+        &(symbols_PTRS->startdocked_PTRS[1]),
+        &dwSize
     );
-    if (hKeySettings)
-    {
-        RegSetValueExW(
-            hKeySettings,
-            TEXT(STARTDOCKED_SB_1),
-            0,
-            REG_DWORD,
-            &(symbols_PTRS->startdocked_PTRS[1]),
-            sizeof(DWORD)
-        );
-    }
-    symbols_PTRS->startdocked_PTRS[2] = VnGetUInt(
-        TEXT(STARTDOCKED_SB_NAME),
+    RegQueryValueExW(
+        hKey,
         TEXT(STARTDOCKED_SB_2),
         0,
-        wszSettingsPath
+        NULL,
+        &(symbols_PTRS->startdocked_PTRS[2]),
+        &dwSize
     );
-    if (hKeySettings)
-    {
-        RegSetValueExW(
-            hKeySettings,
-            TEXT(STARTDOCKED_SB_2),
-            0,
-            REG_DWORD,
-            &(symbols_PTRS->startdocked_PTRS[2]),
-            sizeof(DWORD)
-        );
-    }
-    symbols_PTRS->startdocked_PTRS[3] = VnGetUInt(
-        TEXT(STARTDOCKED_SB_NAME),
+    RegQueryValueExW(
+        hKey,
         TEXT(STARTDOCKED_SB_3),
         0,
-        wszSettingsPath
+        NULL,
+        &(symbols_PTRS->startdocked_PTRS[3]),
+        &dwSize
     );
-    if (hKeySettings)
-    {
-        RegSetValueExW(
-            hKeySettings,
-            TEXT(STARTDOCKED_SB_3),
-            0,
-            REG_DWORD,
-            &(symbols_PTRS->startdocked_PTRS[3]),
-            sizeof(DWORD)
-        );
-    }
-    symbols_PTRS->startdocked_PTRS[4] = VnGetUInt(
-        TEXT(STARTDOCKED_SB_NAME),
+    RegQueryValueExW(
+        hKey,
         TEXT(STARTDOCKED_SB_4),
         0,
-        wszSettingsPath
+        NULL,
+        &(symbols_PTRS->startdocked_PTRS[4]),
+        &dwSize
     );
-    if (hKeySettings)
-    {
-        RegSetValueExW(
-            hKeySettings,
-            TEXT(STARTDOCKED_SB_4),
-            0,
-            REG_DWORD,
-            &(symbols_PTRS->startdocked_PTRS[4]),
-            sizeof(DWORD)
-        );
-    }
-    if (hKeySettings)
-    {
-        RegCloseKey(hKeySettings);
-    }
+    RegCloseKey(hKey);
 
     BOOL bNeedToDownload = FALSE;
     for (UINT i = 0; i < sizeof(symbols_addr) / sizeof(DWORD); ++i)
@@ -624,15 +669,27 @@ BOOL LoadSymbols(symbols_addr* symbols_PTRS, TCHAR* wszSettingsPath)
         rovi.dwBuildNumber,
         ubr
     );
-    VnGetString(
-        TEXT("OS"),
-        TEXT("Build"),
-        szStoredVersion,
-        MAX_PATH,
-        MAX_PATH,
+    RegCreateKeyExW(
+        HKEY_CURRENT_USER,
+        TEXT(REGPATH),
+        0,
         NULL,
-        wszSettingsPath
+        REG_OPTION_NON_VOLATILE,
+        KEY_READ,
+        NULL,
+        &hKey,
+        &dwDisposition
     );
+    dwSize = MAX_PATH;
+    RegQueryValueExW(
+        hKey,
+        TEXT("szOSBuild"),
+        0,
+        NULL,
+        szStoredVersion,
+        &dwSize
+    );
+    RegCloseKey(hKey);
     if (!bNeedToDownload)
     {
         bNeedToDownload = wcscmp(szReportedVersion, szStoredVersion);

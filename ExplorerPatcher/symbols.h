@@ -8,9 +8,8 @@
 #include "utility.h"
 
 #define EXIT_CODE_EXPLORER 1
-#define REGPATH_OTHERS "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\ExplorerPatcher"
 
-#define SYMBOLS_RELATIVE_PATH "\\ExplorerPatcher\\settings.ini"
+#define SYMBOLS_RELATIVE_PATH "\\ExplorerPatcher"
 #define TWINUI_PCSHELL_SB_NAME "twinui.pcshell"
 #define TWINUI_PCSHELL_SB_0 "CImmersiveContextMenuOwnerDrawHelper::s_ContextMenuWndProc"
 #define TWINUI_PCSHELL_SB_1 "CLauncherTipContextMenu::GetMenuItemsAsync"
@@ -38,10 +37,9 @@ typedef struct symbols_addr
 
 typedef struct _DownloadSymbolsParams
 {
-    TCHAR* wszSettingsPath;
     HMODULE hModule;
 } DownloadSymbolsParams;
 DWORD DownloadSymbols(DownloadSymbolsParams* params);
 
-BOOL LoadSymbols(symbols_addr* symbols_PTRS, TCHAR* wszSettingsPath);
+BOOL LoadSymbols(symbols_addr* symbols_PTRS);
 #endif

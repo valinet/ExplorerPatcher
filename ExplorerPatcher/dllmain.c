@@ -16,7 +16,6 @@
 #include <dwmapi.h>
 #pragma comment(lib, "Dwmapi.lib")
 #include <roapi.h>
-#include <valinet/ini/ini.h>
 #include <valinet/pdb/pdb.h>
 #define _LIBVALINET_DEBUG_HOOKING_IATPATCH
 #include <valinet/hooking/iatpatch.h>
@@ -1054,40 +1053,34 @@ __declspec(dllexport) DWORD WINAPI main(
     {
         funchook = funchook_create();
         printf("funchook create %d\n", funchook != 0);
+        HKEY hKey;
+        DWORD dwDisposition;
+        DWORD dwSize = sizeof(DWORD);
 
 
 
-        TCHAR* wszSettingsPath = malloc((MAX_PATH + 1) * sizeof(TCHAR));
-        if (!wszSettingsPath)
-        {
-            return 0;
-        }
-        ZeroMemory(
-            wszSettingsPath,
-            (MAX_PATH + 1) * sizeof(TCHAR)
-        );
-        SHGetFolderPathW(
-            NULL,
-            CSIDL_APPDATA,
-            NULL,
-            SHGFP_TYPE_CURRENT,
-            wszSettingsPath
-        );
-        wcscat_s(
-            wszSettingsPath,
-            MAX_PATH,
-            TEXT(SYMBOLS_RELATIVE_PATH)
-        );
-        wprintf(L"Settings path: \"%s\"\n", wszSettingsPath);
-
-#ifndef DEBUG
-        UINT alloc_console = VnGetUInt(
-            TEXT("General"),
-            TEXT("AllocConsole"),
+        RegCreateKeyExW(
+            HKEY_CURRENT_USER,
+            TEXT(REGPATH),
             0,
-            wszSettingsPath
+            NULL,
+            REG_OPTION_NON_VOLATILE,
+            KEY_READ,
+            NULL,
+            &hKey,
+            &dwDisposition
         );
-        if (alloc_console)
+        DWORD bAllocConsole = FALSE;
+        RegQueryValueExW(
+            hKey,
+            TEXT("bAllocConsole"),
+            0,
+            NULL,
+            &bAllocConsole,
+            &dwSize
+        );
+        printf("AllocConsole %d %d\n", bAllocConsole, hKey);
+        if (bAllocConsole)
         {
             FILE* conout;
             AllocConsole();
@@ -1098,7 +1091,6 @@ __declspec(dllexport) DWORD WINAPI main(
                 stdout
             );
         }
-#endif
         HMODULE hSws = LoadLibraryW(L"SimpleWindowSwitcher.dll");
         if (hSws)
         {
@@ -1111,11 +1103,10 @@ __declspec(dllexport) DWORD WINAPI main(
             sizeof(symbols_addr)
         );
 
-        if (LoadSymbols(&symbols_PTRS, wszSettingsPath))
+        if (LoadSymbols(&symbols_PTRS))
         {
             printf("Symbols have to be (re)downloaded...\n");
             DownloadSymbolsParams* params = malloc(sizeof(DownloadSymbolsParams));
-            params->wszSettingsPath = wszSettingsPath;
             params->hModule = hModule;
             CreateThread(0, 0, DownloadSymbols, params, 0, 0);
             return 0;
@@ -1126,36 +1117,47 @@ __declspec(dllexport) DWORD WINAPI main(
         }
 
 
-        bHideExplorerSearchBar = VnGetUInt(
-            L"General",
-            L"HideExplorerSearchBar",
+        RegQueryValueExW(
+            hKey,
+            TEXT("bHideExplorerSearchBar"),
             0,
-            wszSettingsPath
+            NULL,
+            &bHideExplorerSearchBar,
+            &dwSize
         );
-        bMicaEffectOnTitlebar = VnGetUInt(
-            L"General",
-            L"MicaEffectOnTitlebar",
+        RegQueryValueExW(
+            hKey,
+            TEXT("bMicaEffectOnTitlebar"),
             0,
-            wszSettingsPath
+            NULL,
+            &bMicaEffectOnTitlebar,
+            &dwSize
         );
-        bHideControlCenterButton = VnGetUInt(
-            L"General",
-            L"HideControlCenterButton",
+        RegQueryValueExW(
+            hKey,
+            TEXT("bHideControlCenterButton"),
             0,
-            wszSettingsPath
+            NULL,
+            &bHideControlCenterButton,
+            &dwSize
         );
-        bSkinMenus = VnGetUInt(
-            L"General",
-            L"SkinMenus",
+        RegQueryValueExW(
+            hKey,
+            TEXT("bSkinMenus"),
             0,
-            wszSettingsPath
+            NULL,
+            &bSkinMenus,
+            &dwSize
         );
-        bSkinIcons = VnGetUInt(
-            L"General",
-            L"SkinIcons",
+        RegQueryValueExW(
+            hKey,
+            TEXT("bSkinIcons"),
             0,
-            wszSettingsPath
+            NULL,
+            &bSkinIcons,
+            &dwSize
         );
+        
 
 
         TCHAR* wszSBPath = malloc((MAX_PATH + 1) * sizeof(TCHAR));
@@ -1360,11 +1362,14 @@ __declspec(dllexport) DWORD WINAPI main(
 
 
 
-        UINT delay = VnGetUInt(
-            TEXT("General"),
-            TEXT("ExplorerReadyDelay"),
+        DWORD delay = 0;
+        RegQueryValueExW(
+            hKey,
+            TEXT("vExplorerReadyDelay"),
             0,
-            wszSettingsPath
+            NULL,
+            &delay,
+            &dwSize
         );
         CreateThread(
             0,
@@ -1393,11 +1398,14 @@ __declspec(dllexport) DWORD WINAPI main(
 
 
 
-        UINT bEnableArchivePlugin = VnGetUInt(
-            L"ArchiveMenu",
-            L"Enabled",
+        DWORD bEnableArchivePlugin = 0;
+        RegQueryValueExW(
+            hKey,
+            TEXT("bArchiveMenu"),
             0,
-            wszSettingsPath
+            NULL,
+            &bEnableArchivePlugin,
+            &dwSize
         );
         if (bEnableArchivePlugin)
         {
@@ -1568,7 +1576,7 @@ BOOL WINAPI DllMain(
 
                     dwSize = sizeof(DWORD);
                     SHRegGetValueFromHKCUHKLMFunc(
-                        TEXT(REGPATH_OTHERS) TEXT("\\") TEXT(STARTDOCKED_SB_NAME),
+                        TEXT(REGPATH) TEXT("\\") TEXT(STARTDOCKED_SB_NAME),
                         TEXT(STARTDOCKED_SB_0),
                         SRRF_RT_REG_DWORD,
                         NULL,
@@ -1576,7 +1584,7 @@ BOOL WINAPI DllMain(
                         (LPDWORD)(&dwSize)
                     );
                     SHRegGetValueFromHKCUHKLMFunc(
-                        TEXT(REGPATH_OTHERS) TEXT("\\") TEXT(STARTDOCKED_SB_NAME),
+                        TEXT(REGPATH) TEXT("\\") TEXT(STARTDOCKED_SB_NAME),
                         TEXT(STARTDOCKED_SB_1),
                         SRRF_RT_REG_DWORD,
                         NULL,
@@ -1584,7 +1592,7 @@ BOOL WINAPI DllMain(
                         (LPDWORD)(&dwSize)
                     );
                     SHRegGetValueFromHKCUHKLMFunc(
-                        TEXT(REGPATH_OTHERS) TEXT("\\") TEXT(STARTDOCKED_SB_NAME),
+                        TEXT(REGPATH) TEXT("\\") TEXT(STARTDOCKED_SB_NAME),
                         TEXT(STARTDOCKED_SB_2),
                         SRRF_RT_REG_DWORD,
                         NULL,
@@ -1592,7 +1600,7 @@ BOOL WINAPI DllMain(
                         (LPDWORD)(&dwSize)
                     );
                     SHRegGetValueFromHKCUHKLMFunc(
-                        TEXT(REGPATH_OTHERS) TEXT("\\") TEXT(STARTDOCKED_SB_NAME),
+                        TEXT(REGPATH) TEXT("\\") TEXT(STARTDOCKED_SB_NAME),
                         TEXT(STARTDOCKED_SB_3),
                         SRRF_RT_REG_DWORD,
                         NULL,
@@ -1600,7 +1608,7 @@ BOOL WINAPI DllMain(
                         (LPDWORD)(&dwSize)
                     );
                     SHRegGetValueFromHKCUHKLMFunc(
-                        TEXT(REGPATH_OTHERS) TEXT("\\") TEXT(STARTDOCKED_SB_NAME),
+                        TEXT(REGPATH) TEXT("\\") TEXT(STARTDOCKED_SB_NAME),
                         TEXT(STARTDOCKED_SB_4),
                         SRRF_RT_REG_DWORD,
                         NULL,

@@ -8,6 +8,7 @@
 #include <valinet/universal/toast/toast.h>
 
 #define APPID L"Microsoft.Windows.Explorer"
+#define REGPATH "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\ExplorerPatcher"
 
 #pragma region "Weird stuff"
 INT64 nimpl4_1(INT64 a1, DWORD* a2);
