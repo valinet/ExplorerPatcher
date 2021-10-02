@@ -749,7 +749,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
     return TRUE;
 }
 
-static LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+static LRESULT CALLBACK GUI_WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     GUI* _this;
     if (uMsg == WM_CREATE)
     {
@@ -889,7 +889,7 @@ __declspec(dllexport) int ZZGUI(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLin
     WNDCLASS wc = { 0 };
     ZeroMemory(&wc, sizeof(WNDCLASSW));
     wc.style = CS_DBLCLKS;
-    wc.lpfnWndProc = WindowProc;
+    wc.lpfnWndProc = GUI_WindowProc;
     wc.hbrBackground = _this.hBackgroundBrush;
     wc.hInstance = hModule;
     wc.lpszClassName = L"ExplorerPatcherGUI";
