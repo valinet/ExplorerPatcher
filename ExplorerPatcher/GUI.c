@@ -343,6 +343,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                         WaitForSingleObject(ShExecInfo.hProcess, INFINITE);
                                         DWORD dwExitCode = 0;
                                         GetExitCodeProcess(ShExecInfo.hProcess, &dwExitCode);
+                                        _this->tabOrder = 0;
                                         InvalidateRect(hwnd, NULL, FALSE);
                                         CloseHandle(ShExecInfo.hProcess);
                                         DeleteFileW(wszPath);
@@ -907,6 +908,8 @@ static LRESULT CALLBACK GUI_WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
         pt.x = GET_X_LPARAM(lParam);
         pt.y = GET_Y_LPARAM(lParam);
         GUI_Build(0, hWnd, pt);
+        _this->tabOrder = 0;
+        InvalidateRect(hWnd, NULL, FALSE);
     }
     else if (uMsg == WM_DPICHANGED)
     {
