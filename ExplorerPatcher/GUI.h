@@ -35,6 +35,8 @@ extern HMODULE hModule;
 #define GUI_LINE_HEIGHT 26
 #define GUI_CAPTION_LINE_HEIGHT 42
 #define GUI_TEXTCOLOR RGB(0, 0, 0)
+#define GUI_TEXTCOLOR_SELECTED RGB(255, 0, 0)
+#define GUI_MAX_TABORDER 9999
 #define GUI_PADDING 5
 #define GUI_PADDING_LEFT GUI_PADDING * 3
 #define GUI_PADDING_RIGHT GUI_PADDING * 3
@@ -49,6 +51,7 @@ typedef struct _GUI
 	HTHEME hTheme;
 	POINT dpi;
 	MARGINS extent;
+	UINT tabOrder;
 } GUI;
 
 static HRESULT GUI_AboutProc(

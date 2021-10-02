@@ -113,6 +113,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
     DWORD dwTextFlags = DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS;
     RECT rcText;
     DWORD dwCL = 0;
+    BOOL bTabOrderHit = FALSE;
 
     HDC hdcPaint = NULL;
     BP_PAINTPARAMS params = { sizeof(BP_PAINTPARAMS) };
@@ -126,7 +127,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
         wchar_t* text = malloc(MAX_LINE_LENGTH * sizeof(wchar_t)); 
         wchar_t* name = malloc(MAX_LINE_LENGTH * sizeof(wchar_t));
         wchar_t* section = malloc(MAX_LINE_LENGTH * sizeof(wchar_t));
-        size_t bufsiz = 0, numChRd = 0;
+        size_t bufsiz = 0, numChRd = 0, tabOrder = 1;
         while ((numChRd = getline(&line, &bufsiz, f)) != -1)
         {
             if (strcmp(line, "Windows Registry Editor Version 5.00\r\n") && strcmp(line, "\r\n"))
@@ -213,6 +214,11 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                     }
                     if (hDC)
                     {
+                        if (!strncmp(line, ";u ", 3) && tabOrder == _this->tabOrder)
+                        {
+                            bTabOrderHit = TRUE;
+                            DttOpts.crText = GUI_TEXTCOLOR_SELECTED;
+                        }
                         DrawThemeTextEx(
                             _this->hTheme,
                             hdcPaint,
@@ -224,6 +230,10 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                             &rcText,
                             &DttOpts
                         );
+                        if (!strncmp(line, ";u ", 3) && tabOrder == _this->tabOrder)
+                        {
+                            DttOpts.crText = GUI_TEXTCOLOR;
+                        }
                     }
                     else
                     {
@@ -237,7 +247,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                             DT_CALCRECT
                         );
                         rcTemp.bottom = rcText.bottom;
-                        if (!strncmp(line, ";u ", 3) && PtInRect(&rcTemp, pt))
+                        if (!strncmp(line, ";u ", 3) && (PtInRect(&rcTemp, pt) || (pt.x == 0 && pt.y == 0 && tabOrder == _this->tabOrder)))
                         {
                             numChRd = getline(&line, &bufsiz, f);
                             char* p = strchr(line, '\r');
@@ -414,6 +424,10 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                         }
                     }
                     dwCL += dwLineHeight * dy;
+                    if (!strncmp(line, ";u ", 3))
+                    {
+                        tabOrder++;
+                    }
                 }
                 else if (!strncmp(line, ";l ", 3) || !strncmp(line, ";c ", 3) || !strncmp(line, ";b ", 3) || !strncmp(line, ";i ", 3) || !strncmp(line, ";d ", 3) || !strncmp(line, ";v ", 3))
                 {
@@ -609,7 +623,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                             DT_CALCRECT
                         );
                         rcTemp.bottom = rcText.bottom;
-                        if (!hDC && PtInRect(&rcTemp, pt))
+                        if (!hDC && (PtInRect(&rcTemp, pt) || (pt.x == 0 && pt.y == 0 && tabOrder == _this->tabOrder)))
                         {
                             if (bJustCheck)
                             {
@@ -723,7 +737,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                         );
                         rcTemp.bottom = rcText.bottom;
                         //printf("%d %d %d %d %d %d %d %d\n", rcText.left, rcText.top, rcText.right, rcText.bottom, rcTemp.left, rcTemp.top, rcTemp.right, rcTemp.bottom);
-                        if (PtInRect(&rcTemp, pt))
+                        if (PtInRect(&rcTemp, pt) || (pt.x == 0 && pt.y == 0 && tabOrder == _this->tabOrder))
                         {
                             numChRd = getline(&line, &bufsiz, f);
                             char* p = strchr(line, '\r');
@@ -742,6 +756,11 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                     }
                     if (hDC)
                     {
+                        if (tabOrder == _this->tabOrder)
+                        {
+                            bTabOrderHit = TRUE;
+                            DttOpts.crText = GUI_TEXTCOLOR_SELECTED;
+                        }
                         DrawThemeTextEx(
                             _this->hTheme,
                             hdcPaint,
@@ -753,8 +772,13 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                             &rcText,
                             &DttOpts
                         );
+                        if (tabOrder == _this->tabOrder)
+                        {
+                            DttOpts.crText = GUI_TEXTCOLOR;
+                        }
                     }
                     dwCL += dwLineHeight * dy;
+                    tabOrder++;
                 }
             }
         }
@@ -767,6 +791,14 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
             DeleteObject(hFontTitle);
             DeleteObject(hFontUnderline);
             DeleteObject(hFontCaption);
+            if (_this->tabOrder == GUI_MAX_TABORDER)
+            {
+                _this->tabOrder = tabOrder;
+            }
+            else if (!bTabOrderHit)
+            {
+                _this->tabOrder = 0;
+            }
         }
         EndBufferedPaint(hBufferedPaint, TRUE);
     }
@@ -824,6 +856,39 @@ static LRESULT CALLBACK GUI_WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
     {
         PostQuitMessage(0);
         return 0;
+    }
+    else if (uMsg == WM_KEYDOWN)
+    {
+        if (wParam == VK_ESCAPE)
+        {
+            PostMessage(hWnd, WM_CLOSE, 0, 0);
+            return 0;
+        }
+        else if (wParam == VK_TAB)
+        {
+            if (GetKeyState(VK_SHIFT) & 0x8000)
+            {
+                _this->tabOrder--;
+                if (_this->tabOrder == 0)
+                {
+                    _this->tabOrder = GUI_MAX_TABORDER;
+                }
+            }
+            else
+            {
+                _this->tabOrder++;
+            }
+            InvalidateRect(hWnd, NULL, FALSE);
+            return 0;
+        }
+        else if (wParam == VK_SPACE)
+        {
+            POINT pt;
+            pt.x = 0;
+            pt.y = 0;
+            GUI_Build(0, hWnd, pt);
+            return 0;
+        }
     }
     else if (uMsg == WM_NCHITTEST)
     {
@@ -883,16 +948,40 @@ static LRESULT CALLBACK GUI_WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
 
 __declspec(dllexport) int ZZGUI(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLine, int nCmdShow)
 {
-    /*
-    FILE* conout;
-    AllocConsole();
-    freopen_s(
-        &conout,
-        "CONOUT$",
-        "w",
-        stdout
+    HKEY hKey;
+    DWORD dwDisposition;
+    DWORD dwSize = sizeof(DWORD);
+    RegCreateKeyExW(
+        HKEY_CURRENT_USER,
+        TEXT(REGPATH),
+        0,
+        NULL,
+        REG_OPTION_NON_VOLATILE,
+        KEY_READ,
+        NULL,
+        &hKey,
+        &dwDisposition
     );
-    */
+    DWORD bAllocConsole = FALSE;
+    RegQueryValueExW(
+        hKey,
+        TEXT("AllocConsole"),
+        0,
+        NULL,
+        &bAllocConsole,
+        &dwSize
+    );
+    if (bAllocConsole)
+    {
+        FILE* conout;
+        AllocConsole();
+        freopen_s(
+            &conout,
+            "CONOUT$",
+            "w",
+            stdout
+        );
+    }
 
     printf("Started \"GUI\" thread.\n");
 
@@ -909,6 +998,7 @@ __declspec(dllexport) int ZZGUI(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLin
     _this.padding.top = GUI_PADDING_TOP;
     _this.padding.bottom = GUI_PADDING_BOTTOM;
     _this.hTheme = OpenThemeData(NULL, TEXT(GUI_WINDOWSWITCHER_THEME_CLASS));
+    _this.tabOrder = 0;
 
     WNDCLASS wc = { 0 };
     ZeroMemory(&wc, sizeof(WNDCLASSW));
