@@ -2,7 +2,7 @@
 
 ;M Settings
 
-;T Shell
+;T Taskbar
 ;l Enable missing system tray icons
 ;shell:::{05d7b0f4-2121-4eff-bf6b-ed3f69b894d9}\SystemIcons
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
