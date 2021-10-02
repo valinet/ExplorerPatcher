@@ -1,5 +1,8 @@
 #ifndef _H_GUI_H_
 #define _H_GUI_H_
+#pragma comment(linker,"\"/manifestdependency:type='win32' \
+name='Microsoft.Windows.Common-Controls' version='6.0.0.0' \
+processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #include <Windows.h>
 #pragma comment(lib, "Version.lib")
 #include <windowsx.h>
