@@ -182,6 +182,31 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                     );
                     if (!strncmp(line, ";M ", 3))
                     {
+                        TCHAR exeName[MAX_PATH + 1];
+                        GetProcessImageFileNameW(
+                            OpenProcess(
+                                PROCESS_QUERY_INFORMATION,
+                                FALSE,
+                                GetCurrentProcessId()
+                            ),
+                            exeName,
+                            MAX_PATH
+                        );
+                        PathStripPath(exeName);
+                        if (wcscmp(exeName, L"explorer.exe"))
+                        {
+                            LoadStringW(hModule, IDS_PRODUCTNAME, text, MAX_LINE_LENGTH);
+                        }
+                        else
+                        {
+                            LoadStringW(GetModuleHandleW(L"ExplorerFrame.dll"), 50222, text, 260);
+                            wchar_t* p = wcschr(text, L'(');
+                            if (p)
+                            {
+                                p--;
+                                *p = 0;
+                            }
+                        }
                         rcText.bottom += GUI_CAPTION_LINE_HEIGHT - dwLineHeight;
                         dwLineHeight = GUI_CAPTION_LINE_HEIGHT;
                         _this->extent.cyTopHeight = rcText.bottom;
@@ -900,6 +925,10 @@ __declspec(dllexport) int ZZGUI(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLin
 
     TCHAR title[260];
     LoadStringW(GetModuleHandleW(L"ExplorerFrame.dll"), 726, title, 260);
+    if (title[0] == 0)
+    {
+        LoadStringW(hModule, IDS_PRODUCTNAME, title, 260);
+    }
 
     HWND hwnd = CreateWindowEx(
         NULL,
