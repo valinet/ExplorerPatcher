@@ -29,6 +29,9 @@
 #include "StartMenu.h"
 #include "GUI.h"
 
+#define WINX_ADJUST_X 5
+#define WINX_ADJUST_Y 5
+
 #define SB_MICA_EFFECT_SUBCLASS_OFFSET 0x5C70
 #define SB_INIT1 0x26070
 #define SB_INIT2 0x252C0
@@ -356,6 +359,51 @@ INT64 CLauncherTipContextMenu_ShowLauncherTipContextMenuHook(
     if (pt)
     {
         point = *pt;
+        BOOL bBottom, bRight;
+        POINT dPt = GetDefaultWinXPosition(FALSE, &bBottom, &bRight);
+        if (bBottom)
+        {
+            HMONITOR hMonitor = MonitorFromPoint(point, MONITOR_DEFAULTTOPRIMARY);
+            MONITORINFO mi;
+            mi.cbSize = sizeof(MONITORINFO);
+            GetMonitorInfo(hMonitor, &mi);
+            UINT dpiX, dpiY;
+            HRESULT hr = GetDpiForMonitor(
+                hMonitor,
+                MDT_DEFAULT,
+                &dpiX,
+                &dpiY
+            );
+            double dx = dpiX / 96.0, dy = dpiY / 96.0;
+            BOOL xo = FALSE, yo = FALSE;
+            if (point.x - WINX_ADJUST_X * dx < mi.rcMonitor.left)
+            {
+                xo = TRUE;
+            }
+            if (point.y + WINX_ADJUST_Y * dy > mi.rcMonitor.bottom)
+            {
+                yo = TRUE;
+            }
+            POINT ptCursor;
+            GetCursorPos(&ptCursor);
+            if (xo)
+            {
+                ptCursor.x += (WINX_ADJUST_X * 2) * dx;
+            }
+            else
+            {
+                point.x -= WINX_ADJUST_X * dx;
+            }
+            if (yo)
+            {
+                ptCursor.y -= (WINX_ADJUST_Y * 2) * dy;
+            }
+            else
+            {
+                point.y += WINX_ADJUST_Y * dy;
+            }
+            SetCursorPos(ptCursor.x, ptCursor.y);
+        }
     }
     else
     {

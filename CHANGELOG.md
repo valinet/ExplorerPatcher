@@ -2,6 +2,12 @@
 
 This document includes the same release notes as in the [Releases](https://github.com/valinet/ExplorerPatcher/releases) section on GitHub.
 
+## 22000.194.0.22
+
+Tested on build: 22000.194.
+
+* When the taskbar is located at the bottom of the screen, opening the power user menu (`Win`+`X`) now automatically highlights the "Desktop" entry in the list. Also, the menu items can be activated either with left click, either with right click. Thus, this enables a behavior where you can double click the Start button with the right mouse button in order to quickly show the desktop (thanks to @Gaurav-Original-ClassicShellTester for the suggestion)
+
 ## 22000.194.0.21
 
 Tested on build: 22000.194.
