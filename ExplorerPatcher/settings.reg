@@ -41,6 +41,11 @@
 "MicaEffectOnTitlebar"=dword:00000000
 
 ;T Start menu
+[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
+;c 2 Location on screen *
+;x 0 Left
+;x 1 Center (default)
+"TaskbarAl"=dword:00000001
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\StartPage]
 ;b Open Start to All apps by default
 "MakeAllAppsDefault"=dword:00000000
