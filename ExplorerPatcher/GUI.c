@@ -333,10 +333,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                         WaitForSingleObject(ShExecInfo.hProcess, INFINITE);
                                         DWORD dwExitCode = 0;
                                         GetExitCodeProcess(ShExecInfo.hProcess, &dwExitCode);
-                                        if (!dwExitCode)
-                                        {
-                                            PostMessage(hwnd, WM_CLOSE, 0, 0);
-                                        }
+                                        InvalidateRect(hwnd, NULL, FALSE);
                                         CloseHandle(ShExecInfo.hProcess);
                                         DeleteFileW(wszPath);
                                     }
