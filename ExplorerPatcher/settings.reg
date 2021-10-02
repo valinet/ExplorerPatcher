@@ -1,0 +1,93 @@
+﻿Windows Registry Editor Version 5.00
+
+;M Properties
+
+;T Shell
+;l Enable missing system tray icons
+;shell:::{05d7b0f4-2121-4eff-bf6b-ed3f69b894d9}\SystemIcons
+[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
+;c 3 Combine taskbar icons on main taskbar *
+;x 0 Always combine
+;x 1 Combine when taskbar is full
+;x 2 Never combine
+"TaskbarGlomLevel"=dword:00000002
+;c 3 Combine taskbar icons on other taskbars *
+;x 0 Always combine
+;x 1 Combine when taskbar is full
+;x 2 Never combine
+"MMTaskbarGlomLevel"=dword:00000002
+[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
+;b Disable Control Center button *
+"HideControlCenterButton"=dword:00000000
+;b Apply immersive style to system tray icon menus *
+"SkinMenus"=dword:00000001
+;b Apply Windows 11 style to system tray icons (requires StartIsBack64.dll) *
+"SkinIcons"=dword:00000001
+
+;T File Explorer
+[-HKEY_CURRENT_USER\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32]
+;d Disable immersive context menu *
+@=""
+[-HKEY_CURRENT_USER\Software\Classes\CLSID\{d93ed569-3b3e-4bff-8355-3c44f6a52bb5}\InprocServer32]
+;d Disable command bar *
+@=""
+[-HKEY_CURRENT_USER\Software\Classes\CLSID\{1d64637d-31e9-4b06-9124-e83fb178ac6e}\TreatAs]
+;d Disable modern search bar
+@="{64bc32b5-4eec-4de7-972d-bd8bd0324537}"
+[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
+;b Hide search bar completely *
+"HideExplorerSearchBar"=dword:00000000
+;b Mica effect on title bar (requires StartIsBack64.dll) *
+"MicaEffectOnTitlebar"=dword:00000000
+
+;T Start menu
+[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\StartPage]
+;b Open Start to All apps by default
+"MakeAllAppsDefault"=dword:00000000
+[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
+;c 22 Maximum number of frequent apps to show in Start
+;x 0 None
+;x 1 1
+;x 2 2
+;x 3 3
+;x 4 4
+;x 5 5
+;x 6 6 (default)
+;x 7 7
+;x 8 8
+;x 9 9
+;x 10 10
+;x 11 11
+;x 12 12
+;x 13 13
+;x 14 14
+;x 15 15
+;x 16 16
+;x 17 17
+;x 18 18
+;x 19 19
+;x 20 20
+;x 99999 Unlimited
+"Start_MaximumFrequentApps"=dword:00000006
+
+;T Advanced
+[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
+;b Enable console *
+"AllocConsole"=dword:00000000
+;c 7 Supplimentary delay at logon *
+;x 0 None (default)
+;x 300 300 ms
+;x 600 600 ms
+;x 1000 1 second
+;x 1500 1.5 seconds
+;x 2000 2 seconds
+;x 3000 3 seconds
+"ExplorerReadyDelay"=dword:00000000
+
+;t Settings marked with an (*) require restarting the File Explorer process. 
+;u Restart File Explorer
+;restart
+;u Restore default settings
+;reset
+;u About ExplorerPatcher
+;about

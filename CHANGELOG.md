@@ -2,6 +2,12 @@
 
 This document includes the same release notes as in the [Releases](https://github.com/valinet/ExplorerPatcher/releases) section on GitHub.
 
+## 22000.194.0.21
+
+Tested on build: 22000.194.
+
+* Implemented configuration GUI; to access it, right click the Start button (or press `Win`+`X`) and choose "Properties"
+
 ## 22000.194.0.20
 
 Tested on build: 22000.194.

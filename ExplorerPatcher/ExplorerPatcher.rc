@@ -51,8 +51,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 22000,194,0,20
- PRODUCTVERSION 22000,194,0,20
+ FILEVERSION 22000,194,0,21
+ PRODUCTVERSION 22000,194,0,21
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -69,18 +69,43 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "VALINET Solutions SRL"
             VALUE "FileDescription", "ExplorerPatcher"
-            VALUE "FileVersion", "22000.194.0.20"
+            VALUE "FileVersion", "22000.194.0.21"
             VALUE "InternalName", "ExplorerPatcher.dll"
             VALUE "LegalCopyright", "Copyright (C) 2006-2021 VALINET Solutions SRL. All rights reserved."
             VALUE "OriginalFilename", "ExplorerPatcher.dll"
             VALUE "ProductName", "ExplorerPatcher"
-            VALUE "ProductVersion", "22000.194.0.20"
+            VALUE "ProductVersion", "22000.194.0.21"
         END
     END
     BLOCK "VarFileInfo"
     BEGIN
         VALUE "Translation", 0x409, 1200
     END
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// RCDATA
+//
+
+IDR_REGISTRY1           RCDATA                  "settings.reg"
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// String Table
+//
+
+STRINGTABLE
+BEGIN
+    IDS_PRODUCTNAME         "ExplorerPatcher"
+    IDS_COPYRIGHT           "Copyright (C) 2006-2021 VALINET Solutions SRL. All rights reserved."
+    IDS_VERSION             "Version %d.%d.%d.%d"
+    IDS_PRODUCTTAG          "This project aims to bring back a productive working environment\r\non Windows 11. Proudly programmed by Valentin-Gabriel Radu."
+    IDS_VISITGITHUB         "Visit project Github"
+    IDS_VISITWEBSITE        "Visit web site"
+    IDS_LICENSEINFO         "E-mail author"
 END
 
 #endif    // English (United States) resources

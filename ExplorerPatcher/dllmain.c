@@ -27,6 +27,7 @@
 #include "SettingsMonitor.h"
 #include "HideExplorerSearchBar.h"
 #include "StartMenu.h"
+#include "GUI.h"
 
 #define SB_MICA_EFFECT_SUBCLASS_OFFSET 0x5C70
 #define SB_INIT1 0x26070
@@ -245,6 +246,32 @@ DWORD ShowLauncherTipContextMenu(
     {
         goto finalize;
     }
+   
+    TCHAR buffer[260];
+    LoadStringW(GetModuleHandleW(L"ExplorerFrame.dll"), 50222, buffer + 1, 260);
+    buffer[0] = L'&';
+    wchar_t* p = wcschr(buffer, L'(');
+    if (p)
+    {
+        p--;
+        *p = 0;
+    }
+
+    MENUITEMINFOW menuInfo;
+    ZeroMemory(&menuInfo, sizeof(MENUITEMINFOW));
+    menuInfo.cbSize = sizeof(MENUITEMINFOW);
+    menuInfo.fMask = MIIM_ID | MIIM_STRING | MIIM_DATA | MIIM_STATE;
+    menuInfo.wID = 3999;
+    menuInfo.dwItemData = 0;
+    menuInfo.fType = MFT_STRING;
+    menuInfo.dwTypeData = buffer;
+    menuInfo.cch = wcslen(buffer);
+    InsertMenuItemW(
+        *((HMENU*)((char*)params->_this + 0xe8)),
+        GetMenuItemCount(*((HMENU*)((char*)params->_this + 0xe8))) - 1,
+        TRUE,
+        &menuInfo
+    );
 
     INT64* unknown_array = calloc(4, sizeof(INT64));
     ImmersiveContextMenuHelper_ApplyOwnerDrawToMenuFunc(
@@ -272,9 +299,19 @@ DWORD ShowLauncherTipContextMenu(
     );
     free(unknown_array);
 
+    RemoveMenu(
+        *((HMENU*)((char*)params->_this + 0xe8)),
+        3999,
+        MF_BYCOMMAND
+    );
+
     if (res > 0)
     {
-        if (res < 4000)
+        if (res == 3999)
+        {
+            CreateThread(0, 0, ZZGUI, 0, 0, 0);
+        }
+        else if (res < 4000)
         {
             INT64 info = *(INT64*)((char*)(*(INT64*)((char*)params->_this + 0xa8 - 0x58)) + (INT64)res * 8 - 8);
             CLauncherTipContextMenu_ExecuteCommandFunc(
@@ -1073,7 +1110,7 @@ __declspec(dllexport) DWORD WINAPI main(
         DWORD bAllocConsole = FALSE;
         RegQueryValueExW(
             hKey,
-            TEXT("bAllocConsole"),
+            TEXT("AllocConsole"),
             0,
             NULL,
             &bAllocConsole,
@@ -1119,7 +1156,7 @@ __declspec(dllexport) DWORD WINAPI main(
 
         RegQueryValueExW(
             hKey,
-            TEXT("bHideExplorerSearchBar"),
+            TEXT("HideExplorerSearchBar"),
             0,
             NULL,
             &bHideExplorerSearchBar,
@@ -1127,7 +1164,7 @@ __declspec(dllexport) DWORD WINAPI main(
         );
         RegQueryValueExW(
             hKey,
-            TEXT("bMicaEffectOnTitlebar"),
+            TEXT("MicaEffectOnTitlebar"),
             0,
             NULL,
             &bMicaEffectOnTitlebar,
@@ -1135,7 +1172,7 @@ __declspec(dllexport) DWORD WINAPI main(
         );
         RegQueryValueExW(
             hKey,
-            TEXT("bHideControlCenterButton"),
+            TEXT("HideControlCenterButton"),
             0,
             NULL,
             &bHideControlCenterButton,
@@ -1143,7 +1180,7 @@ __declspec(dllexport) DWORD WINAPI main(
         );
         RegQueryValueExW(
             hKey,
-            TEXT("bSkinMenus"),
+            TEXT("SkinMenus"),
             0,
             NULL,
             &bSkinMenus,
@@ -1151,7 +1188,7 @@ __declspec(dllexport) DWORD WINAPI main(
         );
         RegQueryValueExW(
             hKey,
-            TEXT("bSkinIcons"),
+            TEXT("SkinIcons"),
             0,
             NULL,
             &bSkinIcons,
@@ -1365,7 +1402,7 @@ __declspec(dllexport) DWORD WINAPI main(
         DWORD delay = 0;
         RegQueryValueExW(
             hKey,
-            TEXT("vExplorerReadyDelay"),
+            TEXT("ExplorerReadyDelay"),
             0,
             NULL,
             &delay,
@@ -1401,7 +1438,7 @@ __declspec(dllexport) DWORD WINAPI main(
         DWORD bEnableArchivePlugin = 0;
         RegQueryValueExW(
             hKey,
-            TEXT("bArchiveMenu"),
+            TEXT("ArchiveMenu"),
             0,
             NULL,
             &bEnableArchivePlugin,

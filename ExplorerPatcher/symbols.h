@@ -9,7 +9,6 @@
 
 #define EXIT_CODE_EXPLORER 1
 
-#define SYMBOLS_RELATIVE_PATH "\\ExplorerPatcher"
 #define TWINUI_PCSHELL_SB_NAME "twinui.pcshell"
 #define TWINUI_PCSHELL_SB_0 "CImmersiveContextMenuOwnerDrawHelper::s_ContextMenuWndProc"
 #define TWINUI_PCSHELL_SB_1 "CLauncherTipContextMenu::GetMenuItemsAsync"

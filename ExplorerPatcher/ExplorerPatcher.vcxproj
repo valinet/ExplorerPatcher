@@ -195,6 +195,9 @@
   <ItemGroup>
     <ClCompile Include="ArchiveMenu.c" />
     <ClCompile Include="dllmain.c" />
+    <ClCompile Include="fmemopen.c" />
+    <ClCompile Include="getline.c" />
+    <ClCompile Include="GUI.c" />
     <ClCompile Include="HideExplorerSearchBar.c" />
     <ClCompile Include="SettingsMonitor.c" />
     <ClCompile Include="StartMenu.c" />
@@ -205,6 +208,9 @@
   <ItemGroup>
     <ClInclude Include="ArchiveMenu.h" />
     <ClInclude Include="dxgi_imp.h" />
+    <ClInclude Include="fmemopen.h" />
+    <ClInclude Include="getline.h" />
+    <ClInclude Include="GUI.h" />
     <ClInclude Include="HideExplorerSearchBar.h" />
     <ClInclude Include="hooking.h" />
     <ClInclude Include="resource.h" />
@@ -216,6 +222,9 @@
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="ExplorerPatcher.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="settings.reg" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

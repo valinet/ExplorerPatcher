@@ -125,7 +125,7 @@ DWORD DownloadSymbols(DownloadSymbolsParams* params)
     );
     SHGetFolderPathA(
         NULL,
-        CSIDL_APPDATA,
+        SPECIAL_FOLDER,
         NULL,
         SHGFP_TYPE_CURRENT,
         szSettingsPath
@@ -133,7 +133,7 @@ DWORD DownloadSymbols(DownloadSymbolsParams* params)
     strcat_s(
         szSettingsPath,
         MAX_PATH,
-        SYMBOLS_RELATIVE_PATH
+        APP_RELATIVE_PATH
     );
     CreateDirectoryA(szSettingsPath, NULL);
     strcat_s(
@@ -440,7 +440,7 @@ DWORD DownloadSymbols(DownloadSymbolsParams* params)
     }
     RegSetValueExW(
         hKey,
-        TEXT("szOSBuild"),
+        TEXT("OSBuild"),
         0,
         REG_SZ,
         szReportedVersion,
@@ -683,7 +683,7 @@ BOOL LoadSymbols(symbols_addr* symbols_PTRS)
     dwSize = MAX_PATH;
     RegQueryValueExW(
         hKey,
-        TEXT("szOSBuild"),
+        TEXT("OSBuild"),
         0,
         NULL,
         szStoredVersion,

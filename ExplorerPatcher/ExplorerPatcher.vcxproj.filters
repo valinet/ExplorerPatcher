@@ -45,6 +45,15 @@
     <ClInclude Include="utility.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="GUI.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="getline.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="fmemopen.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="ExplorerPatcher.rc">
@@ -76,5 +85,17 @@
     <ClCompile Include="utility.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="GUI.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="getline.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="fmemopen.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="settings.reg" />
   </ItemGroup>
 </Project>

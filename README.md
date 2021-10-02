@@ -4,9 +4,10 @@ This project aims to bring back a productive working environment on Windows 11.
 <details>
   <summary>About ExplorerPatcher and StartIsBack</summary>
   The well-known [StartIsBack](https://www.startisback.com/) application recently introduced support for Windows 11. Currently, regarding Windows 11 functionality, it offers the same features as this patcher, plus all the functionalities from the older releases of the software; thus the differences between the two at the moment, besides their internal implementation (probably) resort in the cost, licensing, support and development model: StartIsBack is a paid app, proprietary, closed source and comes with support, while ExplorerPatcher is free ([gratis and libre - as in free beer and free speech](https://en.wikipedia.org/wiki/Gratis_versus_libre)), open source and is provided as-is, with support offered in a best-effort attempt.
-
   ExplorerPatcher is offered more like a tool for people to study the source code and the techniques used, to learn and adapt it in order and to enable people to build each on top of the work of the others. The aim is to benefit both the community and its users. You are encouraged to take a look at the source and adapt it to your needs. While the source and the application in its current form will always be available here, I cannot make any guarantes over how long it will work in newer Windows 11 builds. Thus, these things being considered, if you would like, you can check out the beta test for StartIsBack [here](http://startisback.com/tbd/) and report any issues and make suggestions to its developer. It will probably mature in a release that will be better supported from a consumer point of view than ExplorerPatcher.
 </details>
+
+<img src="https://gist.githubusercontent.com/valinet/d0f72ff09773702584e77c46065b95e0/raw/94036ed3e38218b87744a29ae5c40b06be637daf/ep_img0.png" width=100% height=100%>
 
 Screenshots: [<1>](https://gist.githubusercontent.com/valinet/d0f72ff09773702584e77c46065b95e0/raw/94036ed3e38218b87744a29ae5c40b06be637daf/ep_img0.png) [<2>](https://user-images.githubusercontent.com/6503598/131937638-d513ca72-ead7-459b-a8ce-619fb302b7da.png)
 
@@ -34,7 +35,25 @@ Also, if you place the `StartIsBack64.dll` file from StartIsBack(TBD) Preview 2 
 
 After you have completed the above setup, make sure you have an active Internet connection and restart the Explorer process using Task Manager or by issuing the following command: `taskkill /f /im explorer.exe`. Once File Explorer restarts, some necessary files (symbol files) will be downloaded from Microsoft (around 50MB). This should be relatively quick, depending on your Internet connection speed. When this is done, File Explorer will restart again and will be ready for use. Notifications should show up informing you about the progress, and you can also use Task Manager to watch for network activity. This process only happens when a new Windows 11 build is installed on the machine.
 
-Now, the classic taskbar should be enabled. Still, there is some more setup to do, depending on your preferences. 
+Now, the classic taskbar should be enabled. Still, there is some more setup to do, depending on your preferences.
+
+## Configuration interface
+
+To configure the most common options, the application now comes with a configuration user interface. To open it, right click the Start button (or press `Win`+`X`) and choose "Properties".
+
+<img src="https://user-images.githubusercontent.com/6503598/135698816-b97b7305-f425-4320-b5e6-69843677e510.png"  width=70% height=70%>
+
+The icon near an option signifies its current state:
+
+* ✔️ enabled
+* ❌ disabled
+* ➕ performs an action that allows you to change that option (usually, the current value is located after the colon in its description)
+
+The links at the bottom allow you to perform the most frequent actions.
+
+## Manual configuration
+
+To learn how to configure all the options manually, read on:
 
 ### Enable system tray icons
 As you have noticed, some system tray icons are missing (for example, the clock, notification center button, network, battery, sound etc). To enable these icons, open the following using Run: 
@@ -121,37 +140,64 @@ To disable the blue highlight in the context menu and return to the classic gray
 ### Disable window rounded corners
 You can try one of my other utilities available [here](https://github.com/valinet/Win11DisableRoundedCorners).
 
-## Configuration
-Now that you have set up the basic stuff, you can choose to enable additional settings to enhance the experience even more. For this, edit the file `%appdata%\ExplorerPatcher\settings.ini` and add the following section to it (change to `0` the setting that you do not want to enable):
+### Patcher settings
+Now that you have set up the basic stuff, you can choose to enable additional settings to enhance the experience even more. For this, customize the following commands by changing the number acording to your needs:
 
-```
-[General]
-HideExplorerSearchBar=1
-HideControlCenterButton=1
-MicaEffectOnTitlebar=1
-SkinMenus=1
-SkinIcons=1
-AllocConsole=1
-```
+* `HideExplorerSearchBar` completely removes the search box in File Explorer (default = 0)
 
-* `HideExplorerSearchBar` completely removes the search box in File Explorer
-* `HideControlCenterButton` disables the Control Center button and its associated shortcut key (`Win`+`A`)
-* `MicaEffectOnTitlebar` enables Mica effect on File Explorer windows (requires `StartIsBack64.dll`)
-* `SkinMenus` applies the immersive skin to "Safe to Remove Hardware" and "Bluetooth" pop-up menus
-* `SkinIcons` applies Windows 11 icon skins to taskbar buttons (requires `StartIsBack64.dll`)
-* `AllocConsole` will display a console window (for debugging purposes)
+  ```
+  reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher" /f /v "bHideExplorerSearchBar" /t REG_DWORD /d 1
+  ```
+
+* `HideControlCenterButton` disables the Control Center button and its associated shortcut key (`Win`+`A`) (default = 0)
+
+  ```
+  reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher" /f /v "bHideControlCenterButton" /t REG_DWORD /d 1
+  ```
+
+* `MicaEffectOnTitlebar` enables Mica effect on File Explorer windows (requires `StartIsBack64.dll`) (default = 0)
+
+  ```
+  reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher" /f /v "bMicaEffectOnTitlebar" /t REG_DWORD /d 1
+  ```
+
+* `SkinMenus` applies the immersive skin to "Safe to Remove Hardware" and "Bluetooth" pop-up menus (default = 1)
+
+  ```
+  reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher" /f /v "bSkinMenus" /t REG_DWORD /d 1
+  ```
+
+* `SkinIcons` applies Windows 11 icon skins to taskbar buttons (requires `StartIsBack64.dll`) (default = 1)
+
+  ```
+  reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher" /f /v "bSkinIcons" /t REG_DWORD /d 1
+  ```
+
+* `AllocConsole` will display a console window (for debugging purposes) (default = 0, for advanced users only)
+
+  ```
+  reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher" /f /v "bAllocConsole" /t REG_DWORD /d 1
+  ```
+
+* `ExplorerReadyDelay` adds even more delay before the shell is announced that Explorer is ready loading (helps if you experience a delay at logon) - the unit is ms (milliseconds), 1000ms = 1 second (default = 0, for advanced users only)
+
+  ```
+  reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher" /f /v "vExplorerReadyDelay" /t REG_DWORD /d 1000
+  ```
 
 Also, if you chose to place the patcher in `C:\Windows\SystemApps\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy` as well, use the following commands to configure Start menu options:
 
 * Open Start menu to "All apps" directly (replace with 0 to disable)
-```
-reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\StartPage /f /v "MakeAllAppsDefault" /t REG_DWORD /d 1
-```
-* Show only 4 most recent apps (change the number to customize)
-```
-reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced /f /v "Start_MaximumFrequentApps" /t REG_DWORD /d 4
-```
 
+  ```
+  reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\StartPage /f /v "MakeAllAppsDefault" /t REG_DWORD /d 1
+  ```
+
+* Show only 4 most recent apps (change the number to customize)
+
+  ```
+  reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced /f /v "Start_MaximumFrequentApps" /t REG_DWORD /d 4
+  ```
 ## More configuration
 Even more registry configuration settings are described in the following document, make sure to take a look on it [here](https://github.com/valinet/ExplorerPatcher/issues/9).
 

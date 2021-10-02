@@ -9,6 +9,8 @@
 
 #define APPID L"Microsoft.Windows.Explorer"
 #define REGPATH "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\ExplorerPatcher"
+#define SPECIAL_FOLDER CSIDL_APPDATA
+#define APP_RELATIVE_PATH "\\ExplorerPatcher"
 
 #pragma region "Weird stuff"
 INT64 nimpl4_1(INT64 a1, DWORD* a2);
@@ -43,4 +45,6 @@ __declspec(dllexport) CALLBACK ZZLaunchExplorer(HWND hWnd, HINSTANCE hInstance, 
 __declspec(dllexport) CALLBACK ZZLaunchExplorerDelayed(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLine, int nCmdShow);
 
 POINT GetDefaultWinXPosition(BOOL bUseRcWork, BOOL* lpBottom, BOOL* lpRight);
+
+void QueryVersionInfo(HMODULE hModule, WORD Resource, DWORD*, DWORD*, DWORD*, DWORD*);
 #endif
