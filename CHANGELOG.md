@@ -2,6 +2,19 @@
 
 This document includes the same release notes as in the [Releases](https://github.com/valinet/ExplorerPatcher/releases) section on GitHub.
 
+## 22000.194.0.23
+
+Tested on build: 22000.194.
+
+* Fixed a bug that showed`Win`+`X` on the wrong monitor in certain scenarios
+* `Win`+`X` shows in Windows 11 fashion (centered, above the Start button) if using a centered taskbar with centered Start button as well (using a program like [TaskbarX](https://github.com/valinet/TaskbarX))
+* Fixed the bug that prevented the application from loading in`StartMenuExperienceHost.exe` (thanks to @BraINstinct0 for the report)
+* Fixed padding and element sizes in GUI so it better fits on smaller screens (thanks to @Gaurav-Original-ClassicShellTester for the report)
+* GUI shows application title when run outside of File Explorer
+* GUI stays on screen and just reloads the settings when restoring defaults (instead of closing)
+* Keyboard (tab) support for GUI: `Esc` to close the window, `Tab` to select the next option, `Shift`+`Tab` to select the previous option, `Space` to toggle (or activate) the option
+* Possibility of running the GUI standalone; run this command: `rundll32.exe C:\Windows\dxgi.dll,ZZGUI`; this has the advantage that it stays on the screen after restarting File Explorer
+
 ## 22000.194.0.22
 
 Tested on build: 22000.194.
@@ -12,7 +25,7 @@ Tested on build: 22000.194.
 
 Tested on build: 22000.194.
 
-* Implemented configuration GUI; to access it, right click the Start button (or press `Win`+`X`) and choose "Properties"
+* Implemented configuration GUI; to access it, right click the Start button (or press `Win`+`X`) and choose "Properties" (thanks to @BraINstinct0 for the suggestion)
 
 ## 22000.194.0.20
 

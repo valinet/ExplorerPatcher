@@ -264,7 +264,7 @@ __declspec(dllexport) CALLBACK ZZLaunchExplorerDelayed(HWND hWnd, HINSTANCE hIns
     ZZLaunchExplorer(hWnd, hInstance, lpszCmdLine, nCmdShow);
 }
 
-POINT GetDefaultWinXPosition(BOOL bUseRcWork, BOOL* lpBottom, BOOL* lpRight)
+POINT GetDefaultWinXPosition(BOOL bUseRcWork, BOOL* lpBottom, BOOL* lpRight, BOOL bAdjust)
 {
     if (lpBottom) *lpBottom = FALSE;
     if (lpRight) *lpRight = FALSE;
@@ -294,6 +294,10 @@ POINT GetDefaultWinXPosition(BOOL bUseRcWork, BOOL* lpBottom, BOOL* lpRight)
             {
                 point.x = mi.rcMonitor.left;
             }
+            if (bAdjust)
+            {
+                point.x++;
+            }
             if (rc.top - mi.rcMonitor.top == 0)
             {
                 if (bUseRcWork)
@@ -303,6 +307,10 @@ POINT GetDefaultWinXPosition(BOOL bUseRcWork, BOOL* lpBottom, BOOL* lpRight)
                 else
                 {
                     point.y = mi.rcMonitor.top;
+                }
+                if (bAdjust)
+                {
+                    point.y++;
                 }
             }
             else
@@ -315,6 +323,10 @@ POINT GetDefaultWinXPosition(BOOL bUseRcWork, BOOL* lpBottom, BOOL* lpRight)
                 else
                 {
                     point.y = mi.rcMonitor.bottom;
+                }
+                if (bAdjust)
+                {
+                    point.y--;
                 }
             }
         }
@@ -329,6 +341,10 @@ POINT GetDefaultWinXPosition(BOOL bUseRcWork, BOOL* lpBottom, BOOL* lpRight)
             {
                 point.x = mi.rcMonitor.right;
             }
+            if (bAdjust)
+            {
+                point.x--;
+            }
             if (rc.top - mi.rcMonitor.top == 0)
             {
                 if (bUseRcWork)
@@ -338,6 +354,10 @@ POINT GetDefaultWinXPosition(BOOL bUseRcWork, BOOL* lpBottom, BOOL* lpRight)
                 else
                 {
                     point.y = mi.rcMonitor.top;
+                }
+                if (bAdjust)
+                {
+                    point.y++;
                 }
             }
             else
@@ -350,6 +370,10 @@ POINT GetDefaultWinXPosition(BOOL bUseRcWork, BOOL* lpBottom, BOOL* lpRight)
                 else
                 {
                     point.y = mi.rcMonitor.bottom;
+                }
+                if (bAdjust)
+                {
+                    point.y--;
                 }
             }
         }

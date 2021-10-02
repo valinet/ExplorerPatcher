@@ -39,9 +39,9 @@ Now, the classic taskbar should be enabled. Still, there is some more setup to d
 
 ## Configuration interface
 
-To configure the most common options, the application now comes with a configuration user interface. To open it, right click the Start button (or press `Win`+`X`) and choose "Properties".
+To configure the most common options, the application now comes with a configuration user interface. To open it, right click the Start button (or press `Win`+`X`) and choose "Properties". Alternatively, to open the GUI standalone, run the following command: `rundll32.exe C:\Windows\dxgi.dll,ZZGUI`.
 
-<img src="https://user-images.githubusercontent.com/6503598/135698816-b97b7305-f425-4320-b5e6-69843677e510.png"  width=70% height=70%>
+<img src="https://user-images.githubusercontent.com/6503598/135729021-6befba47-84ae-4c65-8133-e380f1d36fe1.png"  width=60% height=60%>
 
 The icon near an option signifies its current state:
 
@@ -50,6 +50,26 @@ The icon near an option signifies its current state:
 * ➕ performs an action that allows you to change that option (usually, the current value is located after the colon in its description)
 
 The links at the bottom allow you to perform the most frequent actions.
+
+## Recommended tools
+
+Here is a list of things you may want to try to fix/enhance a few of the aspects which are not addressed by this patcher directly:
+
+### Fix the battery applet
+
+As you will notice, the battery flyout in the taskbar is broken in Windows 11. You can replace it with a much better alternative called [Battery Mode](https://en.bmode.tarcode.ru/) which has all the stock options and more.
+
+### Disable blue highlight in menus
+
+To disable the blue highlight in the context menu and return to the classic gray highlight from early Windows 11 builds, read [here](https://github.com/valinet/ExplorerPatcher/issues/18).
+
+### Center taskbar icons
+
+If you want the same behavior as the default one in Windows 11, which is to have the icons centered along with the Start button, but would like to use this proper classic taskbar which has features like button labels, toolbars and more, you can use my fork of the popular [TaskbarX](https://github.com/ChrisAnd1998/TaskbarX) program which fixes compatibility with Windows 11 and adds this behavior; a guide about how to set it up is available [here](https://github.com/valinet/ExplorerPatcher/issues/33).
+
+### Disable window rounded corners
+
+You can try one of my other utilities available [here](https://github.com/valinet/Win11DisableRoundedCorners).
 
 ## Manual configuration
 
@@ -130,15 +150,6 @@ reg.exe delete "HKCU\Software\Classes\CLSID\{1d64637d-31e9-4b06-9124-e83fb178ac6
 ```
 
 Also, in the next section, which desribes the configuration options for the software, you will learn about how to disable the search box altogether, should you want to.
-
-### Fix the battery applet
-As you will notice, the battery flyout in the taskbar is broken in Windows 11. You can replace it with a much better alternative called [Battery Mode](https://en.bmode.tarcode.ru/) which has all the stock options and more.
-
-### Disable blue highlight in menus
-To disable the blue highlight in the context menu and return to the classic gray highlight from early Windows 11 builds, read [here](https://github.com/valinet/ExplorerPatcher/issues/18).
-
-### Disable window rounded corners
-You can try one of my other utilities available [here](https://github.com/valinet/Win11DisableRoundedCorners).
 
 ### Patcher settings
 Now that you have set up the basic stuff, you can choose to enable additional settings to enhance the experience even more. For this, customize the following commands by changing the number acording to your needs:

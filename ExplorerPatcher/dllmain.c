@@ -208,6 +208,7 @@ typedef struct
     void* _this;
     POINT point;
     IUnknown* iunk;
+    BOOL bShouldCenterWinXHorizontally;
 } ShowLauncherTipContextMenuParameters;
 HWND hWinXWnd;
 DWORD ShowLauncherTipContextMenu(
@@ -287,7 +288,7 @@ DWORD ShowLauncherTipContextMenu(
 
     BOOL res = TrackPopupMenu(
         *((HMENU*)((char*)params->_this + 0xe8)),
-        TPM_RETURNCMD | TPM_RIGHTBUTTON,
+        TPM_RETURNCMD | TPM_RIGHTBUTTON | (params->bShouldCenterWinXHorizontally ? TPM_CENTERALIGN : 0),
         params->point.x,
         params->point.y,
         0,
@@ -355,59 +356,83 @@ INT64 CLauncherTipContextMenu_ShowLauncherTipContextMenuHook(
         goto finalize;
     }
 
+    BOOL bShouldCenterWinXHorizontally = FALSE;
     POINT point;
     if (pt)
     {
         point = *pt;
         BOOL bBottom, bRight;
-        POINT dPt = GetDefaultWinXPosition(FALSE, &bBottom, &bRight);
+        POINT dPt = GetDefaultWinXPosition(FALSE, &bBottom, &bRight, FALSE);
         if (bBottom)
         {
             HMONITOR hMonitor = MonitorFromPoint(point, MONITOR_DEFAULTTOPRIMARY);
             MONITORINFO mi;
             mi.cbSize = sizeof(MONITORINFO);
             GetMonitorInfo(hMonitor, &mi);
-            UINT dpiX, dpiY;
-            HRESULT hr = GetDpiForMonitor(
-                hMonitor,
-                MDT_DEFAULT,
-                &dpiX,
-                &dpiY
-            );
-            double dx = dpiX / 96.0, dy = dpiY / 96.0;
-            BOOL xo = FALSE, yo = FALSE;
-            if (point.x - WINX_ADJUST_X * dx < mi.rcMonitor.left)
+            HWND hWndUnder = WindowFromPoint(*pt);
+            TCHAR wszClassName[100];
+            GetClassNameW(hWndUnder, wszClassName, 100);
+            if (!wcscmp(wszClassName, L"Shell_TrayWnd") || !wcscmp(wszClassName, L"Shell_SecondaryTrayWnd"))
             {
-                xo = TRUE;
+                hWndUnder = FindWindowEx(
+                    hWndUnder,
+                    NULL,
+                    L"Start",
+                    NULL
+                );
             }
-            if (point.y + WINX_ADJUST_Y * dy > mi.rcMonitor.bottom)
+            RECT rcUnder;
+            GetWindowRect(hWndUnder, &rcUnder);
+            if (mi.rcMonitor.left != rcUnder.left)
             {
-                yo = TRUE;
-            }
-            POINT ptCursor;
-            GetCursorPos(&ptCursor);
-            if (xo)
-            {
-                ptCursor.x += (WINX_ADJUST_X * 2) * dx;
+                bShouldCenterWinXHorizontally = TRUE;
+                point.x = rcUnder.left + (rcUnder.right - rcUnder.left) / 2;
+                point.y = rcUnder.top;
             }
             else
             {
-                point.x -= WINX_ADJUST_X * dx;
+                UINT dpiX, dpiY;
+                HRESULT hr = GetDpiForMonitor(
+                    hMonitor,
+                    MDT_DEFAULT,
+                    &dpiX,
+                    &dpiY
+                );
+                double dx = dpiX / 96.0, dy = dpiY / 96.0;
+                BOOL xo = FALSE, yo = FALSE;
+                if (point.x - WINX_ADJUST_X * dx < mi.rcMonitor.left)
+                {
+                    xo = TRUE;
+                }
+                if (point.y + WINX_ADJUST_Y * dy > mi.rcMonitor.bottom)
+                {
+                    yo = TRUE;
+                }
+                POINT ptCursor;
+                GetCursorPos(&ptCursor);
+                if (xo)
+                {
+                    ptCursor.x += (WINX_ADJUST_X * 2) * dx;
+                }
+                else
+                {
+                    point.x -= WINX_ADJUST_X * dx;
+                }
+                if (yo)
+                {
+                    ptCursor.y -= (WINX_ADJUST_Y * 2) * dy;
+                }
+                else
+                {
+                    point.y += WINX_ADJUST_Y * dy;
+                }
+                SetCursorPos(ptCursor.x, ptCursor.y);
             }
-            if (yo)
-            {
-                ptCursor.y -= (WINX_ADJUST_Y * 2) * dy;
-            }
-            else
-            {
-                point.y += WINX_ADJUST_Y * dy;
-            }
-            SetCursorPos(ptCursor.x, ptCursor.y);
         }
     }
     else
     {
-        point = GetDefaultWinXPosition(FALSE, NULL, NULL);
+        point = GetDefaultWinXPosition(FALSE, NULL, NULL, TRUE);
     }
 
     IUnknown* iunk;
@@ -424,6 +449,7 @@ INT64 CLauncherTipContextMenu_ShowLauncherTipContextMenuHook(
     params->_this = _this;
     params->point = point;
     params->iunk = iunk;
+    params->bShouldCenterWinXHorizontally = bShouldCenterWinXHorizontally;
     hIsWinXShown = CreateThread(
         0,
         0,
@@ -1004,7 +1030,7 @@ LRESULT explorer_SendMessageW(HWND hWndx, UINT uMsg, WPARAM wParam, LPARAM lPara
                             );
                             if (hWnd)
                             {
-                                POINT pt = GetDefaultWinXPosition(FALSE, NULL, NULL);
+                                POINT pt = GetDefaultWinXPosition(FALSE, NULL, NULL, TRUE);
                                 PostMessage(
                                     hWnd,
                                     WM_CONTEXTMENU,
