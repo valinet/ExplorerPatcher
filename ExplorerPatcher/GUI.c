@@ -380,7 +380,9 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                 td.pfCallback = GUI_AboutProc;
                                 td.lpCallbackData = 0;
                                 int ret;
-                                HRESULT hr = TaskDialogIndirect(
+
+                                // If used directly, StartMenuExperienceHost.exe crashes badly and is unable to start; guess how I know...
+                                (HRESULT(*)(const TASKDIALOGCONFIG*, int*, int*, BOOL*))(GetProcAddress(GetModuleHandleA("Comctl32.dll"), "TaskDialogIndirect"))(
                                     &td,
                                     &ret,
                                     NULL,
