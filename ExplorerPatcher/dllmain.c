@@ -258,7 +258,15 @@ DWORD ShowLauncherTipContextMenu(
     if (p)
     {
         p--;
-        *p = 0;
+        if (p == L' ')
+        {
+            *p = 0;
+        }
+        else
+        {
+            p++;
+            *p = 0;
+        }
     }
 
     MENUITEMINFOW menuInfo;

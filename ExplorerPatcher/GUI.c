@@ -205,7 +205,15 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                             if (p)
                             {
                                 p--;
-                                *p = 0;
+                                if (p == L' ')
+                                {
+                                    *p = 0;
+                                }
+                                else
+                                {
+                                    p++;
+                                    *p = 0;
+                                }
                             }
                         }
                         rcText.bottom += GUI_CAPTION_LINE_HEIGHT - dwLineHeight;
