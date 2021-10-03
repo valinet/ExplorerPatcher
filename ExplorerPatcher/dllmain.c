@@ -886,6 +886,7 @@ void PositionStartMenuForMonitor(HMONITOR hMonitor, DWORD location)
         (*(void(**)(INT64*))(*v13 + 16))(v13); // Release
         (*(void(**)(INT64))(*(INT64*)v12 + 16))(v12); // Release
         (*(void(**)(INT64))(*(INT64*)factory + 16))(factory); // Release
+        WindowsDeleteString(string);
         RoUninitialize();
     }
 }
