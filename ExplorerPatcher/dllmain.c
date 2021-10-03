@@ -239,7 +239,12 @@ DWORD ShowLauncherTipContextMenu(
         (char*)params->_this - 0x58,
         7
     );
-    ShowWindow(hWinXWnd, SW_SHOW);
+    // DO NOT USE ShowWindow here; it breaks the window order
+    // and renders the desktop toggle unusable; but leave
+    // SetForegroundWindow as is so that the menu gets dismissed
+    // when the user clicks outside it
+    // 
+    // ShowWindow(hWinXWnd, SW_SHOW);
     SetForegroundWindow(hWinXWnd);
 
     while (!(*((HMENU*)((char*)params->_this + 0xe8))))
@@ -990,7 +995,13 @@ FARPROC explorer_GetProcAddressHook(HMODULE hModule, const CHAR* lpProcName)
 #pragma region "Open power user menu on Win+X"
 LRESULT explorer_SendMessageW(HWND hWndx, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-    if (uMsg == TB_GETTEXTROWS)
+    if (uMsg == 0x579) // "Raise desktop" - basically shows desktop or the windows
+                       // wParam = 3 => show desktop
+                       // wParam = 2 => raise windows
+    {
+        
+    }
+    else if (uMsg == TB_GETTEXTROWS)
     {
         HWND hWnd = FindWindowEx(
             NULL,
