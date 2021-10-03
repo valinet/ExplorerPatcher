@@ -203,6 +203,7 @@
     <ClCompile Include="StartMenu.c" />
     <ClCompile Include="StartupSound.c" />
     <ClCompile Include="symbols.c" />
+    <ClCompile Include="TaskbarCenter.c" />
     <ClCompile Include="utility.c" />
   </ItemGroup>
   <ItemGroup>
@@ -218,6 +219,7 @@
     <ClInclude Include="StartMenu.h" />
     <ClInclude Include="StartupSound.h" />
     <ClInclude Include="symbols.h" />
+    <ClInclude Include="TaskbarCenter.h" />
     <ClInclude Include="utility.h" />
   </ItemGroup>
   <ItemGroup>

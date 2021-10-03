@@ -54,6 +54,9 @@
     <ClInclude Include="fmemopen.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="TaskbarCenter.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="ExplorerPatcher.rc">
@@ -92,6 +95,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="fmemopen.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="TaskbarCenter.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

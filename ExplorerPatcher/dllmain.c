@@ -28,6 +28,7 @@
 #include "HideExplorerSearchBar.h"
 #include "StartMenu.h"
 #include "GUI.h"
+#include "TaskbarCenter.h"
 
 #define WINX_ADJUST_X 5
 #define WINX_ADJUST_Y 5
@@ -1549,8 +1550,20 @@ __declspec(dllexport) DWORD WINAPI main(
                 ArchiveMenuThread,
                 params,
                 0,
+                0,
                 0
             );
+        }
+
+
+        // This notifies applications when the taskbar has recomputed its layout
+        if (SUCCEEDED(TaskbarCenter_Initialize(hExplorer)))
+        {
+            printf("Initialized taskbar update notification.\n");
+        }
+        else
+        {
+            printf("Failed to register taskbar update notification.\n");
         }
     }
     else
