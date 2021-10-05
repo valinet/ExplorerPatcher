@@ -67,6 +67,16 @@ static HWND(WINAPI* CreateWindowInBand)(
     _In_opt_ LPVOID lpParam,
     DWORD band
     );
+
+static void(*SetPreferredAppMode)(INT64 bAllowDark);
+
+static void(*AllowDarkModeForWindow)(HWND hWnd, INT64 bAllowDark);
+
+static BOOL(*ShouldAppsUseDarkMode)();
+
+static void(*GetThemeName)(void*, void*, void*);
+
+static BOOL AppsShouldUseDarkMode() { return TRUE; }
 #pragma endregion
 
 
@@ -622,7 +632,7 @@ HWND WINAPI explorerframe_SHCreateWorkerWindowHook(
         if (hStartIsBack64 && bMicaEffectOnTitlebar)
         {
             BOOL value = TRUE;
-            DwmSetWindowAttribute(hWndParent, 1029, &value, sizeof(BOOL)); // Set Mica effect on title bar
+            DwmSetWindowAttribute(hWndParent, DWMWA_MICA_EFFFECT, &value, sizeof(BOOL)); // Set Mica effect on title bar
             SetWindowSubclass(
                 result, 
                 (uintptr_t)hStartIsBack64 + SB_MICA_EFFECT_SUBCLASS_OFFSET, 
@@ -1338,8 +1348,16 @@ __declspec(dllexport) DWORD WINAPI main(
 
 
         HANDLE hUser32 = LoadLibraryW(L"user32.dll");
-        if (hUser32) CreateWindowInBand = GetProcAddress(hUser32, "CreateWindowInBand");
+        CreateWindowInBand = GetProcAddress(hUser32, "CreateWindowInBand");
         printf("Setup user32 functions done\n");
+
+
+        HANDLE hUxtheme = LoadLibraryW(L"uxtheme.dll");
+        SetPreferredAppMode = GetProcAddress(hUxtheme, (LPCSTR)0x87);
+        AllowDarkModeForWindow = GetProcAddress(hUxtheme, (LPCSTR)0x85);
+        ShouldAppsUseDarkMode = GetProcAddress(hUxtheme, (LPCSTR)0x84);
+        GetThemeName = GetProcAddress(hUxtheme, (LPCSTR)0x4A);
+        printf("Setup uxtheme functions done\n");
 
 
         HANDLE hTwinuiPcshell = LoadLibraryW(L"twinui.pcshell.dll");
