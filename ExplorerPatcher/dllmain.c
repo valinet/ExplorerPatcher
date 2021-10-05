@@ -33,12 +33,12 @@
 #define WINX_ADJUST_X 5
 #define WINX_ADJUST_Y 5
 
-#define SB_MICA_EFFECT_SUBCLASS_OFFSET 0x5C70
-#define SB_INIT1 0x26070
-#define SB_INIT2 0x252C0
-#define SB_TRACKPOPUPMENU_HOOK 0x21420
-#define SB_TRACKPOPUPMENUEX_HOOK 0x21920
-#define SB_LOADIMAGEW_HOOK 0x4A6F0
+#define SB_MICA_EFFECT_SUBCLASS_OFFSET 0x5BFC // 0x5C70
+#define SB_INIT1 0x20054 // 0x26070
+#define SB_INIT2 0x83A4 // Enable dark mode fixes
+#define SB_TRACKPOPUPMENU_HOOK 0x1C774 // 0x21420
+#define SB_TRACKPOPUPMENUEX_HOOK 0x1CB18 // 0x21920
+#define SB_LOADIMAGEW_HOOK 0x3BEB0 // 0x4A6F0
 
 HWND archivehWnd;
 HMODULE hStartIsBack64 = 0;
@@ -1321,7 +1321,7 @@ __declspec(dllexport) DWORD WINAPI main(
         wcscat_s(
             wszSBPath,
             MAX_PATH,
-            L"\\ExplorerPatcher\\StartIsBack64.dll"
+            TEXT(APP_RELATIVE_PATH) L"\\StartAllBackX64.dll"
         );
         hStartIsBack64 = LoadLibraryW(wszSBPath);
         free(wszSBPath);
