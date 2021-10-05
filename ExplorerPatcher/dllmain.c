@@ -1575,6 +1575,15 @@ __declspec(dllexport) DWORD WINAPI main(
         }
 
 
+
+        HookStartMenuParams* params = calloc(1, sizeof(HookStartMenuParams));
+        params->dwTimeout = 1000;
+        params->hModule = hModule;
+        GetModuleFileNameW(hModule, params->wszModulePath, MAX_PATH);
+        CreateThread(0, 0, HookStartMenu, params, 0, 0);
+
+
+
         // This notifies applications when the taskbar has recomputed its layout
         if (SUCCEEDED(TaskbarCenter_Initialize(hExplorer)))
         {

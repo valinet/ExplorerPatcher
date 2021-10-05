@@ -5,6 +5,7 @@
 #include <windowsx.h>
 #include <Shlwapi.h>
 #pragma comment(lib, "Shlwapi.lib")
+#include <TlHelp32.h>
 
 DEFINE_GUID(CLSID_ImmersiveShell,
     0xc2f03a33,
@@ -174,4 +175,12 @@ DWORD OpenStartOnCurentMonitorThread(OpenStartOnCurentMonitorThreadParams* unuse
 
 typedef DWORD OpenStartAtLogonThreadParams;
 DWORD OpenStartAtLogonThread(OpenStartAtLogonThreadParams* unused);
+
+typedef struct _HookStartMenuParams
+{
+    HMODULE hModule;
+    DWORD dwTimeout;
+    wchar_t wszModulePath[MAX_PATH];
+} HookStartMenuParams;
+DWORD WINAPI HookStartMenu(HookStartMenuParams* params);
 #endif

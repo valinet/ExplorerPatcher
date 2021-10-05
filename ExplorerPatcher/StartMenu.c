@@ -190,3 +190,124 @@ DWORD OpenStartAtLogonThread(OpenStartAtLogonThreadParams* unused)
 
     printf("Ended \"Open Start at Logon\" thread.\n");
 }
+
+DWORD WINAPI HookStartMenu(HookStartMenuParams* params)
+{
+    printf("Started \"Hook Start Menu\" thread.\n");
+
+    TCHAR wszKnownPath[MAX_PATH];
+    GetWindowsDirectoryW(wszKnownPath, MAX_PATH);
+    wcscat_s(wszKnownPath, MAX_PATH, L"\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\StartMenuExperienceHost.exe");
+
+    while (TRUE)
+    {
+        HANDLE hProcess, hSnapshot;
+        PROCESSENTRY32 pe32;
+        while (TRUE)
+        {
+            hProcess = NULL;
+            hSnapshot = NULL;
+            ZeroMemory(&pe32, sizeof(PROCESSENTRY32));
+            pe32.dwSize = sizeof(PROCESSENTRY32);
+            hSnapshot = CreateToolhelp32Snapshot(
+                TH32CS_SNAPPROCESS,
+                0
+            );
+            if (Process32First(hSnapshot, &pe32) == TRUE)
+            {
+                do
+                {
+                    if (!wcscmp(pe32.szExeFile, TEXT("StartMenuExperienceHost.exe")))
+                    {
+                        hProcess = OpenProcess(
+                            PROCESS_QUERY_LIMITED_INFORMATION |
+                            PROCESS_VM_OPERATION |
+                            PROCESS_VM_READ |
+                            PROCESS_VM_WRITE |
+                            PROCESS_CREATE_THREAD |
+                            SYNCHRONIZE,
+                            FALSE,
+                            pe32.th32ProcessID
+                        );
+                        if (!hProcess)
+                        {
+                            printf("Unable to open handle to StartMenuExperienceHost.exe.\n");
+                            Sleep(params->dwTimeout);
+                        }
+                        TCHAR wszProcessPath[MAX_PATH];
+                        DWORD dwLength = MAX_PATH;
+                        QueryFullProcessImageNameW(
+                            hProcess,
+                            0,
+                            wszProcessPath,
+                            &dwLength
+                        );
+                        if (!_wcsicmp(wszProcessPath, wszKnownPath))
+                        {
+                            break;
+                        }
+                        else
+                        {
+                            CloseHandle(hProcess);
+                            hProcess = NULL;
+                        }
+                    }
+                } while (Process32Next(hSnapshot, &pe32) == TRUE);
+            }
+            CloseHandle(hSnapshot);
+            if (hProcess)
+            {
+                break;
+            }
+            else
+            {
+                Sleep(params->dwTimeout);
+            }
+        }
+        LPVOID lpRemotePath = VirtualAllocEx(
+            hProcess,
+            NULL,
+            MAX_PATH,
+            MEM_COMMIT,
+            PAGE_READWRITE
+        );
+        if (!lpRemotePath)
+        {
+            printf("Unable to allocate path memory.\n");
+            Sleep(1000);
+            continue;
+        }
+        if (!WriteProcessMemory(
+            hProcess,
+            lpRemotePath,
+            (void*)params->wszModulePath,
+            MAX_PATH,
+            NULL
+        ))
+        {
+            printf("Unable to write path.\n");
+            Sleep(params->dwTimeout);
+            continue;
+        }
+        HANDLE hThread = CreateRemoteThread(
+            hProcess,
+            NULL,
+            0,
+            LoadLibraryW,
+            lpRemotePath,
+            0,
+            NULL
+        );
+        if (!hThread)
+        {
+            printf("Unable to inject DLL.\n");
+            Sleep(params->dwTimeout);
+            continue;
+        }
+        WaitForSingleObject(
+            hProcess,
+            INFINITE
+        );
+        CloseHandle(hProcess);
+    }
+}
