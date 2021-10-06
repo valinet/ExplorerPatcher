@@ -157,43 +157,43 @@ Now that you have set up the basic stuff, you can choose to enable additional se
 * `HideExplorerSearchBar` completely removes the search box in File Explorer (default = 0)
 
   ```
-  reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher" /f /v "bHideExplorerSearchBar" /t REG_DWORD /d 1
+  reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher" /f /v "HideExplorerSearchBar" /t REG_DWORD /d 1
   ```
 
 * `HideControlCenterButton` disables the Control Center button and its associated shortcut key (`Win`+`A`) (default = 0)
 
   ```
-  reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher" /f /v "bHideControlCenterButton" /t REG_DWORD /d 1
+  reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher" /f /v "HideControlCenterButton" /t REG_DWORD /d 1
   ```
 
 * `MicaEffectOnTitlebar` enables Mica effect on File Explorer windows (requires `StartIsBack64.dll`) (default = 0)
 
   ```
-  reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher" /f /v "bMicaEffectOnTitlebar" /t REG_DWORD /d 1
+  reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher" /f /v "MicaEffectOnTitlebar" /t REG_DWORD /d 1
   ```
 
 * `SkinMenus` applies the immersive skin to "Safe to Remove Hardware" and "Bluetooth" pop-up menus (default = 1)
 
   ```
-  reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher" /f /v "bSkinMenus" /t REG_DWORD /d 1
+  reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher" /f /v "SkinMenus" /t REG_DWORD /d 1
   ```
 
 * `SkinIcons` applies Windows 11 icon skins to taskbar buttons (requires `StartIsBack64.dll`) (default = 1)
 
   ```
-  reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher" /f /v "bSkinIcons" /t REG_DWORD /d 1
+  reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher" /f /v "SkinIcons" /t REG_DWORD /d 1
   ```
 
 * `AllocConsole` will display a console window (for debugging purposes) (default = 0, for advanced users only)
 
   ```
-  reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher" /f /v "bAllocConsole" /t REG_DWORD /d 1
+  reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher" /f /v "AllocConsole" /t REG_DWORD /d 1
   ```
 
 * `ExplorerReadyDelay` adds even more delay before the shell is announced that Explorer is ready loading (helps if you experience a delay at logon) - the unit is ms (milliseconds), 1000ms = 1 second (default = 0, for advanced users only)
 
   ```
-  reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher" /f /v "vExplorerReadyDelay" /t REG_DWORD /d 1000
+  reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher" /f /v "ExplorerReadyDelay" /t REG_DWORD /d 1000
   ```
 
 Also, if you chose to place the patcher in `C:\Windows\SystemApps\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy` as well, use the following commands to configure Start menu options:
