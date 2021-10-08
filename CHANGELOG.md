@@ -2,6 +2,17 @@
 
 This document includes the same release notes as in the [Releases](https://github.com/valinet/ExplorerPatcher/releases) section on GitHub.
 
+## 22000.194.0.24
+
+Tested on build: 22000.194.
+
+* Start menu is hooked from File Explorer; please remove the DLL from `C:\Windows\SystemApps\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy` when using this new version
+* Bluetooth and Safe to Remove menus toggle their visibility when clicked
+* Bluetooth and Safe to Remove menus are centered relative to the icon they are invoked from
+* WiFi list now correctly toggles when clicking the Network icon in the taskbar
+* Reliability improvements for restoring old search bar in File Explorer when patcher is used alongside other programs
+* Optionally uses DLL from StartAllBack (`StartAllBackX64.dll`) instead of StartIsBack(TBD) (which was called `StartIsBack64.dll`); the StartAllBack DLL has SHA-256: `D8D1484D6F7DE94C5018B03A5A93EE8BBB7795BCA5408A721CBB74BE28065689`
+
 ## 22000.194.0.23
 
 Tested on build: 22000.194.
