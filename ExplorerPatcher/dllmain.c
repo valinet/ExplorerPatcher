@@ -75,6 +75,10 @@ static HWND(WINAPI* CreateWindowInBand)(
     DWORD band
     );
 
+BOOL(WINAPI* GetWindowBand)(HWND hWnd, PDWORD pdwBand);
+
+BOOL(WINAPI* SetWindowBand)(HWND hWnd, HWND hwndInsertAfter, DWORD dwBand);
+
 static void(*SetPreferredAppMode)(INT64 bAllowDark);
 
 static void(*AllowDarkModeForWindow)(HWND hWnd, INT64 bAllowDark);
@@ -1499,6 +1503,8 @@ __declspec(dllexport) DWORD WINAPI main(
 
         HANDLE hUser32 = LoadLibraryW(L"user32.dll");
         CreateWindowInBand = GetProcAddress(hUser32, "CreateWindowInBand");
+        GetWindowBand = GetProcAddress(hUser32, "GetWindowBand");
+        SetWindowBand = GetProcAddress(hUser32, "SetWindowBand");
         printf("Setup user32 functions done\n");
 
 
