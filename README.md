@@ -22,13 +22,10 @@ In the [Releases](https://github.com/valinet/ExplorerPatcher/releases) section, 
 * play log on sound, if enabled
 * option to hide the search bar in File Explorer
 * option to disable the control center button in the taskbar
-
-Additionally, you can place the DLL in the following location: `C:\Windows\SystemApps\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy` to enable additional functionality: 
-
 * show the "All apps" list by default when opening the Start menu
 * customize the maximum number of "Most used" apps displayed in the "All apps" list in Start
 
-Also, if you place the `StartIsBack64.dll` file from StartIsBack(TBD) Preview 2 in the folder `%appdata%\ExplorerPatcher` (create if it does not exist), the following additional features will be enabled:
+Also, if you place the `StartAllBackX64.dll` file from StartAllback (needs a DLL with SHA-256: `D8D1484D6F7DE94C5018B03A5A93EE8BBB7795BCA5408A721CBB74BE28065689`) in the folder `%appdata%\ExplorerPatcher` (create if it does not exist), the following additional features will be enabled:
 
 * option to apply Mica effect on File Explorer windows
 * option to skin system tray icons to match Windows 11 style
