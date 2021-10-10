@@ -1223,12 +1223,51 @@ LRESULT explorer_SendMessageW(HWND hWndx, UINT uMsg, WPARAM wParam, LPARAM lPara
                             if (hWnd)
                             {
                                 POINT pt = GetDefaultWinXPosition(FALSE, NULL, NULL, TRUE);
-                                PostMessage(
-                                    hWnd,
-                                    WM_CONTEXTMENU,
-                                    hWnd,
-                                    MAKELPARAM(pt.x, pt.y)
+                                // Finally implemented a variation of
+                                // https://github.com/valinet/ExplorerPatcher/issues/3
+                                // inspired by how the real Start button activates this menu
+                                // (CPearl::_GetLauncherTipContextMenu)
+                                // This also works when auto hide taskbar is on (#63)
+                                HRESULT hr = S_OK;
+                                IUnknown* pImmersiveShell = NULL;
+                                hr = CoCreateInstance(
+                                    &CLSID_ImmersiveShell,
+                                    NULL,
+                                    CLSCTX_INPROC_SERVER,
+                                    &IID_IServiceProvider,
+                                    &pImmersiveShell
                                 );
+                                if (SUCCEEDED(hr))
+                                {
+                                    IImmersiveMonitorService* pMonitorService = NULL;
+                                    IUnknown_QueryService(
+                                        pImmersiveShell,
+                                        &SID_IImmersiveMonitorService,
+                                        &IID_IImmersiveMonitorService,
+                                        &pMonitorService
+                                    );
+                                    if (pMonitorService)
+                                    {
+                                        ILauncherTipContextMenu* pMenu = NULL;
+                                        pMonitorService->lpVtbl->QueryServiceFromWindow(
+                                            pMonitorService,
+                                            hWnd,
+                                            &IID_ILauncherTipContextMenu,
+                                            &IID_ILauncherTipContextMenu,
+                                            &pMenu
+                                        );
+                                        if (pMenu)
+                                        {
+                                            pMenu->lpVtbl->ShowLauncherTipContextMenu(
+                                                pMenu,
+                                                &pt
+                                            );
+                                            pMenu->lpVtbl->Release(pMenu);
+                                        }
+                                        pMonitorService->lpVtbl->Release(pMonitorService);
+                                    }
+                                    pImmersiveShell->lpVtbl->Release(pImmersiveShell);
+                                }
                             }
                         }
                     }
