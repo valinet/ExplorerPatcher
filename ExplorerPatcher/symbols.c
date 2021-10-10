@@ -59,7 +59,7 @@ L"</toast>\r\n";
 
 DWORD DownloadSymbols(DownloadSymbolsParams* params)
 {
-    HKEY hKey;
+    HKEY hKey = NULL;
     DWORD dwDisposition;
 
     HMODULE hModule = params->hModule;
@@ -224,7 +224,7 @@ DWORD DownloadSymbols(DownloadSymbolsParams* params)
         &hKey,
         &dwDisposition
     );
-    if (!hKey)
+    if (!hKey || hKey == INVALID_HANDLE_VALUE)
     {
         FreeLibraryAndExitThread(
             hModule,
@@ -296,7 +296,7 @@ DWORD DownloadSymbols(DownloadSymbolsParams* params)
         &(symbols_PTRS.twinui_pcshell_PTRS[7]),
         sizeof(DWORD)
     );
-    RegCloseKey(hKey);
+    if (hKey) RegCloseKey(hKey);
 
 
 
@@ -364,7 +364,7 @@ DWORD DownloadSymbols(DownloadSymbolsParams* params)
         &hKey,
         &dwDisposition
     );
-    if (!hKey)
+    if (!hKey || hKey == INVALID_HANDLE_VALUE)
     {
         FreeLibraryAndExitThread(
             hModule,
@@ -412,7 +412,7 @@ DWORD DownloadSymbols(DownloadSymbolsParams* params)
         &(symbols_PTRS.startdocked_PTRS[4]),
         sizeof(DWORD)
     );
-    RegCloseKey(hKey);
+    if (hKey) RegCloseKey(hKey);
 
 
 
@@ -430,7 +430,7 @@ DWORD DownloadSymbols(DownloadSymbolsParams* params)
         &hKey,
         &dwDisposition
     );
-    if (!hKey)
+    if (!hKey || hKey == INVALID_HANDLE_VALUE)
     {
         FreeLibraryAndExitThread(
             hModule,
@@ -446,7 +446,7 @@ DWORD DownloadSymbols(DownloadSymbolsParams* params)
         szReportedVersion,
         wcslen(szReportedVersion) * sizeof(TCHAR)
     );
-    RegCloseKey(hKey);
+    if (hKey) RegCloseKey(hKey);
 
 
     if (symbols_PTRS.twinui_pcshell_PTRS[0])
@@ -503,9 +503,9 @@ DWORD DownloadSymbols(DownloadSymbolsParams* params)
     exit(0);
 }
 
-BOOL LoadSymbols(symbols_addr* symbols_PTRS)
+BOOL LoadSymbols(symbols_addr* symbols_PTRS, HMODULE hModule)
 {
-    HKEY hKey;
+    HKEY hKey = NULL;
     DWORD dwDisposition;
     DWORD dwSize = sizeof(DWORD);
 
@@ -520,6 +520,14 @@ BOOL LoadSymbols(symbols_addr* symbols_PTRS)
         &hKey,
         &dwDisposition
     );
+    if (!hKey || hKey == INVALID_HANDLE_VALUE)
+    {
+        FreeLibraryAndExitThread(
+            hModule,
+            1
+        );
+        return 1;
+    }
     RegQueryValueExW(
         hKey,
         TEXT(TWINUI_PCSHELL_SB_0),
@@ -637,7 +645,7 @@ BOOL LoadSymbols(symbols_addr* symbols_PTRS)
         &(symbols_PTRS->startdocked_PTRS[4]),
         &dwSize
     );
-    RegCloseKey(hKey);
+    if (hKey) RegCloseKey(hKey);
 
     BOOL bNeedToDownload = FALSE;
     for (UINT i = 0; i < sizeof(symbols_addr) / sizeof(DWORD); ++i)

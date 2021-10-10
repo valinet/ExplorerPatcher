@@ -629,6 +629,10 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                 &hKey,
                                 &dwDisposition
                             );
+                            if (hKey == NULL || hKey == INVALID_HANDLE_VALUE)
+                            {
+                                hKey = NULL;
+                            }
                             RegQueryValueExW(
                                 hKey,
                                 name,
@@ -651,6 +655,10 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                 KEY_READ | (hDC ? 0 : KEY_WRITE),
                                 &hKey
                             );
+                            if (hKey == NULL || hKey == INVALID_HANDLE_VALUE)
+                            {
+                                hKey = NULL;
+                            }
                             value = hKey;
                         }
                         if (bInvert || bBool || bJustCheck)
@@ -744,6 +752,10 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                         &hKey,
                                         &dwDisposition
                                     );
+                                    if (hKey == NULL || hKey == INVALID_HANDLE_VALUE)
+                                    {
+                                        hKey = NULL;
+                                    }
                                     if (d[1] == '"')
                                     {
                                         wchar_t* p = wcschr(d + 2, L'"');
@@ -1173,6 +1185,10 @@ __declspec(dllexport) int ZZGUI(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLin
         &hKey,
         &dwDisposition
     );
+    if (hKey == NULL || hKey == INVALID_HANDLE_VALUE)
+    {
+        hKey = NULL;
+    }
     DWORD bAllocConsole = FALSE;
     RegQueryValueExW(
         hKey,

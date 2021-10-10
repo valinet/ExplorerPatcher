@@ -55,11 +55,20 @@ DWORD MonitorSettingsChanges(SettingsChangeParameters* params)
                 KEY_READ,
                 &hKeyCU
             );
+            if (hKeyCU == NULL || hKeyCU == INVALID_HANDLE_VALUE)
+            {
+                hKeyCU = NULL;
+            }
             if (lRes != ERROR_SUCCESS)
             {
                 return 0;
             }
             HANDLE hEvHKCU = CreateEvent(NULL, FALSE, FALSE, NULL);
+            if (hEvHKCU == NULL || hEvHKCU == INVALID_HANDLE_VALUE)
+            {
+                hEvHKCU = NULL;
+                return 0;
+            }
             RegNotifyChangeKeyValue(
                 hKeyCU,
                 FALSE,
@@ -75,11 +84,20 @@ DWORD MonitorSettingsChanges(SettingsChangeParameters* params)
                 KEY_READ,
                 &hKeyLM
             );
+            if (hKeyLM == NULL || hKeyLM == INVALID_HANDLE_VALUE)
+            {
+                hKeyLM = NULL;
+            }
             if (lRes != ERROR_SUCCESS)
             {
                 return 0;
             }
             HANDLE hEvHKLM = CreateEvent(NULL, FALSE, FALSE, NULL);
+            if (hEvHKLM == NULL || hEvHKLM == INVALID_HANDLE_VALUE)
+            {
+                hEvHKLM = NULL;
+                return 0;
+            }
             RegNotifyChangeKeyValue(
                 hKeyLM,
                 FALSE,
@@ -309,10 +327,10 @@ DWORD MonitorSettingsChanges(SettingsChangeParameters* params)
                 }
             }
 
-            CloseHandle(hEvHKCU);
-            CloseHandle(hEvHKLM);
-            RegCloseKey(hKeyCU);
-            RegCloseKey(hKeyLM);
+            if (hEvHKCU) CloseHandle(hEvHKCU);
+            if (hEvHKLM) CloseHandle(hEvHKLM);
+            if (hKeyCU) RegCloseKey(hKeyCU);
+            if (hKeyLM) RegCloseKey(hKeyLM);
         }
     }
 }

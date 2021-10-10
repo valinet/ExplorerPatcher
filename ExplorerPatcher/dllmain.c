@@ -1356,7 +1356,8 @@ __declspec(dllexport) DWORD WINAPI main(
     {
         funchook = funchook_create();
         printf("funchook create %d\n", funchook != 0);
-        HKEY hKey;
+
+        HKEY hKey = NULL;
         DWORD dwDisposition;
         DWORD dwSize = sizeof(DWORD);
 
@@ -1373,6 +1374,10 @@ __declspec(dllexport) DWORD WINAPI main(
             &hKey,
             &dwDisposition
         );
+        if (hKey == NULL || hKey == INVALID_HANDLE_VALUE)
+        {
+            hKey = NULL;
+        }
         DWORD bAllocConsole = FALSE;
         RegQueryValueExW(
             hKey,
@@ -1759,6 +1764,12 @@ __declspec(dllexport) DWORD WINAPI main(
         else
         {
             printf("Failed to register taskbar update notification.\n");
+        }
+
+
+        if (hKey)
+        {
+            RegCloseKey(hKey);
         }
     }
     else
