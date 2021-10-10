@@ -603,7 +603,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                         if (d) *d = 0;
                         wchar_t* p = wcschr(name, L'"');
                         if (p) *p = 0;
-                        HKEY hKey;
+                        HKEY hKey = NULL;
                         DWORD dwDisposition;
                         DWORD dwSize = sizeof(DWORD);
                         DWORD value = FALSE;
@@ -1159,7 +1159,7 @@ static LRESULT CALLBACK GUI_WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
 
 __declspec(dllexport) int ZZGUI(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLine, int nCmdShow)
 {
-    HKEY hKey;
+    HKEY hKey = NULL;
     DWORD dwDisposition;
     DWORD dwSize = sizeof(DWORD);
     RegCreateKeyExW(
@@ -1192,6 +1192,10 @@ __declspec(dllexport) int ZZGUI(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLin
             "w",
             stdout
         );
+    }
+    if (hKey)
+    {
+        RegCloseKey(hKey);
     }
 
     printf("Started \"GUI\" thread.\n");
