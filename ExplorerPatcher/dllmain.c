@@ -40,6 +40,10 @@
 #define SB_TRACKPOPUPMENUEX_HOOK 0x1CB18 // 0x21920
 #define SB_LOADIMAGEW_HOOK 0x3BEB0 // 0x4A6F0
 
+#define CHECKFOREGROUNDELAPSED_TIMEOUT 100
+#define POPUPMENU_SAFETOREMOVE_TIMEOUT 300
+#define POPUPMENU_BLUETOOTH_TIMEOUT 700
+
 HWND archivehWnd;
 HMODULE hStartIsBack64 = 0;
 BOOL bHideExplorerSearchBar = FALSE;
@@ -49,9 +53,12 @@ BOOL bSkinMenus = TRUE;
 BOOL bSkinIcons = TRUE;
 HMODULE hModule = NULL;
 HANDLE hIsWinXShown = NULL;
-
+HANDLE hWinXThread = NULL;
 
 #pragma region "Generics"
+#define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
+#define MAX(X, Y) (((X) > (Y)) ? (X) : (Y))
+
 static HWND(WINAPI* CreateWindowInBand)(
     _In_ DWORD dwExStyle, 
     _In_opt_ ATOM atom, 
@@ -77,11 +84,108 @@ static BOOL(*ShouldAppsUseDarkMode)();
 static void(*GetThemeName)(void*, void*, void*);
 
 static BOOL AppsShouldUseDarkMode() { return TRUE; }
+
+long long milliseconds_now() {
+    LARGE_INTEGER s_frequency;
+    BOOL s_use_qpc = QueryPerformanceFrequency(&s_frequency);
+    if (s_use_qpc) {
+        LARGE_INTEGER now;
+        QueryPerformanceCounter(&now);
+        return (1000LL * now.QuadPart) / s_frequency.QuadPart;
+    }
+    else {
+        return GetTickCount();
+    }
+}
+
+HWND GetMonitorInfoFromPointForTaskbarFlyoutActivation(POINT ptCursor, DWORD dwFlags, LPMONITORINFO lpMi)
+{
+    HMONITOR hMonitor = MonitorFromPoint(ptCursor, dwFlags);
+    HWND hWnd = NULL;
+    do
+    {
+        hWnd = FindWindowEx(
+            NULL,
+            hWnd,
+            L"Shell_SecondaryTrayWnd",
+            NULL
+        );
+        if (MonitorFromWindow(hWnd, dwFlags) == hMonitor)
+        {
+            if (lpMi)
+            {
+                GetMonitorInfo(
+                    MonitorFromPoint(
+                        ptCursor,
+                        dwFlags
+                    ),
+                    lpMi
+                );
+            }
+            break;
+        }
+    } while (hWnd);
+    if (!hWnd)
+    {
+        hWnd = FindWindowEx(
+            NULL,
+            NULL,
+            L"Shell_TrayWnd",
+            NULL
+        );
+        ptCursor.x = 0;
+        ptCursor.y = 0;
+        if (lpMi)
+        {
+            GetMonitorInfo(
+                MonitorFromPoint(
+                    ptCursor,
+                    dwFlags
+                ),
+                lpMi
+            );
+        }
+    }
+    return hWnd;
+}
+
+long long elapsedCheckForeground = 0;
+HANDLE hCheckForegroundThread = NULL;
+DWORD CheckForegroundThread(wchar_t* wszClassName)
+{
+    printf("Started \"Check foreground window\" thread.\n");
+    UINT i = 0;
+    while (TRUE)
+    {
+        wchar_t text[200];
+        GetClassNameW(GetForegroundWindow(), text, 200);
+        if (!wcscmp(text, wszClassName))
+        {
+            break;
+        }
+        i++;
+        if (i >= 15) break;
+        Sleep(100);
+    }
+    while (TRUE)
+    {
+        wchar_t text[200];
+        GetClassNameW(GetForegroundWindow(), text, 200);
+        if (wcscmp(text, wszClassName))
+        {
+            break;
+        }
+        Sleep(100);
+    }
+    elapsedCheckForeground = milliseconds_now();
+    printf("Ended \"Check foreground window\" thread.\n");
+    return 0;
+}
 #pragma endregion
 
 
 #pragma region "twinui.pcshell.dll hooks"
-#define CLASS_NAME L"LauncherTipWnd"
+#define LAUNCHERTIP_CLASS_NAME L"LauncherTipWnd"
 static INT64(*winrt_Windows_Internal_Shell_implementation_MeetAndChatManager_OnMessageFunc)(
     void* _this,
     INT64 a2,
@@ -231,13 +335,13 @@ DWORD ShowLauncherTipContextMenu(
     wc.lpfnWndProc = CLauncherTipContextMenu_WndProc;
     wc.hbrBackground = (HBRUSH)GetStockObject(WHITE_BRUSH);
     wc.hInstance = GetModuleHandle(NULL);
-    wc.lpszClassName = CLASS_NAME;
+    wc.lpszClassName = LAUNCHERTIP_CLASS_NAME;
     wc.hCursor = LoadCursorW(NULL, IDC_ARROW);
     RegisterClass(&wc);
 
     hWinXWnd = CreateWindowInBand(
         0,
-        CLASS_NAME,
+        LAUNCHERTIP_CLASS_NAME,
         0,
         WS_POPUP,
         0,
@@ -375,6 +479,13 @@ INT64 CLauncherTipContextMenu_ShowLauncherTipContextMenuHook(
     POINT* pt
 )
 {
+    if (hWinXThread)
+    {
+        WaitForSingleObject(hWinXThread, INFINITE);
+        CloseHandle(hWinXThread);
+        hWinXThread = NULL;
+    }
+
     if (hIsWinXShown)
     {
         goto finalize;
@@ -482,9 +593,50 @@ INT64 CLauncherTipContextMenu_ShowLauncherTipContextMenuHook(
         0,
         0
     );
+    hWinXThread = hIsWinXShown;
 
 finalize:
     return CLauncherTipContextMenu_ShowLauncherTipContextMenuFunc(_this, pt);
+}
+#pragma endregion
+
+
+#pragma region "Popup menu hooks"
+#define TB_POS_NOWHERE 0
+#define TB_POS_BOTTOM 1
+#define TB_POS_TOP 2
+#define TB_POS_LEFT 3
+#define TB_POS_RIGHT 4
+UINT GetTaskbarLocationAndSize(POINT ptCursor, RECT* rc)
+{
+    MONITORINFO mi;
+    mi.cbSize = sizeof(MONITORINFO);
+    HWND hWnd = GetMonitorInfoFromPointForTaskbarFlyoutActivation(
+        ptCursor,
+        MONITOR_DEFAULTTOPRIMARY,
+        &mi
+    );
+    if (hWnd)
+    {
+        GetWindowRect(hWnd, rc);
+        if (rc->left < 5 && rc->top > 5)
+        {
+            return TB_POS_BOTTOM;
+        }
+        else if (rc->left < 5 && rc->top < 5 && rc->right > rc->bottom)
+        {
+            return TB_POS_TOP;
+        }
+        else if (rc->left < 5 && rc->top < 5 && rc->right < rc->bottom)
+        {
+            return TB_POS_LEFT;
+        }
+        else if (rc->left > 5 && rc->top < 5)
+        {
+            return TB_POS_RIGHT;
+        }
+    }
+    return TB_POS_NOWHERE;
 }
 
 INT64 OwnerDrawSubclassProc(
@@ -515,10 +667,34 @@ INT64 OwnerDrawSubclassProc(
         lParam
     );
 }
-#pragma endregion
-
-
-#pragma region "Popup menu hooks"
+void PopupMenuAdjustCoordinatesAndFlags(int* x, int* y, UINT* uFlags)
+{
+    POINT pt;
+    GetCursorPos(&pt);
+    RECT rc;
+    UINT tbPos = GetTaskbarLocationAndSize(pt, &rc);
+    if (tbPos == TB_POS_BOTTOM)
+    {
+        *y = MIN(*y, rc.top);
+        *uFlags |= TPM_CENTERALIGN | TPM_BOTTOMALIGN;
+    }
+    else if (tbPos == TB_POS_TOP)
+    {
+        *y = MAX(*y, rc.bottom);
+        *uFlags |= TPM_CENTERALIGN | TPM_TOPALIGN;
+    }
+    else if (tbPos == TB_POS_LEFT)
+    {
+        *x = MAX(*x, rc.right);
+        *uFlags |= TPM_VCENTERALIGN | TPM_LEFTALIGN;
+    }
+    if (tbPos == TB_POS_RIGHT)
+    {
+        *x = MIN(*x, rc.left);
+        *uFlags |= TPM_VCENTERALIGN | TPM_RIGHTALIGN;
+    }
+}
+long long TrackPopupMenuElapsed = 0;
 BOOL TrackPopupMenuHook(
     HMENU       hMenu,
     UINT        uFlags,
@@ -529,36 +705,44 @@ BOOL TrackPopupMenuHook(
     const RECT* prcRect
 )
 {
-    INT64* unknown_array = calloc(4, sizeof(INT64));
-    POINT pt;
-    pt.x = x;
-    pt.y = y;
-    ImmersiveContextMenuHelper_ApplyOwnerDrawToMenuFunc(
-        hMenu,
-        hWnd,
-        &(pt),
-        0xc,
-        unknown_array
-    );
-    SetWindowSubclass(hWnd, OwnerDrawSubclassProc, OwnerDrawSubclassProc, 0);
-    BOOL b = TrackPopupMenu(
-        hMenu,
-        uFlags | TPM_RIGHTBUTTON,
-        x,
-        y,
-        0,
-        hWnd,
-        prcRect
-    );
-    RemoveWindowSubclass(hWnd, OwnerDrawSubclassProc, OwnerDrawSubclassProc);
-    ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc(
-        hMenu,
-        hWnd,
-        &(pt)
-    );
-    free(unknown_array);
+    long long elapsed = milliseconds_now() - TrackPopupMenuElapsed;
+    BOOL b = FALSE;
+    if (elapsed > POPUPMENU_SAFETOREMOVE_TIMEOUT)
+    {
+        PopupMenuAdjustCoordinatesAndFlags(&x, &y, &uFlags);
+        INT64* unknown_array = calloc(4, sizeof(INT64));
+        POINT pt;
+        pt.x = x;
+        pt.y = y;
+        ImmersiveContextMenuHelper_ApplyOwnerDrawToMenuFunc(
+            hMenu,
+            hWnd,
+            &(pt),
+            0xc,
+            unknown_array
+        );
+        SetWindowSubclass(hWnd, OwnerDrawSubclassProc, OwnerDrawSubclassProc, 0);
+        b = TrackPopupMenu(
+            hMenu,
+            uFlags | TPM_RIGHTBUTTON,
+            x,
+            y,
+            0,
+            hWnd,
+            prcRect
+        );
+        TrackPopupMenuElapsed = milliseconds_now();
+        RemoveWindowSubclass(hWnd, OwnerDrawSubclassProc, OwnerDrawSubclassProc);
+        ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc(
+            hMenu,
+            hWnd,
+            &(pt)
+        );
+        free(unknown_array);
+    }
     return b;
 }
+long long TrackPopupMenuExElapsed = 0;
 BOOL TrackPopupMenuExHook(
     HMENU       hMenu,
     UINT        uFlags,
@@ -568,33 +752,40 @@ BOOL TrackPopupMenuExHook(
     LPTPMPARAMS lptpm
 )
 {
-    INT64* unknown_array = calloc(4, sizeof(INT64));
-    POINT pt;
-    pt.x = x;
-    pt.y = y;
-    ImmersiveContextMenuHelper_ApplyOwnerDrawToMenuFunc(
-        hMenu,
-        hWnd,
-        &(pt),
-        0xc,
-        unknown_array
-    );
-    SetWindowSubclass(hWnd, OwnerDrawSubclassProc, OwnerDrawSubclassProc, 0);
-    BOOL b = TrackPopupMenuEx(
-        hMenu,
-        uFlags | TPM_RIGHTBUTTON,
-        x,
-        y,
-        hWnd,
-        lptpm
-    );
-    RemoveWindowSubclass(hWnd, OwnerDrawSubclassProc, OwnerDrawSubclassProc);
-    ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc(
-        hMenu,
-        hWnd,
-        &(pt)
-    );
-    free(unknown_array);
+    long long elapsed = milliseconds_now() - TrackPopupMenuExElapsed;
+    BOOL b = FALSE;
+    if (elapsed > POPUPMENU_BLUETOOTH_TIMEOUT)
+    {
+        PopupMenuAdjustCoordinatesAndFlags(&x, &y, &uFlags);
+        INT64* unknown_array = calloc(4, sizeof(INT64));
+        POINT pt;
+        pt.x = x;
+        pt.y = y;
+        ImmersiveContextMenuHelper_ApplyOwnerDrawToMenuFunc(
+            hMenu,
+            hWnd,
+            &(pt),
+            0xc,
+            unknown_array
+        );
+        SetWindowSubclass(hWnd, OwnerDrawSubclassProc, OwnerDrawSubclassProc, 0);
+        b = TrackPopupMenuEx(
+            hMenu,
+            uFlags | TPM_RIGHTBUTTON,
+            x,
+            y,
+            hWnd,
+            lptpm
+        );
+        TrackPopupMenuExElapsed = milliseconds_now();
+        RemoveWindowSubclass(hWnd, OwnerDrawSubclassProc, OwnerDrawSubclassProc);
+        ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc(
+            hMenu,
+            hWnd,
+            &(pt)
+        );
+        free(unknown_array);
+    }
     return b;
 }
 #pragma endregion
@@ -672,14 +863,31 @@ HRESULT pnidui_CoCreateInstanceHook(
     if (IsEqualGUID(rclsid, &GUID_c2f03a33_21f5_47fa_b4bb_156362a2f239) && 
         IsEqualGUID(riid, &GUID_6d5140c1_7436_11ce_8034_00aa006009fa))
     {
-        ShellExecute(
-            NULL,
-            L"open",
-            L"ms-availablenetworks:",
-            NULL,
-            NULL,
-            SW_SHOWNORMAL
-        );
+        if (hCheckForegroundThread)
+        {
+            WaitForSingleObject(hCheckForegroundThread, INFINITE);
+            CloseHandle(hCheckForegroundThread);
+            hCheckForegroundThread = NULL;
+        }
+        if (milliseconds_now() - elapsedCheckForeground > CHECKFOREGROUNDELAPSED_TIMEOUT)
+        {
+            ShellExecute(
+                NULL,
+                L"open",
+                L"ms-availablenetworks:",
+                NULL,
+                NULL,
+                SW_SHOWNORMAL
+            );
+            hCheckForegroundThread = CreateThread(
+                0, 
+                0, 
+                CheckForegroundThread,
+                L"Windows.UI.Core.CoreWindow",
+                0, 
+                0
+            );
+        }
         /*PostMessageW(
             FindWindowEx(
                 NULL,
@@ -705,57 +913,6 @@ HRESULT pnidui_CoCreateInstanceHook(
 
 
 #pragma region "Show Clock flyout on Win+C"
-HWND GetMonitorInfoFromPointForTaskbarFlyoutActivation(POINT ptCursor, DWORD dwFlags, LPMONITORINFO lpMi)
-{
-    HMONITOR hMonitor = MonitorFromPoint(ptCursor, dwFlags);
-    HWND hWnd = NULL;
-    do
-    {
-        hWnd = FindWindowEx(
-            NULL,
-            hWnd,
-            L"Shell_SecondaryTrayWnd",
-            NULL
-        );
-        if (MonitorFromWindow(hWnd, dwFlags) == hMonitor)
-        {
-            if (lpMi)
-            {
-                GetMonitorInfo(
-                    MonitorFromPoint(
-                        ptCursor,
-                        dwFlags
-                    ),
-                    lpMi
-                );
-            }
-            break;
-        }
-    } while (hWnd);
-    if (!hWnd)
-    {
-        hWnd = FindWindowEx(
-            NULL,
-            NULL,
-            L"Shell_TrayWnd",
-            NULL
-        );
-        ptCursor.x = 0;
-        ptCursor.y = 0;
-        if (lpMi)
-        {
-            GetMonitorInfo(
-                MonitorFromPoint(
-                    ptCursor,
-                    dwFlags
-                ),
-                lpMi
-            );
-        }
-    }
-    return hWnd;
-}
-
 INT64 winrt_Windows_Internal_Shell_implementation_MeetAndChatManager_OnMessageHook(
     void* _this,
     INT64 a2,
@@ -1325,14 +1482,7 @@ __declspec(dllexport) DWORD WINAPI main(
         );
         hStartIsBack64 = LoadLibraryW(wszSBPath);
         free(wszSBPath);
-        if (hStartIsBack64)
-        {
-            ((void(*)())((uintptr_t)hStartIsBack64 + SB_INIT1))();
 
-            ((void(*)())((uintptr_t)hStartIsBack64 + SB_INIT2))();
-
-            printf("Loaded and initialized StartIsBack64 DLL\n");
-        }
 
 
         
@@ -1488,6 +1638,17 @@ __declspec(dllexport) DWORD WINAPI main(
 
 
 
+        if (hStartIsBack64)
+        {
+            ((void(*)())((uintptr_t)hStartIsBack64 + SB_INIT1))();
+
+            ((void(*)())((uintptr_t)hStartIsBack64 + SB_INIT2))();
+
+            printf("Loaded and initialized StartIsBack64 DLL\n");
+        }
+
+
+
         HANDLE hEvent = CreateEventEx(
             0, 
             L"ShellDesktopSwitchEvent",
@@ -1616,6 +1777,19 @@ __declspec(dllexport) DWORD WINAPI main(
     return 0;
 }
 
+char VisibilityChangedEventArguments_GetVisible(__int64 a1)
+{
+    int v1;
+    char v3[8];
+    ZeroMemory(v3, 8);
+
+    v1 = (*(__int64(__fastcall**)(__int64, char*))(*(INT64*)a1 + 48))(a1, v3);
+    if (v1 < 0)
+        return 0;
+
+    return v3[0];
+}
+
 static INT64(*StartDocked_LauncherFrame_OnVisibilityChangedFunc)(void*, INT64, void*);
 
 static INT64(*StartDocked_LauncherFrame_ShowAllAppsFunc)(void* _this);
@@ -1642,7 +1816,10 @@ INT64 StartDocked_LauncherFrame_OnVisibilityChangedHook(void* _this, INT64 a2, v
         FreeLibrary(hModule);
         if (dwStatus)
         {
-            StartDocked_LauncherFrame_ShowAllAppsFunc(_this);
+            //if (VisibilityChangedEventArguments_GetVisible(VisibilityChangedEventArguments))
+            {
+                StartDocked_LauncherFrame_ShowAllAppsFunc(_this);
+            }
         }
     }
     return r;
