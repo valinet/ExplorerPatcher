@@ -723,6 +723,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                 if (hKey)
                                 {
                                     RegCloseKey(hKey);
+                                    hKey = NULL;
                                     RegDeleteKeyExW(
                                         HKEY_CURRENT_USER,
                                         wcschr(section, L'\\') + 1,
@@ -799,7 +800,10 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                             }
                             InvalidateRect(hwnd, NULL, FALSE);
                         }
-                        RegCloseKey(hKey);
+                        if (hKey)
+                        {
+                            RegCloseKey(hKey);
+                        }
                         if (bChoice)
                         {
                             for (unsigned int i = 0; i < numChoices; ++i)
