@@ -1,5 +1,30 @@
 #include "GUI.h"
 
+BOOL g_darkModeEnabled = FALSE;
+static void(*RefreshImmersiveColorPolicyState)() = NULL;
+static int(*SetPreferredAppMode)(int bAllowDark) = NULL;
+static BOOL(*AllowDarkModeForWindow)(HWND hWnd, BOOL bAllowDark) = NULL;
+static BOOL(*ShouldAppsUseDarkMode)() = NULL;
+BOOL IsHighContrast()
+{
+    HIGHCONTRASTW highContrast;
+    ZeroMemory(&highContrast, sizeof(HIGHCONTRASTW));
+    highContrast.cbSize = sizeof(highContrast);
+    if (SystemParametersInfoW(SPI_GETHIGHCONTRAST, sizeof(highContrast), &highContrast, FALSE))
+        return highContrast.dwFlags & HCF_HIGHCONTRASTON;
+    return FALSE;
+}
+BOOL IsColorSchemeChangeMessage(LPARAM lParam)
+{
+    BOOL is = FALSE;
+    if (lParam && CompareStringOrdinal(lParam, -1, L"ImmersiveColorSet", -1, TRUE) == CSTR_EQUAL)
+    {
+        RefreshImmersiveColorPolicyState();
+        is = TRUE;
+    }
+    return is;
+}
+
 static HRESULT GUI_AboutProc(
     HWND hwnd,
     UINT uNotification,
@@ -67,9 +92,9 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
 
     RECT rc;
     GetClientRect(hwnd, &rc);
-    HRSRC hRscr = FindResourceA(
+    HRSRC hRscr = FindResource(
         hModule,
-        MAKEINTRESOURCEA(IDR_REGISTRY1),
+        MAKEINTRESOURCE(IDR_REGISTRY1),
         RT_RCDATA
     );
     if (!hRscr)
@@ -92,9 +117,17 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
 
     LOGFONT logFont;
     memset(&logFont, 0, sizeof(logFont));
+    NONCLIENTMETRICS ncm;
+    ncm.cbSize = sizeof(NONCLIENTMETRICS);
+    SystemParametersInfoW(
+        SPI_GETNONCLIENTMETRICS,
+        sizeof(NONCLIENTMETRICS),
+        &ncm,
+        0
+    );
+    logFont = ncm.lfCaptionFont;
     logFont.lfHeight = GUI_CAPTION_FONT_SIZE * dy;
     logFont.lfWeight = FW_BOLD;
-    wcscpy_s(logFont.lfFaceName, 32, L"Segoe UI");
     HFONT hFontCaption = CreateFontIndirect(&logFont);
     logFont.lfHeight = GUI_TITLE_FONT_SIZE * dy;
     HFONT hFontTitle = CreateFontIndirect(&logFont);
@@ -109,10 +142,11 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
     DTTOPTS DttOpts;
     DttOpts.dwSize = sizeof(DTTOPTS);
     DttOpts.dwFlags = DTT_COMPOSITED | DTT_TEXTCOLOR;
-    DttOpts.crText = GUI_TEXTCOLOR;
+    //DttOpts.crText = GetSysColor(COLOR_WINDOWTEXT);
+    DttOpts.crText = g_darkModeEnabled ? GUI_TEXTCOLOR_DARK : GUI_TEXTCOLOR;
     DWORD dwTextFlags = DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS;
     RECT rcText;
-    DWORD dwCL = 0;
+    DWORD dwMaxHeight = 0, dwMaxWidth = 0;
     BOOL bTabOrderHit = FALSE;
 
     HDC hdcPaint = NULL;
@@ -122,6 +156,14 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
 
     if (!hDC || (hDC && hdcPaint))
     {
+        if (!IsThemeActive())
+        {
+            COLORREF oldcr = SetBkColor(hdcPaint, GetSysColor(COLOR_WINDOW));
+            ExtTextOutW(hdcPaint, 0, 0, ETO_OPAQUE, &rc, L"", 0, 0);
+            SetBkColor(hdcPaint, oldcr);
+            SetTextColor(hdcPaint, GetSysColor(COLOR_WINDOWTEXT));
+        }
+
         FILE* f = fmemopen(pRscr, cbRscr, "r");
         char* line = malloc(MAX_LINE_LENGTH * sizeof(char));
         wchar_t* text = malloc(MAX_LINE_LENGTH * sizeof(wchar_t)); 
@@ -149,9 +191,9 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                 DWORD dwLineHeight = GUI_LINE_HEIGHT;
 
                 rcText.left = _this->padding.left;
-                rcText.top = _this->padding.top + dwCL;
+                rcText.top = _this->padding.top + dwMaxHeight;
                 rcText.right = (rc.right - rc.left) - _this->padding.right;
-                rcText.bottom = dwCL + dwLineHeight * dy - _this->padding.bottom;
+                rcText.bottom = dwMaxHeight + dwLineHeight * dy - _this->padding.bottom;
 
                 if (!strncmp(line, ";T ", 3))
                 {
@@ -222,32 +264,74 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                     }
                     if (hDC)
                     {
+                        COLORREF cr;
                         if (!strncmp(line, ";u ", 3) && tabOrder == _this->tabOrder)
                         {
                             bTabOrderHit = TRUE;
-                            DttOpts.crText = GUI_TEXTCOLOR_SELECTED;
+                            if (!IsThemeActive())
+                            {
+                                cr = SetTextColor(hdcPaint, GetSysColor(COLOR_HIGHLIGHT));
+                            }
+                            else
+                            {
+                                DttOpts.crText = g_darkModeEnabled ? GUI_TEXTCOLOR_SELECTED_DARK : GUI_TEXTCOLOR_SELECTED;
+                                //DttOpts.crText = GetSysColor(COLOR_HIGHLIGHT);
+                            }
                         }
-                        DrawThemeTextEx(
-                            _this->hTheme,
+                        RECT rcNew = rcText;
+                        DrawTextW(
                             hdcPaint,
-                            hOldFont ? 0 : 8,
-                            0,
                             text,
                             -1,
-                            dwTextFlags,
-                            &rcText,
-                            &DttOpts
+                            &rcNew,
+                            DT_CALCRECT
                         );
+                        if (rcNew.right - rcNew.left > dwMaxWidth)
+                        {
+                            dwMaxWidth = rcNew.right - rcNew.left + 20 * dx;
+                        }
+                        if (IsThemeActive())
+                        {
+                            DrawThemeTextEx(
+                                _this->hTheme,
+                                hdcPaint,
+                                hOldFont ? 0 : 8,
+                                0,
+                                text,
+                                -1,
+                                dwTextFlags,
+                                &rcText,
+                                &DttOpts
+                            );
+                        }
+                        else
+                        {
+                            DrawTextW(
+                                hdcPaint,
+                                text,
+                                -1,
+                                &rcText,
+                                dwTextFlags
+                            );
+                        }
                         if (!strncmp(line, ";u ", 3) && tabOrder == _this->tabOrder)
                         {
-                            DttOpts.crText = GUI_TEXTCOLOR;
+                            if (!IsThemeActive())
+                            {
+                                SetTextColor(hdcPaint, cr);
+                            }
+                            else
+                            {
+                                DttOpts.crText = g_darkModeEnabled ? GUI_TEXTCOLOR_DARK : GUI_TEXTCOLOR;
+                                //DttOpts.crText = GetSysColor(COLOR_WINDOWTEXT);
+                            }
                         }
                     }
                     else
                     {
                         RECT rcTemp;
                         rcTemp = rcText;
-                        DrawText(
+                        DrawTextW(
                             GetDC(hwnd),
                             text,
                             -1,
@@ -432,7 +516,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                             }
                         }
                     }
-                    dwCL += dwLineHeight * dy;
+                    dwMaxHeight += dwLineHeight * dy;
                     if (!strncmp(line, ";u ", 3))
                     {
                         tabOrder++;
@@ -624,7 +708,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                         }
                         RECT rcTemp;
                         rcTemp = rcText;
-                        DrawText(
+                        DrawTextW(
                             GetDC(hwnd),
                             text,
                             -1,
@@ -737,7 +821,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                     {
                         RECT rcTemp;
                         rcTemp = rcText;
-                        DrawText(
+                        DrawTextW(
                             GetDC(hwnd),
                             text,
                             -1,
@@ -765,28 +849,70 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                     }
                     if (hDC)
                     {
+                        COLORREF cr;
                         if (tabOrder == _this->tabOrder)
                         {
                             bTabOrderHit = TRUE;
-                            DttOpts.crText = GUI_TEXTCOLOR_SELECTED;
+                            if (!IsThemeActive())
+                            {
+                                cr = SetTextColor(hdcPaint, GetSysColor(COLOR_HIGHLIGHT));
+                            }
+                            else
+                            {
+                                DttOpts.crText = g_darkModeEnabled ? GUI_TEXTCOLOR_SELECTED_DARK : GUI_TEXTCOLOR_SELECTED;
+                                //DttOpts.crText = GetSysColor(COLOR_HIGHLIGHT);
+                            }
                         }
-                        DrawThemeTextEx(
-                            _this->hTheme,
+                        RECT rcNew = rcText;
+                        DrawTextW(
                             hdcPaint,
-                            0,
-                            0,
                             text,
                             -1,
-                            dwTextFlags,
-                            &rcText,
-                            &DttOpts
+                            &rcNew,
+                            DT_CALCRECT
                         );
+                        if (rcNew.right - rcNew.left > dwMaxWidth)
+                        {
+                            dwMaxWidth = rcNew.right - rcNew.left + 20 * dx;
+                        }
+                        if (IsThemeActive())
+                        {
+                            DrawThemeTextEx(
+                                _this->hTheme,
+                                hdcPaint,
+                                0,
+                                0,
+                                text,
+                                -1,
+                                dwTextFlags,
+                                &rcText,
+                                &DttOpts
+                            );
+                        }
+                        else
+                        {
+                            DrawTextW(
+                                hdcPaint,
+                                text,
+                                -1,
+                                &rcText,
+                                dwTextFlags
+                            );
+                        }
                         if (tabOrder == _this->tabOrder)
                         {
-                            DttOpts.crText = GUI_TEXTCOLOR;
+                            if (!IsThemeActive())
+                            {
+                                SetTextColor(hdcPaint, cr);
+                            }
+                            else
+                            {
+                                DttOpts.crText = g_darkModeEnabled ? GUI_TEXTCOLOR_DARK : GUI_TEXTCOLOR;
+                                //DttOpts.crText = GetSysColor(COLOR_WINDOWTEXT);
+                            }
                         }
                     }
-                    dwCL += dwLineHeight * dy;
+                    dwMaxHeight += dwLineHeight * dy;
                     tabOrder++;
                 }
             }
@@ -809,8 +935,35 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                 _this->tabOrder = 0;
             }
         }
-        EndBufferedPaint(hBufferedPaint, TRUE);
     }
+    if (_this->bCalcExtent)
+    {
+        RECT rcWin;
+        GetWindowRect(hwnd, &rcWin);
+        printf("%d %d - %d %d\n", rcWin.right - rcWin.left, rcWin.bottom - rcWin.top, dwMaxWidth, dwMaxHeight);
+
+        dwMaxWidth += _this->padding.left + _this->padding.right;
+        dwMaxHeight += GUI_LINE_HEIGHT * dy + 20 * dy;
+
+        HMONITOR hMonitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTOPRIMARY);
+        MONITORINFO mi;
+        mi.cbSize = sizeof(MONITORINFO);
+        GetMonitorInfo(hMonitor, &mi);
+        SetWindowPos(
+            hwnd,
+            hwnd,
+            mi.rcWork.left + ((mi.rcWork.right - mi.rcWork.left) / 2 - (dwMaxWidth) / 2),
+            mi.rcWork.top + ((mi.rcWork.bottom - mi.rcWork.top) / 2 - (dwMaxHeight) / 2),
+            dwMaxWidth,
+            dwMaxHeight,
+            SWP_NOZORDER | SWP_NOACTIVATE
+        );
+        _this->bCalcExtent = FALSE;
+        InvalidateRect(hwnd, NULL, FALSE);
+
+    }
+
+    EndBufferedPaint(hBufferedPaint, TRUE);
     return TRUE;
 }
 
@@ -855,6 +1008,17 @@ static LRESULT CALLBACK GUI_WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
             _this->size.cy * dyp,
             SWP_NOZORDER | SWP_NOACTIVATE
         );
+        if (IsThemeActive() && ShouldAppsUseDarkMode)
+        {
+            AllowDarkModeForWindow(hWnd, g_darkModeEnabled);
+            BOOL value = g_darkModeEnabled;
+            DwmSetWindowAttribute(hWnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &value, sizeof(BOOL));
+        }
+        if (!IsThemeActive())
+        {
+            int extendedStyle = GetWindowLong(hWnd, GWL_EXSTYLE);
+            SetWindowLong(hWnd, GWL_EXSTYLE, extendedStyle | WS_EX_DLGMODALFRAME);
+        }
     }
     else
     {
@@ -865,6 +1029,30 @@ static LRESULT CALLBACK GUI_WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
     {
         PostQuitMessage(0);
         return 0;
+    }
+    else if (uMsg == WM_SETTINGCHANGE)
+    {
+        if (IsColorSchemeChangeMessage(lParam))
+        {
+            if (IsThemeActive() && ShouldAppsUseDarkMode)
+            {
+                BOOL bIsCompositionEnabled = TRUE;
+                DwmIsCompositionEnabled(&bIsCompositionEnabled);
+                BOOL bDarkModeEnabled = IsThemeActive() && bIsCompositionEnabled && ShouldAppsUseDarkMode() && !IsHighContrast();
+                if (bDarkModeEnabled != g_darkModeEnabled)
+                {
+                    g_darkModeEnabled = bDarkModeEnabled;
+                    AllowDarkModeForWindow(hWnd, g_darkModeEnabled);
+                    BOOL value = g_darkModeEnabled;
+                    DwmSetWindowAttribute(hWnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &value, sizeof(BOOL));
+                    InvalidateRect(hWnd, NULL, FALSE);
+                }
+            }
+            else
+            {
+                InvalidateRect(hWnd, NULL, FALSE);
+            }
+        }
     }
     else if (uMsg == WM_KEYDOWN)
     {
@@ -899,7 +1087,7 @@ static LRESULT CALLBACK GUI_WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
             return 0;
         }
     }
-    else if (uMsg == WM_NCHITTEST)
+    else if (uMsg == WM_NCHITTEST && IsThemeActive())
     {
         POINT pt;
         pt.x = GET_X_LPARAM(lParam);
@@ -937,9 +1125,17 @@ static LRESULT CALLBACK GUI_WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
     }
     else if (uMsg == WM_PAINT)
     {
-        MARGINS marGlassInset = { -1, -1, -1, -1 }; // -1 means the whole window
-        DwmExtendFrameIntoClientArea(hWnd, &marGlassInset);
-
+        if (IsThemeActive())
+        {
+            BOOL bIsCompositionEnabled = TRUE;
+            DwmIsCompositionEnabled(&bIsCompositionEnabled);
+            if (bIsCompositionEnabled)
+            {
+                MARGINS marGlassInset = { -1, -1, -1, -1 }; // -1 means the whole window
+                DwmExtendFrameIntoClientArea(hWnd, &marGlassInset);
+            }
+        }
+    
         PAINTSTRUCT ps;
         HDC hDC = BeginPaint(hWnd, &ps);
 
@@ -999,7 +1195,7 @@ __declspec(dllexport) int ZZGUI(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLin
     SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
 
     GUI _this;
-    _this.hBackgroundBrush = (HBRUSH)GetStockObject(BLACK_BRUSH);
+    _this.hBackgroundBrush = (HBRUSH)(CreateSolidBrush(RGB(255, 255, 255)));// (HBRUSH)GetStockObject(BLACK_BRUSH);
     _this.location.x = GUI_POSITION_X;
     _this.location.y = GUI_POSITION_Y;
     _this.size.cx = GUI_POSITION_WIDTH;
@@ -1010,6 +1206,7 @@ __declspec(dllexport) int ZZGUI(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLin
     _this.padding.bottom = GUI_PADDING_BOTTOM;
     _this.hTheme = OpenThemeData(NULL, TEXT(GUI_WINDOWSWITCHER_THEME_CLASS));
     _this.tabOrder = 0;
+    _this.bCalcExtent = TRUE;
 
     WNDCLASS wc = { 0 };
     ZeroMemory(&wc, sizeof(WNDCLASSW));
@@ -1027,7 +1224,32 @@ __declspec(dllexport) int ZZGUI(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLin
     {
         LoadStringW(hModule, IDS_PRODUCTNAME, title, 260);
     }
-
+    HANDLE hUxtheme = NULL;
+    BOOL bHasLoadedUxtheme = FALSE;
+    BOOL bIsCompositionEnabled = TRUE;
+    DwmIsCompositionEnabled(&bIsCompositionEnabled);
+    if (IsThemeActive() && bIsCompositionEnabled)
+    {
+        bHasLoadedUxtheme = TRUE;
+        hUxtheme = LoadLibraryW(L"uxtheme.dll");
+        if (hUxtheme)
+        {
+            RefreshImmersiveColorPolicyState = GetProcAddress(hUxtheme, (LPCSTR)104);
+            SetPreferredAppMode = GetProcAddress(hUxtheme, (LPCSTR)135);
+            AllowDarkModeForWindow = GetProcAddress(hUxtheme, (LPCSTR)133);
+            ShouldAppsUseDarkMode = GetProcAddress(hUxtheme, (LPCSTR)132);
+            if (ShouldAppsUseDarkMode &&
+                SetPreferredAppMode &&
+                AllowDarkModeForWindow &&
+                RefreshImmersiveColorPolicyState
+                )
+            {
+                SetPreferredAppMode(TRUE);
+                RefreshImmersiveColorPolicyState();
+                g_darkModeEnabled = IsThemeActive() && bIsCompositionEnabled && ShouldAppsUseDarkMode() && !IsHighContrast();
+            }
+        }
+    }
     HWND hwnd = CreateWindowEx(
         NULL,
         L"ExplorerPatcherGUI",
@@ -1043,17 +1265,23 @@ __declspec(dllexport) int ZZGUI(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLin
     {
         return 1;
     }
-    BOOL value = 1;
-    DwmSetWindowAttribute(hwnd, 1029, &value, sizeof(BOOL));
-    WTA_OPTIONS ops;
-    ops.dwFlags = WTNCA_NODRAWCAPTION | WTNCA_NODRAWICON;
-    ops.dwMask = WTNCA_NODRAWCAPTION | WTNCA_NODRAWICON;
-    SetWindowThemeAttribute(
-        hwnd,
-        WTA_NONCLIENT,
-        &ops,
-        sizeof(WTA_OPTIONS)
-    );
+    if (IsThemeActive())
+    {
+        if (bIsCompositionEnabled)
+        {
+            BOOL value = 1;
+            DwmSetWindowAttribute(hwnd, DWMWA_MICA_EFFFECT, &value, sizeof(BOOL));
+            WTA_OPTIONS ops;
+            ops.dwFlags = WTNCA_NODRAWCAPTION | WTNCA_NODRAWICON;
+            ops.dwMask = WTNCA_NODRAWCAPTION | WTNCA_NODRAWICON;
+            SetWindowThemeAttribute(
+                hwnd,
+                WTA_NONCLIENT,
+                &ops,
+                sizeof(WTA_OPTIONS)
+            );
+        }
+    }
     ShowWindow(hwnd, SW_SHOW);
 
     MSG msg = { 0 };
@@ -1061,6 +1289,11 @@ __declspec(dllexport) int ZZGUI(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLin
     {
         TranslateMessage(&msg);
         DispatchMessage(&msg);
+    }
+
+    if (bHasLoadedUxtheme)
+    {
+        FreeLibrary(hUxtheme);
     }
 
     printf("Ended \"GUI\" thread.\n");
