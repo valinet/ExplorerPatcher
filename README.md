@@ -24,6 +24,8 @@ In the [Releases](https://github.com/valinet/ExplorerPatcher/releases) section, 
 * option to disable the control center button in the taskbar
 * show the "All apps" list by default when opening the Start menu
 * customize the maximum number of "Most used" apps displayed in the "All apps" list in Start
+* disable the immersive contex menu system-wide
+* disable the Windows 11 File Explorer command bar
 
 Also, if you place the `StartAllBackX64.dll` file from StartAllback (needs a DLL with SHA-256: `D8D1484D6F7DE94C5018B03A5A93EE8BBB7795BCA5408A721CBB74BE28065689`) in the folder `%appdata%\ExplorerPatcher` (create if it does not exist), the following additional features will be enabled:
 
