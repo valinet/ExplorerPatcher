@@ -201,6 +201,7 @@ DWORD WINAPI HookStartMenu(HookStartMenuParams* params)
 
     while (TRUE)
     {
+        unsigned int retry = 0;
         HANDLE hProcess, hSnapshot;
         PROCESSENTRY32 pe32;
         while (TRUE)
@@ -233,6 +234,7 @@ DWORD WINAPI HookStartMenu(HookStartMenuParams* params)
                         {
                             printf("Unable to open handle to StartMenuExperienceHost.exe.\n");
                             Sleep(params->dwTimeout);
+                            continue;
                         }
                         TCHAR wszProcessPath[MAX_PATH];
                         DWORD dwLength = MAX_PATH;
@@ -261,6 +263,8 @@ DWORD WINAPI HookStartMenu(HookStartMenuParams* params)
             }
             else
             {
+                retry++;
+                if (retry > 5) return 0;
                 Sleep(params->dwTimeout);
             }
         }
