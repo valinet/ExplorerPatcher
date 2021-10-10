@@ -1411,7 +1411,7 @@ __declspec(dllexport) DWORD WINAPI main(
             sizeof(symbols_addr)
         );
 
-        if (LoadSymbols(&symbols_PTRS))
+        if (LoadSymbols(&symbols_PTRS, hModule))
         {
             printf("Symbols have to be (re)downloaded...\n");
             DownloadSymbolsParams* params = malloc(sizeof(DownloadSymbolsParams));

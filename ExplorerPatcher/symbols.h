@@ -40,5 +40,5 @@ typedef struct _DownloadSymbolsParams
 } DownloadSymbolsParams;
 DWORD DownloadSymbols(DownloadSymbolsParams* params);
 
-BOOL LoadSymbols(symbols_addr* symbols_PTRS);
+BOOL LoadSymbols(symbols_addr* symbols_PTRS, HMODULE hModule);
 #endif
