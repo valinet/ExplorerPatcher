@@ -917,6 +917,22 @@ HRESULT pnidui_CoCreateInstanceHook(
 
 
 #pragma region "Show Clock flyout on Win+C"
+typedef struct _ClockButton_ToggleFlyoutCallback_Params
+{
+    void* TrayUIInstance;
+    unsigned int CLOCKBUTTON_OFFSET_IN_TRAYUI;
+    void* oldClockButtonInstance;
+} ClockButton_ToggleFlyoutCallback_Params;
+void ClockButton_ToggleFlyoutCallback(
+    HWND hWnd,
+    UINT uMsg,
+    ClockButton_ToggleFlyoutCallback_Params* params,
+    LRESULT lRes
+)
+{
+    *((INT64*)params->TrayUIInstance + params->CLOCKBUTTON_OFFSET_IN_TRAYUI) = params->oldClockButtonInstance;
+    free(params);
+}
 INT64 winrt_Windows_Internal_Shell_implementation_MeetAndChatManager_OnMessageHook(
     void* _this,
     INT64 a2,
@@ -933,30 +949,45 @@ INT64 winrt_Windows_Internal_Shell_implementation_MeetAndChatManager_OnMessageHo
             NULL
         );
         HWND prev_hWnd = hWnd;
-        if (hWnd)
+        HWND hShellTray_Wnd = FindWindowExW(NULL, NULL, L"Shell_TrayWnd", NULL);
+        const unsigned int WM_TOGGLE_CLOCK_FLYOUT = 1486;
+        if (hWnd == hShellTray_Wnd)
         {
-            hWnd = FindWindowEx(hWnd, NULL, TEXT("TrayNotifyWnd"), NULL);
+            // On the main monitor, the TrayUI component of CTray handles this
+            // message and basically does a `ClockButton::ToggleFlyout`; that's
+            // the only place in code where that is used, otherwise, clicking and
+            // dismissing the clock flyout probably involves 2 separate methods
+            PostMessageW(hShellTray_Wnd, WM_TOGGLE_CLOCK_FLYOUT, 0, 0);
+        }
+        else
+        {
+            // Of course, on secondary monitors, the situation is much more
+            // complicated; there is no simple way to do this, afaik; the way I do it
+            // is to obtain a pointer to TrayUI from CTray (pointers to the classes
+            // that created the windows are always available at location 0 in the hWnd)
+            // and from there issue a "show clock flyout" message manually, taking care to temporarly
+            // change the internal clock button pointer of the class to point
+            // to the clock button on the secondary monitor.
+            hWnd = FindWindowExW(hWnd, NULL, L"ClockButton", NULL);
             if (hWnd)
             {
-                hWnd = FindWindowEx(hWnd, NULL, TEXT("TrayClockWClass"), NULL);
-            }
-            if (!hWnd)
-            {
-                hWnd = FindWindowEx(prev_hWnd, NULL, TEXT("ClockButton"), NULL);
-            }
-            if (hWnd)
-            {
-                RECT rc;
-                GetWindowRect(hWnd, &rc);
-                HWND g_ProgWin = FindWindowEx(
-                    NULL,
-                    NULL,
-                    L"Progman",
-                    NULL
-                );
-                SetForegroundWindow(g_ProgWin);
-                PostMessage(hWnd, WM_LBUTTONDOWN, 0, 0);
-                PostMessage(hWnd, WM_LBUTTONUP, 0, 0);
+                INT64* CTrayInstance = (BYTE*)(GetWindowLongPtrW(hShellTray_Wnd, 0)); // -> CTray
+                void* ClockButtonInstance = (BYTE*)(GetWindowLongPtrW(hWnd, 0)); // -> ClockButton
+
+                const unsigned int TRAYUI_OFFSET_IN_CTRAY = 110;
+                const unsigned int TRAYUI_WNDPROC_POSITION_IN_VTABLE = 4;
+                const unsigned int CLOCKBUTTON_OFFSET_IN_TRAYUI = 100;
+                void* TrayUIInstance = *((INT64*)CTrayInstance + TRAYUI_OFFSET_IN_CTRAY);
+                void* oldClockButtonInstance = *((INT64*)TrayUIInstance + CLOCKBUTTON_OFFSET_IN_TRAYUI);
+                ClockButton_ToggleFlyoutCallback_Params* params = malloc(sizeof(ClockButton_ToggleFlyoutCallback_Params));
+                if (params)
+                {
+                    *((INT64*)TrayUIInstance + CLOCKBUTTON_OFFSET_IN_TRAYUI) = ClockButtonInstance;
+                    params->TrayUIInstance = TrayUIInstance;
+                    params->CLOCKBUTTON_OFFSET_IN_TRAYUI = CLOCKBUTTON_OFFSET_IN_TRAYUI;
+                    params->oldClockButtonInstance = oldClockButtonInstance;
+                    SendMessageCallbackW(hShellTray_Wnd, WM_TOGGLE_CLOCK_FLYOUT, 0, 0, ClockButton_ToggleFlyoutCallback, params);
+                }
             }
         }
     }
