@@ -27,11 +27,6 @@ In the [Releases](https://github.com/valinet/ExplorerPatcher/releases) section, 
 * disable the immersive contex menu system-wide
 * disable the Windows 11 File Explorer command bar
 
-Also, if you place the `StartAllBackX64.dll` file from StartAllback (needs a DLL with SHA-256: `D8D1484D6F7DE94C5018B03A5A93EE8BBB7795BCA5408A721CBB74BE28065689`) in the folder `%appdata%\ExplorerPatcher` (create if it does not exist), the following additional features will be enabled:
-
-* option to apply Mica effect on File Explorer windows
-* option to skin system tray icons to match Windows 11 style
-
 After you have completed the above setup, make sure you have an active Internet connection and restart the Explorer process using Task Manager or by issuing the following command: `taskkill /f /im explorer.exe`. Once File Explorer restarts, some necessary files (symbol files) will be downloaded from Microsoft (around 50MB). This should be relatively quick, depending on your Internet connection speed. When this is done, File Explorer will restart again and will be ready for use. Notifications should show up informing you about the progress, and you can also use Task Manager to watch for network activity. This process only happens when a new Windows 11 build is installed on the machine.
 
 Now, the classic taskbar should be enabled. Still, there is some more setup to do, depending on your preferences.

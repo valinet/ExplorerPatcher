@@ -19,26 +19,9 @@
 #include <valinet/pdb/pdb.h>
 #define _LIBVALINET_DEBUG_HOOKING_IATPATCH
 #include <valinet/hooking/iatpatch.h>
-#include "utility.h"
-#include "symbols.h"
-#include "dxgi_imp.h"
-#include "ArchiveMenu.h"
-#include "StartupSound.h"
-#include "SettingsMonitor.h"
-#include "HideExplorerSearchBar.h"
-#include "StartMenu.h"
-#include "GUI.h"
-#include "TaskbarCenter.h"
 
 #define WINX_ADJUST_X 5
 #define WINX_ADJUST_Y 5
-
-#define SB_MICA_EFFECT_SUBCLASS_OFFSET 0x5BFC // 0x5C70
-#define SB_INIT1 0x20054 // 0x26070
-#define SB_INIT2 0x83A4 // Enable dark mode fixes
-#define SB_TRACKPOPUPMENU_HOOK 0x1C774 // 0x21420
-#define SB_TRACKPOPUPMENUEX_HOOK 0x1CB18 // 0x21920
-#define SB_LOADIMAGEW_HOOK 0x3BEB0 // 0x4A6F0
 
 #define CHECKFOREGROUNDELAPSED_TIMEOUT 100
 #define POPUPMENU_SAFETOREMOVE_TIMEOUT 300
@@ -54,6 +37,21 @@ BOOL bSkinIcons = TRUE;
 HMODULE hModule = NULL;
 HANDLE hIsWinXShown = NULL;
 HANDLE hWinXThread = NULL;
+
+#include "utility.h"
+#ifdef USE_PRIVATE_INTERFACES
+#include "ep_private.h"
+#endif
+#include "symbols.h"
+#include "dxgi_imp.h"
+#include "ArchiveMenu.h"
+#include "StartupSound.h"
+#include "SettingsMonitor.h"
+#include "HideExplorerSearchBar.h"
+#include "StartMenu.h"
+#include "GUI.h"
+#include "TaskbarCenter.h"
+
 
 #pragma region "Generics"
 #define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
@@ -795,7 +793,7 @@ BOOL TrackPopupMenuExHook(
 #pragma endregion
 
 
-#pragma region "Mica effect for Explorer and remove search bar"
+#pragma region "Hide search bar in Explorer"
 static HWND(*explorerframe_SHCreateWorkerWindowFunc)(
     WNDPROC  	wndProc,
     HWND  	hWndParent,
@@ -824,17 +822,15 @@ HWND WINAPI explorerframe_SHCreateWorkerWindowHook(
     );
     if (dwExStyle == 0x10000 && dwStyle == 1174405120)
     {
-        if (hStartIsBack64 && bMicaEffectOnTitlebar)
+#ifdef USE_PRIVATE_INTERFACES
+        if (bMicaEffectOnTitlebar)
         {
             BOOL value = TRUE;
-            DwmSetWindowAttribute(hWndParent, DWMWA_MICA_EFFFECT, &value, sizeof(BOOL)); // Set Mica effect on title bar
-            SetWindowSubclass(
-                result, 
-                (uintptr_t)hStartIsBack64 + SB_MICA_EFFECT_SUBCLASS_OFFSET, 
-                (uintptr_t)hStartIsBack64 + SB_MICA_EFFECT_SUBCLASS_OFFSET, 
-                0
-            );
+            SetPropW(hWndParent, L"NavBarGlass", HANDLE_FLAG_INHERIT);
+            DwmSetWindowAttribute(hWndParent, DWMWA_MICA_EFFFECT, &value, sizeof(BOOL));
+            SetWindowSubclass(result, ExplorerMicaTitlebarSubclassProc, ExplorerMicaTitlebarSubclassProc, 0);
         }
+#endif
         if (bHideExplorerSearchBar)
         {
             SetWindowSubclass(hWndParent, HideExplorerSearchBarSubClass, HideExplorerSearchBarSubClass, 0);
@@ -1331,6 +1327,48 @@ BOOL explorer_SetChildWindowNoActivateHook(HWND hWnd)
 #pragma endregion
 
 
+#pragma region "Hide Show desktop button"
+LRESULT(*ShellTrayWndProcFunc)(
+    HWND hWnd,
+    UINT uMsg,
+    WPARAM wParam,
+    LPARAM lParam
+    );
+LRESULT ShellTrayWndProcHook(
+    HWND hWnd,
+    UINT uMsg,
+    WPARAM wParam,
+    LPARAM lParam
+)
+{
+    switch (uMsg)
+    {
+    case WM_DESTROY:
+    {
+        break;
+    }
+    case WM_ERASEBKGND:
+    {
+        HWND v33 = FindWindowExW(hWnd, 0, L"TrayNotifyWnd", 0);
+        HWND v34 = FindWindowExW(v33, 0, L"TrayShowDesktopButtonWClass", 0);
+        if (v34)
+        {
+            /*BYTE* lpShouldDisplayCCButton = (BYTE*)(GetWindowLongPtrW(v34, 0) + 120);
+            if (*lpShouldDisplayCCButton)
+            {
+                *lpShouldDisplayCCButton = FALSE;
+            }*/
+
+            //ShowWindow(v34, SW_HIDE);
+        }
+        break;
+    }
+    }
+    return ShellTrayWndProcFunc(hWnd, uMsg, wParam, lParam);
+}
+#pragma endregion
+
+
 #pragma region "Notify shell ready (fixes delay at logon)"
 DWORD SignalShellReady(DWORD wait)
 {
@@ -1382,6 +1420,13 @@ DWORD SignalShellReady(DWORD wait)
                     );
                     */
                     PositionStartMenu(0, GetStartMenuPosition());
+                    /*printf("hook show desktop\n");
+                    void* ShellTrayWndProcFuncT = GetWindowLongPtrW(hWnd, GWLP_WNDPROC);
+                    if (ShellTrayWndProcHook != ShellTrayWndProcFuncT)
+                    {
+                        ShellTrayWndProcFunc = ShellTrayWndProcFuncT;
+                        SetWindowLongPtrW(hWnd, GWLP_WNDPROC, ShellTrayWndProcHook);
+                    }*/
                     break;
                 }
             }
@@ -1538,6 +1583,7 @@ __declspec(dllexport) DWORD WINAPI main(
         
 
 
+        /*
         TCHAR* wszSBPath = malloc((MAX_PATH + 1) * sizeof(TCHAR));
         if (!wszSBPath)
         {
@@ -1561,7 +1607,7 @@ __declspec(dllexport) DWORD WINAPI main(
         );
         hStartIsBack64 = LoadLibraryW(wszSBPath);
         free(wszSBPath);
-
+        */
 
 
         
@@ -1645,19 +1691,14 @@ __declspec(dllexport) DWORD WINAPI main(
         HANDLE hStobject = LoadLibraryW(L"stobject.dll");
         if (bSkinMenus)
         {
-            if (1) // !hStartIsBack64
-            {
-                VnPatchDelayIAT(hStobject, "user32.dll", "TrackPopupMenu", TrackPopupMenuHook);
-            }
-            else
-            {
-                VnPatchDelayIAT(hStobject, "user32.dll", "TrackPopupMenu", (uintptr_t)hStartIsBack64 + SB_TRACKPOPUPMENU_HOOK);
-            }
+            VnPatchDelayIAT(hStobject, "user32.dll", "TrackPopupMenu", TrackPopupMenuHook);
         }
-        if (bSkinIcons && hStartIsBack64)
+#ifdef USE_PRIVATE_INTERFACES
+        if (bSkinIcons)
         {
-            VnPatchDelayIAT(hStobject, "user32.dll", "LoadImageW", (uintptr_t)hStartIsBack64 + SB_LOADIMAGEW_HOOK);
+            VnPatchDelayIAT(hStobject, "user32.dll", "LoadImageW", SystemTray_LoadImageWHook);
         }
+#endif
         printf("Setup stobject functions done\n");
 
 
@@ -1665,39 +1706,38 @@ __declspec(dllexport) DWORD WINAPI main(
         HANDLE hBthprops = LoadLibraryW(L"bthprops.cpl");
         if (bSkinMenus)
         {
-            if (1) //!hStartIsBack64
-            {
-                VnPatchIAT(hBthprops, "user32.dll", "TrackPopupMenuEx", TrackPopupMenuExHook);
-            }
-            else
-            {
-                VnPatchIAT(hBthprops, "user32.dll", "TrackPopupMenuEx", (uintptr_t)hStartIsBack64 + SB_TRACKPOPUPMENUEX_HOOK);
-            }
+            VnPatchIAT(hBthprops, "user32.dll", "TrackPopupMenuEx", TrackPopupMenuExHook);
         }
-        if (bSkinIcons && hStartIsBack64)
+#ifdef USE_PRIVATE_INTERFACES
+        if (bSkinIcons)
         {
-            VnPatchIAT(hBthprops, "user32.dll", "LoadImageW", (uintptr_t)hStartIsBack64 + SB_LOADIMAGEW_HOOK);
+            VnPatchIAT(hBthprops, "user32.dll", "LoadImageW", SystemTray_LoadImageWHook);
         }
+#endif
         printf("Setup bthprops functions done\n");
 
 
 
         HANDLE hPnidui = LoadLibraryW(L"pnidui.dll");
         VnPatchIAT(hPnidui, "api-ms-win-core-com-l1-1-0.dll", "CoCreateInstance", pnidui_CoCreateInstanceHook);
-        if (bSkinIcons && hStartIsBack64)
+#ifdef USE_PRIVATE_INTERFACES
+        if (bSkinIcons)
         {
-            VnPatchIAT(hPnidui, "user32.dll", "LoadImageW", (uintptr_t)hStartIsBack64 + SB_LOADIMAGEW_HOOK);
+            VnPatchIAT(hPnidui, "user32.dll", "LoadImageW", SystemTray_LoadImageWHook);
         }
+#endif
         printf("Setup pnidui functions done\n");
 
 
 
 
         HANDLE hSndvolsso = LoadLibraryW(L"sndvolsso.dll");
-        if (bSkinIcons && hStartIsBack64)
+#ifdef USE_PRIVATE_INTERFACES
+        if (bSkinIcons)
         {
-            VnPatchIAT(hSndvolsso, "user32.dll", "LoadImageW", (uintptr_t)hStartIsBack64 + SB_LOADIMAGEW_HOOK);
+            VnPatchIAT(hSndvolsso, "user32.dll", "LoadImageW", SystemTray_LoadImageWHook);
         }
+#endif
         printf("Setup sndvolsso functions done\n");
 
 
@@ -1718,7 +1758,7 @@ __declspec(dllexport) DWORD WINAPI main(
         printf("Installed hooks.\n");
 
 
-
+        /*
         if (hStartIsBack64)
         {
             ((void(*)())((uintptr_t)hStartIsBack64 + SB_INIT1))();
@@ -1727,7 +1767,7 @@ __declspec(dllexport) DWORD WINAPI main(
 
             printf("Loaded and initialized StartIsBack64 DLL\n");
         }
-
+        */
 
 
         HANDLE hEvent = CreateEventEx(

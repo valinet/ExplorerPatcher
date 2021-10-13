@@ -214,6 +214,7 @@
     <ClInclude Include="GUI.h" />
     <ClInclude Include="HideExplorerSearchBar.h" />
     <ClInclude Include="hooking.h" />
+    <ClInclude Include="ep_private.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="SettingsMonitor.h" />
     <ClInclude Include="StartMenu.h" />

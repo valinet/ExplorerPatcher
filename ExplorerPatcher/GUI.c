@@ -174,6 +174,17 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
         {
             if (strcmp(line, "Windows Registry Editor Version 5.00\r\n") && strcmp(line, "\r\n"))
             {
+#ifndef USE_PRIVATE_INTERFACES
+                if (!strncmp(line, ";p ", 3))
+                {
+                    int num = atoi(line + 3);
+                    for (int i = 0; i < num; ++i)
+                    {
+                        getline(&line, &bufsiz, f);
+                    }
+                }
+#endif
+
                 if (!strncmp(line, "[", 1))
                 {
                     ZeroMemory(section, MAX_LINE_LENGTH * sizeof(wchar_t));

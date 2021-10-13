@@ -21,7 +21,8 @@
 "HideControlCenterButton"=dword:00000000
 ;b Apply immersive style to system tray icon menus *
 "SkinMenus"=dword:00000001
-;b Apply Windows 11 style to system tray icons (requires StartAllBackX64.dll) *
+;p 2
+;b Apply Windows 11 style to system tray icons *
 "SkinIcons"=dword:00000001
 
 ;T File Explorer
@@ -37,7 +38,8 @@
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
 ;b Hide search bar completely *
 "HideExplorerSearchBar"=dword:00000000
-;b Mica effect on title bar (requires StartAllBackX64.dll) *
+;p 2
+;b Mica effect on title bar *
 "MicaEffectOnTitlebar"=dword:00000000
 
 ;T Start menu

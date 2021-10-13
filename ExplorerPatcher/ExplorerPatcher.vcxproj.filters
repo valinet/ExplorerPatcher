@@ -57,6 +57,9 @@
     <ClInclude Include="TaskbarCenter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="ep_private.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="ExplorerPatcher.rc">
