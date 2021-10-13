@@ -1083,7 +1083,11 @@ DEFINE_GUID(_uuidof_v13,
     0x4F7F, 0x5DE5, 0xA5, 0x28,
     0x7e, 0xfe, 0xf4, 0x18, 0xaa, 0x48
 );
-void PositionStartMenuForMonitor(HMONITOR hMonitor, DWORD location)
+BOOL PositionStartMenuForMonitor(
+    HMONITOR hMonitor, 
+    HDC unused1,
+    LPRECT unused2,
+    DWORD location)
 {
     HRESULT hr = S_OK;
     HSTRING_HEADER hstringHeader;
@@ -1161,6 +1165,7 @@ void PositionStartMenuForMonitor(HMONITOR hMonitor, DWORD location)
         WindowsDeleteString(string);
         RoUninitialize();
     }
+    return TRUE;
 }
 
 void PositionStartMenu(INT64 unused, DWORD location)
@@ -1175,7 +1180,7 @@ void PositionStartMenu(INT64 unused, DWORD location)
             L"Shell_SecondaryTrayWnd",
             NULL
         );
-        PositionStartMenuForMonitor(MonitorFromWindow(hWnd, MONITOR_DEFAULTTOPRIMARY), location);
+        PositionStartMenuForMonitor(MonitorFromWindow(hWnd, MONITOR_DEFAULTTOPRIMARY), NULL, NULL, location);
     } while (hWnd);
     if (!hWnd)
     {
@@ -1185,14 +1190,16 @@ void PositionStartMenu(INT64 unused, DWORD location)
             L"Shell_TrayWnd",
             NULL
         );
-        PositionStartMenuForMonitor(MonitorFromWindow(hWnd, MONITOR_DEFAULTTOPRIMARY), location);
+        PositionStartMenuForMonitor(MonitorFromWindow(hWnd, MONITOR_DEFAULTTOPRIMARY), NULL, NULL, location);
     }
 }
 
 DWORD PositionStartMenuTimeout(INT64 timeout)
 {
     Sleep(timeout);
-    PositionStartMenu(0, GetStartMenuPosition());
+    printf("Started \"Position Start menu\" thread.\n");
+    EnumDisplayMonitors(NULL, NULL, PositionStartMenuForMonitor, GetStartMenuPosition());
+    printf("Ended \"Position Start menu\" thread.\n");
 }
 
 DWORD GetStartMenuPosition()
@@ -1493,7 +1500,6 @@ DWORD SignalShellReady(DWORD wait)
                         0
                     );
                     */
-                    PositionStartMenu(0, GetStartMenuPosition());
                     /*printf("hook show desktop\n");
                     void* ShellTrayWndProcFuncT = GetWindowLongPtrW(hWnd, GWLP_WNDPROC);
                     if (ShellTrayWndProcHook != ShellTrayWndProcFuncT)
@@ -1668,7 +1674,7 @@ __declspec(dllexport) DWORD WINAPI main(
             &bReplaceNetwork,
             &dwSize
         );
-        
+
 
 
         /*
@@ -1698,7 +1704,7 @@ __declspec(dllexport) DWORD WINAPI main(
         */
 
 
-        
+
         HANDLE hExplorer = GetModuleHandle(NULL);
         SetChildWindowNoActivateFunc = GetProcAddress(GetModuleHandleW(L"user32.dll"), (LPCSTR)2005);
         if (bHideControlCenterButton)
@@ -1732,19 +1738,19 @@ __declspec(dllexport) DWORD WINAPI main(
 
         CLauncherTipContextMenu_GetMenuItemsAsyncFunc = (INT64(*)(void*, void*, void**))
             ((uintptr_t)hTwinuiPcshell + symbols_PTRS.twinui_pcshell_PTRS[1]);
-        
+
         ImmersiveContextMenuHelper_ApplyOwnerDrawToMenuFunc = (INT64(*)(HMENU, HMENU, HWND, unsigned int, void*))
             ((uintptr_t)hTwinuiPcshell + symbols_PTRS.twinui_pcshell_PTRS[2]);
 
         ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc = (void(*)(HMENU, HMENU, HWND))
             ((uintptr_t)hTwinuiPcshell + symbols_PTRS.twinui_pcshell_PTRS[3]);
-        
+
         CLauncherTipContextMenu_ExecuteShutdownCommandFunc = (void(*)(void*, void*))
             ((uintptr_t)hTwinuiPcshell + symbols_PTRS.twinui_pcshell_PTRS[4]);
-        
+
         CLauncherTipContextMenu_ExecuteCommandFunc = (void(*)(void*, int))
             ((uintptr_t)hTwinuiPcshell + symbols_PTRS.twinui_pcshell_PTRS[5]);
-        
+
         CLauncherTipContextMenu_ShowLauncherTipContextMenuFunc = (INT64(*)(void*, POINT*))
             ((uintptr_t)hTwinuiPcshell + symbols_PTRS.twinui_pcshell_PTRS[6]);
         rv = funchook_prepare(
@@ -1837,7 +1843,7 @@ __declspec(dllexport) DWORD WINAPI main(
         printf("Setup sndvolsso functions done\n");
 
 
-        
+
         HANDLE hExplorerFrame = LoadLibraryW(L"ExplorerFrame.dll");
         explorerframe_SHCreateWorkerWindowFunc = GetProcAddress(LoadLibraryW(L"shcore.dll"), (LPCSTR)188);
         VnPatchIAT(hExplorerFrame, "shcore.dll", (LPCSTR)188, explorerframe_SHCreateWorkerWindowHook);
@@ -1867,14 +1873,14 @@ __declspec(dllexport) DWORD WINAPI main(
 
 
         HANDLE hEvent = CreateEventEx(
-            0, 
+            0,
             L"ShellDesktopSwitchEvent",
             CREATE_EVENT_MANUAL_RESET,
             EVENT_ALL_ACCESS
         );
         ResetEvent(hEvent);
         printf("Created ShellDesktopSwitchEvent event.\n");
-        
+
 
 
 
@@ -1977,6 +1983,9 @@ __declspec(dllexport) DWORD WINAPI main(
         {
             RegCloseKey(hKey);
         }
+
+
+        CreateThread(0, 0, PositionStartMenuTimeout, 0, 0, 0);
     }
     else
     {
