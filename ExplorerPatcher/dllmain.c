@@ -1453,11 +1453,6 @@ LRESULT ShellTrayWndProcHook(
 #pragma region "Notify shell ready (fixes delay at logon)"
 DWORD SignalShellReady(DWORD wait)
 {
-    if (wait)
-    {
-        Sleep(wait);
-    }
-
     printf("Started \"Signal shell ready\" thread.\n");
 
     while (!wait && TRUE)
@@ -1500,6 +1495,7 @@ DWORD SignalShellReady(DWORD wait)
                         0
                     );
                     */
+                    EnumDisplayMonitors(NULL, NULL, PositionStartMenuForMonitor, GetStartMenuPosition());
                     /*printf("hook show desktop\n");
                     void* ShellTrayWndProcFuncT = GetWindowLongPtrW(hWnd, GWLP_WNDPROC);
                     if (ShellTrayWndProcHook != ShellTrayWndProcFuncT)
@@ -1518,10 +1514,15 @@ DWORD SignalShellReady(DWORD wait)
     {
         Sleep(600);
     }
+    else
+    {
+        Sleep(wait);
+    }
 
     HANDLE hEvent = CreateEvent(0, 0, 0, L"ShellDesktopSwitchEvent");
     if (hEvent)
     {
+        printf(">>> Signal shell ready.\n");
         SetEvent(hEvent);
     }
 
@@ -1985,7 +1986,7 @@ __declspec(dllexport) DWORD WINAPI main(
         }
 
 
-        CreateThread(0, 0, PositionStartMenuTimeout, 0, 0, 0);
+        //CreateThread(0, 0, PositionStartMenuTimeout, 0, 0, 0);
     }
     else
     {
