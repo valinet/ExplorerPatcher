@@ -26,6 +26,8 @@
 #define CHECKFOREGROUNDELAPSED_TIMEOUT 100
 #define POPUPMENU_SAFETOREMOVE_TIMEOUT 300
 #define POPUPMENU_BLUETOOTH_TIMEOUT 700
+#define POPUPMENU_PNIDUI_TIMEOUT 300
+#define POPUPMENU_SNDVOLSSO_TIMEOUT 300
 
 HWND archivehWnd;
 HMODULE hStartIsBack64 = 0;
@@ -34,6 +36,7 @@ BOOL bMicaEffectOnTitlebar = FALSE;
 BOOL bHideControlCenterButton = FALSE;
 BOOL bSkinMenus = TRUE;
 BOOL bSkinIcons = TRUE;
+BOOL bReplaceNetwork = FALSE;
 HMODULE hModule = NULL;
 HANDLE hIsWinXShown = NULL;
 HANDLE hWinXThread = NULL;
@@ -695,6 +698,77 @@ void PopupMenuAdjustCoordinatesAndFlags(int* x, int* y, UINT* uFlags)
         *x = MIN(*x, rc.left);
         *uFlags |= TPM_VCENTERALIGN | TPM_RIGHTALIGN;
     }
+}
+long long pnidui_TrackPopupMenuElapsed = 0;
+BOOL pnidui_TrackPopupMenuHook(
+    HMENU       hMenu,
+    UINT        uFlags,
+    int         x,
+    int         y,
+    int         nReserved,
+    HWND        hWnd,
+    const RECT* prcRect
+)
+{
+    long long elapsed = milliseconds_now() - pnidui_TrackPopupMenuElapsed;
+    BOOL b = FALSE;
+    if (elapsed > POPUPMENU_PNIDUI_TIMEOUT || !bSkinMenus)
+    {
+        if (bSkinMenus)
+        {
+            PopupMenuAdjustCoordinatesAndFlags(&x, &y, &uFlags);
+        }
+        b = TrackPopupMenu(
+            hMenu,
+            uFlags | TPM_RIGHTBUTTON,
+            x,
+            y,
+            0,
+            hWnd,
+            prcRect
+        );
+        if (bReplaceNetwork && b == 3109)
+        {
+            ShellExecuteW(
+                NULL,
+                L"open",
+                L"shell:::{8E908FC9-BECC-40f6-915B-F4CA0E70D03D}",
+                NULL,
+                NULL,
+                SW_SHOWNORMAL
+            );
+            b = 0;
+        }
+        pnidui_TrackPopupMenuElapsed = milliseconds_now();
+    }
+    return b;
+}
+long long sndvolsso_TrackPopupMenuExElapsed = 0;
+BOOL sndvolsso_TrackPopupMenuExHook(
+    HMENU       hMenu,
+    UINT        uFlags,
+    int         x,
+    int         y,
+    HWND        hWnd,
+    LPTPMPARAMS lptpm
+)
+{
+    long long elapsed = milliseconds_now() - sndvolsso_TrackPopupMenuExElapsed;
+    BOOL b = FALSE;
+    if (elapsed > POPUPMENU_SNDVOLSSO_TIMEOUT)
+    {
+        PopupMenuAdjustCoordinatesAndFlags(&x, &y, &uFlags);
+        b = TrackPopupMenuEx(
+            hMenu,
+            uFlags | TPM_RIGHTBUTTON,
+            x,
+            y,
+            hWnd,
+            lptpm
+        );
+        sndvolsso_TrackPopupMenuExElapsed = milliseconds_now();
+    }
+    return b;
 }
 long long TrackPopupMenuElapsed = 0;
 BOOL TrackPopupMenuHook(
@@ -1540,6 +1614,7 @@ __declspec(dllexport) DWORD WINAPI main(
         }
 
 
+        dwSize = sizeof(DWORD);
         RegQueryValueExW(
             hKey,
             TEXT("HideExplorerSearchBar"),
@@ -1548,6 +1623,7 @@ __declspec(dllexport) DWORD WINAPI main(
             &bHideExplorerSearchBar,
             &dwSize
         );
+        dwSize = sizeof(DWORD);
         RegQueryValueExW(
             hKey,
             TEXT("MicaEffectOnTitlebar"),
@@ -1556,6 +1632,7 @@ __declspec(dllexport) DWORD WINAPI main(
             &bMicaEffectOnTitlebar,
             &dwSize
         );
+        dwSize = sizeof(DWORD);
         RegQueryValueExW(
             hKey,
             TEXT("HideControlCenterButton"),
@@ -1564,6 +1641,7 @@ __declspec(dllexport) DWORD WINAPI main(
             &bHideControlCenterButton,
             &dwSize
         );
+        dwSize = sizeof(DWORD);
         RegQueryValueExW(
             hKey,
             TEXT("SkinMenus"),
@@ -1572,12 +1650,22 @@ __declspec(dllexport) DWORD WINAPI main(
             &bSkinMenus,
             &dwSize
         );
+        dwSize = sizeof(DWORD);
         RegQueryValueExW(
             hKey,
             TEXT("SkinIcons"),
             0,
             NULL,
             &bSkinIcons,
+            &dwSize
+        );
+        dwSize = sizeof(DWORD);
+        RegQueryValueExW(
+            hKey,
+            TEXT("ReplaceNetwork"),
+            0,
+            NULL,
+            &bReplaceNetwork,
             &dwSize
         );
         
@@ -1720,6 +1808,10 @@ __declspec(dllexport) DWORD WINAPI main(
 
         HANDLE hPnidui = LoadLibraryW(L"pnidui.dll");
         VnPatchIAT(hPnidui, "api-ms-win-core-com-l1-1-0.dll", "CoCreateInstance", pnidui_CoCreateInstanceHook);
+        if (bSkinMenus || bReplaceNetwork)
+        {
+            VnPatchIAT(hPnidui, "user32.dll", "TrackPopupMenu", pnidui_TrackPopupMenuHook);
+        }
 #ifdef USE_PRIVATE_INTERFACES
         if (bSkinIcons)
         {
@@ -1732,6 +1824,10 @@ __declspec(dllexport) DWORD WINAPI main(
 
 
         HANDLE hSndvolsso = LoadLibraryW(L"sndvolsso.dll");
+        if (bSkinMenus)
+        {
+            VnPatchIAT(hSndvolsso, "user32.dll", "TrackPopupMenuEx", sndvolsso_TrackPopupMenuExHook);
+        }
 #ifdef USE_PRIVATE_INTERFACES
         if (bSkinIcons)
         {

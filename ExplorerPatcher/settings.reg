@@ -19,11 +19,13 @@
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
 ;b Disable Control Center button *
 "HideControlCenterButton"=dword:00000000
-;b Apply immersive style to system tray icon menus *
+;b Center and skin system tray icon menus *
 "SkinMenus"=dword:00000001
 ;p 2
 ;b Apply Windows 11 style to system tray icons *
 "SkinIcons"=dword:00000001
+;b Open network settings in Control Panel for system tray icon *
+"ReplaceNetwork"=dword:00000000
 
 ;T File Explorer
 [-HKEY_CURRENT_USER\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32]
