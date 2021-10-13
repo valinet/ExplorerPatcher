@@ -160,22 +160,16 @@ Now that you have set up the basic stuff, you can choose to enable additional se
   reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher" /f /v "HideControlCenterButton" /t REG_DWORD /d 1
   ```
 
-* `MicaEffectOnTitlebar` enables Mica effect on File Explorer windows (requires `StartIsBack64.dll`) (default = 0)
-
-  ```
-  reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher" /f /v "MicaEffectOnTitlebar" /t REG_DWORD /d 1
-  ```
-
 * `SkinMenus` applies the immersive skin to "Safe to Remove Hardware" and "Bluetooth" pop-up menus (default = 1)
 
   ```
   reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher" /f /v "SkinMenus" /t REG_DWORD /d 1
   ```
 
-* `SkinIcons` applies Windows 11 icon skins to taskbar buttons (requires `StartIsBack64.dll`) (default = 1)
+* `ReplaceNetwork` makes right clicking the system tray network icon and choosing "Open Network & Internet settings" open the "Network and Sharing Center" page in Control Panel instead of the network section of the Settings app (default = 0)
 
   ```
-  reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher" /f /v "SkinIcons" /t REG_DWORD /d 1
+  reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher" /f /v "ReplaceNetwork" /t REG_DWORD /d 1
   ```
 
 * `AllocConsole` will display a console window (for debugging purposes) (default = 0, for advanced users only)
