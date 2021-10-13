@@ -35,7 +35,7 @@ Now, the classic taskbar should be enabled. Still, there is some more setup to d
 
 To configure the most common options, the application now comes with a configuration user interface. To open it, right click the Start button (or press `Win`+`X`) and choose "Properties". Alternatively, to open the GUI standalone, run the following command: `rundll32.exe C:\Windows\dxgi.dll,ZZGUI`.
 
-<img src="https://user-images.githubusercontent.com/6503598/135729021-6befba47-84ae-4c65-8133-e380f1d36fe1.png"  width=60% height=60%>
+<img src="https://user-images.githubusercontent.com/6503598/137055901-68856ad5-4a52-4eea-a011-3b907a469938.png"  width=60% height=60%>
 
 The icon near an option signifies its current state:
 
