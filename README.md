@@ -83,6 +83,7 @@ One of the great features the old taskbar had was the ability to ungroup the tas
 
 #### Ungroup icons on all taskbars
 
+Run this command as administrator:
 ```
 reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /f /v "NoTaskGrouping" /t REG_DWORD /d 1
 ```
