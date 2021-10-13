@@ -207,7 +207,9 @@ Also, if you chose to place the patcher in `C:\Windows\SystemApps\Microsoft.Wind
 Even more registry configuration settings are described in the following document, make sure to take a look on it [here](https://github.com/valinet/ExplorerPatcher/issues/9).
 
 ## Uninstallation
-To uninstall, rename the DLL in the locations where you placed it from `dxgi.dll` to `dxgio.dll`. Then, reboot the computer and delete the `dxgio.dll` file from the locations where it is placed. You can also then safely delete the `%appdata%\ExplorerPatcher` directory as well. 
+First, move the taskbar to the bottom, if you have moved it to the top or to the sides. This is so that the Windows 11 taskbar can render correctly.
+
+Then, to uninstall, rename the DLL in the locations where you placed it from `dxgi.dll` to `dxgio.dll`. Then, reboot the computer and delete the `dxgio.dll` file from the locations where it is placed. You can also then safely delete the `%appdata%\ExplorerPatcher` directory as well. 
 
 ## More details
 A changelog is available [here](https://github.com/valinet/ExplorerPatcher/blob/master/CHANGELOG.md).
