@@ -12,7 +12,7 @@ This project aims to bring back a productive working environment on Windows 11.
 Screenshots: [<1>](https://gist.githubusercontent.com/valinet/d0f72ff09773702584e77c46065b95e0/raw/94036ed3e38218b87744a29ae5c40b06be637daf/ep_img0.png) [<2>](https://user-images.githubusercontent.com/6503598/131937638-d513ca72-ead7-459b-a8ce-619fb302b7da.png)
 
 ## dxgi.dll - the patcher
-In the [Releases](https://github.com/valinet/ExplorerPatcher/releases) section, you will find a download for a DLL called `dxgi.dll`. It has been tested on the latest stable build of Windows 11 (22000.194), but it may work just fine on newer builds too. This is the runtime part of the application. You need to place this DLL in the following location: `C:\Windows`. This will enable the following functionality:
+In the [Releases](https://github.com/valinet/ExplorerPatcher/releases) section, you will find a download for a DLL called `dxgi.dll`. It has been tested on the latest stable build of Windows 11 (22000.258), but it may work just fine on newer builds too. This is the runtime part of the application. You need to place this DLL in the following location: `C:\Windows`. This will enable the following functionality:
 
 * use the classic taskbar from Windows 10 (without the nasty effects of `UndockingDisabled`)
 * restores the classic power user menu (`Win+X`) when using the classic taskbar
