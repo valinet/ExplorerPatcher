@@ -1,6 +1,8 @@
 # Explorer Patcher for Windows 11
 This project aims to bring back a productive working environment on Windows 11.
 
+PayPal donations: [here](https://www.paypal.com/donate?business=valentingabrielradu%40gmail.com&no_recurring=0&item_name=ExplorerPatcher&currency_code=EUR) or using e-mail address valentingabrielradu@gmail.com
+
 <details>
   <summary>About ExplorerPatcher and StartIsBack</summary>
   The well-known [StartIsBack](https://www.startisback.com/) application recently introduced support for Windows 11. Currently, regarding Windows 11 functionality, it offers the same features as this patcher, plus all the functionalities from the older releases of the software; thus the differences between the two at the moment, besides their internal implementation (probably) resort in the cost, licensing, support and development model: StartIsBack is a paid app, proprietary, closed source and comes with support, while ExplorerPatcher is free ([gratis and libre - as in free beer and free speech](https://en.wikipedia.org/wiki/Gratis_versus_libre)), open source and is provided as-is, with support offered in a best-effort attempt.
@@ -83,6 +85,7 @@ One of the great features the old taskbar had was the ability to ungroup the tas
 
 #### Ungroup icons on all taskbars
 
+Run this command as administrator:
 ```
 reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /f /v "NoTaskGrouping" /t REG_DWORD /d 1
 ```
