@@ -16,6 +16,10 @@
 ;x 1 Combine when taskbar is full
 ;x 2 Never combine
 "MMTaskbarGlomLevel"=dword:00000002
+;c 2 Taskbar icon size *
+;x 1 Small
+;x 0 Large (default)
+"TaskbarSmallIcons"=dword:00000000
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
 ;b Disable Control Center button *
 "HideControlCenterButton"=dword:00000000
