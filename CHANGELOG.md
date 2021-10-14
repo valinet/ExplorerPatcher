@@ -2,7 +2,7 @@
 
 This document includes the same release notes as in the [Releases](https://github.com/valinet/ExplorerPatcher/releases) section on GitHub.
 
-## 22000.258.26.2
+## 22000.258.26.3
 
 Tested on build: 22000.258.
 
@@ -11,6 +11,7 @@ Tested on build: 22000.258.
 * Centered network and sound right click menus and made them toggle on right click
 * Reliability enhancements for Start menu positioning (#78) (.1)
 * Fixes #85 (.2)
+* Fixes #90 (added option to change taskbar icon size) (.3)
 
 ## 22000.194.0.25
 
