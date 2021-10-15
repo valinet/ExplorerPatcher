@@ -62,7 +62,7 @@ To configure the most common options, the application now comes with a configura
 
 All of the options described above, and more, can be configured using the GUI. Below is a screenshot of the main page ("Taskbar") of the configuration interface.
 
-<img src="https://user-images.githubusercontent.com/6503598/137473878-4f1307c3-e070-40f8-863f-3c77de8a4364.png"  width=60% height=60%>
+<img src="https://user-images.githubusercontent.com/6503598/137494597-6ab591bc-3384-4b86-99be-80d2dedcd492.png"  width=70% height=70%>
 
 The icon near an option signifies its current state:
 
