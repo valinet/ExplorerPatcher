@@ -2,7 +2,7 @@
 
 This document includes the same release notes as in the [Releases](https://github.com/valinet/ExplorerPatcher/releases) section on GitHub.
 
-## 22000.258.30.0
+## 22000.258.30.3
 
 Tested on build: 22000.258.
 
@@ -18,6 +18,14 @@ Tested on build: 22000.258.
   * Solved memory leaks
 * Option to disable immersive context menus (#96)
 * General bug fixes
+* Window switcher is now disabled by default (.1)
+* Corrected typo in settings (.2)
+* Added option to set tray clock to display seconds (.3)
+* Added option to set the right click menu of the network system tray icon to launch either (.3):
+  * Network settings in the Settings app
+  * Network and Sharing Center in the Control Panel
+  * Network Connections in the Control Panel
+* Added preliminary support for advanced mitigations for correct rendering when using the classic theme (.3)
 
 ## 22000.258.26.3
 
