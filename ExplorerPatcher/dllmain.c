@@ -963,14 +963,29 @@ BOOL pnidui_TrackPopupMenuHook(
         );
         if (bReplaceNetwork && b == 3109)
         {
-            ShellExecuteW(
-                NULL,
-                L"open",
-                L"shell:::{8E908FC9-BECC-40f6-915B-F4CA0E70D03D}",
-                NULL,
-                NULL,
-                SW_SHOWNORMAL
-            );
+            // very helpful: https://www.tenforums.com/tutorials/3123-clsid-key-guid-shortcuts-list-windows-10-a.html
+            if (bReplaceNetwork == 1)
+            {
+                ShellExecuteW(
+                    NULL,
+                    L"open",
+                    L"shell:::{8E908FC9-BECC-40f6-915B-F4CA0E70D03D}",
+                    NULL,
+                    NULL,
+                    SW_SHOWNORMAL
+                );
+            }
+            else if (bReplaceNetwork == 2)
+            {
+                ShellExecuteW(
+                    NULL,
+                    L"open",
+                    L"shell:::{7007ACC7-3202-11D1-AAD2-00805FC1270E}",
+                    NULL,
+                    NULL,
+                    SW_SHOWNORMAL
+                );
+            }
             b = 0;
         }
         pnidui_TrackPopupMenuElapsed = milliseconds_now();
