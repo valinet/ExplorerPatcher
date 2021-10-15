@@ -224,12 +224,17 @@
 [HKEY_CURRENT_USER\Control Panel\Desktop]
 ;b Show Windows build info on the desktop *
 "PaintDesktopversion"=dword:00000000
+[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
+;b Enable advanced mitigations for correct rendering using classic theme *
+"ClassicThemeMitigations"=dword:00000000
+
 
 ;T About
-;t Version %VERSIONINFO%
+;e ExplorerPatcher
+;e Version %VERSIONINFO%
 ;t Copyright (C) 2006-2021 VALINET Solutions SRL. All rights reserved.
-;t 
-;t This project aims to bring back a productive working environment on Windows 11.
+;e 
+;e This project aims to bring back a productive working environment on Windows 11.
 ;t Proudly programmed by Valentin-Gabriel Radu.
 ;l Visit project GitHub (https://github.com/valinet)
 ;https://github.com/valinet
@@ -241,7 +246,7 @@
 ;https://www.paypal.com/donate?business=valentingabrielradu%40gmail.com&no_recurring=0&item_name=ExplorerPatcher&currency_code=EUR
 
 ;f
-;t Settings marked with an (*) require restarting the File Explorer process. 
+;t Settings marked with an (*) require restarting File Explorer. 
 ;u Restart File Explorer
 ;restart
 ;u Restore default settings

@@ -232,11 +232,18 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                 }
 
                 DWORD dwLineHeight = GUI_LINE_HEIGHT;
+                DWORD dwBottom = _this->padding.bottom;
+                DWORD dwTop = _this->padding.top;
+                if (!strncmp(line, ";a ", 3) || !strncmp(line, ";e ", 3))
+                {
+                    dwBottom = 0;
+                    dwLineHeight -= 0.2 * dwLineHeight;
+                }
 
                 rcText.left = dwLeftPad + _this->padding.left;
-                rcText.top = _this->padding.top + dwMaxHeight;
+                rcText.top = dwTop + dwMaxHeight;
                 rcText.right = (rc.right - rc.left) - _this->padding.right;
-                rcText.bottom = dwMaxHeight + dwLineHeight * dy - _this->padding.bottom;
+                rcText.bottom = dwMaxHeight + dwLineHeight * dy - dwBottom;
 
                 if (!strncmp(line, ";T ", 3))
                 {
@@ -324,9 +331,9 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                     hOldFont = SelectObject(hdcPaint, hFontRegular);
                 }
 
-                if (!strncmp(line, ";T ", 3) || !strncmp(line, ";t ", 3) || !strncmp(line, ";u ", 3) || !strncmp(line, ";M ", 3))
+                if (!strncmp(line, ";e ", 3) || !strncmp(line, ";a ", 3) || !strncmp(line, ";T ", 3) || !strncmp(line, ";t ", 3) || !strncmp(line, ";u ", 3) || !strncmp(line, ";M ", 3))
                 {
-                    if (!strncmp(line, ";t ", 3))
+                    if (!strncmp(line, ";t ", 3) || !strncmp(line, ";e ", 3) || !strncmp(line, ";a ", 3))
                     {
                         char* p = strstr(line, "%VERSIONINFO%");
                         if (p)
@@ -350,6 +357,20 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                         text,
                         MAX_LINE_LENGTH
                     );
+                    if (!strncmp(line, ";a ", 3))
+                    {
+                        RECT rcTemp;
+                        rcTemp = rcText;
+                        DrawTextW(
+                            hdcPaint,
+                            L"\u2795  ",
+                            3,
+                            &rcTemp,
+                            DT_CALCRECT
+                        );
+                        rcText.left += rcTemp.right - rcTemp.left;
+                        rcText.right += rcTemp.right - rcTemp.left;
+                    }
                     if (!strncmp(line, ";M ", 3))
                     {
                         TCHAR exeName[MAX_PATH + 1];
@@ -417,7 +438,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                         );
                         if (rcNew.right - rcNew.left > dwMaxWidth)
                         {
-                            dwMaxWidth = rcNew.right - rcNew.left + 20 * dx;
+                            dwMaxWidth = rcNew.right - rcNew.left + 50 * dx;
                         }
                         if (IsThemeActive())
                         {
@@ -665,6 +686,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                         text + 3,
                         MAX_LINE_LENGTH
                     );
+
                     wchar_t* x = wcschr(text, L'\n');
                     if (x) *x = 0;
                     x = wcschr(text, L'\r');
@@ -1004,14 +1026,17 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                             if (p) *p = 0;
                             p = strchr(line, '\n');
                             if (p) *p = 0;
-                            ShellExecuteA(
-                                NULL,
-                                "open",
-                                line + 1,
-                                NULL,
-                                NULL,
-                                SW_SHOWNORMAL
-                            );
+                            if (line[1] != 0)
+                            {
+                                ShellExecuteA(
+                                    NULL,
+                                    "open",
+                                    line + 1,
+                                    NULL,
+                                    NULL,
+                                    SW_SHOWNORMAL
+                                );
+                            }
                         }
                     }
                     if (hDC)
@@ -1040,7 +1065,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                         );
                         if (rcNew.right - rcNew.left > dwMaxWidth)
                         {
-                            dwMaxWidth = rcNew.right - rcNew.left + 20 * dx;
+                            dwMaxWidth = rcNew.right - rcNew.left + 50 * dx;
                         }
                         if (IsThemeActive())
                         {
