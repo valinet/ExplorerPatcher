@@ -48,6 +48,7 @@ DWORD bMonitorOverride = TRUE;
 DWORD bOpenAtLogon = FALSE;
 DWORD bClockFlyoutOnWinC = FALSE;
 DWORD bDisableImmersiveContextMenu = FALSE;
+DWORD bClassicThemeMitigations = FALSE;
 HMODULE hModule = NULL;
 HANDLE hIsWinXShown = NULL;
 HANDLE hWinXThread = NULL;
@@ -2148,6 +2149,15 @@ void Explorer_LoadSettings(int unused)
             &bDisableImmersiveContextMenu,
             &dwSize
         );
+        dwSize = sizeof(DWORD);
+        RegQueryValueExW(
+            hKey,
+            TEXT("ClassicThemeMitigations"),
+            0,
+            NULL,
+            &bClassicThemeMitigations,
+            &dwSize
+        );
         RegCloseKey(hKey);
     }
 
@@ -2394,6 +2404,57 @@ void Explorer_ToggleTouchpad(int unused)
 #pragma endregion
 
 
+#pragma region "Fix taskbar for classic theme"
+HRESULT explorer_DrawThemeTextEx(
+    HTHEME        hTheme,
+    HDC           hdc,
+    int           iPartId,
+    int           iStateId,
+    LPCWSTR       pszText,
+    int           cchText,
+    DWORD         dwTextFlags,
+    LPRECT        pRect,
+    const DTTOPTS* pOptions
+)
+{
+    if (!bClassicThemeMitigations)
+    {
+        return DrawThemeTextEx(
+            hTheme,
+            hdc,
+            iPartId,
+            iStateId,
+            pszText,
+            cchText,
+            dwTextFlags,
+            pRect,
+            pOptions
+        );
+    }
+    COLORREF bc = GetBkColor(hdc);
+    COLORREF fc = GetTextColor(hdc);
+    SetBkColor(hdc, GetSysColor(COLOR_BTNFACE));
+    SetTextColor(hdc, GetSysColor(COLOR_BTNTEXT));
+    NONCLIENTMETRICSW ncm;
+    ncm.cbSize = sizeof(NONCLIENTMETRICSW);
+    SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, sizeof(NONCLIENTMETRICSW), &ncm, 0);
+    HFONT hFont = CreateFontIndirectW(&(ncm.lfCaptionFont));
+    HGDIOBJ hOldFont = SelectObject(hdc, hFont);
+    DrawTextW(
+        hdc,
+        pszText,
+        cchText, pRect,
+        dwTextFlags
+    );
+    SelectObject(hdc, hOldFont);
+    DeleteObject(hFont);
+    SetBkColor(hdc, bc);
+    SetTextColor(hdc, fc);
+    return S_OK;
+}
+#pragma endregion
+
+
 __declspec(dllexport) DWORD WINAPI main(
     _In_ LPVOID lpParameter
 )
@@ -2541,6 +2602,7 @@ __declspec(dllexport) DWORD WINAPI main(
             VnPatchIAT(hExplorer, "api-ms-win-core-libraryloader-l1-2-0.dll", "GetProcAddress", explorer_GetProcAddressHook);
         }
         VnPatchIAT(hExplorer, "user32.dll", "TrackPopupMenuEx", TrackPopupMenuExHook);
+        VnPatchIAT(hExplorer, "uxtheme.dll", "DrawThemeTextEx", explorer_DrawThemeTextEx);
         printf("Setup explorer functions done\n");
 
 
