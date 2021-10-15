@@ -284,7 +284,7 @@ POINT GetDefaultWinXPosition(BOOL bUseRcWork, BOOL* lpBottom, BOOL* lpRight, BOO
     {
         RECT rc;
         GetWindowRect(hWnd, &rc);
-        if (rc.left - mi.rcMonitor.left == 0)
+        if (rc.left - mi.rcMonitor.left <= 0)
         {
             if (bUseRcWork)
             {
@@ -298,7 +298,7 @@ POINT GetDefaultWinXPosition(BOOL bUseRcWork, BOOL* lpBottom, BOOL* lpRight, BOO
             {
                 point.x++;
             }
-            if (rc.top - mi.rcMonitor.top == 0)
+            if (rc.top - mi.rcMonitor.top <= 0)
             {
                 if (bUseRcWork)
                 {
@@ -345,7 +345,7 @@ POINT GetDefaultWinXPosition(BOOL bUseRcWork, BOOL* lpBottom, BOOL* lpRight, BOO
             {
                 point.x--;
             }
-            if (rc.top - mi.rcMonitor.top == 0)
+            if (rc.top - mi.rcMonitor.top <= 0)
             {
                 if (bUseRcWork)
                 {

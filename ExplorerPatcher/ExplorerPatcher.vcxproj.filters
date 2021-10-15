@@ -13,6 +13,18 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Header Files\sws">
+      <UniqueIdentifier>{bd0d631a-7170-49ec-94ef-70c77ec3a4ab}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\sws">
+      <UniqueIdentifier>{4caf96b4-d282-4cad-a9c6-4d8d1374e5a6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\internal">
+      <UniqueIdentifier>{2b202c30-7683-42d3-afc3-ddd3c38e1c8d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\internal">
+      <UniqueIdentifier>{08cd1a6f-9a8f-45ef-a50b-142a1725c106}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="resource.h">
@@ -48,17 +60,41 @@
     <ClInclude Include="GUI.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="getline.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="fmemopen.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="TaskbarCenter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="fmemopen.h">
+      <Filter>Header Files\internal</Filter>
+    </ClInclude>
+    <ClInclude Include="getline.h">
+      <Filter>Header Files\internal</Filter>
+    </ClInclude>
     <ClInclude Include="ep_private.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\internal</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libs\sws\SimpleWindowSwitcher\sws_def.h">
+      <Filter>Header Files\sws</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libs\sws\SimpleWindowSwitcher\sws_error.h">
+      <Filter>Header Files\sws</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libs\sws\SimpleWindowSwitcher\sws_vector.h">
+      <Filter>Header Files\sws</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libs\sws\SimpleWindowSwitcher\sws_WindowHelpers.h">
+      <Filter>Header Files\sws</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libs\sws\SimpleWindowSwitcher\sws_WindowSwitcher.h">
+      <Filter>Header Files\sws</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libs\sws\SimpleWindowSwitcher\sws_WindowSwitcherLayout.h">
+      <Filter>Header Files\sws</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libs\sws\SimpleWindowSwitcher\sws_WindowSwitcherLayoutWindow.h">
+      <Filter>Header Files\sws</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libs\sws\SimpleWindowSwitcher\sws_RegistryMonitor.h">
+      <Filter>Header Files\sws</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -94,14 +130,35 @@
     <ClCompile Include="GUI.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="getline.c">
+    <ClCompile Include="TaskbarCenter.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="fmemopen.c">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\internal</Filter>
     </ClCompile>
-    <ClCompile Include="TaskbarCenter.c">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="getline.c">
+      <Filter>Source Files\internal</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libs\sws\SimpleWindowSwitcher\sws_error.c">
+      <Filter>Source Files\sws</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libs\sws\SimpleWindowSwitcher\sws_vector.c">
+      <Filter>Source Files\sws</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libs\sws\SimpleWindowSwitcher\sws_WindowHelpers.c">
+      <Filter>Source Files\sws</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libs\sws\SimpleWindowSwitcher\sws_WindowSwitcher.c">
+      <Filter>Source Files\sws</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libs\sws\SimpleWindowSwitcher\sws_WindowSwitcherLayout.c">
+      <Filter>Source Files\sws</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libs\sws\SimpleWindowSwitcher\sws_WindowSwitcherLayoutWindow.c">
+      <Filter>Source Files\sws</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libs\sws\SimpleWindowSwitcher\sws_RegistryMonitor.c">
+      <Filter>Source Files\sws</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

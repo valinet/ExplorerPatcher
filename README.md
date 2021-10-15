@@ -12,41 +12,63 @@ PayPal donations: [here](https://www.paypal.com/donate?business=valentingabrielr
 
 <img src="https://gist.githubusercontent.com/valinet/d0f72ff09773702584e77c46065b95e0/raw/94036ed3e38218b87744a29ae5c40b06be637daf/ep_img0.png" width=100% height=100%>
 
+The functionality of this software includes:
+
+* Taskbar from Windows 10:
+  * "always combine" / "combine when full" / "never combine" options for main and secondary taskbars
+  * Search button
+  * Task View button
+  * optional skinned, centered and toggled pop-up menus, or non-skinned (useful for classic theme users)
+  * open "Network and Sharing Center" when clicking "Open Network & Internet settings" in the pop-ip menu of the system tray network icon
+  * hide Control Center button
+  * Show People on the taskbar
+  * Show touch keyboard button
+
+* File Explorer
+  * disable the Windows 11 command bar
+  * disable the Windows 11 context menu
+  * disable even the Windows 10 (immersive) context menu (useful for classic theme users)
+  * disable modern search bar (reverts to the search bar in early Windows 10 builds or Windows 7/8)
+  * disable search bar completely
+* Start menu from Windows 11
+  * open Start on monitor containing the cursor
+  * open Start at logon
+  * open Start in "All apps" by default
+  * positioning on screen
+  * maximum number of frequent apps to show
+* Window switcher (Alt-Tab) from Windows 10:
+  * choose whether to include desktop in the window list
+  * ability to set opacity of the window list
+  * set row size, maximum extents etc
+* Others
+  * Open the time and date flyout when pressing `Win`+`C` (instead of Microsoft Teams)
+  * Set default shutdown action for `Alt`+`F4` on the desktop
+  * Show Command Prompt instead of PowerShell in the `Win`+`X` menu
+
 Screenshots: [<1>](https://gist.githubusercontent.com/valinet/d0f72ff09773702584e77c46065b95e0/raw/94036ed3e38218b87744a29ae5c40b06be637daf/ep_img0.png) [<2>](https://user-images.githubusercontent.com/6503598/131937638-d513ca72-ead7-459b-a8ce-619fb302b7da.png)
 
 ## dxgi.dll - the patcher
-In the [Releases](https://github.com/valinet/ExplorerPatcher/releases) section, you will find a download for a DLL called `dxgi.dll`. It has been tested on the latest stable build of Windows 11 (22000.258), but it may work just fine on newer builds too. This is the runtime part of the application. You need to place this DLL in the following location: `C:\Windows`. This will enable the following functionality:
-
-* use the classic taskbar from Windows 10 (without the nasty effects of `UndockingDisabled`)
-* restores the classic power user menu (`Win+X`) when using the classic taskbar
-* Start menu follows the taskbar alignment setting (`Left`/`Center`) specified in `Settings\Personalization\Taskbar\Taskbar behaviors\Taskbar alignment`
-* ability to show the Start menu on the monitor containing the cursor when pressing the Windows key
-* skin "Safe to Remove Hardware" and "Bluetooth" popup menus
-* play log on sound, if enabled
-* option to hide the search bar in File Explorer
-* option to disable the control center button in the taskbar
-* show the "All apps" list by default when opening the Start menu
-* customize the maximum number of "Most used" apps displayed in the "All apps" list in Start
-* disable the immersive contex menu system-wide
-* disable the Windows 11 File Explorer command bar
+In the [Releases](https://github.com/valinet/ExplorerPatcher/releases) section, you will find a download for a DLL called `dxgi.dll`. It has been tested on the latest stable build of Windows 11 (22000.258), but it may work just fine on newer builds too. This is the runtime part of the application. You need to place this DLL in the following location: `C:\Windows`. 
 
 After you have completed the above setup, make sure you have an active Internet connection and restart the Explorer process using Task Manager or by issuing the following command: `taskkill /f /im explorer.exe`. Once File Explorer restarts, some necessary files (symbol files) will be downloaded from Microsoft (around 50MB). This should be relatively quick, depending on your Internet connection speed. When this is done, File Explorer will restart again and will be ready for use. Notifications should show up informing you about the progress, and you can also use Task Manager to watch for network activity. This process only happens when a new Windows 11 build is installed on the machine.
 
 Now, the classic taskbar should be enabled. Still, there is some more setup to do, depending on your preferences.
 
+Important! As you may notice, the usual system tray icons are not enabled by default. To enable them, open the GUI (`Win`+`X` and choose "Enable missing system tray icons").
+
 ## Configuration interface
 
-To configure the most common options, the application now comes with a configuration user interface. To open it, right click the Start button (or press `Win`+`X`) and choose "Properties". Alternatively, to open the GUI standalone, run the following command: `rundll32.exe C:\Windows\dxgi.dll,ZZGUI`.
+To configure the most common options, the application now comes with a configuration user interface. To open it, right click the Start button (or press `Win`+`X`) and choose "Properties".
 
-<img src="https://user-images.githubusercontent.com/6503598/137055901-68856ad5-4a52-4eea-a011-3b907a469938.png"  width=60% height=60%>
+All of the options described above, and more, can be configured using the GUI. Below is a screenshot of the main page ("Taskbar") of the configuration interface.
+
+<img src="https://user-images.githubusercontent.com/6503598/137473878-4f1307c3-e070-40f8-863f-3c77de8a4364.png"  width=60% height=60%>
 
 The icon near an option signifies its current state:
 
 * ✔️ enabled
 * ❌ disabled
-* ➕ performs an action that allows you to change that option (usually, the current value is located after the colon in its description)
-
-The links at the bottom allow you to perform the most frequent actions.
+* ➕ link to another resource
 
 ## Recommended tools
 
@@ -70,137 +92,8 @@ You can try one of my other utilities available [here](https://github.com/valine
 
 ## Manual configuration
 
-To learn how to configure all the options manually, read on:
+You can manually configure the application by setting registry values. The registry entries supported by this application are described in [this file](https://github.com/valinet/ExplorerPatcher/blob/master/ExplorerPatcher/settings.reg).
 
-### Enable system tray icons
-As you have noticed, some system tray icons are missing (for example, the clock, notification center button, network, battery, sound etc). To enable these icons, open the following using Run: 
-
-```
-%windir%\explorer.exe shell:::{05d7b0f4-2121-4eff-bf6b-ed3f69b894d9}\SystemIcons
-```
-
-In the window that appears, toggle to `On` whatever icons you would like to have enabled in the taskbar.
-
-### Show labels for taskbar buttons
-One of the great features the old taskbar had was the ability to ungroup the taskbar buttons, showing a button with a label for each window that the user currently has open. To enable this functionality, run either of the following commands, depending on your preference.
-
-#### Ungroup icons on all taskbars
-
-Run this command as administrator:
-```
-reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /f /v "NoTaskGrouping" /t REG_DWORD /d 1
-```
-
-#### Ungroup icons on main taskbar only
-
-```
-reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /f /v "TaskbarGlomLevel" /t REG_DWORD /d 2
-```
-
-#### Ungroup icons on secondary taskbars
-
-```
-reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /f /v "MMTaskbarGlomLevel" /t REG_DWORD /d 2
-```
-
-In the commands above, change `2` to `0` for "Always combine" and `2` to `1` for "Combine when taskbar is full`.
-
-### Disable the immersive context menu
-
-As you probably have noticed, Windows 11 introduced a simplified context menu in File Explorer. To get to the old menu which contains all entries from shell extensions, one has to click on "Show more options" or type Shift+F10. To disable this new menu, run the following command:
-
-```
-reg.exe add "HKCU\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32" /f /ve
-```
-
-To restore back the immersive menu, run: 
-
-```
-reg.exe delete "HKCU\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}" /f
-```
-
-### Disable the command bar in File Explorer
-In Windows 11, File Explorer comes with a command bar instead of the traditional ribbon. To disable this and get back the ribbon, run the following command:
-
-```
-reg.exe add "HKCU\Software\Classes\CLSID\{d93ed569-3b3e-4bff-8355-3c44f6a52bb5}\InprocServer32" /f /ve
-```
-
-To restore back the command bar, run: 
-
-```
-reg.exe delete "HKCU\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}" /f
-```
-
-If you want to get back the command bar from Windows 7, after enabling back the ribbon,  [OldNewExplorer](https://msfn.org/board/topic/170375-oldnewexplorer-119/) will allow you to do so, and many more options, like drive ungrouping in This PC, as it used to be prior to Windows 8.1.
-
-### Disable the modern search box in File Explorer
-In Windows 10 1903, Microsoft introduced a new search box in File Explorer. This new search control is clunky, does not search automatically and usually is kind of broken. The old search box remains available, but only in Control Panel windows. To enable it on all File Explorer windows, run the following command:
-
-```
-reg.exe add "HKCU\Software\Classes\CLSID\{1d64637d-31e9-4b06-9124-e83fb178ac6e}\TreatAs" /f /ve /t REG_SZ /d "{64bc32b5-4eec-4de7-972d-bd8bd0324537}"
-```
-
-To restore the modern search box, run: 
-
-```
-reg.exe delete "HKCU\Software\Classes\CLSID\{1d64637d-31e9-4b06-9124-e83fb178ac6e}" /f
-```
-
-Also, in the next section, which desribes the configuration options for the software, you will learn about how to disable the search box altogether, should you want to.
-
-### Patcher settings
-Now that you have set up the basic stuff, you can choose to enable additional settings to enhance the experience even more. For this, customize the following commands by changing the number acording to your needs:
-
-* `HideExplorerSearchBar` completely removes the search box in File Explorer (default = 0)
-
-  ```
-  reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher" /f /v "HideExplorerSearchBar" /t REG_DWORD /d 1
-  ```
-
-* `HideControlCenterButton` disables the Control Center button and its associated shortcut key (`Win`+`A`) (default = 0)
-
-  ```
-  reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher" /f /v "HideControlCenterButton" /t REG_DWORD /d 1
-  ```
-
-* `SkinMenus` applies the immersive skin to "Safe to Remove Hardware" and "Bluetooth" pop-up menus (default = 1)
-
-  ```
-  reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher" /f /v "SkinMenus" /t REG_DWORD /d 1
-  ```
-
-* `ReplaceNetwork` makes right clicking the system tray network icon and choosing "Open Network & Internet settings" open the "Network and Sharing Center" page in Control Panel instead of the network section of the Settings app (default = 0)
-
-  ```
-  reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher" /f /v "ReplaceNetwork" /t REG_DWORD /d 1
-  ```
-
-* `AllocConsole` will display a console window (for debugging purposes) (default = 0, for advanced users only)
-
-  ```
-  reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher" /f /v "AllocConsole" /t REG_DWORD /d 1
-  ```
-
-* `ExplorerReadyDelay` adds even more delay before the shell is announced that Explorer is ready loading (helps if you experience a delay at logon) - the unit is ms (milliseconds), 1000ms = 1 second (default = 0, for advanced users only)
-
-  ```
-  reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher" /f /v "ExplorerReadyDelay" /t REG_DWORD /d 1000
-  ```
-
-Also, if you chose to place the patcher in `C:\Windows\SystemApps\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy` as well, use the following commands to configure Start menu options:
-
-* Open Start menu to "All apps" directly (replace with 0 to disable)
-
-  ```
-  reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\StartPage" /f /v "MakeAllAppsDefault" /t REG_DWORD /d 1
-  ```
-
-* Show only 4 most recent apps (change the number to customize)
-
-  ```
-  reg.exe add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /f /v "Start_MaximumFrequentApps" /t REG_DWORD /d 4
-  ```
 ## More configuration
 Even more registry configuration settings are described in the following document, make sure to take a look on it [here](https://github.com/valinet/ExplorerPatcher/issues/9).
 

@@ -2,6 +2,22 @@
 
 This document includes the same release notes as in the [Releases](https://github.com/valinet/ExplorerPatcher/releases) section on GitHub.
 
+## 22000.258.30.0
+
+Tested on build: 22000.258.
+
+* Reworked settings framework
+  * More settings are available to customize
+  * Most setting changes take effect immediatly
+* Implemented Windows 10 window switcher (Alt+Tab)
+* GUI
+  * Revamped GUI, now the interface is split by categories and is displayed on two columns
+  * Regular items do not display a "+" sign anymore at the beginning of their label
+  * The current choice is ticked in the drop down menu
+  * Regions are now calculated correctly
+  * Solved memory leaks
+* General bug fixes
+
 ## 22000.258.26.3
 
 Tested on build: 22000.258.

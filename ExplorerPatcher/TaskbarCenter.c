@@ -2,6 +2,25 @@
 
 HANDLE hEvent;
 
+HRESULT TaskbarCenter_Center()
+{
+	HRESULT hr = S_OK;
+	HWND hWnd = FindWindowExW(NULL, NULL, L"Shell_TrayWnd", NULL);
+
+	while (hWnd)
+	{
+		if (SUCCEEDED(hr))
+		{
+			/*hr = AccessibleObjectFromWindow(
+
+			);*/
+		}
+
+		hWnd = NULL;
+	}
+
+}
+
 BOOL TaskbarCenter_Notify()
 {
 	if (hEvent)
@@ -19,7 +38,7 @@ BOOL GetClientRectHook(HWND hWnd, LPRECT lpRect)
 	GetClassNameW(hWnd, wszClassName, 100);
 	if (!wcscmp(wszClassName, L"MSTaskListWClass"))
 	{
-		TaskbarCenter_Notify();
+		TaskbarCenter_Center();
 	}
 	return GetClientRect(hWnd, lpRect);
 }

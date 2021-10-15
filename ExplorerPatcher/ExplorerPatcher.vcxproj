@@ -193,6 +193,13 @@
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\libs\sws\SimpleWindowSwitcher\sws_error.c" />
+    <ClCompile Include="..\libs\sws\SimpleWindowSwitcher\sws_RegistryMonitor.c" />
+    <ClCompile Include="..\libs\sws\SimpleWindowSwitcher\sws_vector.c" />
+    <ClCompile Include="..\libs\sws\SimpleWindowSwitcher\sws_WindowHelpers.c" />
+    <ClCompile Include="..\libs\sws\SimpleWindowSwitcher\sws_WindowSwitcher.c" />
+    <ClCompile Include="..\libs\sws\SimpleWindowSwitcher\sws_WindowSwitcherLayout.c" />
+    <ClCompile Include="..\libs\sws\SimpleWindowSwitcher\sws_WindowSwitcherLayoutWindow.c" />
     <ClCompile Include="ArchiveMenu.c" />
     <ClCompile Include="dllmain.c" />
     <ClCompile Include="fmemopen.c" />
@@ -207,6 +214,14 @@
     <ClCompile Include="utility.c" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\libs\sws\SimpleWindowSwitcher\sws_def.h" />
+    <ClInclude Include="..\libs\sws\SimpleWindowSwitcher\sws_error.h" />
+    <ClInclude Include="..\libs\sws\SimpleWindowSwitcher\sws_RegistryMonitor.h" />
+    <ClInclude Include="..\libs\sws\SimpleWindowSwitcher\sws_vector.h" />
+    <ClInclude Include="..\libs\sws\SimpleWindowSwitcher\sws_WindowHelpers.h" />
+    <ClInclude Include="..\libs\sws\SimpleWindowSwitcher\sws_WindowSwitcher.h" />
+    <ClInclude Include="..\libs\sws\SimpleWindowSwitcher\sws_WindowSwitcherLayout.h" />
+    <ClInclude Include="..\libs\sws\SimpleWindowSwitcher\sws_WindowSwitcherLayoutWindow.h" />
     <ClInclude Include="ArchiveMenu.h" />
     <ClInclude Include="dxgi_imp.h" />
     <ClInclude Include="fmemopen.h" />

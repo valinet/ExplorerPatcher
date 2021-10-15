@@ -77,7 +77,12 @@ LRESULT CALLBACK OpenStartOnCurentMonitorThreadHook(
         MSG* msg = (MSG*)lParam;
         if (GetSystemMetrics(SM_CMONITORS) >= 2 && msg->message == WM_SYSCOMMAND && (msg->wParam & 0xFFF0) == SC_TASKLIST)
         {
-            DWORD dwStatus = 0;
+            if (bMonitorOverride)
+            {
+                goto finish;
+            }
+
+            /*DWORD dwStatus = 0;
             DWORD dwSize = sizeof(DWORD);
             HMODULE hModule = GetModuleHandle(TEXT("Shlwapi.dll"));
             FARPROC SHRegGetValueFromHKCUHKLMFunc = GetProcAddress(hModule, "SHRegGetValueFromHKCUHKLM");
@@ -91,7 +96,7 @@ LRESULT CALLBACK OpenStartOnCurentMonitorThreadHook(
             ) != ERROR_SUCCESS || dwStatus == 1)
             {
                 goto finish;
-            }
+            }*/
 
             DWORD pts = GetMessagePos();
             POINT pt;
@@ -163,7 +168,12 @@ DWORD OpenStartAtLogonThread(OpenStartAtLogonThreadParams* unused)
     );
     printf("Started \"Open Start at Logon\" thread.\n");
 
-    DWORD dwStatus = 0;
+    if (!bOpenAtLogon)
+    {
+        return 0;
+    }
+
+    /*DWORD dwStatus = 0;
     DWORD dwSize = sizeof(DWORD);
     HMODULE hModule = GetModuleHandle(TEXT("Shlwapi"));
     FARPROC SHRegGetValueFromHKCUHKLMFunc = GetProcAddress(hModule, "SHRegGetValueFromHKCUHKLM");
@@ -177,7 +187,7 @@ DWORD OpenStartAtLogonThread(OpenStartAtLogonThreadParams* unused)
     ) != ERROR_SUCCESS || dwStatus == 0)
     {
         return 0;
-    }
+    }*/
 
     POINT pt;
     pt.x = 0;

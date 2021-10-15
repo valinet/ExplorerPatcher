@@ -1,5 +1,8 @@
 #ifndef _H_GUI_H_
 #define _H_GUI_H_
+#define _CRTDBG_MAP_ALLOC
+#include <stdlib.h>
+#include <crtdbg.h>
 #pragma comment(linker,"\"/manifestdependency:type='win32' \
 name='Microsoft.Windows.Common-Controls' version='6.0.0.0' \
 processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
@@ -28,9 +31,11 @@ extern HMODULE hModule;
 #define GUI_POSITION_X CW_USEDEFAULT
 #define GUI_POSITION_Y CW_USEDEFAULT
 #define GUI_POSITION_WIDTH 367
-#define GUI_POSITION_HEIGHT 616
+#define GUI_POSITION_HEIGHT 316
 #define GUI_WINDOWSWITCHER_THEME_CLASS "ControlPanelStyle"
 #define GUI_CAPTION_FONT_SIZE -22
+#define GUI_SECTION_FONT_SIZE -12
+#define GUI_SECTION_HEIGHT 32
 #define GUI_TITLE_FONT_SIZE -12
 #define GUI_LINE_HEIGHT 26
 #define GUI_CAPTION_LINE_HEIGHT 42
@@ -41,20 +46,26 @@ extern HMODULE hModule;
 #define GUI_MAX_TABORDER 9999
 #define GUI_PADDING 5
 #define GUI_PADDING_LEFT GUI_PADDING * 3
+#define GUI_SIDEBAR_WIDTH 110
 #define GUI_PADDING_RIGHT GUI_PADDING * 3
 #define GUI_PADDING_TOP GUI_PADDING
 #define GUI_PADDING_BOTTOM GUI_PADDING
+#define GUI_STATUS_PADDING 10
 typedef struct _GUI
 {
 	POINT location;
 	SIZE size;
 	RECT padding;
+	UINT sidebarWidth;
 	HBRUSH hBackgroundBrush;
 	HTHEME hTheme;
 	POINT dpi;
 	MARGINS extent;
 	UINT tabOrder;
 	BOOL bCalcExtent;
+	SIZE_T section;
+	DWORD dwStatusbarY;
+	HICON hIcon;
 } GUI;
 
 static HRESULT GUI_AboutProc(

@@ -4,13 +4,19 @@
 #include <Shlwapi.h>
 #pragma comment(lib, "Shlwapi.lib")
 
+typedef struct _Setting
+{
+    HKEY origin;
+    wchar_t name[MAX_PATH];
+    HKEY hKey;
+    HANDLE hEvent;
+    void(*callback)(void*);
+    void* data;
+} Setting;
 typedef struct _SettingsChangeParameters
 {
-    BOOL isStartMenuExperienceHost;
-    void (*TaskbarAlChangedCallback)(INT64, DWORD);
-    void* TaskbarAlChangedCallbackData;
-    void (*Start_MaximumRecentAppsChangedCallback)(INT64, DWORD);
-    void* Start_MaximumRecentAppsChangedCallbackData;
+    Setting* settings;
+    DWORD size;
 } SettingsChangeParameters;
-DWORD MonitorSettingsChanges(SettingsChangeParameters* params);
+DWORD MonitorSettings(SettingsChangeParameters*);
 #endif

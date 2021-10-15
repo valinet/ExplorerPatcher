@@ -3,62 +3,88 @@
 ;M Settings
 
 ;T Taskbar
+[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
+;b Enable Windows 10 taskbar *
+"OldTaskbar"=dword:00000001
+;t The following settings only apply to the Windows 10 taskbar:
 ;l Enable missing system tray icons
 ;shell:::{05d7b0f4-2121-4eff-bf6b-ed3f69b894d9}\SystemIcons
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
-;c 3 Combine taskbar icons on main taskbar *
+;c 3 Combine taskbar icons on main taskbar
 ;x 0 Always combine
 ;x 1 Combine when taskbar is full
 ;x 2 Never combine
 "TaskbarGlomLevel"=dword:00000002
-;c 3 Combine taskbar icons on other taskbars *
+;c 3 Combine taskbar icons on other taskbars
 ;x 0 Always combine
 ;x 1 Combine when taskbar is full
 ;x 2 Never combine
 "MMTaskbarGlomLevel"=dword:00000002
-;c 2 Taskbar icon size *
+;c 2 Taskbar icon size
 ;x 1 Small
 ;x 0 Large (default)
 "TaskbarSmallIcons"=dword:00000000
+;b Show Task view button
+"ShowTaskViewButton"=dword:00000000
+[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Search]
+;b Show Search button
+"SearchboxTaskbarMode"=dword:00000000
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
-;b Disable Control Center button *
-"HideControlCenterButton"=dword:00000000
-;b Center and skin system tray icon menus *
+;b Skin taskbar and tray pop-up menus
 "SkinMenus"=dword:00000001
+;b Center tray icon pop-up menus
+"CenterMenus"=dword:00000001
+;b Flyout behavior for tray icon pop-up menus
+"FlyoutMenus"=dword:00000001
+;b Open Network and Sharing Center from pop-up menu of network tray icon    
+"ReplaceNetwork"=dword:00000000
+;b Hide Control Center button *
+"HideControlCenterButton"=dword:00000000
 ;p 2
 ;b Apply Windows 11 style to system tray icons *
 "SkinIcons"=dword:00000001
-;b Open network settings in Control Panel for system tray icon *
-"ReplaceNetwork"=dword:00000000
+[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\People]
+;b Show People on the taskbar *
+"PeopleBand"=dword:00000000
+[HKEY_CURRENT_USER\Software\Microsoft\TabletTip\1.7]
+;b Show touch keyboard button *
+"TipbandDesiredVisibility"=dword:00000000
 
 ;T File Explorer
-[-HKEY_CURRENT_USER\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32]
-;d Disable immersive context menu *
-@=""
 [-HKEY_CURRENT_USER\Software\Classes\CLSID\{d93ed569-3b3e-4bff-8355-3c44f6a52bb5}\InprocServer32]
-;d Disable command bar *
+;d Disable the Windows 11 command bar *
 @=""
+[-HKEY_CURRENT_USER\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32]
+;d Disable the Windows 11 context menu *
+@=""
+[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
+;b Disable the Windows 10 (immersive) context menu
+"DisableImmersiveContextMenu"=dword:00000000
 [-HKEY_CURRENT_USER\Software\Classes\CLSID\{1d64637d-31e9-4b06-9124-e83fb178ac6e}\TreatAs]
 ;d Disable modern search bar
 @="{64bc32b5-4eec-4de7-972d-bd8bd0324537}"
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
-;b Hide search bar completely *
+;b Hide search bar completely
 "HideExplorerSearchBar"=dword:00000000
 ;p 2
-;b Mica effect on title bar *
+;b Mica effect on title bar
 "MicaEffectOnTitlebar"=dword:00000000
 
 ;T Start menu
+[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\StartPage]
+;i Open Start on monitor containing the cursor
+"MonitorOverride"=dword:00000001
+;b Open Start at logon
+"OpenAtLogon"=dword:00000000
+;b Open Start in All apps by default
+"MakeAllAppsDefault"=dword:00000000
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
 ;c 2 Location on screen *
 ;x 0 Left
 ;x 1 Center (default)
 "TaskbarAl"=dword:00000001
-[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\StartPage]
-;b Open Start to All apps by default
-"MakeAllAppsDefault"=dword:00000000
-[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
-;c 22 Maximum number of frequent apps to show in Start
+[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
+;c 22 Maximum number of frequent apps to show
 ;x 0 None
 ;x 1 1
 ;x 2 2
@@ -83,7 +109,98 @@
 ;x 99999 Unlimited
 "Start_MaximumFrequentApps"=dword:00000006
 
+;T Window switcher
+[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher\sws]
+;b Use Windows 10 window switcher (Alt+Tab)
+"Enabled"=dword:00000000
+;t The following settings only apply to the Windows 10 window switcher:
+;b Include desktop
+"IncludeWallpaper"=dword:00000001
+;c 3 Color scheme
+;x 0 Follow system setting (default)
+;x 1 Light
+;x 2 Dark
+"ColorScheme"=dword:00000000
+[HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\MultitaskingView\AltTabViewHost]
+;c 15 Opacity
+;x 100 Opaque
+;x 95 95 %
+;x 90 90 %
+;x 85 85 %
+;x 80 80 %
+;x 75 75 %
+;x 70 70 %
+;x 65 65 %
+;x 60 60 % (default)
+;x 55 55 %
+;x 50 50 %
+;x 45 45 %
+;x 40 40 %
+;x 35 35 %
+;x 30 30 %
+"Grid_backgroundPercent"=dword:0000003c
+[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher\sws]
+;c 15 Row height
+;x 330 330 pt
+;x 320 320 pt
+;x 310 310 pt
+;x 300 300 pt
+;x 290 290 pt
+;x 280 280 pt
+;x 270 270 pt
+;x 260 260 pt
+;x 250 250 pt (default)
+;x 240 240 pt
+;x 230 230 pt
+;x 220 220 pt
+;x 210 210 pt
+;x 200 200 pt
+;x 190 190 pt
+"RowHeight"=dword:000000fa
+;c 10 Maximum width (percentage of screen width)
+;x 100 100 % (not recommended)
+;x 95 95 %
+;x 90 90 %
+;x 85 85 %
+;x 80 80 % (default)
+;x 75 75 %
+;x 70 70 %
+;x 65 65 %
+;x 60 60 %
+;x 55 55 %
+"MaxWidth"=dword:00000050
+;c 10 Maximum height (percentage of screen height)
+;x 100 100 % (not recommended)
+;x 95 95 %
+;x 90 90 %
+;x 85 85 %
+;x 80 80 % (default)
+;x 75 75 %
+;x 70 70 %
+;x 65 65 %
+;x 60 60 %
+;x 55 55 %
+"MaxHeight"=dword:00000050
+
+
+;T Other
+[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
+;b Open clock flyout when pressing Win+C instead of Microsoft Teams
+"ClockFlyoutOnWinC"=dword:00000000
+[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
+;c 6 Default action in shutdown dialog (Alt+F4 on desktop)
+;x 256 Switch user
+;x 1 Sign out
+;x 16 Sleep
+;x 64 Hibernate
+;x 2 Shut down (default)
+;x 4 Restart
+"Start_PowerButtonAction"=dword:00000002
+;b Show Command Prompt instead of PowerShell in Win+X menu *
+"DontUsePowerShellOnWinX"=dword:00000000
+
 ;T Advanced
+;t Only change these settings if you know what you are doing. You've been warned!
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
 ;b Enable console *
 "AllocConsole"=dword:00000000
@@ -96,11 +213,30 @@
 ;x 2000 2 seconds
 ;x 3000 3 seconds
 "ExplorerReadyDelay"=dword:00000000
+[HKEY_CURRENT_USER\Control Panel\Desktop]
+;b Show Windows build info on the desktop *
+"PaintDesktopversion"=dword:00000000
 
+;T About
+;t Version %VERSIONINFO%
+;t Copyright (C) 2006-2021 VALINET Solutions SRL. All rights reserved.
+;t 
+;t This project aims to bring back a productive working environment on Windows 11.
+;t Proudly programmed by Valentin-Gabriel Radu.
+;l Visit project GitHub (https://github.com/valinet)
+;https://github.com/valinet
+;l Visit web site (https://www.valinet.ro)
+;https://www.valinet.ro
+;l E-mail author (valentingabrielradu@gmail.com)
+;mailto:valentingabrielradu@gmail.com
+;l Donate (using PayPal)
+;https://www.paypal.com/donate?business=valentingabrielradu%40gmail.com&no_recurring=0&item_name=ExplorerPatcher&currency_code=EUR
+
+;f
 ;t Settings marked with an (*) require restarting the File Explorer process. 
 ;u Restart File Explorer
 ;restart
 ;u Restore default settings
 ;reset
-;u About ExplorerPatcher
-;about
+;;u About ExplorerPatcher
+;;about

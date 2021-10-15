@@ -7,6 +7,9 @@
 #pragma comment(lib, "Shlwapi.lib")
 #include <TlHelp32.h>
 
+extern DWORD bMonitorOverride;
+extern DWORD bOpenAtLogon;
+
 DEFINE_GUID(CLSID_ImmersiveShell,
     0xc2f03a33,
     0x21f5, 0x47fa, 0xb4, 0xbb,
