@@ -16,6 +16,7 @@ Tested on build: 22000.258.
   * The current choice is ticked in the drop down menu
   * Regions are now calculated correctly
   * Solved memory leaks
+* Option to disable immersive context menus (#96)
 * General bug fixes
 
 ## 22000.258.26.3
