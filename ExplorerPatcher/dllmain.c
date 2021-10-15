@@ -1337,8 +1337,20 @@ INT64 winrt_Windows_Internal_Shell_implementation_MeetAndChatManager_OnMessageHo
                 INT64* CTrayInstance = (BYTE*)(GetWindowLongPtrW(hShellTray_Wnd, 0)); // -> CTray
                 void* ClockButtonInstance = (BYTE*)(GetWindowLongPtrW(hWnd, 0)); // -> ClockButton
 
+                // inspect CTray::v_WndProc, look for mentions of
+                // CTray::_HandlePowerStatus or patterns like **((_QWORD **)this + 110) + 184i64
                 const unsigned int TRAYUI_OFFSET_IN_CTRAY = 110;
+                // simply inspect vtable of TrayUI
                 const unsigned int TRAYUI_WNDPROC_POSITION_IN_VTABLE = 4;
+                // inspect TrayUI::WndProc, specifically this section
+                /*
+                    {
+                      if ( (_DWORD)a3 == 1486 )
+                      {
+                        v80 = (ClockButton *)*((_QWORD *)this + 100);
+                        if ( v80 )
+                          ClockButton::ToggleFlyout(v80);
+                */
                 const unsigned int CLOCKBUTTON_OFFSET_IN_TRAYUI = 100;
                 void* TrayUIInstance = *((INT64*)CTrayInstance + TRAYUI_OFFSET_IN_CTRAY);
                 void* oldClockButtonInstance = *((INT64*)TrayUIInstance + CLOCKBUTTON_OFFSET_IN_TRAYUI);
@@ -2298,9 +2310,60 @@ void Explorer_LoadSettings(int unused)
     }
 }
 
+void Explorer_RefreshClockHelper(HWND hClockButton)
+{
+    INT64* ClockButtonInstance = (BYTE*)(GetWindowLongPtrW(hClockButton, 0)); // -> ClockButton
+    // we call v_Initialize because all it does is to query the
+    // registry and update the internal state to display seconds or not
+    // to get the offset, simply inspect the vtable of ClockButton
+    ((void(*)(void*))(*(INT64*)((*(INT64*)ClockButtonInstance) + 6 * sizeof(uintptr_t))))(ClockButtonInstance); // v_Initialize
+    // we need to refresh the button; for the text to actually change, we need to set this:
+    // inspect ClockButton::v_OnTimer
+    *((BYTE*)ClockButtonInstance + 547) = 1;
+    // then, we simply invalidate the area
+    InvalidateRect(hClockButton, NULL, TRUE);
+}
+
+void Explorer_RefreshClock(int unused)
+{
+    HWND hShellTray_Wnd = FindWindowExW(NULL, NULL, L"Shell_TrayWnd", NULL);
+    if (hShellTray_Wnd)
+    {
+        HWND hTrayNotifyWnd = FindWindowExW(hShellTray_Wnd, NULL, L"TrayNotifyWnd", NULL);
+        if (hTrayNotifyWnd)
+        {
+            HWND hClockButton = FindWindowExW(hTrayNotifyWnd, NULL, L"TrayClockWClass", NULL);
+            if (hClockButton)
+            {
+                Explorer_RefreshClockHelper(hClockButton);
+            }
+        }
+    }
+
+    HWND hWnd = NULL;
+    do
+    {
+        hWnd = FindWindowExW(
+            NULL,
+            hWnd,
+            L"Shell_SecondaryTrayWnd",
+            NULL
+        );
+        if (hWnd)
+        {
+            HWND hClockButton = FindWindowExW(hWnd, NULL, L"ClockButton", NULL);
+            if (hClockButton)
+            {
+                Explorer_RefreshClockHelper(hClockButton);
+            }
+        }
+    } while (hWnd);
+}
+
 void Explorer_RefreshUI(int unused)
 {
     SendNotifyMessageW(HWND_BROADCAST, WM_WININICHANGE, 0, (LPARAM)L"TraySettings");
+    Explorer_RefreshClock(0);
 }
 
 void Explorer_TogglePeopleButton(int unused)
