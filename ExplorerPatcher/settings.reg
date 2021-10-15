@@ -119,7 +119,7 @@
 
 ;T Window switcher
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher\sws]
-;b Use Windows 10 window switcher (Alt+Tab)
+;b Enable Windows 10 window switcher (Alt+Tab) *
 "Enabled"=dword:00000000
 ;t The following settings only apply to the Windows 10 window switcher:
 ;b Include desktop

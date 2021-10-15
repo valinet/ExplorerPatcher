@@ -1826,7 +1826,7 @@ DWORD SignalShellReady(DWORD wait)
 
 
 #pragma region "Window Switcher"
-DWORD sws_IsEnabled = TRUE;
+DWORD sws_IsEnabled = FALSE;
 
 void sws_ReadSettings(sws_WindowSwitcher* sws)
 {
@@ -1926,7 +1926,6 @@ DWORD WindowSwitcher(DWORD unused)
             if (err == SWS_ERROR_SUCCESS)
             {
                 sws_WindowSwitcher_RefreshTheme(sws);
-                // set settings
                 HANDLE hEvents[3];
                 hEvents[0] = sws->hEvExit;
                 hEvents[1] = hSwsSettingsChanged;
@@ -1947,7 +1946,6 @@ DWORD WindowSwitcher(DWORD unused)
                     if (dwRes == WAIT_OBJECT_0 + 1)
                     {
                         sws_ReadSettings(sws);
-                        // set settings
                         if (!sws_IsEnabled)
                         {
                             break;
