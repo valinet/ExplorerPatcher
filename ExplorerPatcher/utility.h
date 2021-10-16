@@ -75,6 +75,8 @@ typedef struct _IActivationFactoryAA
 extern const IActivationFactoryAA XamlExtensionsFactory;
 #pragma endregion
 
+int FileExistsW(wchar_t* file);
+
 // https://stackoverflow.com/questions/1672677/print-a-guid-variable
 void printf_guid(GUID guid);
 

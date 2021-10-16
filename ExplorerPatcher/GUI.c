@@ -1,5 +1,7 @@
 #include "GUI.h"
 
+void* GUI_FileMapping = NULL;
+DWORD GUI_FileSize = 0;
 BOOL g_darkModeEnabled = FALSE;
 static void(*RefreshImmersiveColorPolicyState)() = NULL;
 static int(*SetPreferredAppMode)(int bAllowDark) = NULL;
@@ -93,28 +95,39 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
 
     RECT rc;
     GetClientRect(hwnd, &rc);
-    HRSRC hRscr = FindResource(
-        hModule,
-        MAKEINTRESOURCE(IDR_REGISTRY1),
-        RT_RCDATA
-    );
-    if (!hRscr)
+
+    PVOID pRscr = NULL;
+    DWORD cbRscr = 0;
+    if (GUI_FileMapping && GUI_FileSize)
     {
-        return FALSE;
+        pRscr = GUI_FileMapping;
+        cbRscr = GUI_FileSize;
     }
-    HGLOBAL hgRscr = LoadResource(
-        hModule,
-        hRscr
-    );
-    if (!hgRscr)
+    else
     {
-        return FALSE;
+        HRSRC hRscr = FindResource(
+            hModule,
+            MAKEINTRESOURCE(IDR_REGISTRY1),
+            RT_RCDATA
+        );
+        if (!hRscr)
+        {
+            return FALSE;
+        }
+        HGLOBAL hgRscr = LoadResource(
+            hModule,
+            hRscr
+        );
+        if (!hgRscr)
+        {
+            return FALSE;
+        }
+        pRscr = LockResource(hgRscr);
+        cbRscr = SizeofResource(
+            hModule,
+            hRscr
+        );
     }
-    PVOID pRscr = LockResource(hgRscr);
-    DWORD cbRscr = SizeofResource(
-        hModule,
-        hRscr
-    );
 
     LOGFONT logFont;
     memset(&logFont, 0, sizeof(logFont));
@@ -1412,6 +1425,41 @@ __declspec(dllexport) int ZZGUI(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLin
         RegCloseKey(hKey);
     }
 
+    wchar_t wszPath[MAX_PATH];
+    ZeroMemory(
+        wszPath,
+        (MAX_PATH) * sizeof(char)
+    );
+    GetModuleFileNameW(hModule, wszPath, MAX_PATH);
+    PathRemoveFileSpecW(wszPath);
+    wcscat_s(
+        wszPath,
+        MAX_PATH,
+        L"\\settings.reg"
+    );
+    wprintf(L"%s\n", wszPath);
+    if (FileExistsW(wszPath))
+    {
+        HANDLE hFile = CreateFileW(
+            wszPath,
+            GENERIC_READ | GENERIC_WRITE,
+            FILE_SHARE_READ,
+            NULL,
+            OPEN_EXISTING,
+            FILE_ATTRIBUTE_NORMAL,
+            0
+        );
+        if (hFile)
+        {
+            HANDLE hFileMapping = CreateFileMappingW(hFile, NULL, PAGE_READWRITE, 0, 0, NULL);
+            if (hFileMapping)
+            {
+                GUI_FileMapping = MapViewOfFile(hFileMapping, FILE_MAP_ALL_ACCESS, 0, 0, 0);
+                GUI_FileSize = GetFileSize(hFile, NULL);
+            }
+        }
+    }
+
     printf("Started \"GUI\" thread.\n");
 
     SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
@@ -1434,7 +1482,6 @@ __declspec(dllexport) int ZZGUI(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLin
     _this.dwStatusbarY = 0;
     _this.hIcon = NULL;
 
-    wchar_t wszPath[MAX_PATH];
     ZeroMemory(
         wszPath,
         (MAX_PATH) * sizeof(wchar_t)

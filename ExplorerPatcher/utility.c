@@ -99,6 +99,18 @@ const IActivationFactoryAA XamlExtensionsFactory = {
 };
 #pragma endregion
 
+int FileExistsW(wchar_t* file)
+{
+    WIN32_FIND_DATAW FindFileData;
+    HANDLE handle = FindFirstFileW(file, &FindFileData);
+    int found = handle != INVALID_HANDLE_VALUE;
+    if (found)
+    {
+        FindClose(handle);
+    }
+    return found;
+}
+
 void printf_guid(GUID guid) 
 {
     printf("Guid = {%08lX-%04hX-%04hX-%02hhX%02hhX-%02hhX%02hhX%02hhX%02hhX%02hhX%02hhX}\n",
