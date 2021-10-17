@@ -176,6 +176,25 @@ DWORD DownloadSymbols(DownloadSymbolsParams* params)
         MAX_PATH,
         ".dll"
     );
+    RegCreateKeyExW(
+        HKEY_CURRENT_USER,
+        TEXT(REGPATH) L"\\" TEXT(TWINUI_PCSHELL_SB_NAME),
+        0,
+        NULL,
+        REG_OPTION_NON_VOLATILE,
+        KEY_WRITE,
+        NULL,
+        &hKey,
+        &dwDisposition
+    );
+    if (!hKey || hKey == INVALID_HANDLE_VALUE)
+    {
+        FreeLibraryAndExitThread(
+            hModule,
+            9
+        );
+        return 9;
+    }
     printf("Downloading symbols for \"%s\"...\n", twinui_pcshell_sb_dll);
     if (VnDownloadSymbols(
         NULL,
@@ -199,6 +218,15 @@ DWORD DownloadSymbols(DownloadSymbolsParams* params)
     ))
     {
         printf("Hooking Win+C is not available for this build.\n");
+        DWORD dwZero = 0;
+        RegSetValueExW(
+            hKey,
+            TEXT(TWINUI_PCSHELL_SB_7),
+            0,
+            REG_DWORD,
+            &dwZero,
+            sizeof(DWORD)
+        );
         if (VnGetSymbols(
             szSettingsPath,
             symbols_PTRS.twinui_pcshell_PTRS,
@@ -212,25 +240,6 @@ DWORD DownloadSymbols(DownloadSymbolsParams* params)
             );
             return 5;
         }
-    }
-    RegCreateKeyExW(
-        HKEY_CURRENT_USER,
-        TEXT(REGPATH) L"\\" TEXT(TWINUI_PCSHELL_SB_NAME),
-        0,
-        NULL,
-        REG_OPTION_NON_VOLATILE,
-        KEY_WRITE,
-        NULL,
-        &hKey,
-        &dwDisposition
-    );
-    if (!hKey || hKey == INVALID_HANDLE_VALUE)
-    {
-        FreeLibraryAndExitThread(
-            hModule,
-            9
-        );
-        return 9;
     }
     RegSetValueExW(
         hKey,
