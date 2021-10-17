@@ -26,6 +26,9 @@ Tested on build: 22000.258.
   * Network and Sharing Center in the Control Panel
   * Network Connections in the Control Panel
 * Added preliminary support for advanced mitigations for correct rendering when using the classic theme (.3)
+* GUI optionally loads UI file from DLL folder (helps for easy debugging) (.4)
+* Small bug fix for symbols download (.5)
+* Better method for closing windows in window switcher (.6)
 
 ## 22000.258.26.3
 
