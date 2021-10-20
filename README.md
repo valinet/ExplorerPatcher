@@ -1,8 +1,12 @@
 # Explorer Patcher for Windows 11
+
+[![GitHub license](https://img.shields.io/github/license/valinet/ExplorerPatcher)](https://github.com/valinet/ExplorerPatcher/blob/master/LICENSE)
+[![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg)](https://www.paypal.com/donate?business=valentingabrielradu%40gmail.com&no_recurring=0&item_name=ExplorerPatcher&currency_code=EUR)
+[![Contact](https://img.shields.io/badge/Gmail-D14836)](mailto:valentingabrielradu@gmail.com)
+
 This project aims to bring back a productive working environment on Windows 11.
 
-PayPal donations: [here](https://www.paypal.com/donate?business=valentingabrielradu%40gmail.com&no_recurring=0&item_name=ExplorerPatcher&currency_code=EUR) or using e-mail address valentingabrielradu@gmail.com
-
+*As of Windows 11 22000.282, ExplorerPatcher might not work as expected. This is due to MS not providing pdb(debug symbols) for now.* *[^1]*
 <details>
   <summary>About ExplorerPatcher and StartIsBack</summary>
 
@@ -201,3 +205,4 @@ git pull
 git submodule update --init --recursive
 ```
 
+[^1]: See [#129](https://github.com/valinet/ExplorerPatcher/issues/129)
