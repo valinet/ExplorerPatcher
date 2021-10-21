@@ -10,12 +10,17 @@
 #define IDS_VISITGITHUB                 106
 #define IDS_VISITWEBSITE                107
 #define IDS_LICENSEINFO                 108
+#define IDS_INSTALL_SUCCESS_TEXT        109
+#define IDS_INSTALL_ERROR_TEXT          110
+#define IDS_UNINSTALL_SUCCESS_TEXT      111
+#define IDS_UNINSTALL_ERROR_TEXT        112
+#define IDS_OPERATION_NONE              113
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        103
+#define _APS_NEXT_RESOURCE_VALUE        111
 #define _APS_NEXT_COMMAND_VALUE         40001
 #define _APS_NEXT_CONTROL_VALUE         1001
 #define _APS_NEXT_SYMED_VALUE           101

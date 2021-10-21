@@ -6,6 +6,8 @@
 #include <Shlwapi.h>
 #pragma comment(lib, "Shlwapi.lib")
 #include <TlHelp32.h>
+#include <Psapi.h>
+#pragma comment(lib, "Psapi.lib")
 
 extern DWORD bMonitorOverride;
 extern DWORD bOpenAtLogon;
@@ -228,6 +230,7 @@ typedef struct _HookStartMenuParams
     HMODULE hModule;
     DWORD dwTimeout;
     wchar_t wszModulePath[MAX_PATH];
+    FARPROC proc;
 } HookStartMenuParams;
 DWORD WINAPI HookStartMenu(HookStartMenuParams* params);
 #endif

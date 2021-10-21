@@ -422,3 +422,30 @@ void QueryVersionInfo(HMODULE hModule, WORD Resource, DWORD* dwLeftMost, DWORD* 
 
     LocalFree(pResCopy);
 }
+
+void* ReadFromFile(wchar_t* wszFileName, DWORD* dwSize)
+{
+    void* ok = NULL;
+    HANDLE hImage = CreateFileW(wszFileName, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (hImage)
+    {
+        DWORD dwFileSize;
+        GetFileSizeEx(hImage, &dwFileSize);
+        if (dwFileSize)
+        {
+            void* pImage = malloc(dwFileSize);
+            if (pImage)
+            {
+                DWORD dwNumberOfBytesRead = 0;
+                ReadFile(hImage, pImage, dwFileSize, &dwNumberOfBytesRead, NULL);
+                if (dwFileSize == dwNumberOfBytesRead)
+                {
+                    ok = pImage;
+                    *dwSize = dwNumberOfBytesRead;
+                }
+            }
+        }
+        CloseHandle(hImage);
+    }
+    return ok;
+}

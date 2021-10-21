@@ -6,7 +6,7 @@
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
 ;b Enable Windows 10 taskbar *
 "OldTaskbar"=dword:00000001
-;t The following settings only apply to the Windows 10 taskbar:
+;t The following settings only apply to the Windows 10 taskbar:                        
 ;l Enable missing system tray icons
 ;shell:::{05d7b0f4-2121-4eff-bf6b-ed3f69b894d9}\SystemIcons
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
@@ -24,20 +24,28 @@
 ;x 1 Small
 ;x 0 Large (default)
 "TaskbarSmallIcons"=dword:00000000
-[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
-;a Choosing 'Open Network && Internet settings' when right clicking the system tray
-;c 3 network icon should open:
-;x 0 Network section in the Settings app (default)
-;x 1 Network and Sharing Center in Control Panel
-;x 2 Network Connections in Control Panel
-"ReplaceNetwork"=dword:00000000
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Search]
 ;b Show Search button
 "SearchboxTaskbarMode"=dword:00000000
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
+;b Show Widgets button
+"TaskbarDa"=dword:00000000
 ;b Show Task view button
 "ShowTaskViewButton"=dword:00000000
-;b Show seconds in the system tray clock
+[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\People]
+;b Show People on the taskbar *
+"TaskbarMn"=dword:00000000
+[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
+;b Show Desktop button
+"TaskbarSD"=dword:00000001
+;t 
+;t 
+
+;T System tray
+;l Enable missing system tray icons
+;shell:::{05d7b0f4-2121-4eff-bf6b-ed3f69b894d9}\SystemIcons
+[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
+;b Show seconds in the clock
 "ShowSecondsInSystemClock"=dword:00000000
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
 ;b Skin taskbar and tray pop-up menus
@@ -51,12 +59,30 @@
 ;p 2
 ;b Apply Windows 11 style to system tray icons *
 "SkinIcons"=dword:00000001
-[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\People]
-;b Show People on the taskbar *
-"PeopleBand"=dword:00000000
 [HKEY_CURRENT_USER\Software\Microsoft\TabletTip\1.7]
 ;b Show touch keyboard button *
 "TipbandDesiredVisibility"=dword:00000000
+[HKEY_CURRENT_USER\Software\Microsoft\Windows NT\CurrentVersion\MTCUVC]
+;i Use legacy volume flyout
+"EnableMtcUvc"=dword:00000001
+[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\ImmersiveShell]
+;b Use legacy clock flyout
+"UseWin32TrayClockExperience"=dword:00000000
+[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
+;a Choosing 'Open Network && Internet settings' when right clicking the
+;c 3 network icon should open:
+;x 0 Network section in the Settings app (default)
+;x 1 Network and Sharing Center in Control Panel
+;x 2 Network Connections in Control Panel
+"ReplaceNetwork"=dword:00000000
+[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Control Panel\Settings\Network]
+;c 5 Network icon should open
+;x 0 WiFi list (default)
+;x 1 Network section in the Settings app
+;x 2 Windows 8 network flyout
+;x 3 Network and Sharing Center in Control Panel
+;x 4 Network Connections in Control Panel
+"ReplaceVan"=dword:00000000
 
 ;T File Explorer
 [-HKEY_CURRENT_USER\Software\Classes\CLSID\{d93ed569-3b3e-4bff-8355-3c44f6a52bb5}\InprocServer32]
@@ -66,8 +92,11 @@
 ;d Disable the Windows 11 context menu *
 @=""
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
-;b Disable the Windows 10 (immersive) context menu
+;i Use immersive menus when displaying Windows 10 context menus
 "DisableImmersiveContextMenu"=dword:00000000
+[-HKEY_CURRENT_USER\Software\Classes\CLSID\{056440FD-8568-48e7-A632-72157243B55B}\InprocServer32]
+;d Disable navigation bar
+@=""
 [-HKEY_CURRENT_USER\Software\Classes\CLSID\{1d64637d-31e9-4b06-9124-e83fb178ac6e}\TreatAs]
 ;d Disable modern search bar
 @="{64bc32b5-4eec-4de7-972d-bd8bd0324537}"
@@ -79,6 +108,10 @@
 "MicaEffectOnTitlebar"=dword:00000000
 
 ;T Start menu
+[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
+;b Enable Start menu support
+"HookStartMenu"=dword:00000001
+;t The following settings only work when the above is enabled:
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\StartPage]
 ;i Open Start on monitor containing the cursor
 "MonitorOverride"=dword:00000001
@@ -118,10 +151,14 @@
 "Start_MaximumFrequentApps"=dword:00000006
 
 ;T Window switcher
-[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher\sws]
-;b Enable Windows 10 window switcher (Alt+Tab) *
-"Enabled"=dword:00000000
+[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer]
+;c 3 Window switcher (Alt+Tab) style *
+;x 0 Windows 11
+;x 2 Windows 10
+;x 1 Windows NT
+"AltTabSettings"=dword:00000000
 ;t The following settings only apply to the Windows 10 window switcher:
+[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher\sws]
 ;b Include desktop
 "IncludeWallpaper"=dword:00000001
 ;c 3 Color scheme
@@ -206,13 +243,16 @@
 "Start_PowerButtonAction"=dword:00000002
 ;b Show Command Prompt instead of PowerShell in Win+X menu *
 "DontUsePowerShellOnWinX"=dword:00000000
+[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
+;b Remove shortcut key from menu item
+"NoMenuAccelerator"=dword:00000000
 
 ;T Advanced
 ;t Only change these settings if you know what you are doing. You've been warned!
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
 ;b Enable console *
 "AllocConsole"=dword:00000000
-;c 7 Supplimentary delay at logon *
+;c 12 Supplimentary delay at logon *
 ;x 0 None (default)
 ;x 300 300 ms
 ;x 600 600 ms
@@ -220,6 +260,11 @@
 ;x 1500 1.5 seconds
 ;x 2000 2 seconds
 ;x 3000 3 seconds
+;x 4000 4 seconds
+;x 5000 5 seconds
+;x 6000 6 seconds
+;x 8000 8 seconds
+;x 10000 10 seconds
 "ExplorerReadyDelay"=dword:00000000
 [HKEY_CURRENT_USER\Control Panel\Desktop]
 ;b Show Windows build info on the desktop *

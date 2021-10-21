@@ -4,8 +4,6 @@ void* GUI_FileMapping = NULL;
 DWORD GUI_FileSize = 0;
 BOOL g_darkModeEnabled = FALSE;
 static void(*RefreshImmersiveColorPolicyState)() = NULL;
-static int(*SetPreferredAppMode)(int bAllowDark) = NULL;
-static BOOL(*AllowDarkModeForWindow)(HWND hWnd, BOOL bAllowDark) = NULL;
 static BOOL(*ShouldAppsUseDarkMode)() = NULL;
 BOOL IsHighContrast()
 {
@@ -21,7 +19,6 @@ BOOL IsColorSchemeChangeMessage(LPARAM lParam)
     BOOL is = FALSE;
     if (lParam && CompareStringOrdinal(lParam, -1, L"ImmersiveColorSet", -1, TRUE) == CSTR_EQUAL)
     {
-        RefreshImmersiveColorPolicyState();
         is = TRUE;
     }
     return is;
@@ -143,7 +140,8 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
     logFont.lfHeight = GUI_CAPTION_FONT_SIZE * dy;
     logFont.lfWeight = FW_BOLD;
     HFONT hFontCaption = CreateFontIndirect(&logFont);
-    logFont.lfHeight = GUI_TITLE_FONT_SIZE * dy;
+    logFont = ncm.lfMenuFont;
+    if (IsThemeActive()) logFont.lfHeight = GUI_TITLE_FONT_SIZE * dy;
     HFONT hFontTitle = CreateFontIndirect(&logFont);
     logFont.lfWeight = FW_REGULAR;
     logFont.lfUnderline = 1;
@@ -152,7 +150,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
     logFont.lfUnderline = 0;
     HFONT hFontRegular = CreateFontIndirect(&logFont);
     logFont.lfWeight = FW_DEMIBOLD;
-    logFont.lfHeight = GUI_SECTION_FONT_SIZE * dy;
+    if (IsThemeActive()) logFont.lfHeight = GUI_SECTION_FONT_SIZE * dy;
     HFONT hFontSection = CreateFontIndirect(&logFont);
     logFont.lfUnderline = 1;
     HFONT hFontSectionSel = CreateFontIndirect(&logFont);
@@ -184,10 +182,11 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
 
         if (!IsThemeActive() && hDC)
         {
-            COLORREF oldcr = SetBkColor(hdcPaint, GetSysColor(COLOR_WINDOW));
+            COLORREF oldcr = SetBkColor(hdcPaint, GetSysColor(COLOR_MENU));
             ExtTextOutW(hdcPaint, 0, 0, ETO_OPAQUE, &rc, L"", 0, 0);
             SetBkColor(hdcPaint, oldcr);
             SetTextColor(hdcPaint, GetSysColor(COLOR_WINDOWTEXT));
+            SetBkMode(hdcPaint, TRANSPARENT);
         }
 
         FILE* f = fmemopen(pRscr, cbRscr, "r");
@@ -433,7 +432,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                             bTabOrderHit = TRUE;
                             if (!IsThemeActive())
                             {
-                                cr = SetTextColor(hdcPaint, GetSysColor(COLOR_HIGHLIGHT));
+                                cr = SetTextColor(hdcPaint, GetSysColor(COLOR_HIGHLIGHTTEXT));
                             }
                             else
                             {
@@ -1255,6 +1254,7 @@ static LRESULT CALLBACK GUI_WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
         {
             if (IsThemeActive() && ShouldAppsUseDarkMode)
             {
+                RefreshImmersiveColorPolicyState();
                 BOOL bIsCompositionEnabled = TRUE;
                 DwmIsCompositionEnabled(&bIsCompositionEnabled);
                 BOOL bDarkModeEnabled = IsThemeActive() && bIsCompositionEnabled && ShouldAppsUseDarkMode() && !IsHighContrast();
@@ -1486,14 +1486,14 @@ __declspec(dllexport) int ZZGUI(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLin
         wszPath,
         (MAX_PATH) * sizeof(wchar_t)
     );
-    GetWindowsDirectoryW(
+    GetSystemDirectoryW(
         wszPath,
         MAX_PATH
     );
     wcscat_s(
         wszPath,
         MAX_PATH,
-        L"\\explorer.exe"
+        L"\\shell32.dll"
     );
 
     WNDCLASS wc = { 0 };
@@ -1504,18 +1504,32 @@ __declspec(dllexport) int ZZGUI(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLin
     wc.hInstance = hModule;
     wc.lpszClassName = L"ExplorerPatcherGUI";
     wc.hCursor = LoadCursorW(NULL, IDC_ARROW);
-    HMODULE hExplorer = LoadLibraryExW(wszPath, NULL, LOAD_LIBRARY_AS_DATAFILE);
-    if (hExplorer)
+    HMODULE hShell32 = LoadLibraryExW(wszPath, NULL, LOAD_LIBRARY_AS_DATAFILE);
+    if (hShell32)
     {
-        _this.hIcon = LoadIconW(hExplorer, L"ICO_MYCOMPUTER");
+        _this.hIcon = LoadIconW(hShell32, MAKEINTRESOURCEW(40));
         wc.hIcon = _this.hIcon;
     }
     RegisterClassW(&wc);
 
     TCHAR title[260];
     HMODULE hExplorerFrame = LoadLibraryExW(L"ExplorerFrame.dll", NULL, LOAD_LIBRARY_AS_DATAFILE);
-    LoadStringW(hExplorerFrame, 726, title, 260);
+    LoadStringW(hExplorerFrame, 50222, title, 260); // 726 = File Explorer
     FreeLibrary(hExplorerFrame);
+    wchar_t* p = wcschr(title, L'(');
+    if (p)
+    {
+        p--;
+        if (p == L' ')
+        {
+            *p = 0;
+        }
+        else
+        {
+            p++;
+            *p = 0;
+        }
+    }
     if (title[0] == 0)
     {
         LoadStringW(hModule, IDS_PRODUCTNAME, title, 260);
@@ -1587,10 +1601,10 @@ __declspec(dllexport) int ZZGUI(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLin
         DispatchMessage(&msg);
     }
 
-    if (hExplorer)
+    if (hShell32)
     {
         CloseHandle(_this.hIcon);
-        FreeLibrary(hExplorer);
+        FreeLibrary(hShell32);
     }
 
     if (bHasLoadedUxtheme && hUxtheme)

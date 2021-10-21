@@ -94,7 +94,7 @@ VOID HideExplorerSearchBar(HWND hWnd)
     );
 }
 
-LRESULT HideExplorerSearchBarSubClass(
+LRESULT CALLBACK HideExplorerSearchBarSubClass(
     HWND hWnd,
     UINT uMsg,
     WPARAM wParam,

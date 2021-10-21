@@ -117,7 +117,7 @@ finish:
 
 DWORD OpenStartOnCurentMonitorThread(OpenStartOnCurentMonitorThreadParams* unused)
 {
-    HANDLE hEvent = CreateEvent(0, 0, 0, L"ShellDesktopSwitchEvent");
+    HANDLE hEvent = CreateEventW(0, 0, 0, L"ShellDesktopSwitchEvent");
     if (!hEvent)
     {
         printf("Failed to start \"Open Start on current monitor\" thread.\n");
@@ -128,12 +128,21 @@ DWORD OpenStartOnCurentMonitorThread(OpenStartOnCurentMonitorThreadParams* unuse
         INFINITE
     );
     printf("Started \"Open Start on current monitor\" thread.\n");
-    HWND g_ProgWin = FindWindowEx(
-        NULL,
-        NULL,
-        L"Progman",
-        NULL
-    );
+    HWND g_ProgWin = NULL;
+    while (!g_ProgWin)
+    {
+        g_ProgWin = FindWindowEx(
+            NULL,
+            NULL,
+            L"Progman",
+            NULL
+        );
+        if (!g_ProgWin)
+        {
+            Sleep(100);
+        }
+    }
+    printf("Progman: %d\n", g_ProgWin);
     DWORD progThread = GetWindowThreadProcessId(
         g_ProgWin,
         NULL
@@ -144,6 +153,7 @@ DWORD OpenStartOnCurentMonitorThread(OpenStartOnCurentMonitorThreadParams* unuse
         NULL,
         progThread
     );
+    printf("Progman hook: %d\n", g_ProgHook);
     MSG msg = { 0 };
     while (GetMessage(&msg, NULL, 0, 0))
     {
@@ -318,6 +328,78 @@ DWORD WINAPI HookStartMenu(HookStartMenuParams* params)
             Sleep(params->dwTimeout);
             continue;
         }
+        if (WaitForSingleObject(hThread, INFINITE) != WAIT_OBJECT_0)
+        {
+            printf("Unable to determine LoadLibrary outcome.\n");
+            Sleep(params->dwTimeout);
+            continue;
+        }
+        CloseHandle(hThread);
+        DWORD cbNeeded = 0;
+        EnumProcessModules(
+            hProcess,
+            NULL,
+            0,
+            &cbNeeded
+        );
+        if (!cbNeeded)
+        {
+            printf("Unable to determine number of modules in process.\n");
+            Sleep(params->dwTimeout);
+            continue;
+        }
+        HMODULE* hMods = malloc(cbNeeded);
+        if (!hMods)
+        {
+            printf("Out of memory.\n");
+            Sleep(params->dwTimeout);
+            continue;
+        }
+        if (!EnumProcessModulesEx(
+            hProcess,
+            hMods,
+            cbNeeded,
+            &cbNeeded,
+            LIST_MODULES_ALL
+        ))
+        {
+            printf("Unable to enumerate modules of process.\n");
+            Sleep(params->dwTimeout);
+            continue;
+        }
+        for (unsigned int i = 0; i < (cbNeeded / sizeof(HMODULE)); ++i)
+        {
+            TCHAR szModName[MAX_PATH];
+            if (GetModuleFileNameExW(hProcess, hMods[i], szModName,
+                sizeof(szModName) / sizeof(TCHAR)))
+            {
+                if (!wcscmp(szModName, params->wszModulePath))
+                {
+                    printf("Found module in process memory space.\n");
+                    HANDLE hTh = CreateRemoteThread(
+                        hProcess,
+                        NULL,
+                        0,
+                        (uintptr_t)(hMods[i]) + ((uintptr_t)params->proc - (uintptr_t)params->hModule),
+                        0,
+                        0,
+                        NULL
+                    );
+                    if (hTh)
+                    {
+                        printf("Waiting for remote initialization.\n");
+                        WaitForSingleObject(hTh, INFINITE);
+                        DWORD dwExitCode = 0;
+                        GetExitCodeThread(hTh, &dwExitCode);
+                        printf("Initialization exited with code 0x%x.\n", dwExitCode);
+                        CloseHandle(hTh);
+                        printf("HOOKED START MENU\n");
+                    }
+                    break;
+                }
+            }
+        }
+        free(hMods);
         WaitForSingleObject(
             hProcess,
             INFINITE

@@ -13,7 +13,7 @@ HWND FindChildWindow(
 // https://github.com/Open-Shell/Open-Shell-Menu/blob/master/Src/ClassicExplorer/ExplorerBHO.cpp
 VOID HideExplorerSearchBar(HWND hWnd);
 
-LRESULT HideExplorerSearchBarSubClass(
+LRESULT CALLBACK HideExplorerSearchBarSubClass(
     HWND hWnd,
     UINT uMsg,
     WPARAM wParam,

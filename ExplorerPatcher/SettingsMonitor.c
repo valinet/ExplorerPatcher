@@ -1,10 +1,12 @@
 #include "SettingsMonitor.h"
 
-DWORD MonitorSettings(SettingsChangeParameters* params)
+DWORD WINAPI MonitorSettings(SettingsChangeParameters* params)
 {
+	BOOL bShouldExit = FALSE;
+
 	while (TRUE)
 	{
-		HANDLE* handles = malloc(sizeof(HANDLE) * params->size);
+		HANDLE* handles = malloc(sizeof(HANDLE) * (params->size + 1));
 		if (!handles)
 		{
 			return 0;
@@ -42,8 +44,9 @@ DWORD MonitorSettings(SettingsChangeParameters* params)
 				return 0;
 			}
 		}
+		handles[params->size] = params->hExitEvent;
 		DWORD dwRes = WaitForMultipleObjects(
-			params->size,
+			params->size + (params->hExitEvent ? 1 : 0),
 			handles,
 			FALSE,
 			INFINITE
@@ -51,13 +54,24 @@ DWORD MonitorSettings(SettingsChangeParameters* params)
 		if (dwRes != WAIT_FAILED)
 		{
 			unsigned int i = dwRes - WAIT_OBJECT_0;
-			params->settings[i].callback(params->settings[i].data);
+			if (i >= 0 && i < params->size)
+			{
+				params->settings[i].callback(params->settings[i].data);
+			}
+			else if (i == params->size)
+			{
+				bShouldExit = TRUE;
+			}
 		}
 		free(handles);
 		for (unsigned int i = 0; i < params->size; ++i)
 		{
 			CloseHandle(params->settings[i].hEvent);
 			RegCloseKey(params->settings[i].hKey);
+		}
+		if (bShouldExit)
+		{
+			break;
 		}
 	}
 }

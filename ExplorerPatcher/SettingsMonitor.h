@@ -10,13 +10,14 @@ typedef struct _Setting
     wchar_t name[MAX_PATH];
     HKEY hKey;
     HANDLE hEvent;
-    void(*callback)(void*);
+    void(__stdcall *callback)(void*);
     void* data;
 } Setting;
 typedef struct _SettingsChangeParameters
 {
     Setting* settings;
     DWORD size;
+    HANDLE hExitEvent;
 } SettingsChangeParameters;
-DWORD MonitorSettings(SettingsChangeParameters*);
+DWORD WINAPI MonitorSettings(SettingsChangeParameters*);
 #endif

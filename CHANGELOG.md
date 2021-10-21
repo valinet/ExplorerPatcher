@@ -2,7 +2,41 @@
 
 This document includes the same release notes as in the [Releases](https://github.com/valinet/ExplorerPatcher/releases) section on GitHub.
 
-## 22000.258.30.3
+## 22000.258.31.0
+
+Tested on build: 22000.258.
+
+#### New features
+
+* Cortana button now opens the Widgets panel
+* Ability to choose what happens when clicking the Network icon in the system tray
+* Possibility to use the legacy clock flyout
+* Possibility to use the legacy volume flyout
+* Fixes to fully support the classic theme, with a functional taskbar, system tray, Explorer windows, working context menus; read more about this feature [here](https://github.com/valinet/ExplorerPatcher/discussions/101)
+
+#### Feature enhancements
+
+* Reorganized settings in the GUI
+* Added option not to have an accelerator for the `Properties` menu entry in `Win`+`X` (#162)
+
+#### Fixes
+
+* Fixed an issue where the Windows 10 window switcher failed to display some windows (#161)
+* Fixed an issue that prevented Start from opening again until Explorer was restarted after opening File Explorer via the Start menu Explorer icon (#145)
+* Fixed patching in libvalinet
+* Fixed GUI launch path; GUI now launches in an external process, survives Explorer restarts
+
+#### Experimental
+
+The application can now be registered as a shell extension. This will enable the Explorer related functionality to work in Open/Save file dialogs as well. This is especially useful for users wanting proper support of the classic theme in Windows 11.
+
+Please note that this is experimental. For the moment, the preferred installation method remains dropping the DLL in `C:\Windows`. For interested users, I invite you to test this functionality and report your findings in the discussions board.
+
+To enable this, put the 2 DLLs (`ExplorerPatcher.amd64.dll` and `ExplorerPatcher.IA-32.dll`) in a secure folder (for example, `C:\Program Files\ExplorerPatcher`). Then, in that folder, run this command: `regsvr32 ExplorerPatcher.amd64.dll`. After elevation, a message will display informing you of the operation outcome, and if it went well, Explorer will restart displaying the old taskbar.
+
+To uninstall, run `regsvr32 /u ExplorerPatcher.amd64.dll` in the same folder and preferably reboot the computer to unload the DLLs from all applications. Then, the files can be deleted just fine.
+
+## 22000.258.30.6
 
 Tested on build: 22000.258.
 

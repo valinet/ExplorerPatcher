@@ -51,8 +51,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 22000,258,30,6
- PRODUCTVERSION 22000,258,30,6
+ FILEVERSION 22000,258,31,0
+ PRODUCTVERSION 22000,258,31,0
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -69,12 +69,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "VALINET Solutions SRL"
             VALUE "FileDescription", "ExplorerPatcher"
-            VALUE "FileVersion", "22000.258.30.6"
+            VALUE "FileVersion", "22000.258.31.0"
             VALUE "InternalName", "ExplorerPatcher.dll"
             VALUE "LegalCopyright", "Copyright (C) 2006-2021 VALINET Solutions SRL. All rights reserved."
             VALUE "OriginalFilename", "ExplorerPatcher.dll"
             VALUE "ProductName", "ExplorerPatcher"
-            VALUE "ProductVersion", "22000.258.30.6"
+            VALUE "ProductVersion", "22000.258.31.0"
         END
     END
     BLOCK "VarFileInfo"
@@ -106,6 +106,15 @@ BEGIN
     IDS_VISITGITHUB         "Visit project Github"
     IDS_VISITWEBSITE        "Visit web site"
     IDS_LICENSEINFO         "E-mail author"
+    IDS_INSTALL_SUCCESS_TEXT "Installation succeeded."
+    IDS_INSTALL_ERROR_TEXT  "Installation failed."
+    IDS_UNINSTALL_SUCCESS_TEXT "Uninstallation succeeded."
+END
+
+STRINGTABLE
+BEGIN
+    IDS_UNINSTALL_ERROR_TEXT "Uninstallation failed."
+    IDS_OPERATION_NONE      "No action has been taken."
 END
 
 #endif    // English (United States) resources

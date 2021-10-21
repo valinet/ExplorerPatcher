@@ -93,4 +93,169 @@ __declspec(dllexport) CALLBACK ZZLaunchExplorerDelayed(HWND hWnd, HINSTANCE hIns
 POINT GetDefaultWinXPosition(BOOL bUseRcWork, BOOL* lpBottom, BOOL* lpRight, BOOL bAdjust);
 
 void QueryVersionInfo(HMODULE hModule, WORD Resource, DWORD*, DWORD*, DWORD*, DWORD*);
+
+#define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
+#define MAX(X, Y) (((X) > (Y)) ? (X) : (Y))
+
+FARPROC SHRegGetValueFromHKCUHKLMFunc;
+
+inline LSTATUS SHRegGetValueFromHKCUHKLMWithOpt(
+    PCWSTR pwszKey,
+    PCWSTR pwszValue,
+    REGSAM samDesired,
+    void* pvData,
+    DWORD* pcbData
+)
+{
+    LSTATUS lRes = ERROR_FILE_NOT_FOUND;
+    HKEY hKey = NULL;
+
+    RegOpenKeyExW(
+        HKEY_CURRENT_USER,
+        pwszKey,
+        0,
+        samDesired,
+        &hKey
+    );
+    if (hKey == NULL || hKey == INVALID_HANDLE_VALUE)
+    {
+        hKey = NULL;
+    }
+    if (hKey)
+    {
+        lRes = RegQueryValueExW(
+            hKey,
+            pwszValue,
+            0,
+            NULL,
+            pvData,
+            pcbData
+        );
+        RegCloseKey(hKey);
+        if (lRes == ERROR_SUCCESS || lRes == ERROR_MORE_DATA)
+        {
+            return lRes;
+        }
+    }
+    RegOpenKeyExW(
+        HKEY_LOCAL_MACHINE,
+        pwszKey,
+        0,
+        samDesired,
+        &hKey
+    );
+    if (hKey == NULL || hKey == INVALID_HANDLE_VALUE)
+    {
+        hKey = NULL;
+    }
+    if (hKey)
+    {
+        lRes = RegQueryValueExW(
+            hKey,
+            pwszValue,
+            0,
+            NULL,
+            pvData,
+            pcbData
+        );
+        RegCloseKey(hKey);
+        if (lRes == ERROR_SUCCESS || lRes == ERROR_MORE_DATA)
+        {
+            return lRes;
+        }
+    }
+    return lRes;
+}
+
+static HWND(WINAPI* CreateWindowInBand)(
+    _In_ DWORD dwExStyle,
+    _In_opt_ ATOM atom,
+    _In_opt_ LPCWSTR lpWindowName,
+    _In_ DWORD dwStyle,
+    _In_ int X,
+    _In_ int Y,
+    _In_ int nWidth,
+    _In_ int nHeight,
+    _In_opt_ HWND hWndParent,
+    _In_opt_ HMENU hMenu,
+    _In_opt_ HINSTANCE hInstance,
+    _In_opt_ LPVOID lpParam,
+    DWORD band
+    );
+
+BOOL(WINAPI* GetWindowBand)(HWND hWnd, PDWORD pdwBand);
+
+BOOL(WINAPI* SetWindowBand)(HWND hWnd, HWND hwndInsertAfter, DWORD dwBand);
+
+INT64(*SetWindowCompositionAttribute)(HWND, void*);
+
+static void(*SetPreferredAppMode)(INT64 bAllowDark);
+
+static void(*AllowDarkModeForWindow)(HWND hWnd, INT64 bAllowDark);
+
+static BOOL(*ShouldAppsUseDarkMode)();
+
+static void(*GetThemeName)(void*, void*, void*);
+
+static BOOL AppsShouldUseDarkMode() { return TRUE; }
+
+void* ReadFromFile(wchar_t* wszFileName, DWORD* dwSize);
+
+inline long long milliseconds_now() {
+    LARGE_INTEGER s_frequency;
+    BOOL s_use_qpc = QueryPerformanceFrequency(&s_frequency);
+    if (s_use_qpc) {
+        LARGE_INTEGER now;
+        QueryPerformanceCounter(&now);
+        return (1000LL * now.QuadPart) / s_frequency.QuadPart;
+    }
+    else {
+        return GetTickCount();
+    }
+}
+
+inline BOOL IsAppRunningAsAdminMode()
+{
+    BOOL fIsRunAsAdmin = FALSE;
+    DWORD dwError = ERROR_SUCCESS;
+    PSID pAdministratorsGroup = NULL;
+
+    // Allocate and initialize a SID of the administrators group.
+    SID_IDENTIFIER_AUTHORITY NtAuthority = SECURITY_NT_AUTHORITY;
+    if (!AllocateAndInitializeSid(
+        &NtAuthority,
+        2,
+        SECURITY_BUILTIN_DOMAIN_RID,
+        DOMAIN_ALIAS_RID_ADMINS,
+        0, 0, 0, 0, 0, 0,
+        &pAdministratorsGroup))
+    {
+        dwError = GetLastError();
+        goto Cleanup;
+    }
+
+    // Determine whether the SID of administrators group is enabled in 
+    // the primary access token of the process.
+    if (!CheckTokenMembership(NULL, pAdministratorsGroup, &fIsRunAsAdmin))
+    {
+        dwError = GetLastError();
+        goto Cleanup;
+    }
+
+Cleanup:
+    // Centralized cleanup for all allocated resources.
+    if (pAdministratorsGroup)
+    {
+        FreeSid(pAdministratorsGroup);
+        pAdministratorsGroup = NULL;
+    }
+
+    // Throw the error if something failed in the function.
+    if (ERROR_SUCCESS != dwError)
+    {
+        return FALSE;
+    }
+
+    return fIsRunAsAdmin;
+}
 #endif

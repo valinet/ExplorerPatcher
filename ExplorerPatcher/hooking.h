@@ -1,10 +1,5 @@
 #ifndef _H_HOOKING_H_
 #define _H_HOOKING_H_
-#ifndef _M_AMD64
-#ifndef _M_ARM64
-#error This application only supports the amd64 or ARM64 architectures. Compilation aborted.
-#endif
-#endif
 #define STRAT_REPLACE_ANY_TYPE_OF_JUMP_WITH_NOP 0
 #define STRAT_REPLACE_ANY_TYPE_OF_JUMP_WITH_ALWAYS_JUMP 1
 #define HOOK_WITH_FUNCHOOK 0
