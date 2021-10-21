@@ -275,6 +275,97 @@ void LaunchNetworkTargets(DWORD dwTarget)
 #pragma endregion
 
 
+#pragma region "Toggle shell features"
+BOOL CALLBACK ToggleImmersiveCallback(HWND hWnd, LPARAM lParam)
+{
+    WORD ClassWord;
+
+    ClassWord = GetClassWord(hWnd, GCW_ATOM);
+    if (ClassWord == RegisterWindowMessageW(L"WorkerW"))
+    {
+        PostMessageW(hWnd, WM_HOTKEY, lParam, 0);
+    }
+
+    return TRUE;
+}
+
+void ToggleHelp()
+{
+    PostMessageW(FindWindowExW(NULL, NULL, L"Shell_TrayWnd", NULL), WM_HOTKEY, 505, 0);
+}
+
+void ToggleRunDialog()
+{
+    PostMessageW(FindWindowExW(NULL, NULL, L"Shell_TrayWnd", NULL), WM_HOTKEY, 502, MAKELPARAM(MOD_WIN, 0x52));
+}
+
+void ToggleSystemProperties()
+{
+    PostMessageW(FindWindowExW(NULL, NULL, L"Shell_TrayWnd", NULL), WM_HOTKEY, 512, 0);
+}
+
+void FocusSystray()
+{
+    PostMessageW(FindWindowExW(NULL, NULL, L"Shell_TrayWnd", NULL), WM_HOTKEY, 514, 0);
+}
+
+void TriggerAeroShake()
+{
+    PostMessageW(FindWindowExW(NULL, NULL, L"Shell_TrayWnd", NULL), WM_HOTKEY, 515, 0);
+}
+
+void PeekDesktop()
+{
+    PostMessageW(FindWindowExW(NULL, NULL, L"Shell_TrayWnd", NULL), WM_HOTKEY, 516, 0);
+}
+
+void ToggleEmojiPanel()
+{
+    PostMessageW(FindWindowExW(NULL, NULL, L"Shell_TrayWnd", NULL), WM_HOTKEY, 579, 0);
+}
+
+void ShowDictationPanel()
+{
+    PostMessageW(FindWindowExW(NULL, NULL, L"Shell_TrayWnd", NULL), WM_HOTKEY, 577, 0);
+}
+
+void ToggleClipboardViewer()
+{
+    PostMessageW(FindWindowExW(NULL, NULL, L"Shell_TrayWnd", NULL), WM_HOTKEY, 578, 0);
+}
+
+void ToggleSearch()
+{
+    PostMessageW(FindWindowExW(NULL, NULL, L"Shell_TrayWnd", NULL), WM_HOTKEY, 507, MAKELPARAM(MOD_WIN, 0x53));
+}
+
+void ToggleTaskView()
+{
+    EnumThreadWindows(GetWindowThreadProcessId(FindWindowExW(NULL, NULL, L"ApplicationManager_ImmersiveShellWindow", NULL), NULL), ToggleImmersiveCallback, 11);
+}
+
+void ToggleWidgetsPanel()
+{
+    EnumThreadWindows(GetWindowThreadProcessId(FindWindowExW(NULL, NULL, L"ApplicationManager_ImmersiveShellWindow", NULL), NULL), ToggleImmersiveCallback, 0x66);
+}
+
+void ToggleMainClockFlyout()
+{
+    EnumThreadWindows(GetWindowThreadProcessId(FindWindowExW(NULL, NULL, L"ApplicationManager_ImmersiveShellWindow", NULL), NULL), ToggleImmersiveCallback, 0x6B);
+}
+
+void ToggleNotificationsFlyout()
+{
+    PostMessageW(FindWindowExW(NULL, NULL, L"Shell_TrayWnd", NULL), WM_HOTKEY, 591, 0);
+}
+
+void ToggleActionCenter()
+{
+    PostMessageW(FindWindowExW(NULL, NULL, L"Shell_TrayWnd", NULL), WM_HOTKEY, 500, MAKELPARAM(MOD_WIN, 0x41));
+}
+#pragma endregion
+
+
 #pragma region "twinui.pcshell.dll hooks"
 #ifdef _WIN64
 #define LAUNCHERTIP_CLASS_NAME L"LauncherTipWnd"
@@ -859,17 +950,21 @@ interface Win32Clock
 {
     CONST_VTBL struct Win32ClockVtbl* lpVtbl;
 };
-BOOL ShouldShowLegacyClockExperience()
+DWORD ShouldShowLegacyClockExperience()
 {
     DWORD dwVal = 0, dwSize = sizeof(DWORD);
-    return (SHRegGetValueFromHKCUHKLMFunc && SHRegGetValueFromHKCUHKLMFunc(
+    if (SHRegGetValueFromHKCUHKLMFunc && SHRegGetValueFromHKCUHKLMFunc(
         TEXT("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\ImmersiveShell"),
         TEXT("UseWin32TrayClockExperience"),
         SRRF_RT_REG_DWORD,
         NULL,
         &dwVal,
         (LPDWORD)(&dwSize)
-    ) == ERROR_SUCCESS && dwVal);
+    ) == ERROR_SUCCESS)
+    {
+        return dwVal;
+    }
+    return 0;
 }
 BOOL ShowLegacyClockExpierience(HWND hWnd)
 {
@@ -911,7 +1006,7 @@ INT64 ClockButtonSubclassProc(
     }
     else if (uMsg == WM_LBUTTONDOWN || (uMsg == WM_KEYDOWN && wParam == VK_RETURN))
     {
-        if (ShouldShowLegacyClockExperience())
+        if (ShouldShowLegacyClockExperience() == 1)
         {
             if (!FindWindowW(L"ClockFlyoutWindow", NULL))
             {
@@ -921,6 +1016,14 @@ INT64 ClockButtonSubclassProc(
             {
                 return 1;
             }
+        }
+        else if (ShouldShowLegacyClockExperience() == 2)
+        {
+            if (FindWindowW(L"Windows.UI.Core.CoreWindow", NULL))
+            {
+                ToggleNotificationsFlyout();
+            }
+            return 1;
         }
     }
     return DefSubclassProc(hWnd, uMsg, wParam, lParam);
@@ -1546,93 +1649,6 @@ HWND WINAPI explorerframe_SHCreateWorkerWindowHook(
 }
 #pragma endregion
 
-
-#pragma region "Toggle shell features"
-BOOL CALLBACK ToggleImmersiveCallback(HWND hWnd, LPARAM lParam)
-{
-    WORD ClassWord;
-
-    ClassWord = GetClassWord(hWnd, GCW_ATOM);
-    if (ClassWord == RegisterWindowMessageW(L"WorkerW"))
-    {
-        PostMessageW(hWnd, WM_HOTKEY, lParam, 0);
-    }
-
-    return TRUE;
-}
-
-void ToggleHelp()
-{
-    PostMessageW(FindWindowExW(NULL, NULL, L"Shell_TrayWnd", NULL), WM_HOTKEY, 505, 0);
-}
-
-void ToggleRunDialog()
-{
-    PostMessageW(FindWindowExW(NULL, NULL, L"Shell_TrayWnd", NULL), WM_HOTKEY, 502, MAKELPARAM(MOD_WIN, 0x52));
-}
-
-void ToggleSystemProperties()
-{
-    PostMessageW(FindWindowExW(NULL, NULL, L"Shell_TrayWnd", NULL), WM_HOTKEY, 512, 0);
-}
-
-void FocusSystray()
-{
-    PostMessageW(FindWindowExW(NULL, NULL, L"Shell_TrayWnd", NULL), WM_HOTKEY, 514, 0);
-}
-
-void TriggerAeroShake()
-{
-    PostMessageW(FindWindowExW(NULL, NULL, L"Shell_TrayWnd", NULL), WM_HOTKEY, 515, 0);
-}
-
-void PeekDesktop()
-{
-    PostMessageW(FindWindowExW(NULL, NULL, L"Shell_TrayWnd", NULL), WM_HOTKEY, 516, 0);
-}
-
-void ToggleEmojiPanel()
-{
-    PostMessageW(FindWindowExW(NULL, NULL, L"Shell_TrayWnd", NULL), WM_HOTKEY, 579, 0);
-}
-
-void ShowDictationPanel()
-{
-    PostMessageW(FindWindowExW(NULL, NULL, L"Shell_TrayWnd", NULL), WM_HOTKEY, 577, 0);
-}
-
-void ToggleClipboardViewer()
-{
-    PostMessageW(FindWindowExW(NULL, NULL, L"Shell_TrayWnd", NULL), WM_HOTKEY, 578, 0);
-}
-
-void ToggleSearch()
-{
-    PostMessageW(FindWindowExW(NULL, NULL, L"Shell_TrayWnd", NULL), WM_HOTKEY, 507, MAKELPARAM(MOD_WIN, 0x53));
-}
-
-void ToggleTaskView()
-{
-    EnumThreadWindows(GetWindowThreadProcessId(FindWindowExW(NULL, NULL, L"ApplicationManager_ImmersiveShellWindow", NULL), NULL), ToggleImmersiveCallback, 11);
-}
-
-void ToggleWidgetsPanel()
-{
-    EnumThreadWindows(GetWindowThreadProcessId(FindWindowExW(NULL, NULL, L"ApplicationManager_ImmersiveShellWindow", NULL), NULL), ToggleImmersiveCallback, 0x66);
-}
-
-void ToggleMainClockFlyout()
-{
-    EnumThreadWindows(GetWindowThreadProcessId(FindWindowExW(NULL, NULL, L"ApplicationManager_ImmersiveShellWindow", NULL), NULL), ToggleImmersiveCallback, 0x6B);
-}
-
-void ToggleActionCenter()
-{
-    PostMessageW(FindWindowExW(NULL, NULL, L"Shell_TrayWnd", NULL), WM_HOTKEY, 500, MAKELPARAM(MOD_WIN, 0x41));
-}
-#pragma endregion
-
-
 #pragma region "Show WiFi networks on network icon click"
 #ifdef _WIN64
 DEFINE_GUID(GUID_c2f03a33_21f5_47fa_b4bb_156362a2f239,
@@ -1744,7 +1760,7 @@ INT64 winrt_Windows_Internal_Shell_implementation_MeetAndChatManager_OnMessageHo
         const unsigned int WM_TOGGLE_CLOCK_FLYOUT = 1486;
         if (hWnd == hShellTray_Wnd)
         {
-            if (ShouldShowLegacyClockExperience())
+            if (ShouldShowLegacyClockExperience() == 1)
             {
                 if (!FindWindowW(L"ClockFlyoutWindow", NULL))
                 {
@@ -1754,6 +1770,11 @@ INT64 winrt_Windows_Internal_Shell_implementation_MeetAndChatManager_OnMessageHo
                 {
                     return PostMessageW(FindWindowW(L"ClockFlyoutWindow", NULL), WM_CLOSE, 0, 0);
                 }
+            }
+            else if (ShouldShowLegacyClockExperience() == 2)
+            {
+                ToggleNotificationsFlyout();
+                return 0;
             }
             // On the main monitor, the TrayUI component of CTray handles this
             // message and basically does a `ClockButton::ToggleFlyout`; that's

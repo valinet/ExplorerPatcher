@@ -66,7 +66,10 @@
 ;i Use legacy volume flyout
 "EnableMtcUvc"=dword:00000001
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\ImmersiveShell]
-;b Use legacy clock flyout
+;c 3 Clock flyout style
+;x 2 Windows 11
+;x 0 Windows 10 (default)
+;x 1 Windows 7
 "UseWin32TrayClockExperience"=dword:00000000
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
 ;a Choosing 'Open Network && Internet settings' when right clicking the
