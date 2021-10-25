@@ -719,21 +719,33 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                 p = strchr(p + 1, '\n');
                                 if (p) *p = 0;
 
-                                MENUITEMINFOA menuInfo;
-                                ZeroMemory(&menuInfo, sizeof(MENUITEMINFOA));
-                                menuInfo.cbSize = sizeof(MENUITEMINFOA);
+                                wchar_t* miText = malloc((strlen(ln) + 1) * sizeof(wchar_t));
+                                MultiByteToWideChar(
+                                    CP_UTF8,
+                                    MB_PRECOMPOSED,
+                                    ln,
+                                    strlen(ln) + 1,
+                                    miText,
+                                    strlen(ln) + 1
+                                );
+
+                                MENUITEMINFOW menuInfo;
+                                ZeroMemory(&menuInfo, sizeof(MENUITEMINFOW));
+                                menuInfo.cbSize = sizeof(MENUITEMINFOW);
                                 menuInfo.fMask = MIIM_ID | MIIM_STRING | MIIM_DATA | MIIM_STATE;
                                 menuInfo.wID = atoi(l + 3) + 1;
                                 menuInfo.dwItemData = l;
                                 menuInfo.fType = MFT_STRING;
-                                menuInfo.dwTypeData = ln;
+                                menuInfo.dwTypeData = miText;
                                 menuInfo.cch = strlen(ln);
-                                InsertMenuItemA(
+                                InsertMenuItemW(
                                     hMenu,
                                     i,
                                     TRUE,
                                     &menuInfo
                                 );
+
+                                free(miText);
                             }
                         }
                         numChRd = getline(&line, &bufsiz, f);
