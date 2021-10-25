@@ -63,6 +63,7 @@ DWORD bDisableImmersiveContextMenu = FALSE;
 DWORD bClassicThemeMitigations = FALSE;
 DWORD bHookStartMenu = TRUE;
 DWORD bNoMenuAccelerator = FALSE;
+DWORD bTaskbarMonitorOverride = 0;
 HMODULE hModule = NULL;
 HANDLE hSettingsMonitorThread = NULL;
 HANDLE hDelayedInjectionThread = NULL;
@@ -2723,15 +2724,6 @@ void WINAPI LoadSettings(BOOL bIsExplorer)
         dwSize = sizeof(DWORD);
         RegQueryValueExW(
             hKey,
-            TEXT("ClassicThemeMitigations"),
-            0,
-            NULL,
-            &bClassicThemeMitigations,
-            &dwSize
-        );
-        dwSize = sizeof(DWORD);
-        RegQueryValueExW(
-            hKey,
             TEXT("HookStartMenu"),
             0,
             NULL,
@@ -2745,6 +2737,15 @@ void WINAPI LoadSettings(BOOL bIsExplorer)
             0,
             NULL,
             &bNoMenuAccelerator,
+            &dwSize
+        );
+        dwSize = sizeof(DWORD);
+        RegQueryValueExW(
+            hKey,
+            TEXT("TaskbarMonitorOverride"),
+            0,
+            NULL,
+            &bTaskbarMonitorOverride,
             &dwSize
         );
         RegCloseKey(hKey);
@@ -3549,6 +3550,42 @@ LSTATUS explorer_RegGetValueW(
     return lRes;
 }
 
+BOOL CALLBACK GetMonitorByIndex(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, RECT* rc)
+{
+    //printf(">> %d %d %d %d\n", lprcMonitor->left, lprcMonitor->top, lprcMonitor->right, lprcMonitor->bottom);
+    if (--rc->left < 0)
+    {
+        *rc = *lprcMonitor;
+        return FALSE;
+    }
+    return TRUE;
+}
+
+HMONITOR explorer_MonitorFromRect(LPCRECT lprc, DWORD dwFlags)
+{
+    /*printf("%d %d %d %d\n", lprc->left, lprc->top, lprc->right, lprc->bottom);
+
+        return MonitorFromRect(lprc, dwFlags);
+    //}*/
+    if (bTaskbarMonitorOverride)
+    {
+        RECT rc;
+        ZeroMemory(&rc, sizeof(RECT));
+        rc.left = bTaskbarMonitorOverride - 1;
+        EnumDisplayMonitors(
+            NULL,
+            NULL,
+            GetMonitorByIndex,
+            &rc
+        );
+        if (rc.top != rc.bottom)
+        {
+            return MonitorFromRect(&rc, dwFlags);
+        }
+    }
+    return MonitorFromRect(lprc, dwFlags);
+}
+
 HRESULT (*explorer_SHCreateStreamOnModuleResourceWFunc)(
     HMODULE hModule,
     LPCWSTR pwszName,
@@ -3854,6 +3891,7 @@ __declspec(dllexport) DWORD WINAPI main(
     if (bOldTaskbar)
     {
         VnPatchIAT(hExplorer, "api-ms-win-core-libraryloader-l1-2-0.dll", "GetProcAddress", explorer_GetProcAddressHook);
+        VnPatchIAT(hExplorer, "user32.dll", "MonitorFromRect", explorer_MonitorFromRect);
     }
     VnPatchIAT(hExplorer, "user32.dll", "TrackPopupMenuEx", explorer_TrackPopupMenuExHook);
     if (bClassicThemeMitigations)
