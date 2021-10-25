@@ -1,5 +1,6 @@
 #include "GUI.h"
 
+LANGID locale;
 void* GUI_FileMapping = NULL;
 DWORD GUI_FileSize = 0;
 BOOL g_darkModeEnabled = FALSE;
@@ -1416,10 +1417,21 @@ __declspec(dllexport) int ZZGUI(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLin
             stdout
         );
     }
+    dwSize = LOCALE_NAME_MAX_LENGTH;
+    locale = GetUserDefaultUILanguage();
+    RegQueryValueExW(
+        hKey,
+        TEXT("Language"),
+        0,
+        NULL,
+        &locale,
+        &dwSize
+    );
     if (hKey)
     {
         RegCloseKey(hKey);
     }
+    wprintf(L"%d\n", locale);
 
     wchar_t wszPath[MAX_PATH];
     ZeroMemory(
