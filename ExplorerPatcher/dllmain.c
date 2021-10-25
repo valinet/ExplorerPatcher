@@ -2466,7 +2466,55 @@ void sws_ReadSettings(sws_WindowSwitcher* sws)
                 &(sws->dwColorScheme),
                 &dwSize
             );
-            sws_WindowSwitcher_RefreshTheme(sws);
+            dwSize = sizeof(DWORD);
+            RegQueryValueExW(
+                hKey,
+                TEXT("Theme"),
+                0,
+                NULL,
+                &(sws->dwTheme),
+                &dwSize
+            );
+            dwSize = sizeof(DWORD);
+            RegQueryValueExW(
+                hKey,
+                TEXT("CornerPreference"),
+                0,
+                NULL,
+                &(sws->dwCornerPreference),
+                &dwSize
+            );
+            dwSize = sizeof(DWORD);
+            RegQueryValueExW(
+                hKey,
+                TEXT("ShowDelay"),
+                0,
+                NULL,
+                &(sws->dwShowDelay),
+                &dwSize
+            );
+            dwSize = sizeof(DWORD);
+            RegQueryValueExW(
+                hKey,
+                TEXT("PrimaryOnly"),
+                0,
+                NULL,
+                &(sws->bPrimaryOnly),
+                &dwSize
+            );
+            dwSize = sizeof(DWORD);
+            RegQueryValueExW(
+                hKey,
+                TEXT("PerMonitor"),
+                0,
+                NULL,
+                &(sws->bPerMonitor),
+                &dwSize
+            );
+            if (sws)
+            {
+                sws_WindowSwitcher_RefreshTheme(sws);
+            }
         }
         RegCloseKey(hKey);
     }

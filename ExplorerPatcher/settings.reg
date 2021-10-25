@@ -164,13 +164,27 @@
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher\sws]
 ;b Include desktop
 "IncludeWallpaper"=dword:00000001
+;b Always show on primary monitor
+"PrimaryOnly"=dword:00000000
+;b Show windows only on current monitor
+"PerMonitor"=dword:00000000
+;c 3 Theme
+;x 2 Mica (default)
+;x 1 Acrylic
+;x 0 None
+"Theme"=dword:00000002
+;c 3 Corner preference
+;x 2 Rounded (default)
+;x 3 Small rounded
+;x 1 Not rounded
+"CornerPreference"=dword:00000002
 ;c 3 Color scheme
 ;x 0 Follow system setting (default)
 ;x 1 Light
 ;x 2 Dark
 "ColorScheme"=dword:00000000
 [HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\MultitaskingView\AltTabViewHost]
-;c 15 Opacity
+;c 15 Opacity (works only with 'Acrylic' theme)
 ;x 100 Opaque
 ;x 95 95 %
 ;x 90 90 %
@@ -188,7 +202,7 @@
 ;x 30 30 %
 "Grid_backgroundPercent"=dword:0000003c
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher\sws]
-;c 15 Row height
+;c 20 Row height
 ;x 330 330 pt
 ;x 320 320 pt
 ;x 310 310 pt
@@ -197,14 +211,19 @@
 ;x 280 280 pt
 ;x 270 270 pt
 ;x 260 260 pt
-;x 250 250 pt (default)
+;x 250 250 pt
 ;x 240 240 pt
-;x 230 230 pt
+;x 230 230 pt (default)
 ;x 220 220 pt
 ;x 210 210 pt
 ;x 200 200 pt
 ;x 190 190 pt
-"RowHeight"=dword:000000fa
+;x 180 180 pt
+;x 170 170 pt
+;x 160 160 pt
+;x 150 150 pt
+;x 140 140 pt
+"RowHeight"=dword:000000e6
 ;c 10 Maximum width (percentage of screen width)
 ;x 100 100 % (not recommended)
 ;x 95 95 %
@@ -229,7 +248,18 @@
 ;x 60 60 %
 ;x 55 55 %
 "MaxHeight"=dword:00000050
-
+;c 10 Show delay
+;x 0 None
+;x 25 25 ms
+;x 50 50 ms
+;x 75 75 ms
+;x 100 100 ms (default)
+;x 150 150 ms
+;x 200 200 ms
+;x 300 300 ms
+;x 400 400 ms
+;x 500 500 ms
+"ShowDelay"=dword:00000064
 
 ;T Other
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
@@ -275,6 +305,30 @@
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
 ;b Enable advanced mitigations for correct rendering using classic theme *
 "ClassicThemeMitigations"=dword:00000000
+;a Only change the following option if you have a single taskbar !!!
+;c 21 Always show main taskbar on this monitor * (experimental)
+;x 0 Primary (default)
+;x 1 1
+;x 2 2
+;x 3 3
+;x 4 4
+;x 5 5
+;x 6 6
+;x 7 7
+;x 8 8
+;x 9 9
+;x 10 10
+;x 11 11
+;x 12 12
+;x 13 13
+;x 14 14
+;x 15 15
+;x 16 16
+;x 17 17
+;x 18 18
+;x 19 19
+;x 20 20
+"TaskbarMonitorOverride"=dword:00000000
 
 
 ;T About
