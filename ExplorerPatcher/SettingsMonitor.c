@@ -58,7 +58,7 @@ DWORD WINAPI MonitorSettings(SettingsChangeParameters* params)
 			{
 				params->settings[i].callback(params->settings[i].data);
 			}
-			else if (i == params->size)
+			else if (i == params->size && params->hExitEvent)
 			{
 				bShouldExit = TRUE;
 			}
