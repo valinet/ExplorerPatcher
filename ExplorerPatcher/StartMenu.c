@@ -288,6 +288,7 @@ DWORD WINAPI HookStartMenu(HookStartMenuParams* params)
                 Sleep(params->dwTimeout);
             }
         }
+        printf("[StartMenu] Process found.\n");
         LPVOID lpRemotePath = VirtualAllocEx(
             hProcess,
             NULL,
@@ -297,10 +298,11 @@ DWORD WINAPI HookStartMenu(HookStartMenuParams* params)
         );
         if (!lpRemotePath)
         {
-            printf("Unable to allocate path memory.\n");
+            printf("[StartMenu] Unable to allocate path memory.\n");
             Sleep(1000);
             continue;
         }
+        printf("[StartMenu] Allocated path memory.\n");
         if (!WriteProcessMemory(
             hProcess,
             lpRemotePath,
@@ -309,10 +311,11 @@ DWORD WINAPI HookStartMenu(HookStartMenuParams* params)
             NULL
         ))
         {
-            printf("Unable to write path.\n");
+            printf("[StartMenu] Unable to write path.\n");
             Sleep(params->dwTimeout);
             continue;
         }
+        wprintf(L"[StartMenu] Wrote path: %s.\n", params->wszModulePath);
         HANDLE hThread = CreateRemoteThread(
             hProcess,
             NULL,
@@ -324,17 +327,21 @@ DWORD WINAPI HookStartMenu(HookStartMenuParams* params)
         );
         if (!hThread)
         {
-            printf("Unable to inject DLL.\n");
+            printf("[StartMenu] Unable to inject DLL.\n");
             Sleep(params->dwTimeout);
             continue;
         }
+        printf("[StartMenu] Injected DLL.\n");
         if (WaitForSingleObject(hThread, INFINITE) != WAIT_OBJECT_0)
         {
-            printf("Unable to determine LoadLibrary outcome.\n");
+            printf("[StartMenu] Unable to determine LoadLibrary outcome.\n");
             Sleep(params->dwTimeout);
             continue;
         }
+        DWORD dwExitCode = 10;
+        GetExitCodeThread(hThread, &dwExitCode);
         CloseHandle(hThread);
+        printf("[StartMenu] Library loaded: 0x%x.\n", dwExitCode);
         DWORD cbNeeded = 0;
         EnumProcessModules(
             hProcess,
@@ -344,14 +351,14 @@ DWORD WINAPI HookStartMenu(HookStartMenuParams* params)
         );
         if (!cbNeeded)
         {
-            printf("Unable to determine number of modules in process.\n");
+            printf("[StartMenu] Unable to determine number of modules in process.\n");
             Sleep(params->dwTimeout);
             continue;
         }
         HMODULE* hMods = malloc(cbNeeded);
         if (!hMods)
         {
-            printf("Out of memory.\n");
+            printf("[StartMenu] Out of memory.\n");
             Sleep(params->dwTimeout);
             continue;
         }
@@ -363,10 +370,12 @@ DWORD WINAPI HookStartMenu(HookStartMenuParams* params)
             LIST_MODULES_ALL
         ))
         {
-            printf("Unable to enumerate modules of process.\n");
+            printf("[StartMenu] Unable to enumerate modules of process.\n");
             Sleep(params->dwTimeout);
             continue;
         }
+        printf("[StartMenu] Remote module enumeration succeeded.\n");
+        BOOL bFound = FALSE;
         for (unsigned int i = 0; i < (cbNeeded / sizeof(HMODULE)); ++i)
         {
             TCHAR szModName[MAX_PATH];
@@ -375,7 +384,7 @@ DWORD WINAPI HookStartMenu(HookStartMenuParams* params)
             {
                 if (!wcscmp(szModName, params->wszModulePath))
                 {
-                    printf("Found module in process memory space.\n");
+                    printf("[StartMenu] Found module in process memory space.\n");
                     HANDLE hTh = CreateRemoteThread(
                         hProcess,
                         NULL,
@@ -387,19 +396,25 @@ DWORD WINAPI HookStartMenu(HookStartMenuParams* params)
                     );
                     if (hTh)
                     {
-                        printf("Waiting for remote initialization.\n");
+                        printf("[StartMenu] Waiting for remote initialization.\n");
                         WaitForSingleObject(hTh, INFINITE);
                         DWORD dwExitCode = 0;
                         GetExitCodeThread(hTh, &dwExitCode);
-                        printf("Initialization exited with code 0x%x.\n", dwExitCode);
+                        printf("[StartMenu] Initialization exited with code 0x%x.\n", dwExitCode);
                         CloseHandle(hTh);
-                        printf("HOOKED START MENU\n");
+                        printf("[StartMenu] HOOKED START MENU\n");
                     }
+                    bFound = TRUE;
                     break;
                 }
             }
         }
         free(hMods);
+        if (!bFound)
+        {
+            printf("[StartMenu] Remote module not found.\n");
+            
+        }
         WaitForSingleObject(
             hProcess,
             INFINITE
