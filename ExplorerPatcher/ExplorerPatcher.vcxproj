@@ -157,6 +157,7 @@
       <AdditionalIncludeDirectories>$(SolutionDir)libs\funchook\include;$(SolutionDir)libs\libvalinet;$(SolutionDir)libs\funchook\distorm\include;$(SolutionDir)libs\Detours\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <CallingConvention>Cdecl</CallingConvention>
+      <ForcedIncludeFiles>$(SolutionDir)debug.h</ForcedIncludeFiles>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -211,6 +212,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="..\libs\sws\SimpleWindowSwitcher\sws_window.c" />
     <ClCompile Include="..\libs\sws\SimpleWindowSwitcher\sws_WindowHelpers.c">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
@@ -270,6 +272,7 @@
     <ClInclude Include="..\libs\sws\SimpleWindowSwitcher\sws_error.h" />
     <ClInclude Include="..\libs\sws\SimpleWindowSwitcher\sws_RegistryMonitor.h" />
     <ClInclude Include="..\libs\sws\SimpleWindowSwitcher\sws_vector.h" />
+    <ClInclude Include="..\libs\sws\SimpleWindowSwitcher\sws_window.h" />
     <ClInclude Include="..\libs\sws\SimpleWindowSwitcher\sws_WindowHelpers.h" />
     <ClInclude Include="..\libs\sws\SimpleWindowSwitcher\sws_WindowSwitcher.h" />
     <ClInclude Include="..\libs\sws\SimpleWindowSwitcher\sws_WindowSwitcherLayout.h" />

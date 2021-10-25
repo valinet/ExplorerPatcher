@@ -25,6 +25,9 @@
     <Filter Include="Source Files\internal">
       <UniqueIdentifier>{08cd1a6f-9a8f-45ef-a50b-142a1725c106}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Settings">
+      <UniqueIdentifier>{190d08ad-4a1d-4b58-81a1-6403eeb3cd2a}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="resource.h">
@@ -96,6 +99,9 @@
     <ClInclude Include="..\libs\sws\SimpleWindowSwitcher\sws_RegistryMonitor.h">
       <Filter>Header Files\sws</Filter>
     </ClInclude>
+    <ClInclude Include="..\libs\sws\SimpleWindowSwitcher\sws_window.h">
+      <Filter>Header Files\sws</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="ExplorerPatcher.rc">
@@ -160,8 +166,13 @@
     <ClCompile Include="..\libs\sws\SimpleWindowSwitcher\sws_RegistryMonitor.c">
       <Filter>Source Files\sws</Filter>
     </ClCompile>
+    <ClCompile Include="..\libs\sws\SimpleWindowSwitcher\sws_window.c">
+      <Filter>Source Files\sws</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="settings.reg" />
+    <None Include="settings.reg">
+      <Filter>Settings</Filter>
+    </None>
   </ItemGroup>
 </Project>

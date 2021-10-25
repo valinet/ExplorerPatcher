@@ -51,10 +51,6 @@ __declspec(dllexport) HRESULT DXGID3D10RegisterLayers()
     return DXGID3D10RegisterLayersFunc();
 }
 static HRESULT(*DXGIDeclareAdapterRemovalSupportFunc)();
-__declspec(dllexport) HRESULT DXGIDeclareAdapterRemovalSupport()
-{
-    return DXGIDeclareAdapterRemovalSupportFunc();
-}
 static HRESULT(*DXGIDumpJournalFunc)(void*);
 __declspec(dllexport) HRESULT DXGIDumpJournal(void* p1)
 {

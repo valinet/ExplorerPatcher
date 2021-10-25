@@ -1431,7 +1431,6 @@ __declspec(dllexport) int ZZGUI(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLin
     {
         RegCloseKey(hKey);
     }
-    wprintf(L"%d\n", locale);
 
     wchar_t wszPath[MAX_PATH];
     ZeroMemory(
