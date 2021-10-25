@@ -518,154 +518,6 @@ BOOL LoadSymbols(symbols_addr* symbols_PTRS, HMODULE hModule)
     DWORD dwDisposition;
     DWORD dwSize = sizeof(DWORD);
 
-    RegCreateKeyExW(
-        HKEY_CURRENT_USER,
-        TEXT(REGPATH) L"\\" TEXT(TWINUI_PCSHELL_SB_NAME),
-        0,
-        NULL,
-        REG_OPTION_NON_VOLATILE,
-        KEY_READ,
-        NULL,
-        &hKey,
-        &dwDisposition
-    );
-    if (!hKey || hKey == INVALID_HANDLE_VALUE)
-    {
-        FreeLibraryAndExitThread(
-            hModule,
-            1
-        );
-        return 1;
-    }
-    RegQueryValueExW(
-        hKey,
-        TEXT(TWINUI_PCSHELL_SB_0),
-        0,
-        NULL,
-        &(symbols_PTRS->twinui_pcshell_PTRS[0]),
-        &dwSize
-    );
-    RegQueryValueExW(
-        hKey,
-        TEXT(TWINUI_PCSHELL_SB_1),
-        0,
-        NULL,
-        &(symbols_PTRS->twinui_pcshell_PTRS[1]),
-        &dwSize
-    );
-    RegQueryValueExW(
-        hKey,
-        TEXT(TWINUI_PCSHELL_SB_2),
-        0,
-        NULL,
-        &(symbols_PTRS->twinui_pcshell_PTRS[2]),
-        &dwSize
-    );
-    RegQueryValueExW(
-        hKey,
-        TEXT(TWINUI_PCSHELL_SB_3),
-        0,
-        NULL,
-        &(symbols_PTRS->twinui_pcshell_PTRS[3]),
-        &dwSize
-    );
-    RegQueryValueExW(
-        hKey,
-        TEXT(TWINUI_PCSHELL_SB_4),
-        0,
-        NULL,
-        &(symbols_PTRS->twinui_pcshell_PTRS[4]),
-        &dwSize
-    );
-    RegQueryValueExW(
-        hKey,
-        TEXT(TWINUI_PCSHELL_SB_5),
-        0,
-        NULL,
-        &(symbols_PTRS->twinui_pcshell_PTRS[5]),
-        &dwSize
-    );
-    RegQueryValueExW(
-        hKey,
-        TEXT(TWINUI_PCSHELL_SB_6),
-        0,
-        NULL,
-        &(symbols_PTRS->twinui_pcshell_PTRS[6]),
-        &dwSize
-    );
-    RegQueryValueExW(
-        hKey,
-        TEXT(TWINUI_PCSHELL_SB_7),
-        0,
-        NULL,
-        &(symbols_PTRS->twinui_pcshell_PTRS[7]),
-        &dwSize
-    );
-    RegCloseKey(hKey);
-
-    RegCreateKeyExW(
-        HKEY_CURRENT_USER,
-        TEXT(REGPATH) L"\\" TEXT(STARTDOCKED_SB_NAME),
-        0,
-        NULL,
-        REG_OPTION_NON_VOLATILE,
-        KEY_READ,
-        NULL,
-        &hKey,
-        &dwDisposition
-    );
-    RegQueryValueExW(
-        hKey,
-        TEXT(STARTDOCKED_SB_0),
-        0,
-        NULL,
-        &(symbols_PTRS->startdocked_PTRS[0]),
-        &dwSize
-    );
-    RegQueryValueExW(
-        hKey,
-        TEXT(STARTDOCKED_SB_1),
-        0,
-        NULL,
-        &(symbols_PTRS->startdocked_PTRS[1]),
-        &dwSize
-    );
-    RegQueryValueExW(
-        hKey,
-        TEXT(STARTDOCKED_SB_2),
-        0,
-        NULL,
-        &(symbols_PTRS->startdocked_PTRS[2]),
-        &dwSize
-    );
-    RegQueryValueExW(
-        hKey,
-        TEXT(STARTDOCKED_SB_3),
-        0,
-        NULL,
-        &(symbols_PTRS->startdocked_PTRS[3]),
-        &dwSize
-    );
-    RegQueryValueExW(
-        hKey,
-        TEXT(STARTDOCKED_SB_4),
-        0,
-        NULL,
-        &(symbols_PTRS->startdocked_PTRS[4]),
-        &dwSize
-    );
-    if (hKey) RegCloseKey(hKey);
-
-    BOOL bNeedToDownload = FALSE;
-    for (UINT i = 0; i < sizeof(symbols_addr) / sizeof(DWORD); ++i)
-    {
-        if (!((DWORD*)symbols_PTRS)[i] &&
-            (((DWORD*)symbols_PTRS) + i) != symbols_PTRS->twinui_pcshell_PTRS + TWINUI_PCSHELL_SB_CNT - 1
-            )
-        {
-            bNeedToDownload = TRUE;
-        }
-    }
     RTL_OSVERSIONINFOW rovi;
     DWORD32 ubr = VnGetOSVersionAndUBR(&rovi);
     TCHAR szReportedVersion[MAX_PATH + 1];
@@ -686,6 +538,175 @@ BOOL LoadSymbols(symbols_addr* symbols_PTRS, HMODULE hModule)
         rovi.dwBuildNumber,
         ubr
     );
+
+    if (IsBuild22000_282(rovi, ubr))
+    {
+        symbols_PTRS->twinui_pcshell_PTRS[0] = 0x217CE6;
+        symbols_PTRS->twinui_pcshell_PTRS[1] = 0x5CC570;
+        symbols_PTRS->twinui_pcshell_PTRS[2] = 0x5F5E88;
+        symbols_PTRS->twinui_pcshell_PTRS[3] = 0x5F6690;
+        symbols_PTRS->twinui_pcshell_PTRS[4] = 0x5DAC08;
+        symbols_PTRS->twinui_pcshell_PTRS[5] = 0x5DA8C4;
+        symbols_PTRS->twinui_pcshell_PTRS[6] = 0x5CD9C0;
+        symbols_PTRS->twinui_pcshell_PTRS[7] = 0x52980;
+
+        symbols_PTRS->startdocked_PTRS[0] = 0x188EBC;
+        symbols_PTRS->startdocked_PTRS[1] = 0x188EBC;
+        symbols_PTRS->startdocked_PTRS[2] = 0x187120;
+        symbols_PTRS->startdocked_PTRS[3] = 0x3C10;
+        symbols_PTRS->startdocked_PTRS[4] = 0x160AEC;
+    }
+    else
+    {
+        RegCreateKeyExW(
+            HKEY_CURRENT_USER,
+            TEXT(REGPATH) L"\\" TEXT(TWINUI_PCSHELL_SB_NAME),
+            0,
+            NULL,
+            REG_OPTION_NON_VOLATILE,
+            KEY_READ,
+            NULL,
+            &hKey,
+            &dwDisposition
+        );
+        if (!hKey || hKey == INVALID_HANDLE_VALUE)
+        {
+            FreeLibraryAndExitThread(
+                hModule,
+                1
+            );
+            return 1;
+        }
+        RegQueryValueExW(
+            hKey,
+            TEXT(TWINUI_PCSHELL_SB_0),
+            0,
+            NULL,
+            &(symbols_PTRS->twinui_pcshell_PTRS[0]),
+            &dwSize
+        );
+        RegQueryValueExW(
+            hKey,
+            TEXT(TWINUI_PCSHELL_SB_1),
+            0,
+            NULL,
+            &(symbols_PTRS->twinui_pcshell_PTRS[1]),
+            &dwSize
+        );
+        RegQueryValueExW(
+            hKey,
+            TEXT(TWINUI_PCSHELL_SB_2),
+            0,
+            NULL,
+            &(symbols_PTRS->twinui_pcshell_PTRS[2]),
+            &dwSize
+        );
+        RegQueryValueExW(
+            hKey,
+            TEXT(TWINUI_PCSHELL_SB_3),
+            0,
+            NULL,
+            &(symbols_PTRS->twinui_pcshell_PTRS[3]),
+            &dwSize
+        );
+        RegQueryValueExW(
+            hKey,
+            TEXT(TWINUI_PCSHELL_SB_4),
+            0,
+            NULL,
+            &(symbols_PTRS->twinui_pcshell_PTRS[4]),
+            &dwSize
+        );
+        RegQueryValueExW(
+            hKey,
+            TEXT(TWINUI_PCSHELL_SB_5),
+            0,
+            NULL,
+            &(symbols_PTRS->twinui_pcshell_PTRS[5]),
+            &dwSize
+        );
+        RegQueryValueExW(
+            hKey,
+            TEXT(TWINUI_PCSHELL_SB_6),
+            0,
+            NULL,
+            &(symbols_PTRS->twinui_pcshell_PTRS[6]),
+            &dwSize
+        );
+        RegQueryValueExW(
+            hKey,
+            TEXT(TWINUI_PCSHELL_SB_7),
+            0,
+            NULL,
+            &(symbols_PTRS->twinui_pcshell_PTRS[7]),
+            &dwSize
+        );
+        RegCloseKey(hKey);
+
+        RegCreateKeyExW(
+            HKEY_CURRENT_USER,
+            TEXT(REGPATH) L"\\" TEXT(STARTDOCKED_SB_NAME),
+            0,
+            NULL,
+            REG_OPTION_NON_VOLATILE,
+            KEY_READ,
+            NULL,
+            &hKey,
+            &dwDisposition
+        );
+        RegQueryValueExW(
+            hKey,
+            TEXT(STARTDOCKED_SB_0),
+            0,
+            NULL,
+            &(symbols_PTRS->startdocked_PTRS[0]),
+            &dwSize
+        );
+        RegQueryValueExW(
+            hKey,
+            TEXT(STARTDOCKED_SB_1),
+            0,
+            NULL,
+            &(symbols_PTRS->startdocked_PTRS[1]),
+            &dwSize
+        );
+        RegQueryValueExW(
+            hKey,
+            TEXT(STARTDOCKED_SB_2),
+            0,
+            NULL,
+            &(symbols_PTRS->startdocked_PTRS[2]),
+            &dwSize
+        );
+        RegQueryValueExW(
+            hKey,
+            TEXT(STARTDOCKED_SB_3),
+            0,
+            NULL,
+            &(symbols_PTRS->startdocked_PTRS[3]),
+            &dwSize
+        );
+        RegQueryValueExW(
+            hKey,
+            TEXT(STARTDOCKED_SB_4),
+            0,
+            NULL,
+            &(symbols_PTRS->startdocked_PTRS[4]),
+            &dwSize
+        );
+        if (hKey) RegCloseKey(hKey);
+    }
+
+    BOOL bNeedToDownload = FALSE;
+    for (UINT i = 0; i < sizeof(symbols_addr) / sizeof(DWORD); ++i)
+    {
+        if (!((DWORD*)symbols_PTRS)[i] &&
+            (((DWORD*)symbols_PTRS) + i) != symbols_PTRS->twinui_pcshell_PTRS + TWINUI_PCSHELL_SB_CNT - 1
+            )
+        {
+            bNeedToDownload = TRUE;
+        }
+    }
     RegCreateKeyExW(
         HKEY_CURRENT_USER,
         TEXT(REGPATH),
@@ -707,7 +728,7 @@ BOOL LoadSymbols(symbols_addr* symbols_PTRS, HMODULE hModule)
         &dwSize
     );
     RegCloseKey(hKey);
-    if (!bNeedToDownload)
+    if (!bNeedToDownload && !IsBuild22000_282(rovi, ubr))
     {
         bNeedToDownload = wcscmp(szReportedVersion, szStoredVersion);
     }
