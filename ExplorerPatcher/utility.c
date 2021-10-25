@@ -99,18 +99,6 @@ const IActivationFactoryAA XamlExtensionsFactory = {
 };
 #pragma endregion
 
-int FileExistsW(wchar_t* file)
-{
-    WIN32_FIND_DATAW FindFileData;
-    HANDLE handle = FindFirstFileW(file, &FindFileData);
-    int found = handle != INVALID_HANDLE_VALUE;
-    if (found)
-    {
-        FindClose(handle);
-    }
-    return found;
-}
-
 void printf_guid(GUID guid) 
 {
     printf("Guid = {%08lX-%04hX-%04hX-%02hhX%02hhX-%02hhX%02hhX%02hhX%02hhX%02hhX%02hhX}\n",
@@ -274,6 +262,12 @@ __declspec(dllexport) CALLBACK ZZLaunchExplorerDelayed(HWND hWnd, HINSTANCE hIns
 {
     Sleep(2000);
     ZZLaunchExplorer(hWnd, hInstance, lpszCmdLine, nCmdShow);
+}
+
+__declspec(dllexport) CALLBACK ZZRestartExplorer(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLine, int nCmdShow)
+{
+    BeginExplorerRestart();
+    FinishExplorerRestart();
 }
 
 POINT GetDefaultWinXPosition(BOOL bUseRcWork, BOOL* lpBottom, BOOL* lpRight, BOOL bAdjust)

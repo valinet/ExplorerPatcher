@@ -10,6 +10,8 @@
 #include <aclapi.h>
 #include <sddl.h>
 #include <Shlobj_core.h>
+#include <restartmanager.h>
+#pragma comment(lib, "Rstrtmgr.lib")
 #define _LIBVALINET_INCLUDE_UNIVERSAL
 #include <valinet/universal/toast/toast.h>
 
@@ -75,7 +77,17 @@ typedef struct _IActivationFactoryAA
 extern const IActivationFactoryAA XamlExtensionsFactory;
 #pragma endregion
 
-int FileExistsW(wchar_t* file);
+inline int FileExistsW(wchar_t* file)
+{
+    WIN32_FIND_DATAW FindFileData;
+    HANDLE handle = FindFirstFileW(file, &FindFileData);
+    int found = handle != INVALID_HANDLE_VALUE;
+    if (found)
+    {
+        FindClose(handle);
+    }
+    return found;
+}
 
 // https://stackoverflow.com/questions/1672677/print-a-guid-variable
 void printf_guid(GUID guid);
@@ -257,5 +269,153 @@ Cleanup:
     }
 
     return fIsRunAsAdmin;
+}
+
+inline BOOL IsDesktopWindowAlreadyPresent()
+{
+    return (FindWindowExW(NULL, NULL, L"Progman", NULL) || FindWindowExW(NULL, NULL, L"Proxy Desktop", NULL));
+}
+
+// https://jiangsheng.net/2013/01/22/how-to-restart-windows-explorer-programmatically-using-restart-manager/
+inline RM_UNIQUE_PROCESS GetExplorerApplication()
+{
+    HWND hwnd = FindWindow(L"Shell_TrayWnd", NULL);
+    DWORD pid = 0;
+    GetWindowThreadProcessId(hwnd, &pid);
+
+    RM_UNIQUE_PROCESS out = { 0, { -1, -1 } };
+    DWORD bytesReturned;
+    WCHAR imageName[MAX_PATH]; // process image name buffer
+    DWORD processIds[2048]; // max 2048 processes (more than enough)
+
+    // enumerate all running processes (usually around 60-70)
+    EnumProcesses(processIds, sizeof(processIds), &bytesReturned);
+    int count = bytesReturned / sizeof(DWORD); // number of processIds returned
+
+    for (int i = 0; i < count; ++i)
+    {
+        DWORD processId = processIds[i];
+        HANDLE hProc;
+        if (processId == pid && (hProc = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, processId)))
+        {
+            GetProcessImageFileNameW(hProc, imageName, MAX_PATH);
+            FILETIME ftStart, ftExit, ftKernel, ftUser;
+            GetProcessTimes(hProc, &ftStart, &ftExit, &ftKernel, &ftUser);
+
+            if (ftStart.dwLowDateTime < out.ProcessStartTime.dwLowDateTime)
+            {
+                out.dwProcessId = processId;
+                out.ProcessStartTime = ftStart;
+            }
+            CloseHandle(hProc);
+        }
+    }
+    return out; // return count in pResults
+}
+
+static DWORD RmSession = -1;
+static wchar_t RmSessionKey[CCH_RM_SESSION_KEY + 1];
+
+// shuts down the explorer and is ready for explorer restart
+inline void BeginExplorerRestart()
+{
+    if (RmStartSession(&RmSession, 0, RmSessionKey) == ERROR_SUCCESS)
+    {
+        RM_UNIQUE_PROCESS rgApplications[] = { GetExplorerApplication() };
+        RmRegisterResources(RmSession, 0, 0, 1, rgApplications, 0, 0);
+
+        DWORD rebootReason;
+        UINT nProcInfoNeeded, nProcInfo = 16;
+        RM_PROCESS_INFO affectedApps[16];
+        RmGetList(RmSession, &nProcInfoNeeded, &nProcInfo, affectedApps, &rebootReason);
+
+        if (rebootReason == RmRebootReasonNone) // no need for reboot?
+        {
+            // shutdown explorer
+            RmShutdown(RmSession, RmForceShutdown, 0);
+        }
+    }
+}
+// restarts the explorer
+inline void FinishExplorerRestart()
+{
+    DWORD dwError;
+    if (dwError = RmRestart(RmSession, 0, NULL))
+        printf("\n RmRestart error: %d\n\n", dwError);
+
+    RmEndSession(RmSession);
+    RmSession = -1;
+    RmSessionKey[0] = 0;
+}
+
+// https://stackoverflow.com/questions/5689904/gracefully-exit-explorer-programmatically
+inline BOOL ExitExplorer()
+{
+    HWND hWndTray = FindWindowW(L"Shell_TrayWnd", NULL);
+    return PostMessageW(hWndTray, 0x5B4, 0, 0);
+}
+
+inline void StartExplorer()
+{
+
+    /*PROCESSENTRY32 pe32 = {0};
+    pe32.dwSize = sizeof(PROCESSENTRY32);
+    HANDLE hSnapshot = CreateToolhelp32Snapshot(
+        TH32CS_SNAPPROCESS,
+        0
+    );
+    if (Process32First(hSnapshot, &pe32) == TRUE)
+    {
+        do
+        {
+            if (!wcscmp(pe32.szExeFile, TEXT("explorer.exe")))
+            {
+                HANDLE hSihost = OpenProcess(
+                    PROCESS_TERMINATE,
+                    FALSE,
+                    pe32.th32ProcessID
+                );
+                TerminateProcess(hSihost, 1);
+                CloseHandle(hSihost);
+            }
+        } while (Process32Next(hSnapshot, &pe32) == TRUE);
+    }
+    CloseHandle(hSnapshot);
+    */
+    wchar_t wszPath[MAX_PATH];
+    ZeroMemory(
+        wszPath,
+        (MAX_PATH) * sizeof(wchar_t)
+    );
+    GetWindowsDirectoryW(
+        wszPath,
+        MAX_PATH
+    );
+    wcscat_s(
+        wszPath,
+        MAX_PATH,
+        L"\\explorer.exe"
+    );
+    STARTUPINFO si;
+    ZeroMemory(&si, sizeof(STARTUPINFO));
+    si.cb = sizeof(si);
+    PROCESS_INFORMATION pi;
+    ZeroMemory(&pi, sizeof(PROCESS_INFORMATION));
+    if (CreateProcessW(
+        NULL,
+        wszPath,
+        NULL,
+        NULL,
+        TRUE,
+        CREATE_UNICODE_ENVIRONMENT,
+        NULL,
+        NULL,
+        &si,
+        &pi
+    ))
+    {
+        CloseHandle(pi.hThread);
+        CloseHandle(pi.hProcess);
+    }
 }
 #endif

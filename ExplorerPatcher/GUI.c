@@ -510,30 +510,14 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                             if (p) *p = 0;
                             if (!strncmp(line + 1, "restart", 7))
                             {
-                                PROCESSENTRY32 pe32 = { 0 };
-                                pe32.dwSize = sizeof(PROCESSENTRY32);
-                                HANDLE hSnapshot = CreateToolhelp32Snapshot(
-                                    TH32CS_SNAPPROCESS,
-                                    0
-                                );
-                                if (Process32First(hSnapshot, &pe32) == TRUE)
+                                if (FindWindowW(L"Shell_TrayWnd", NULL))
                                 {
-                                    do
-                                    {
-                                        if (!wcscmp(pe32.szExeFile, TEXT("sihost.exe")))
-                                        {
-                                            HANDLE hSihost = OpenProcess(
-                                                PROCESS_TERMINATE,
-                                                FALSE,
-                                                pe32.th32ProcessID
-                                            );
-                                            TerminateProcess(hSihost, 0);
-                                            CloseHandle(hSihost);
-                                            return TRUE;
-                                        }
-                                    } while (Process32Next(hSnapshot, &pe32) == TRUE);
+                                    ZZRestartExplorer();
                                 }
-                                CloseHandle(hSnapshot);
+                                else
+                                {
+                                    StartExplorer();
+                                }
                             }
                             else if (!strncmp(line + 1, "reset", 5))
                             {
