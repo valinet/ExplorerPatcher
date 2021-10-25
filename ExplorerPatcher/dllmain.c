@@ -3466,9 +3466,38 @@ HRESULT explorer_DrawThemeTextEx(
 #pragma endregion
 
 
+HINSTANCE explorer_ShellExecuteW(
+    HWND    hwnd,
+    LPCWSTR lpOperation,
+    LPCWSTR lpFile,
+    LPCWSTR lpParameters,
+    LPCWSTR lpDirectory,
+    INT     nShowCmd
+)
+{
+    if (!wcscmp(lpFile, L"ms-settings:notifications"))
+    {
+        return ShellExecuteW(
+            hwnd, lpOperation,
+            L"shell:::{05d7b0f4-2121-4eff-bf6b-ed3f69b894d9}",
+            lpParameters, lpDirectory, nShowCmd
+        );
+    }
+    else if (!wcscmp(lpFile, L"ms-settings:dateandtime"))
+    {
+        return ShellExecuteW(
+            hwnd, lpOperation,
+            L"shell:::{E2E7934B-DCE5-43C4-9576-7FE4F75E7480}",
+            lpParameters, lpDirectory, nShowCmd
+        );
+    }
+    return ShellExecuteW(hwnd, lpOperation, lpFile, lpParameters, lpDirectory, nShowCmd);
+}
+
+
 DWORD InjectBasicFunctions(BOOL bIsExplorer, BOOL bInstall)
 {
-    Sleep(150);
+    //Sleep(150);
 
     HMODULE hShlwapi = LoadLibraryW(L"Shlwapi.dll");
     if (bInstall)
@@ -3939,6 +3968,7 @@ __declspec(dllexport) DWORD WINAPI main(
     if (bOldTaskbar)
     {
         VnPatchIAT(hExplorer, "api-ms-win-core-libraryloader-l1-2-0.dll", "GetProcAddress", explorer_GetProcAddressHook);
+        VnPatchIAT(hExplorer, "shell32.dll", "ShellExecuteW", explorer_ShellExecuteW);
         VnPatchIAT(hExplorer, "user32.dll", "MonitorFromRect", explorer_MonitorFromRect);
     }
     VnPatchIAT(hExplorer, "user32.dll", "TrackPopupMenuEx", explorer_TrackPopupMenuExHook);
