@@ -423,16 +423,16 @@ void* ReadFromFile(wchar_t* wszFileName, DWORD* dwSize)
     HANDLE hImage = CreateFileW(wszFileName, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if (hImage)
     {
-        DWORD dwFileSize;
+        LARGE_INTEGER dwFileSize;
         GetFileSizeEx(hImage, &dwFileSize);
-        if (dwFileSize)
+        if (dwFileSize.LowPart)
         {
-            void* pImage = malloc(dwFileSize);
+            void* pImage = malloc(dwFileSize.LowPart);
             if (pImage)
             {
                 DWORD dwNumberOfBytesRead = 0;
-                ReadFile(hImage, pImage, dwFileSize, &dwNumberOfBytesRead, NULL);
-                if (dwFileSize == dwNumberOfBytesRead)
+                ReadFile(hImage, pImage, dwFileSize.LowPart, &dwNumberOfBytesRead, NULL);
+                if (dwFileSize.LowPart == dwNumberOfBytesRead)
                 {
                     ok = pImage;
                     *dwSize = dwNumberOfBytesRead;
