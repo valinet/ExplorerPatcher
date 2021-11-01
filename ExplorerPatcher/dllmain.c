@@ -3687,6 +3687,23 @@ DWORD InjectBasicFunctions(BOOL bIsExplorer, BOOL bInstall)
 
 }
 
+LSTATUS explorer_RegSetValueExW(
+    HKEY       hKey,
+    LPCWSTR    lpValueName,
+    DWORD      Reserved,
+    DWORD      dwType,
+    const BYTE* lpData,
+    DWORD      cbData
+)
+{
+    if (!lstrcmpW(lpValueName, L"ShowCortanaButton"))
+    {
+        return RegSetValueExW(hKey, L"TaskbarDa", Reserved, dwType, lpData, cbData);
+    }
+
+    return RegSetValueExW(hKey, lpValueName, Reserved, dwType, lpData, cbData);
+}
+
 LSTATUS explorer_RegGetValueW(
     HKEY    hkey,
     LPCWSTR lpSubKey,
@@ -3705,10 +3722,10 @@ LSTATUS explorer_RegGetValueW(
     {
         lRes = RegGetValueW(hkey, lpSubKey, L"TaskbarDa", dwFlags, pdwType, pvData, pcbData);
     }
-    else if (!lstrcmpW(lpValue, L"PeopleBand"))
+    /*else if (!lstrcmpW(lpValue, L"PeopleBand"))
     {
         lRes = RegGetValueW(hkey, lpSubKey, L"TaskbarMn", dwFlags, pdwType, pvData, pcbData);
-    }
+    }*/
     else
     {
         lRes = RegGetValueW(hkey, lpSubKey, lpValue, dwFlags, pdwType, pvData, pcbData);
@@ -4056,6 +4073,7 @@ __declspec(dllexport) DWORD WINAPI main(
         VnPatchIAT(hExplorer, "api-ms-win-core-libraryloader-l1-2-0.dll", "GetProcAddress", explorer_GetProcAddressHook);
         VnPatchIAT(hExplorer, "shell32.dll", "ShellExecuteW", explorer_ShellExecuteW);
         VnPatchIAT(hExplorer, "API-MS-WIN-CORE-REGISTRY-L1-1-0.DLL", "RegGetValueW", explorer_RegGetValueW);
+        VnPatchIAT(hExplorer, "API-MS-WIN-CORE-REGISTRY-L1-1-0.DLL", "RegSetValueExW", explorer_RegSetValueExW);
         VnPatchIAT(hExplorer, "user32.dll", "MonitorFromRect", explorer_MonitorFromRect);
     }
     VnPatchIAT(hExplorer, "user32.dll", "TrackPopupMenuEx", explorer_TrackPopupMenuExHook);
