@@ -2216,14 +2216,61 @@ LRESULT explorer_SendMessageW(HWND hWndx, UINT uMsg, WPARAM wParam, LPARAM lPara
 #pragma region "Set up taskbar button hooks"
 #ifdef _WIN64
 
-HRESULT WINAPI Widgets_OnTooltipShow(__int64 a1, __int64 a2, __int64 a3, WCHAR* a4, UINT a5)
+DWORD ShouldShowWidgetsInsteadOfCortana()
 {
-    return SHLoadIndirectString(
-        L"@{windows?ms-resource://Windows.UI.SettingsAppThreshold/SystemSettings/Resources/SystemSettings_DesktopTaskbar_Da2/DisplayName}",
-        a4,
-        a5,
-        0
-    );
+    DWORD dwVal = 0, dwSize = sizeof(DWORD);
+    if (SHRegGetValueFromHKCUHKLMFunc && SHRegGetValueFromHKCUHKLMFunc(
+        TEXT("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced"),
+        TEXT("TaskbarDa"),
+        SRRF_RT_REG_DWORD,
+        NULL,
+        &dwVal,
+        (LPDWORD)(&dwSize)
+    ) == ERROR_SUCCESS)
+    {
+        return dwVal;
+    }
+    return 0;
+}
+
+__int64 (*Widgets_OnClickFunc)(__int64 a1, __int64 a2) = 0;
+__int64 Widgets_OnClickHook(__int64 a1, __int64 a2)
+{
+    if (ShouldShowWidgetsInsteadOfCortana() == 1)
+    {
+        ToggleWidgetsPanel();
+        return 0;
+    }
+    else
+    {
+        if (Widgets_OnClickFunc)
+        {
+            return Widgets_OnClickFunc(a1, a2);
+        }
+        return 0;
+    }
+}
+
+HRESULT (*Widgets_GetTooltipTextFunc)(__int64 a1, __int64 a2, __int64 a3, WCHAR* a4, UINT a5) = 0;
+HRESULT WINAPI Widgets_GetTooltipTextHook(__int64 a1, __int64 a2, __int64 a3, WCHAR* a4, UINT a5)
+{
+    if (ShouldShowWidgetsInsteadOfCortana() == 1)
+    {
+        return SHLoadIndirectString(
+            L"@{windows?ms-resource://Windows.UI.SettingsAppThreshold/SystemSettings/Resources/SystemSettings_DesktopTaskbar_Da2/DisplayName}",
+            a4,
+            a5,
+            0
+        );
+    }
+    else
+    {
+        if (Widgets_GetTooltipTextFunc)
+        {
+            return Widgets_GetTooltipTextFunc(a1, a2, a3, a4, a5);
+        }
+        return 0;
+    }
 }
 
 void stub1(void* i)
@@ -2255,10 +2302,12 @@ BOOL explorer_SetChildWindowNoActivateHook(HWND hWnd)
             {
                 DWORD dwOldProtect;
                 VirtualProtect(Instance + 160, sizeof(uintptr_t), PAGE_READWRITE, &dwOldProtect);
-                *(uintptr_t*)(Instance + 160) = ToggleWidgetsPanel;    // OnClick
+                if (!Widgets_OnClickFunc) Widgets_OnClickFunc = *(uintptr_t*)(Instance + 160);
+                *(uintptr_t*)(Instance + 160) = Widgets_OnClickHook;    // OnClick
                 VirtualProtect(Instance + 160, sizeof(uintptr_t), dwOldProtect, &dwOldProtect);
                 VirtualProtect(Instance + 216, sizeof(uintptr_t), PAGE_READWRITE, &dwOldProtect);
-                *(uintptr_t*)(Instance + 216) = Widgets_OnTooltipShow; // OnTooltipShow
+                if (!Widgets_GetTooltipTextFunc) Widgets_GetTooltipTextFunc = *(uintptr_t*)(Instance + 216);
+                *(uintptr_t*)(Instance + 216) = Widgets_GetTooltipTextHook; // OnTooltipShow
                 VirtualProtect(Instance + 216, sizeof(uintptr_t), dwOldProtect, &dwOldProtect);
             }
             else if (!wcscmp(wszComponentName, L"MultitaskingButton"))
@@ -3698,6 +3747,11 @@ LSTATUS explorer_RegSetValueExW(
 {
     if (!lstrcmpW(lpValueName, L"ShowCortanaButton"))
     {
+        if (cbData == sizeof(DWORD) && *(DWORD*)lpData == 1)
+        {
+            DWORD dwData = 2;
+            return RegSetValueExW(hKey, L"TaskbarDa", Reserved, dwType, &dwData, cbData);
+        }
         return RegSetValueExW(hKey, L"TaskbarDa", Reserved, dwType, lpData, cbData);
     }
 
@@ -3721,6 +3775,10 @@ LSTATUS explorer_RegGetValueW(
     if (!lstrcmpW(lpValue, L"ShowCortanaButton"))
     {
         lRes = RegGetValueW(hkey, lpSubKey, L"TaskbarDa", dwFlags, pdwType, pvData, pcbData);
+        if (*(DWORD*)pvData == 2)
+        {
+            *(DWORD*)pvData = 1;
+        }
     }
     /*else if (!lstrcmpW(lpValue, L"PeopleBand"))
     {
