@@ -25,7 +25,9 @@
 #ifdef _WIN64
 #include <valinet/pdb/pdb.h>
 #endif
+#if defined(DEBUG) | defined(_DEBUG)
 #define _LIBVALINET_DEBUG_HOOKING_IATPATCH
+#endif
 #include <valinet/hooking/iatpatch.h>
 
 #define EP_CLSID "{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}"
@@ -2790,20 +2792,23 @@ void WINAPI LoadSettings(BOOL bIsExplorer)
             &bSkinMenus,
             &dwSize
         );
-        if (bAllocConsole)
+        if (bIsExplorerProcess)
         {
-            FILE* conout;
-            AllocConsole();
-            freopen_s(
-                &conout,
-                "CONOUT$",
-                "w",
-                stdout
-            );
-        }
-        else
-        {
-            FreeConsole();
+            if (bAllocConsole)
+            {
+                FILE* conout;
+                AllocConsole();
+                freopen_s(
+                    &conout,
+                    "CONOUT$",
+                    "w",
+                    stdout
+                );
+            }
+            else
+            {
+                FreeConsole();
+            }
         }
         if (!bIsExplorer)
         {
@@ -3950,7 +3955,7 @@ __declspec(dllexport) DWORD WINAPI main(
     _In_ LPVOID bIsExplorer
 )
 {
-#ifdef DEBUG
+#if defined(DEBUG) | defined(_DEBUG)
     FILE* conout;
     AllocConsole();
     freopen_s(
