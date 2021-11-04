@@ -1,7 +1,7 @@
 #ifndef _H_UTILITY_H_
 #define _H_UTILITY_H_
 #if __has_include("ep_private.h")
-#define USE_PRIVATE_INTERFACES
+//#define USE_PRIVATE_INTERFACES
 #endif
 #include <Windows.h>
 #include <tchar.h>

@@ -102,6 +102,9 @@
     <ClInclude Include="..\libs\sws\SimpleWindowSwitcher\sws_window.h">
       <Filter>Header Files\sws</Filter>
     </ClInclude>
+    <ClInclude Include="..\libs\sws\SimpleWindowSwitcher\sws_utility.h">
+      <Filter>Header Files\sws</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="ExplorerPatcher.rc">
