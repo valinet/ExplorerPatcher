@@ -1,0 +1,52 @@
+name: Build
+
+on: [push]
+
+env:
+  SOLUTION_FILE_PATH: .
+  BUILD_CONFIGURATION: Release
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout latest build and submodules
+      uses: actions/checkout@v2
+      with:
+        submodules: recursive
+
+    - name: Add MSBuild to PATH
+      uses: microsoft/setup-msbuild@v1.0.2
+      
+    - name: Create funchook build directory
+      shell: powershell
+      working-directory: libs/funchook
+      run: |
+        New-Item build -ItemType Directory
+      
+    - name: Generate funchook build files
+      shell: cmd
+      working-directory: libs/funchook/build
+      run: |
+        cmake -G "Visual Studio 16 2019" -A x64 ..
+        
+    - name: Patch funchook to compile as /MT
+      shell: powershell
+      working-directory: libs/funchook/build
+      run: |
+        (Get-Content funchook-static.vcxproj) -replace '<RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>', '<RuntimeLibrary>MultiThreaded</RuntimeLibrary>' | Out-File -encoding ASCII funchook-static.vcxproj
+        
+    - name: Build funchook
+      shell: cmd
+      working-directory: libs/funchook/build
+      run: |
+        cmake --build . --config Release
+    - name: Build EP IA-32
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: |
+        msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} /p:Platform=IA-32 ${{env.SOLUTION_FILE_PATH}}
+    - name: Build EP amd64
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: |
+        msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} /p:Platform=amd64 ${{env.SOLUTION_FILE_PATH}}
