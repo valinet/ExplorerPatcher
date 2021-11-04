@@ -864,7 +864,7 @@ INT64 Shell_TrayWndSubclassProc(
     DWORD_PTR   dwRefData
 )
 {
-    if (uMsg == WM_DESTROY)
+    if (uMsg == WM_NCDESTROY)
     {
         RemoveWindowSubclass(hWnd, Shell_TrayWndSubclassProc, Shell_TrayWndSubclassProc);
     }
@@ -1011,7 +1011,7 @@ INT64 ClockButtonSubclassProc(
     DWORD_PTR   dwRefData
 )
 {
-    if (uMsg == WM_DESTROY)
+    if (uMsg == WM_NCDESTROY)
     {
         RemoveWindowSubclass(hWnd, ClockButtonSubclassProc, ClockButtonSubclassProc);
     }
@@ -2345,7 +2345,7 @@ INT64 ShowDesktopSubclassProc(
     DWORD_PTR   dwRefData
 )
 {
-    if (uMsg == WM_DESTROY)
+    if (uMsg == WM_NCDESTROY)
     {
         RemoveWindowSubclass(hWnd, ShowDesktopSubclassProc, ShowDesktopSubclassProc);
     }
