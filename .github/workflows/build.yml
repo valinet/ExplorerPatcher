@@ -32,28 +32,14 @@ jobs:
         echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
         echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
       
-    - name: Create funchook build directory
-      shell: powershell
-      working-directory: libs/funchook
-      run: |
-        New-Item build -ItemType Directory
-      
-    - name: Generate funchook build files
-      shell: cmd
-      working-directory: libs/funchook/build
-      run: |
-        cmake -G "Visual Studio 16 2019" -A x64 ..
-        
-    - name: Patch funchook to compile as /MT
-      shell: powershell
-      working-directory: libs/funchook/build
-      run: |
-        (Get-Content funchook-static.vcxproj) -replace '<RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>', '<RuntimeLibrary>MultiThreaded</RuntimeLibrary>' | Out-File -encoding ASCII funchook-static.vcxproj
-        
     - name: Build funchook
-      shell: cmd
-      working-directory: libs/funchook/build
+      shell: powershell
       run: |
+        cd libs/funchook
+        md build
+        cd build
+        cmake -G "Visual Studio 16 2019" -A x64 ..
+        (gc .\funchook-static.vcxproj) -replace '<RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>', '<RuntimeLibrary>MultiThreaded</RuntimeLibrary>' | Out-File .\funchook-static.vcxproj
         cmake --build . --config Release
         
     - name: Build EP IA-32
