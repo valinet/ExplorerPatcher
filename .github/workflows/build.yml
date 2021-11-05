@@ -6,7 +6,7 @@
 
 name: Build
 
-on: [push]
+on: [push, pull_request]
 
 env:
   SOLUTION_FILE_PATH: .
