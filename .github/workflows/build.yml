@@ -1,6 +1,15 @@
+# references:
+# https://trstringer.com/github-actions-multiline-strings/
+# https://trstringer.com/github-actions-create-release-upload-artifacts/
+# https://github.com/Speedy37/sws/blob/444c67157a98652c4e7ffd3b6d6bbfb664071926/.github/workflows/msbuild.yml
+# https://stackoverflow.com/questions/58886293/getting-current-branch-and-commit-hash-in-github-action
+
 name: Build
 
-on: [push]
+on:
+  push:
+    branches:
+      - master
 
 env:
   SOLUTION_FILE_PATH: .
@@ -18,6 +27,13 @@ jobs:
 
     - name: Add MSBuild to PATH
       uses: microsoft/setup-msbuild@v1.0.2
+      
+    - name: Declare some variables
+      id: vars
+      shell: bash
+      run: |
+        echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
+        echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
       
     - name: Create funchook build directory
       shell: powershell
@@ -42,11 +58,79 @@ jobs:
       working-directory: libs/funchook/build
       run: |
         cmake --build . --config Release
+        
     - name: Build EP IA-32
       working-directory: ${{env.GITHUB_WORKSPACE}}
       run: |
         msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} /p:Platform=IA-32 ${{env.SOLUTION_FILE_PATH}}
+        
     - name: Build EP amd64
       working-directory: ${{env.GITHUB_WORKSPACE}}
       run: |
         msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} /p:Platform=amd64 ${{env.SOLUTION_FILE_PATH}}
+    
+    - name: Generate dxgi.dll
+      shell: powershell
+      working-directory: build/Release
+      run: |
+        Copy-Item ExplorerPatcher.amd64.dll dxgi.dll
+    
+    - name: Generate release name
+      shell: bash
+      working-directory: build/Release
+      run: |
+        echo "::set-output name=data::$(./ep_generate_release_name.exe)"
+      id: release_name
+      
+    - name: Generate release notes
+      shell: bash
+      working-directory: build/Release
+      run: |
+        MY_STRING=$(./ep_generate_release_description.exe ${{ steps.vars.outputs.sha_short }} ${{ steps.vars.outputs.branch }})
+        MY_STRING="${MY_STRING//'%'/'%25'}"
+        MY_STRING="${MY_STRING//$'\n'/'%0A'}"
+        MY_STRING="${MY_STRING//$'\r'/'%0D'}"
+        echo "::set-output name=data::$MY_STRING"
+      id: release_description
+      
+    - name: Create/update release
+      uses: actions/create-release@v1
+      id: create_release
+      with:
+        draft: false
+        prerelease: false
+        release_name: ${{ steps.release_name.outputs.data }}
+        tag_name: ${{ steps.release_name.outputs.data }}_${{ steps.vars.outputs.sha_short }}
+        body: ${{ steps.release_description.outputs.data }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.PAT }}
+
+    - name: Upload dxgi.dll
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.PAT }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./build/Release/dxgi.dll
+        asset_name: dxgi.dll
+        asset_content_type: application/x-msdownload
+
+    - name: Upload ExplorerPatcher.amd64.dll
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.PAT }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./build/Release/ExplorerPatcher.amd64.dll
+        asset_name: ExplorerPatcher.amd64.dll
+        asset_content_type: application/x-msdownload
+        
+    - name: Upload ExplorerPatcher.IA-32.dll
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.PAT }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./build/Release/ExplorerPatcher.IA-32.dll
+        asset_name: ExplorerPatcher.IA-32.dll
+        asset_content_type: application/x-msdownload

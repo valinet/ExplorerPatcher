@@ -17,6 +17,7 @@ Tested on build 22000.282.
   * `[Enter]` switches to selected window (same as `[Space]`) (#240) (.1)
   * Navigation using arrow keys (#240) (.1)
 * Ability to choose behavior for Cortana button: hidden, shown and opens Cortana, shown and opens Widgets (#255) (.3)
+* Builds are now automatic, generated as soon as new content is pushed to the repository and compiled on GitHub's infrastructure (.6)
 
 #### Feature enhancements
 * Clock context menu options "Adjust date/time" and "Customize notification icons" open in Control Panel instead of Settings
