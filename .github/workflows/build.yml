@@ -6,10 +6,7 @@
 
 name: Build
 
-on:
-  push:
-    branches:
-      - master
+on: [push]
 
 env:
   SOLUTION_FILE_PATH: .
@@ -74,10 +71,18 @@ jobs:
       working-directory: build/Release
       run: |
         Copy-Item ExplorerPatcher.amd64.dll dxgi.dll
-    
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v2
+      with:
+        name: bin
+        path: |
+          build/Release/
+
     - name: Generate release name
       shell: bash
       working-directory: build/Release
+      if: github.ref == 'refs/heads/master'
       run: |
         echo "::set-output name=data::$(./ep_generate_release_name.exe)"
       id: release_name
@@ -85,6 +90,7 @@ jobs:
     - name: Generate release notes
       shell: bash
       working-directory: build/Release
+      if: github.ref == 'refs/heads/master'
       run: |
         MY_STRING=$(./ep_generate_release_description.exe ${{ steps.vars.outputs.sha_short }} ${{ steps.vars.outputs.branch }})
         MY_STRING="${MY_STRING//'%'/'%25'}"
@@ -95,6 +101,7 @@ jobs:
       
     - name: Create/update release
       uses: actions/create-release@v1
+      if: github.ref == 'refs/heads/master'
       id: create_release
       with:
         draft: false
@@ -107,6 +114,7 @@ jobs:
 
     - name: Upload dxgi.dll
       uses: actions/upload-release-asset@v1
+      if: github.ref == 'refs/heads/master'
       env:
         GITHUB_TOKEN: ${{ secrets.PAT }}
       with:
@@ -117,6 +125,7 @@ jobs:
 
     - name: Upload ExplorerPatcher.amd64.dll
       uses: actions/upload-release-asset@v1
+      if: github.ref == 'refs/heads/master'
       env:
         GITHUB_TOKEN: ${{ secrets.PAT }}
       with:
@@ -127,6 +136,7 @@ jobs:
         
     - name: Upload ExplorerPatcher.IA-32.dll
       uses: actions/upload-release-asset@v1
+      if: github.ref == 'refs/heads/master'
       env:
         GITHUB_TOKEN: ${{ secrets.PAT }}
       with:
