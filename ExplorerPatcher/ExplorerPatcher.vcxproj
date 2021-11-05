@@ -213,7 +213,11 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\libs\sws\SimpleWindowSwitcher\sws_window.c" />
+    <ClCompile Include="..\libs\sws\SimpleWindowSwitcher\sws_window.c">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+      </ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="..\libs\sws\SimpleWindowSwitcher\sws_WindowHelpers.c">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
@@ -287,6 +291,7 @@
     <ClInclude Include="HideExplorerSearchBar.h" />
     <ClInclude Include="hooking.h" />
     <ClInclude Include="ep_private.h" />
+    <ClInclude Include="queryversion.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="SettingsMonitor.h" />
     <ClInclude Include="StartMenu.h" />

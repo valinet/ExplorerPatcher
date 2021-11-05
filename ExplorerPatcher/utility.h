@@ -14,6 +14,7 @@
 #pragma comment(lib, "Rstrtmgr.lib")
 #define _LIBVALINET_INCLUDE_UNIVERSAL
 #include <valinet/universal/toast/toast.h>
+#include "queryversion.h"
 
 #define APPID L"Microsoft.Windows.Explorer"
 #define REGPATH "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\ExplorerPatcher"
@@ -103,8 +104,6 @@ __declspec(dllexport) CALLBACK ZZLaunchExplorer(HWND hWnd, HINSTANCE hInstance, 
 __declspec(dllexport) CALLBACK ZZLaunchExplorerDelayed(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLine, int nCmdShow);
 
 POINT GetDefaultWinXPosition(BOOL bUseRcWork, BOOL* lpBottom, BOOL* lpRight, BOOL bAdjust);
-
-void QueryVersionInfo(HMODULE hModule, WORD Resource, DWORD*, DWORD*, DWORD*, DWORD*);
 
 #define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
 #define MAX(X, Y) (((X) > (Y)) ? (X) : (Y))
