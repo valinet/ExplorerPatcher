@@ -14,6 +14,7 @@ env:
 
 jobs:
   build:
+    if: endsWith(github.ref, '_auto') != true
     runs-on: windows-latest
 
     steps:
@@ -93,7 +94,7 @@ jobs:
         draft: false
         prerelease: false
         release_name: ${{ steps.release_name.outputs.data }}
-        tag_name: ${{ steps.release_name.outputs.data }}_${{ steps.vars.outputs.sha_short }}
+        tag_name: ${{ steps.release_name.outputs.data }}_${{ steps.vars.outputs.sha_short }}_auto
         body: ${{ steps.release_description.outputs.data }}
       env:
         GITHUB_TOKEN: ${{ secrets.PAT }}
