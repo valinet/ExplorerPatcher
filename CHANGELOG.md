@@ -31,6 +31,7 @@ Tested on build 22000.282.
 * Fixes a bug that prevented correct opening of some applications (like `powershell`) when EP was registered as shell extension (#256) (.4) - PLEASE NOTE THAT RUNNING AS SHELL EXTENSION IS STILL EXPERIMENTAL, UNSUPPORTED, AND ONLY RECOMMENDED FOR SPECIFIC USE CASES THAT YOU SHOULD KNOW ABOUT ALREADY; otherwise, just dropping the DLL in `C:\Windows` is enough
 * Windows 10 window switcher switcher now correctly displays UWP apps immediately after launch (#266) (.5)
 * Selection and highlight rectangle are now correctly drawn when using light theme on Windows 10 window switcher (.5)
+* Keyboard selection (left, right, up, down, space, Return) also works when window switcher is shown by holding down the `ALT` key (#263) (.7)
 
 ## 22000.282.31
 
