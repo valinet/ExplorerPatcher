@@ -6,7 +6,17 @@
 
 name: Build
 
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - '**'
+    tags-ignore:
+      - '**'
+  pull_request:
+    branches:
+      - '**'
+    tags-ignore:
+      - '**'
 
 env:
   SOLUTION_FILE_PATH: .
