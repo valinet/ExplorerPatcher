@@ -47,6 +47,7 @@ int main(int argc, char** argv)
             else if (state == 1 && !strncmp(line, szEndPattern, strlen(szEndPattern)))
             {
                 state = 2;
+                break;
             }
             if (state == 1)
             {
