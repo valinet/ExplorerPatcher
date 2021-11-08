@@ -29,6 +29,7 @@
 #define _LIBVALINET_DEBUG_HOOKING_IATPATCH
 #endif
 #include <valinet/hooking/iatpatch.h>
+#include <valinet/utility/memmem.h>
 
 #define EP_CLSID "{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}"
 
@@ -66,6 +67,7 @@ DWORD bClassicThemeMitigations = FALSE;
 DWORD bHookStartMenu = TRUE;
 DWORD bNoMenuAccelerator = FALSE;
 DWORD bTaskbarMonitorOverride = 0;
+DWORD dwIMEStyle = 0;
 HMODULE hModule = NULL;
 HANDLE hSettingsMonitorThread = NULL;
 HANDLE hDelayedInjectionThread = NULL;
@@ -2941,6 +2943,15 @@ void WINAPI LoadSettings(BOOL bIsExplorer)
             &bTaskbarMonitorOverride,
             &dwSize
         );
+        dwSize = sizeof(DWORD);
+        RegQueryValueExW(
+            hKey,
+            TEXT("IMEStyle"),
+            0,
+            NULL,
+            &dwIMEStyle,
+            &dwSize
+        );
         RegCloseKey(hKey);
     }
 
@@ -3613,6 +3624,7 @@ HRESULT explorer_DrawThemeTextEx(
 #pragma endregion
 
 
+#pragma region "Change clock links"
 HINSTANCE explorer_ShellExecuteW(
     HWND    hwnd,
     LPCWSTR lpOperation,
@@ -3640,6 +3652,102 @@ HINSTANCE explorer_ShellExecuteW(
     }
     return ShellExecuteW(hwnd, lpOperation, lpFile, lpParameters, lpDirectory, nShowCmd);
 }
+#pragma endregion
+
+
+#pragma region "Change language UI style"
+DEFINE_GUID(CLSID_InputSwitchControl,
+    0xB9BC2A50,
+    0x43C3, 0x41AA, 0xa0, 0x86,
+    0x5D, 0xB1, 0x4e, 0x18, 0x4b, 0xae
+);
+
+DEFINE_GUID(IID_InputSwitchControl,
+    0xB9BC2A50,
+    0x43C3, 0x41AA, 0xa0, 0x82,
+    0x5D, 0xB1, 0x4e, 0x18, 0x4b, 0xae
+);
+
+#define LANGUAGEUI_STYLE_DESKTOP 0
+#define LANGUAGEUI_STYLE_TOUCHKEYBOARD 1
+#define LANGUAGEUI_STYLE_LOGONUI 2
+#define LANGUAGEUI_STYLE_UAC 3
+#define LANGUAGEUI_STYLE_SETTINGSPANE 4
+#define LANGUAGEUI_STYLE_OOBE 5
+#define LANGUAGEUI_STYLE_OTHER 100
+
+char mov_edx_val[6] = { 0xBA, 0x00, 0x00, 0x00, 0x00, 0xC3 };
+char* ep_pf = NULL;
+
+HRESULT explorer_CoCreateInstanceHook(
+    REFCLSID  rclsid,
+    LPUNKNOWN pUnkOuter,
+    DWORD     dwClsContext,
+    REFIID    riid,
+    LPVOID*   ppv
+)
+{
+    if (IsEqualCLSID(rclsid, &CLSID_InputSwitchControl) && IsEqualIID(riid, &IID_InputSwitchControl))
+    {
+        HRESULT hr = CoCreateInstance(rclsid, pUnkOuter, dwClsContext, riid, ppv);
+        if (SUCCEEDED(hr))
+        {
+            // Pff... how this works:
+            // 
+            // * This `CoCreateInstance` call will get a pointer to an IInputSwitchControl interface
+            // (the call to here is made from `explorer!CTrayInputIndicator::_RegisterInputSwitch`);
+            // the next call on this pointer will be on the `IInputSwitchControl::Init` function.
+            // 
+            // * `IInputSwitchControl::Init`'s second parameter is a number (x) which tells which
+            // language switcher UI to prepare (check `IsUtil::MapClientTypeToString` in
+            // `InputSwitch.dll`). "explorer" requests the "DESKTOP" UI (x = 0), which is the new
+            // Windows 11 UI; if we replace that number with something else, some other UI will
+            // be created
+            // 
+            // * We cannot patch the vtable of the COM object because the executable is protected
+            // by control flow guard and we would make a jump to an invalid site (maybe there is
+            // some clever workaround fpr this as well, somehow telling the compiler to place a certain
+            // canary before our trampoline, so it matches with what the runtime support for CFG expects,
+            // but we'd have to keep that canary in sync with the one in explorer.exe, so not very
+            // future proof).
+            // 
+            // * Taking advantage of the fact that the call to `IInputSwitchControl::Init` is the thing
+            // that happens right after we return from here, and looking on the disassembly, we see nothing
+            // else changes `rdx` (which is the second argument to a function call), basically x, besides the
+            // very `xor edx, edx` instruction before the call. Thus, we patch that out, and we also do
+            // `mov edx, whatever` here; afterwards, we do NOTHING else, but just return and hope that
+            // edx will stick
+            // 
+            // * Needless to say this is **HIGHLY** amd64
+            char pattern[2] = { 0x33, 0xD2 };
+            DWORD dwOldProtect;
+            char* p_mov_edx_val = mov_edx_val;
+            if (!ep_pf)
+            {
+                ep_pf = memmem(_ReturnAddress(), 200, pattern, 2);
+                if (ep_pf)
+                {
+                    // Cancel out `xor edx, edx`
+                    VirtualProtect(ep_pf, 2, PAGE_EXECUTE_READWRITE, &dwOldProtect);
+                    memset(ep_pf, 0x90, 2);
+                    VirtualProtect(ep_pf, 2, dwOldProtect, &dwOldProtect);
+                }
+                VirtualProtect(p_mov_edx_val, 6, PAGE_EXECUTE_READWRITE, &dwOldProtect);
+            }
+            if (ep_pf)
+            {
+                // Craft a "function" which does `mov edx, whatever; ret` and call it
+                DWORD* pVal = mov_edx_val + 1;
+                *pVal = dwIMEStyle;
+                void(*pf_mov_edx_val)() = p_mov_edx_val;
+                pf_mov_edx_val();
+            }
+        }
+        return hr;
+    }
+    return CoCreateInstance(rclsid, pUnkOuter, dwClsContext, riid, ppv);
+}
+#pragma endregion
 
 
 DWORD InjectBasicFunctions(BOOL bIsExplorer, BOOL bInstall)
@@ -4161,6 +4269,10 @@ __declspec(dllexport) DWORD WINAPI main(
         VnPatchIAT(hExplorer, "user32.dll", "SetWindowCompositionAttribute", explorer_SetWindowCompositionAttribute);
     }
     //VnPatchDelayIAT(hExplorer, "ext-ms-win-rtcore-ntuser-window-ext-l1-1-0.dll", "CreateWindowExW", explorer_CreateWindowExW);
+    if (dwIMEStyle)
+    {
+        VnPatchIAT(hExplorer, "api-ms-win-core-com-l1-1-0.dll", "CoCreateInstance", explorer_CoCreateInstanceHook);
+    }
 
 
 #ifdef USE_PRIVATE_INTERFACES

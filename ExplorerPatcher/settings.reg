@@ -75,6 +75,15 @@
 ;x 1 Windows 7
 "UseWin32TrayClockExperience"=dword:00000000
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
+;c 6 Language switcher flyout style *
+;x 0 Windows 11 (default)
+;x 1 Windows 10
+;x 2 "LOGONUI"
+;x 3 "UAC"
+;x 4 "SETTINGSPANE"
+;x 5 "OOBE"
+"IMEStyle"=dword:00000000
+[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
 ;a Choosing 'Open Network && Internet settings' when right clicking the
 ;c 3 network icon should open:
 ;x 0 Network section in the Settings app (default)

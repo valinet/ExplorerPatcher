@@ -2,6 +2,18 @@
 
 This document includes the same release notes as in the [Releases](https://github.com/valinet/ExplorerPatcher/releases) section on GitHub.
 
+## 22000.282.33
+
+Tested on build 22000.282.
+
+#### New features
+
+* Ability to choose language switcher flyout style (option available in the "Properties" - "System tray" section)
+
+#### Fixes
+
+* The key above the `Tab` key is now correctly identified for all keyboard layouts, so the per-application Windows 10 window switcher mode works correctly (#283)
+
 ## 22000.282.32
 
 Tested on build 22000.282.
