@@ -42,11 +42,11 @@ DWORD DownloadSymbols(DownloadSymbolsParams* params);
 
 BOOL LoadSymbols(symbols_addr* symbols_PTRS, HMODULE hModule);
 
-inline BOOL IsBuild22000_282(RTL_OSVERSIONINFOW rovi, DWORD32 ubr)
+inline BOOL IsBuild(RTL_OSVERSIONINFOW rovi, DWORD32 ubr, DWORD BuildNumber, DWORD BuildMinor)
 {
     return (rovi.dwMajorVersion == 10 &&
         rovi.dwMinorVersion == 0 &&
-        rovi.dwBuildNumber == 22000 &&
-        ubr == 282);
+        rovi.dwBuildNumber == BuildNumber &&
+        ubr == BuildMinor);
 }
 #endif

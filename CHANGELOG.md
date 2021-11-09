@@ -2,6 +2,14 @@
 
 This document includes the same release notes as in the [Releases](https://github.com/valinet/ExplorerPatcher/releases) section on GitHub.
 
+## 22000.318.34
+
+Tested on build 22000.318.
+
+#### Feature enhancements
+
+* Built-in support for build 22000.318
+
 ## 22000.282.33
 
 Tested on build 22000.282.

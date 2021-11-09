@@ -539,7 +539,7 @@ BOOL LoadSymbols(symbols_addr* symbols_PTRS, HMODULE hModule)
         ubr
     );
 
-    if (IsBuild22000_282(rovi, ubr))
+    if (IsBuild(rovi, ubr, 22000, 282) || IsBuild(rovi, ubr, 22000, 318))
     {
         symbols_PTRS->twinui_pcshell_PTRS[0] = 0x217CE6;
         symbols_PTRS->twinui_pcshell_PTRS[1] = 0x5CC570;
@@ -728,7 +728,10 @@ BOOL LoadSymbols(symbols_addr* symbols_PTRS, HMODULE hModule)
         &dwSize
     );
     RegCloseKey(hKey);
-    if (!bNeedToDownload && !IsBuild22000_282(rovi, ubr))
+    if (!bNeedToDownload &&
+        !IsBuild(rovi, ubr, 22000, 282) &&
+        !IsBuild(rovi, ubr, 22000, 318)
+        )
     {
         bNeedToDownload = wcscmp(szReportedVersion, szStoredVersion);
     }
