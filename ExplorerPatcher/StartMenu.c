@@ -253,6 +253,7 @@ DWORD WINAPI HookStartMenu(HookStartMenuParams* params)
                         if (!hProcess)
                         {
                             printf("Unable to open handle to StartMenuExperienceHost.exe.\n");
+                            CloseHandle(hSnapshot);
                             Sleep(params->dwTimeout);
                             continue;
                         }
@@ -276,7 +277,10 @@ DWORD WINAPI HookStartMenu(HookStartMenuParams* params)
                     }
                 } while (Process32Next(hSnapshot, &pe32) == TRUE);
             }
-            CloseHandle(hSnapshot);
+            if (hSnapshot)
+            {
+                CloseHandle(hSnapshot);
+            }
             if (hProcess)
             {
                 break;
@@ -293,7 +297,7 @@ DWORD WINAPI HookStartMenu(HookStartMenuParams* params)
             hProcess,
             NULL,
             MAX_PATH,
-            MEM_COMMIT,
+            MEM_COMMIT | MEM_RESERVE,
             PAGE_READWRITE
         );
         if (!lpRemotePath)
