@@ -8,6 +8,8 @@
 #include <TlHelp32.h>
 #include <Psapi.h>
 #pragma comment(lib, "Psapi.lib")
+#include <roapi.h>
+#include <winstring.h>
 
 #pragma comment(lib, "ntdll.lib")
 EXTERN_C NTSYSAPI PIMAGE_NT_HEADERS NTAPI RtlImageNtHeader(PVOID);
@@ -236,4 +238,143 @@ typedef struct _HookStartMenuParams
     FARPROC proc;
 } HookStartMenuParams;
 DWORD WINAPI HookStartMenu(HookStartMenuParams* params);
+
+typedef interface WindowsUdk_UI_Shell_TaskbarLayoutStatics WindowsUdk_UI_Shell_TaskbarLayoutStatics;
+typedef interface WindowsUdk_UI_Shell_TaskbarLayoutManager WindowsUdk_UI_Shell_TaskbarLayoutManager;
+
+DEFINE_GUID(IID_WindowsUdk_UI_Shell_TaskbarLayoutStatics,
+    0x4472FE8B,
+    0xF3B1, 0x5CC9, 0x81, 0xc1,
+    0x76, 0xf8, 0xc3, 0x38, 0x8a, 0xab
+);
+
+typedef struct WindowsUdk_UI_Shell_TaskbarLayoutStaticsVtbl // : IInspectableVtbl
+{
+    BEGIN_INTERFACE
+
+        HRESULT(STDMETHODCALLTYPE* QueryInterface)(
+            __RPC__in WindowsUdk_UI_Shell_TaskbarLayoutStatics* This,
+            /* [in] */ __RPC__in REFIID riid,
+            /* [annotation][iid_is][out] */
+            _COM_Outptr_  void** ppvObject);
+
+    ULONG(STDMETHODCALLTYPE* AddRef)(
+        __RPC__in WindowsUdk_UI_Shell_TaskbarLayoutStatics* This);
+
+    ULONG(STDMETHODCALLTYPE* Release)(
+        __RPC__in WindowsUdk_UI_Shell_TaskbarLayoutStatics* This);
+
+    HRESULT(STDMETHODCALLTYPE* GetIids)(
+        __RPC__in WindowsUdk_UI_Shell_TaskbarLayoutStatics* This,
+        /* [out] */ __RPC__out ULONG* iidCount,
+        /* [size_is][size_is][out] */ __RPC__deref_out_ecount_full_opt(*iidCount) IID** iids);
+
+    HRESULT(STDMETHODCALLTYPE* GetRuntimeClassName)(
+        __RPC__in WindowsUdk_UI_Shell_TaskbarLayoutStatics* This,
+        /* [out] */ __RPC__deref_out_opt HSTRING* className);
+
+    HRESULT(STDMETHODCALLTYPE* GetTrustLevel)(
+        __RPC__in WindowsUdk_UI_Shell_TaskbarLayoutStatics* This,
+        /* [out] */ __RPC__out TrustLevel* trustLevel);
+
+    HRESULT(STDMETHODCALLTYPE* get_Current)(
+        __RPC__in WindowsUdk_UI_Shell_TaskbarLayoutStatics* This,
+        /* [out] */ __RPC__out void** _instanceof_winrt_WindowsUdk_UI_Shell_implementation_TaskbarLayout);
+
+    END_INTERFACE
+} WindowsUdk_UI_Shell_TaskbarLayoutStaticsVtbl;
+
+interface WindowsUdk_UI_Shell_TaskbarLayoutStatics // : IInspectable
+{
+    CONST_VTBL struct WindowsUdk_UI_Shell_TaskbarLayoutStaticsVtbl* lpVtbl;
+};
+
+DEFINE_GUID(IID_WindowsUdk_UI_Shell_ITaskbarLayoutManager,
+    0x4FB10D7C4,
+    0x4F7F, 0x5DE5, 0xA5, 0x28,
+    0x7e, 0xfe, 0xf4, 0x18, 0xaa, 0x48
+);
+
+typedef struct WindowsUdk_UI_Shell_TaskbarLayoutManagerVtbl // : IInspectableVtbl
+{
+    BEGIN_INTERFACE
+
+        HRESULT(STDMETHODCALLTYPE* QueryInterface)(
+            __RPC__in WindowsUdk_UI_Shell_TaskbarLayoutManager* This,
+            /* [in] */ __RPC__in REFIID riid,
+            /* [annotation][iid_is][out] */
+            _COM_Outptr_  void** ppvObject);
+
+    ULONG(STDMETHODCALLTYPE* AddRef)(
+        __RPC__in WindowsUdk_UI_Shell_TaskbarLayoutManager* This);
+
+    ULONG(STDMETHODCALLTYPE* Release)(
+        __RPC__in WindowsUdk_UI_Shell_TaskbarLayoutManager* This);
+
+    HRESULT(STDMETHODCALLTYPE* GetIids)(
+        __RPC__in WindowsUdk_UI_Shell_TaskbarLayoutManager* This,
+        /* [out] */ __RPC__out ULONG* iidCount,
+        /* [size_is][size_is][out] */ __RPC__deref_out_ecount_full_opt(*iidCount) IID** iids);
+
+    HRESULT(STDMETHODCALLTYPE* GetRuntimeClassName)(
+        __RPC__in WindowsUdk_UI_Shell_TaskbarLayoutManager* This,
+        /* [out] */ __RPC__deref_out_opt HSTRING* className);
+
+    HRESULT(STDMETHODCALLTYPE* GetTrustLevel)(
+        __RPC__in WindowsUdk_UI_Shell_TaskbarLayoutManager* This,
+        /* [out] */ __RPC__out TrustLevel* trustLevel);
+
+    HRESULT(STDMETHODCALLTYPE* ReportMonitorAdded)(
+        __RPC__in WindowsUdk_UI_Shell_TaskbarLayoutManager* This,
+        __RPC__in HMONITOR hMonitor,
+        __RPC__in void* _instance_of_winrt_WindowsUdk_UI_Shell_ITaskbarSettings,
+        __RPC__in LPRECT _unknown_lpGeometry);
+
+    HRESULT(STDMETHODCALLTYPE* ReportMonitorRemoved)(
+        __RPC__in WindowsUdk_UI_Shell_TaskbarLayoutManager* This,
+        __RPC__in HMONITOR hMonitor);
+
+    HRESULT(STDMETHODCALLTYPE* ReportMonitorChanged)(
+        __RPC__in WindowsUdk_UI_Shell_TaskbarLayoutManager* This,
+        __RPC__in HMONITOR hMonitor,
+        __RPC__in LPRECT _unknown_lpGeometry);
+
+    HRESULT(STDMETHODCALLTYPE* ReportSettingsForMonitor)(
+        __RPC__in WindowsUdk_UI_Shell_TaskbarLayoutManager* This,
+        __RPC__in HMONITOR hMonitor,
+        __RPC__in void* _instance_of_winrt_WindowsUdk_UI_Shell_ITaskbarSettings);
+
+    HRESULT(STDMETHODCALLTYPE* ReportShellViewButtonBounds)(
+        __RPC__in WindowsUdk_UI_Shell_TaskbarLayoutManager* This,
+        __RPC__in HMONITOR hMonitor,
+        __RPC__in void* _instanceof_winrt_WindowsUdk_UI_Shell_Bamo_ShellViewButtonBounds);
+
+    END_INTERFACE
+} WindowsUdk_UI_Shell_TaskbarLayoutManagerVtbl;
+
+interface WindowsUdk_UI_Shell_TaskbarLayoutManager // : IInspectable
+{
+    CONST_VTBL struct WindowsUdk_UI_Shell_TaskbarLayoutManagerVtbl* lpVtbl;
+};
+
+typedef struct _StartMenuPositioningData
+{
+    DWORD location;
+    DWORD operation;
+    DWORD* pMonitorCount;
+    HMONITOR* pMonitorList;
+} StartMenuPositioningData;
+
+#define STARTMENU_POSITIONING_OPERATION_ADD 0
+#define STARTMENU_POSITIONING_OPERATION_REMOVE 1
+#define STARTMENU_POSITIONING_OPERATION_CHANGE 3
+
+BOOL NeedsRo_PositionStartMenuForMonitor(
+    HMONITOR hMonitor,
+    HDC unused1,
+    LPRECT unused2,
+    StartMenuPositioningData* data
+);
+
+DWORD GetStartMenuPosition(FARPROC SHRegGetValueFromHKCUHKLMFunc);
 #endif

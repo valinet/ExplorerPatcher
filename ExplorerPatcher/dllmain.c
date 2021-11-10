@@ -68,6 +68,7 @@ DWORD bHookStartMenu = TRUE;
 DWORD bNoMenuAccelerator = FALSE;
 DWORD bTaskbarMonitorOverride = 0;
 DWORD dwIMEStyle = 0;
+DWORD dwTaskbarAl = 0;
 HMODULE hModule = NULL;
 HANDLE hSettingsMonitorThread = NULL;
 HANDLE hDelayedInjectionThread = NULL;
@@ -77,6 +78,8 @@ HANDLE hExitSettingsMonitor = NULL;
 HANDLE hSwsSettingsChanged = NULL;
 HANDLE hSwsOpacityMaybeChanged = NULL;
 BYTE* lpShouldDisplayCCButton = NULL;
+HMONITOR hMonitorList[30];
+DWORD dwMonitorCount = 0;
 int Code = 0;
 
 
@@ -855,6 +858,55 @@ finalize:
 #pragma endregion
 
 
+#pragma region "Show Start in correct location according to TaskbarAl"
+#ifdef _WIN64
+void UpdateStartMenuPositioning(LPARAM loIsShouldInitializeArray_hiIsShouldRoInitialize)
+{
+    BOOL bShouldInitialize = LOWORD(loIsShouldInitializeArray_hiIsShouldRoInitialize);
+    BOOL bShouldRoInitialize = HIWORD(loIsShouldInitializeArray_hiIsShouldRoInitialize);
+
+    DWORD dwPosCurrent = GetStartMenuPosition(SHRegGetValueFromHKCUHKLMFunc);
+    if (bShouldInitialize || InterlockedAdd(&dwTaskbarAl, 0) != dwPosCurrent)
+    {
+        HRESULT hr = S_OK;
+        if (bShouldRoInitialize)
+        {
+            hr = RoInitialize(RO_INIT_MULTITHREADED);
+        }
+        if (SUCCEEDED(hr))
+        {
+            InterlockedExchange(&dwTaskbarAl, dwPosCurrent);
+            StartMenuPositioningData spd;
+            spd.pMonitorCount = &dwMonitorCount;
+            spd.pMonitorList = hMonitorList;
+            spd.location = dwPosCurrent;
+            if (bShouldInitialize)
+            {
+                spd.operation = STARTMENU_POSITIONING_OPERATION_REMOVE;
+                unsigned int k = InterlockedAdd(&dwMonitorCount, 0);
+                for (unsigned int i = 0; i < k; ++i)
+                {
+                    NeedsRo_PositionStartMenuForMonitor(hMonitorList[i], NULL, NULL, &spd);
+                }
+                InterlockedExchange(&dwMonitorCount, 0);
+                spd.operation = STARTMENU_POSITIONING_OPERATION_ADD;
+            }
+            else
+            {
+                spd.operation = STARTMENU_POSITIONING_OPERATION_CHANGE;
+            }
+            EnumDisplayMonitors(NULL, NULL, NeedsRo_PositionStartMenuForMonitor, &spd);
+            if (bShouldRoInitialize)
+            {
+                RoUninitialize();
+            }
+        }
+    }
+}
+#endif
+#pragma endregion
+
+
 #pragma region "Shell_TrayWnd subclass"
 #ifdef _WIN64
 INT64 Shell_TrayWndSubclassProc(
@@ -882,6 +934,10 @@ INT64 Shell_TrayWndSubclassProc(
             *lpShouldDisplayCCButton = bHideControlCenterButton;
         }
         return lRes;
+    }
+    else if (uMsg == WM_DISPLAYCHANGE)
+    {
+        UpdateStartMenuPositioning(MAKELPARAM(TRUE, FALSE));
     }
     return DefSubclassProc(hWnd, uMsg, wParam, lParam);
 }
@@ -1894,189 +1950,13 @@ INT64 winrt_Windows_Internal_Shell_implementation_MeetAndChatManager_OnMessageHo
 #pragma endregion
 
 
-#pragma region "Show Start in correct location according to TaskbarAl"
+#pragma region "Enable old taskbar"
 #ifdef _WIN64
 DEFINE_GUID(GUID_18C02F2E_2754_5A20_8BD5_0B34CE79DA2B,
     0x18C02F2E,
     0x2754, 0x5A20, 0x8b, 0xd5,
     0x0b, 0x34, 0xce, 0x79, 0xda, 0x2b
 );
-
-DEFINE_GUID(_uuidof_WindowsUdk_UI_Shell_TaskbarLayout_Factory,
-    0x4472FE8B,
-    0xF3B1, 0x5CC9, 0x81, 0xc1,
-    0x76, 0xf8, 0xc3, 0x38, 0x8a, 0xab
-);
-DEFINE_GUID(_uuidof_v13,
-    0x4FB10D7C4,
-    0x4F7F, 0x5DE5, 0xA5, 0x28,
-    0x7e, 0xfe, 0xf4, 0x18, 0xaa, 0x48
-);
-BOOL PositionStartMenuForMonitor(
-    HMONITOR hMonitor, 
-    HDC unused1,
-    LPRECT unused2,
-    DWORD location)
-{
-    HRESULT hr = S_OK;
-    HSTRING_HEADER hstringHeader;
-    HSTRING string = NULL;
-    void* factory = NULL;
-    INT64 v12 = NULL;
-    INT64* v13 = NULL;
-
-    if (SUCCEEDED(hr))
-    {
-        hr = RoInitialize(RO_INIT_MULTITHREADED);
-    }
-    if (SUCCEEDED(hr))
-    {
-        hr = WindowsCreateStringReference(
-            L"WindowsUdk.UI.Shell.TaskbarLayout",
-            33,
-            &hstringHeader,
-            &string
-        );
-    }
-    if (SUCCEEDED(hr))
-    {
-        hr = RoGetActivationFactory(
-            string,
-            &_uuidof_WindowsUdk_UI_Shell_TaskbarLayout_Factory,
-            &factory
-        );
-    }
-    if (SUCCEEDED(hr))
-    {
-        hr = (*(HRESULT(**)(INT64, INT64*))(*(INT64*)factory + 48))(factory, &v12);
-    }
-    if (SUCCEEDED(hr))
-    {
-        hr = (**(HRESULT(***)(INT64, GUID*, INT64*))v12)(v12, &_uuidof_v13, (INT64*)&v13); // QueryInterface
-    }
-    if (SUCCEEDED(hr))
-    {
-        void** p = malloc(41 * sizeof(void*));
-        for (unsigned int i = 0; i < 41; ++i)
-        {
-            if (i == 1 || i == 2)
-            {
-                p[i] = nimpl3;
-            }
-            else if (i == 6 || i == 10)
-            {
-                if (location)
-                {
-                    p[i] = nimpl4_1;
-                }
-                else
-                {
-                    p[i] = nimpl4_0;
-                }
-            }
-            else if (i == 14)
-            {
-                p[i] = nimpl4_1;
-            }
-            else
-            {
-                p[i] = nimpl;
-            }
-        }
-        hr = (*(HRESULT(**)(INT64, HMONITOR, INT64(***)(), INT64))(*v13 + 48))(v13, hMonitor, &p, 0);
-        free(p);
-    }
-    if (SUCCEEDED(hr))
-    {
-        (*(void(**)(INT64*))(*v13 + 16))(v13); // Release
-        (*(void(**)(INT64))(*(INT64*)v12 + 16))(v12); // Release
-        (*(void(**)(INT64))(*(INT64*)factory + 16))(factory); // Release
-        WindowsDeleteString(string);
-        RoUninitialize();
-    }
-    return TRUE;
-}
-
-void PositionStartMenu(INT64 unused, DWORD location)
-{
-    HWND hWnd = NULL;
-
-    do
-    {
-        hWnd = FindWindowEx(
-            NULL,
-            hWnd,
-            L"Shell_SecondaryTrayWnd",
-            NULL
-        );
-        PositionStartMenuForMonitor(MonitorFromWindow(hWnd, MONITOR_DEFAULTTOPRIMARY), NULL, NULL, location);
-    } while (hWnd);
-    if (!hWnd)
-    {
-        hWnd = FindWindowEx(
-            NULL,
-            NULL,
-            L"Shell_TrayWnd",
-            NULL
-        );
-        PositionStartMenuForMonitor(MonitorFromWindow(hWnd, MONITOR_DEFAULTTOPRIMARY), NULL, NULL, location);
-    }
-}
-
-DWORD PositionStartMenuTimeout(INT64 timeout)
-{
-    Sleep(timeout);
-    printf("Started \"Position Start menu\" thread.\n");
-    EnumDisplayMonitors(NULL, NULL, PositionStartMenuForMonitor, GetStartMenuPosition());
-    printf("Ended \"Position Start menu\" thread.\n");
-}
-
-DWORD GetStartMenuPosition()
-{
-    DWORD dwSize = sizeof(DWORD);
-
-    DWORD dwTaskbarAl = 0;
-    if (!SHRegGetValueFromHKCUHKLMFunc || SHRegGetValueFromHKCUHKLMFunc(
-        TEXT("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced"),
-        TEXT("TaskbarAl"),
-        SRRF_RT_REG_DWORD,
-        NULL,
-        &dwTaskbarAl,
-        (LPDWORD)(&dwSize)
-    ) != ERROR_SUCCESS)
-    {
-        dwTaskbarAl = 0;
-    }
-
-    return dwTaskbarAl;
-}
-
-INT64 PositionStartMenuOnMonitorTopologyChangeSubclass(
-    _In_ HWND   hWnd,
-    _In_ UINT   uMsg,
-    _In_ WPARAM wParam,
-    _In_ LPARAM lParam,
-    UINT_PTR    uIdSubclass,
-    DWORD_PTR   dwRefData
-)
-{
-    if (uMsg == WM_DISPLAYCHANGE)
-    {
-        CreateThread(0, 0, PositionStartMenuTimeout, 1000, 0, 0);
-    }
-    return DefSubclassProc(
-        hWnd,
-        uMsg,
-        wParam,
-        lParam
-    );
-}
-#endif
-#pragma endregion
-
-
-#pragma region "Enable old taskbar"
-#ifdef _WIN64
 HRESULT explorer_RoGetActivationFactoryHook(HSTRING activatableClassId, GUID* iid, void** factory)
 {
     PCWSTR StringRawBuffer = WindowsGetStringRawBuffer(activatableClassId, 0);
@@ -2382,6 +2262,7 @@ INT64 ShowDesktopSubclassProc(
 DWORD SignalShellReady(DWORD wait)
 {
     printf("Started \"Signal shell ready\" thread.\n");
+    UpdateStartMenuPositioning(MAKELPARAM(TRUE, TRUE));
 
     while (!wait && TRUE)
     {
@@ -2403,34 +2284,7 @@ DWORD SignalShellReady(DWORD wait)
             {
                 if (IsWindowVisible(hWnd))
                 {
-                    /*
-                    SetWindowSubclass(
-                        hWnd,
-                        PositionStartMenuOnMonitorTopologyChangeSubclass,
-                        PositionStartMenuOnMonitorTopologyChangeSubclass,
-                        0
-                    );
-                    SettingsChangeParameters* params = calloc(1, sizeof(SettingsChangeParameters));
-                    params->isStartMenuExperienceHost = FALSE;
-                    params->TaskbarAlChangedCallback = PositionStartMenu;
-                    params->TaskbarAlChangedCallbackData = 0;
-                    CreateThread(
-                        0,
-                        0,
-                        MonitorSettingsChanges,
-                        params,
-                        0,
-                        0
-                    );
-                    */
-                    EnumDisplayMonitors(NULL, NULL, PositionStartMenuForMonitor, GetStartMenuPosition());
-                    /*printf("hook show desktop\n");
-                    void* ShellTrayWndProcFuncT = GetWindowLongPtrW(hWnd, GWLP_WNDPROC);
-                    if (ShellTrayWndProcHook != ShellTrayWndProcFuncT)
-                    {
-                        ShellTrayWndProcFunc = ShellTrayWndProcFuncT;
-                        SetWindowLongPtrW(hWnd, GWLP_WNDPROC, ShellTrayWndProcHook);
-                    }*/
+                    // UpdateStartMenuPositioning(MAKELPARAM(TRUE, TRUE));
                     break;
                 }
             }
@@ -2447,7 +2301,7 @@ DWORD SignalShellReady(DWORD wait)
         Sleep(wait);
     }
 
-    HANDLE hEvent = CreateEvent(0, 0, 0, L"ShellDesktopSwitchEvent");
+    HANDLE hEvent = CreateEventW(0, 0, 0, L"ShellDesktopSwitchEvent");
     if (hEvent)
     {
         printf(">>> Signal shell ready.\n");
@@ -4092,7 +3946,7 @@ __declspec(dllexport) DWORD WINAPI main(
         hSwsOpacityMaybeChanged = CreateEventW(NULL, FALSE, FALSE, NULL);
     }
 
-    settings = calloc(9, sizeof(Setting));
+    settings = calloc(10, sizeof(Setting));
     settings[0].callback = LoadSettings;
     settings[0].data = bIsExplorer;
     settings[0].hEvent = NULL;
@@ -4156,9 +4010,16 @@ __declspec(dllexport) DWORD WINAPI main(
     wcscpy_s(settings[8].name, MAX_PATH, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer");
     settings[8].origin = HKEY_CURRENT_USER;
 
+    settings[9].callback = UpdateStartMenuPositioning;
+    settings[9].data = MAKELPARAM(FALSE, TRUE);
+    settings[9].hEvent = NULL;
+    settings[9].hKey = NULL;
+    wcscpy_s(settings[9].name, MAX_PATH, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced");
+    settings[9].origin = HKEY_CURRENT_USER;
+
     settingsParams = calloc(1, sizeof(SettingsChangeParameters));
     settingsParams->settings = settings;
-    settingsParams->size = bIsExplorer ? 9 : 1;
+    settingsParams->size = bIsExplorer ? 10 : 1;
     hExitSettingsMonitor = CreateEventW(NULL, FALSE, FALSE, NULL);
     settingsParams->hExitEvent = hExitSettingsMonitor;
     if (!hSettingsMonitorThread)

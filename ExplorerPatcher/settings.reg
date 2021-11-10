@@ -138,7 +138,7 @@
 ;b Open Start in All apps by default
 "MakeAllAppsDefault"=dword:00000000
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
-;c 2 Location on screen *
+;c 2 Location on screen
 ;x 0 Left
 ;x 1 Center (default)
 "TaskbarAl"=dword:00000001

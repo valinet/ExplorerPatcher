@@ -2,6 +2,20 @@
 
 This document includes the same release notes as in the [Releases](https://github.com/valinet/ExplorerPatcher/releases) section on GitHub.
 
+## 22000.318.35
+
+Tested on build 22000.318.
+
+#### Feature enhancements
+
+* Start menu position can now be changed without needing to restart File Explorer
+
+#### Fixes
+
+* Improved reliability of Start menu positioning when the monitor topology changes and at startup
+* Start menu injection returns error codes from the remote process in the debug console
+* Other Start menu quality of life improvements
+
 ## 22000.318.34
 
 Tested on build 22000.318.

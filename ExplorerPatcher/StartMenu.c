@@ -448,3 +448,254 @@ DWORD WINAPI HookStartMenu(HookStartMenuParams* params)
         CloseHandle(hProcess);
     }
 }
+
+static HRESULT STDMETHODCALLTYPE WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented(void* instanceof_WindowsUdk_UI_Shell_ITaskbarSettings)
+{
+    return E_NOTIMPL;
+}
+
+static ULONG STDMETHODCALLTYPE WindowsUdk_UI_Shell_ITaskbarSettings_AddRefRelease(void* instanceof_WindowsUdk_UI_Shell_ITaskbarSettings)
+{
+    return 1;
+}
+
+static HRESULT STDMETHODCALLTYPE WindowsUdk_UI_Shell_ITaskbarSettings_GetAlignment_Left(
+    void* instanceof_WindowsUdk_UI_Shell_ITaskbarSettings,
+    DWORD* pAlignment
+)
+{
+    *pAlignment = 0;
+    return 0;
+}
+
+static HRESULT STDMETHODCALLTYPE WindowsUdk_UI_Shell_ITaskbarSettings_GetAlignment_Center(
+    void* instanceof_WindowsUdk_UI_Shell_ITaskbarSettings,
+    DWORD* pAlignment
+)
+{
+    *pAlignment = 1;
+    return 0;
+}
+
+static HRESULT STDMETHODCALLTYPE WindowsUdk_UI_Shell_ITaskbarSettings_GetLocation_Left(
+    void* instanceof_WindowsUdk_UI_Shell_ITaskbarSettings,
+    DWORD* pLocation
+)
+{
+    *pLocation = 0;
+    return 0;
+}
+
+static HRESULT STDMETHODCALLTYPE WindowsUdk_UI_Shell_ITaskbarSettings_GetLocation_Center(
+    void* instanceof_WindowsUdk_UI_Shell_ITaskbarSettings,
+    DWORD* pLocation
+)
+{
+    *pLocation = 1;
+    return 0;
+}
+
+static HRESULT STDMETHODCALLTYPE WindowsUdk_UI_Shell_ITaskbarSettings_GetSearchMode(
+    void* instanceof_WindowsUdk_UI_Shell_ITaskbarSettings,
+    DWORD* pSearchMode
+)
+{
+    *pSearchMode = 1;
+    return 0;
+}
+
+static void* instanceof_WindowsUdk_UI_Shell_ITaskbarSettingsVtbl[41] = { // : IInspectableVtbl
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_AddRefRelease,
+    WindowsUdk_UI_Shell_ITaskbarSettings_AddRefRelease,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_GetAlignment_Left,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_GetLocation_Left,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_GetSearchMode,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented
+};
+typedef struct instanceof_WindowsUdk_UI_Shell_ITaskbarSettings // : IInspectable
+{
+    void* lpVtbl;
+} WindowsUdk_UI_Shell_ITaskbarSettings;
+static const WindowsUdk_UI_Shell_ITaskbarSettings instanceof_WindowsUdk_UI_Shell_ITaskbarSettings = { instanceof_WindowsUdk_UI_Shell_ITaskbarSettingsVtbl };
+
+BOOL NeedsRo_PositionStartMenuForMonitor(
+    HMONITOR hMonitor,
+    HDC unused1,
+    LPRECT unused2,
+    StartMenuPositioningData* data
+)
+{
+    // For this to have any chance to succeed, the Windows Runtime has to be
+    // already initialized on the calling thread, concurrency model RO_INIT_MULTITHREADED
+
+    HRESULT hr = S_OK;
+    HSTRING_HEADER hstringHeader_of_WindowsUdk_UI_Shell_TaskbarLayout;
+    HSTRING hstring_of_WindowsUdk_UI_Shell_TaskbarLayout = NULL;
+    WindowsUdk_UI_Shell_TaskbarLayoutStatics* pTaskbarLayoutFactory = NULL;
+    IInspectable* pTaskbarLayout = NULL;
+    WindowsUdk_UI_Shell_TaskbarLayoutManager* pTaskbarLayoutManager = NULL;
+
+    if (SUCCEEDED(hr))
+    {
+        hr = WindowsCreateStringReference(
+            L"WindowsUdk.UI.Shell.TaskbarLayout",
+            33,
+            &hstringHeader_of_WindowsUdk_UI_Shell_TaskbarLayout,
+            &hstring_of_WindowsUdk_UI_Shell_TaskbarLayout
+        );
+    }
+    if (SUCCEEDED(hr))
+    {
+        hr = RoGetActivationFactory(
+            hstring_of_WindowsUdk_UI_Shell_TaskbarLayout,
+            &IID_WindowsUdk_UI_Shell_TaskbarLayoutStatics,
+            &pTaskbarLayoutFactory
+        );
+    }
+    if (SUCCEEDED(hr))
+    {
+        //hr = (*(HRESULT(**)(INT64, INT64*))(*(INT64*)pTaskbarLayoutFactory + 48))(pTaskbarLayoutFactory, &v12);
+        hr = pTaskbarLayoutFactory->lpVtbl->get_Current(pTaskbarLayoutFactory, &pTaskbarLayout);
+    }
+    if (SUCCEEDED(hr))
+    {
+        /*hr = (**(HRESULT(***)(INT64, GUID*, INT64*))v12)(
+            v12,
+            &IID_WindowsUdk_UI_Shell_ITaskbarLayoutManager,
+            (INT64*)&v13
+            );*/
+        hr = pTaskbarLayout->lpVtbl->QueryInterface(
+            pTaskbarLayout,
+            &IID_WindowsUdk_UI_Shell_ITaskbarLayoutManager,
+            &pTaskbarLayoutManager
+        );
+    }
+    if (SUCCEEDED(hr))
+    {
+        //hr = (*(HRESULT(**)(INT64, HMONITOR, INT64(***)(), INT64))(*v13 + 48 + (sizeof(uintptr_t) * data->operation)))(v13, hMonitor, &p, 0);
+
+        // Filling a vtable for a winrt::WindowsUdk::UI::Shell::ITaskbarSettings interface
+        // some info about it can be found in method:
+        // > WindowsUdk::UI::Shell::Bamo::TaskbarLayoutBamoPrincipal::SetSettings
+        // from windowsudk.shellcommon.dll
+        // useful refrences: https://blog.magnusmontin.net/2017/12/30/minimal-uwp-wrl-xaml-app/
+        // registry: HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\WindowsRuntime\ActivatableClassId\WindowsUdk.UI.Shell.TaskbarLayout
+        if (data->location)
+        {
+            instanceof_WindowsUdk_UI_Shell_ITaskbarSettingsVtbl[6] = WindowsUdk_UI_Shell_ITaskbarSettings_GetAlignment_Center;
+            instanceof_WindowsUdk_UI_Shell_ITaskbarSettingsVtbl[10] = WindowsUdk_UI_Shell_ITaskbarSettings_GetLocation_Center;
+        }
+        else
+        {
+            instanceof_WindowsUdk_UI_Shell_ITaskbarSettingsVtbl[6] = WindowsUdk_UI_Shell_ITaskbarSettings_GetAlignment_Left;
+            instanceof_WindowsUdk_UI_Shell_ITaskbarSettingsVtbl[10] = WindowsUdk_UI_Shell_ITaskbarSettings_GetLocation_Left;
+        }
+        instanceof_WindowsUdk_UI_Shell_ITaskbarSettingsVtbl[14] = WindowsUdk_UI_Shell_ITaskbarSettings_GetSearchMode;
+
+        if (data->operation == STARTMENU_POSITIONING_OPERATION_ADD)
+        {
+            hr = pTaskbarLayoutManager->lpVtbl->ReportMonitorAdded(
+                pTaskbarLayoutManager,
+                hMonitor,
+                &instanceof_WindowsUdk_UI_Shell_ITaskbarSettings,
+                NULL
+            );
+            data->pMonitorList[InterlockedIncrement(data->pMonitorCount) - 1] = hMonitor;
+            printf("[Positioning] Added settings for monitor %p : %d\n", hMonitor, data->location);
+        }
+        else if (data->operation == STARTMENU_POSITIONING_OPERATION_CHANGE)
+        {
+            hr = pTaskbarLayoutManager->lpVtbl->ReportSettingsForMonitor(
+                pTaskbarLayoutManager,
+                hMonitor,
+                &instanceof_WindowsUdk_UI_Shell_ITaskbarSettings
+            );
+            printf("[Positioning] Changed settings for monitor: %p : %d\n", hMonitor, data->location);
+        }
+        else if (data->operation == STARTMENU_POSITIONING_OPERATION_REMOVE)
+        {
+            hr = pTaskbarLayoutManager->lpVtbl->ReportMonitorRemoved(
+                pTaskbarLayoutManager,
+                hMonitor
+            );
+            printf("[Positioning] Removed settings for monitor: %p\n", hMonitor);
+        }
+    }
+    if (pTaskbarLayoutManager)
+    {
+        pTaskbarLayoutManager->lpVtbl->Release(pTaskbarLayoutManager);
+        pTaskbarLayoutManager = NULL;
+    }
+    if (pTaskbarLayout)
+    {
+        pTaskbarLayout->lpVtbl->Release(pTaskbarLayout);
+        pTaskbarLayout = NULL;
+    }
+    if (pTaskbarLayoutFactory)
+    {
+        pTaskbarLayoutFactory->lpVtbl->Release(pTaskbarLayoutFactory);
+        pTaskbarLayoutFactory = NULL;
+    }
+    if (hstring_of_WindowsUdk_UI_Shell_TaskbarLayout)
+    {
+        WindowsDeleteString(hstring_of_WindowsUdk_UI_Shell_TaskbarLayout);
+        hstring_of_WindowsUdk_UI_Shell_TaskbarLayout = NULL;
+    }
+
+    return TRUE;
+}
+
+DWORD GetStartMenuPosition(FARPROC SHRegGetValueFromHKCUHKLMFunc)
+{
+    DWORD dwSize = sizeof(DWORD);
+
+    DWORD dwTaskbarAl = 0;
+    if (!SHRegGetValueFromHKCUHKLMFunc || SHRegGetValueFromHKCUHKLMFunc(
+        TEXT("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced"),
+        TEXT("TaskbarAl"),
+        SRRF_RT_REG_DWORD,
+        NULL,
+        &dwTaskbarAl,
+        (LPDWORD)(&dwSize)
+    ) != ERROR_SUCCESS)
+    {
+        dwTaskbarAl = 0;
+    }
+
+    return dwTaskbarAl;
+}
