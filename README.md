@@ -94,6 +94,8 @@ You can try one of my other utilities available [here](https://github.com/valine
 
 You can manually configure the application by setting registry values. The registry entries supported by this application are described in [this file](https://github.com/valinet/ExplorerPatcher/blob/master/ExplorerPatcher/settings.reg).
 
+To open the configuration interface manually (for example, when unable to access it via `Win`+`X` - Properties), run the following command: `rundll32 C:\Windows\dxgi.dll,ZZGUI`.
+
 ## More configuration
 Even more registry configuration settings are described in the following document, make sure to take a look on it [here](https://github.com/valinet/ExplorerPatcher/issues/9).
 
