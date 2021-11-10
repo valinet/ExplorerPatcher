@@ -9,6 +9,9 @@
 #include <Psapi.h>
 #pragma comment(lib, "Psapi.lib")
 
+#pragma comment(lib, "ntdll.lib")
+EXTERN_C NTSYSAPI PIMAGE_NT_HEADERS NTAPI RtlImageNtHeader(PVOID);
+
 extern DWORD bMonitorOverride;
 extern DWORD bOpenAtLogon;
 
@@ -48,11 +51,11 @@ typedef struct IImmersiveMonitorServiceVtbl
 {
     BEGIN_INTERFACE
 
-        HRESULT(STDMETHODCALLTYPE* QueryInterface)(
-            IImmersiveMonitorService* This,
-            /* [in] */ REFIID riid,
-            /* [annotation][iid_is][out] */
-            _COM_Outptr_  void** ppvObject);
+    HRESULT(STDMETHODCALLTYPE* QueryInterface)(
+        IImmersiveMonitorService* This,
+        /* [in] */ REFIID riid,
+        /* [annotation][iid_is][out] */
+        _COM_Outptr_  void** ppvObject);
 
     ULONG(STDMETHODCALLTYPE* AddRef)(
         IImmersiveMonitorService* This);
