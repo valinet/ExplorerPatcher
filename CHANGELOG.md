@@ -22,7 +22,7 @@ Tested on build 22000.318.
 
 #### New features
 
-* Added option to enable legacy list view ("SysListView32") in File Explorer (credit @TechSalt, @anixx from WinClassic) (.1)
+* Added option to enable legacy list view ("SysListView32") in File Explorer (credit @toiletflusher, @anixx from WinClassic) (.1)
 
 #### Feature enhancements
 
