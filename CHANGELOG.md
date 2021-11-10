@@ -6,6 +6,10 @@ This document includes the same release notes as in the [Releases](https://githu
 
 Tested on build 22000.318.
 
+#### New features
+
+* Added option to enable legacy list view ("SysListView32") in File Explorer (credit @TechSalt, @anixx from WinClassic) (.1)
+
 #### Feature enhancements
 
 * Built-in support for build 22000.318
