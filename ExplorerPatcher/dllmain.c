@@ -903,6 +903,8 @@ void UpdateStartMenuPositioning(LPARAM loIsShouldInitializeArray_hiIsShouldRoIni
         }
     }
 }
+#else
+void UpdateStartMenuPositioning(LPARAM loIsShouldInitializeArray_hiIsShouldRoInitialize) {}
 #endif
 #pragma endregion
 
