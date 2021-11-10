@@ -62,6 +62,13 @@ DWORD WINAPI MonitorSettings(SettingsChangeParameters* params)
 			{
 				bShouldExit = TRUE;
 			}
+			for (unsigned int j = 0; j < params->size; ++j)
+			{
+				if (WaitForSingleObject(handles[j], 0) == WAIT_OBJECT_0)
+				{
+					params->settings[j].callback(params->settings[j].data);
+				}
+			}
 		}
 		free(handles);
 		for (unsigned int i = 0; i < params->size; ++i)
