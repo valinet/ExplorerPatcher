@@ -288,7 +288,7 @@ DWORD WINAPI HookStartMenu(HookStartMenuParams* params)
             else
             {
                 retry++;
-                if (retry > 5) return 0;
+                if (retry > 20) return 0;
                 Sleep(params->dwTimeout);
             }
         }
