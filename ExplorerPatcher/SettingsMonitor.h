@@ -3,6 +3,7 @@
 #include <Windows.h>
 #include <Shlwapi.h>
 #pragma comment(lib, "Shlwapi.lib")
+#include <stdio.h>
 
 typedef struct _Setting
 {
@@ -17,7 +18,7 @@ typedef struct _SettingsChangeParameters
 {
     Setting* settings;
     DWORD size;
-    HANDLE hExitEvent;
+    HANDLE hThread;
 } SettingsChangeParameters;
 DWORD WINAPI MonitorSettings(SettingsChangeParameters*);
 #endif

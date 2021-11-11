@@ -2,6 +2,14 @@
 
 This document includes the same release notes as in the [Releases](https://github.com/valinet/ExplorerPatcher/releases) section on GitHub.
 
+## 22000.318.36
+
+Tested on build 22000.318.
+
+#### Fixes
+
+* Lots of bug and issue fixes for shell extension failing to work under certain circumstances; fixed #259
+
 ## 22000.318.35
 
 Tested on build 22000.318.

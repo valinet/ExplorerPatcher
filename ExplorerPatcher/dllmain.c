@@ -70,11 +70,9 @@ DWORD bTaskbarMonitorOverride = 0;
 DWORD dwIMEStyle = 0;
 DWORD dwTaskbarAl = 0;
 HMODULE hModule = NULL;
-HANDLE hSettingsMonitorThread = NULL;
 HANDLE hDelayedInjectionThread = NULL;
 HANDLE hIsWinXShown = NULL;
 HANDLE hWinXThread = NULL;
-HANDLE hExitSettingsMonitor = NULL;
 HANDLE hSwsSettingsChanged = NULL;
 HANDLE hSwsOpacityMaybeChanged = NULL;
 BYTE* lpShouldDisplayCCButton = NULL;
@@ -3948,92 +3946,159 @@ __declspec(dllexport) DWORD WINAPI main(
         hSwsOpacityMaybeChanged = CreateEventW(NULL, FALSE, FALSE, NULL);
     }
 
-    settings = calloc(10, sizeof(Setting));
-    settings[0].callback = LoadSettings;
-    settings[0].data = bIsExplorer;
-    settings[0].hEvent = NULL;
-    settings[0].hKey = NULL;
-    wcscpy_s(settings[0].name, MAX_PATH, TEXT(REGPATH));
-    settings[0].origin = HKEY_CURRENT_USER;
-
-    settings[1].callback = LoadSettings;
-    settings[1].data = bIsExplorer;
-    settings[1].hEvent = NULL;
-    settings[1].hKey = NULL;
-    wcscpy_s(settings[1].name, MAX_PATH, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartPage");
-    settings[1].origin = HKEY_CURRENT_USER;
-
-    settings[2].callback = SetEvent;
-    settings[2].data = hSwsSettingsChanged;
-    settings[2].hEvent = NULL;
-    settings[2].hKey = NULL;
-    wcscpy_s(settings[2].name, MAX_PATH, TEXT(REGPATH) L"\\sws");
-    settings[2].origin = HKEY_CURRENT_USER;
-
-    settings[3].callback = SetEvent;
-    settings[3].data = hSwsOpacityMaybeChanged;
-    settings[3].hEvent = NULL;
-    settings[3].hKey = NULL;
-    wcscpy_s(settings[3].name, MAX_PATH, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\MultitaskingView\\AltTabViewHost");
-    settings[3].origin = HKEY_CURRENT_USER;
-
-    settings[4].callback = Explorer_RefreshUI;
-    settings[4].data = NULL;
-    settings[4].hEvent = NULL;
-    settings[4].hKey = NULL;
-    wcscpy_s(settings[4].name, MAX_PATH, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced");
-    settings[4].origin = HKEY_CURRENT_USER;
-
-    settings[5].callback = Explorer_RefreshUI;
-    settings[5].data = NULL;
-    settings[5].hEvent = NULL;
-    settings[5].hKey = NULL;
-    wcscpy_s(settings[5].name, MAX_PATH, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Search");
-    settings[5].origin = HKEY_CURRENT_USER;
-
-    settings[6].callback = Explorer_RefreshUI;
-    settings[6].data = NULL;
-    settings[6].hEvent = NULL;
-    settings[6].hKey = NULL;
-    wcscpy_s(settings[6].name, MAX_PATH, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced\\People");
-    settings[6].origin = HKEY_CURRENT_USER;
-
-    settings[7].callback = Explorer_RefreshUI;
-    settings[7].data = NULL;
-    settings[7].hEvent = NULL;
-    settings[7].hKey = NULL;
-    wcscpy_s(settings[7].name, MAX_PATH, L"SOFTWARE\\Microsoft\\TabletTip\\1.7");
-    settings[7].origin = HKEY_CURRENT_USER;
-
-    settings[8].callback = SetEvent;
-    settings[8].data = hSwsSettingsChanged;
-    settings[8].hEvent = NULL;
-    settings[8].hKey = NULL;
-    wcscpy_s(settings[8].name, MAX_PATH, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer");
-    settings[8].origin = HKEY_CURRENT_USER;
-
-    settings[9].callback = UpdateStartMenuPositioning;
-    settings[9].data = MAKELPARAM(FALSE, TRUE);
-    settings[9].hEvent = NULL;
-    settings[9].hKey = NULL;
-    wcscpy_s(settings[9].name, MAX_PATH, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced");
-    settings[9].origin = HKEY_CURRENT_USER;
-
-    settingsParams = calloc(1, sizeof(SettingsChangeParameters));
-    settingsParams->settings = settings;
-    settingsParams->size = bIsExplorer ? 10 : 1;
-    hExitSettingsMonitor = CreateEventW(NULL, FALSE, FALSE, NULL);
-    settingsParams->hExitEvent = hExitSettingsMonitor;
-    if (!hSettingsMonitorThread)
+    if (!settings && !settingsParams)
     {
-        hSettingsMonitorThread = CreateThread(
-            0,
-            0,
-            MonitorSettings,
-            settingsParams,
-            0,
-            0
-        );
+        unsigned int numSettings = bIsExplorer ? 11 : 2;
+        settings = calloc(numSettings, sizeof(Setting));
+        if (settings)
+        {
+            unsigned int cs = 0;
+
+            if (cs < numSettings)
+            {
+                settings[cs].callback = NULL;
+                settings[cs].data = NULL;
+                settings[cs].hEvent = CreateEventW(NULL, FALSE, FALSE, NULL);
+                settings[cs].hKey = NULL;
+                ZeroMemory(settings[cs].name, MAX_PATH);
+                settings[cs].origin = NULL;
+                cs++;
+            }
+
+            if (cs < numSettings)
+            {
+                settings[cs].callback = LoadSettings;
+                settings[cs].data = bIsExplorer;
+                settings[cs].hEvent = NULL;
+                settings[cs].hKey = NULL;
+                wcscpy_s(settings[cs].name, MAX_PATH, TEXT(REGPATH));
+                settings[cs].origin = HKEY_CURRENT_USER;
+                cs++;
+            }
+
+            if (cs < numSettings)
+            {
+                settings[cs].callback = LoadSettings;
+                settings[cs].data = bIsExplorer;
+                settings[cs].hEvent = NULL;
+                settings[cs].hKey = NULL;
+                wcscpy_s(settings[cs].name, MAX_PATH, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartPage");
+                settings[cs].origin = HKEY_CURRENT_USER;
+                cs++;
+            }
+
+            if (cs < numSettings)
+            {
+                settings[cs].callback = SetEvent;
+                settings[cs].data = hSwsSettingsChanged;
+                settings[cs].hEvent = NULL;
+                settings[cs].hKey = NULL;
+                wcscpy_s(settings[cs].name, MAX_PATH, TEXT(REGPATH) L"\\sws");
+                settings[cs].origin = HKEY_CURRENT_USER;
+                cs++;
+            }
+
+            if (cs < numSettings)
+            {
+                settings[cs].callback = SetEvent;
+                settings[cs].data = hSwsOpacityMaybeChanged;
+                settings[cs].hEvent = NULL;
+                settings[cs].hKey = NULL;
+                wcscpy_s(settings[cs].name, MAX_PATH, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\MultitaskingView\\AltTabViewHost");
+                settings[cs].origin = HKEY_CURRENT_USER;
+                cs++;
+            }
+
+            if (cs < numSettings)
+            {
+                settings[cs].callback = Explorer_RefreshUI;
+                settings[cs].data = NULL;
+                settings[cs].hEvent = NULL;
+                settings[cs].hKey = NULL;
+                wcscpy_s(settings[cs].name, MAX_PATH, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced");
+                settings[cs].origin = HKEY_CURRENT_USER;
+                cs++;
+            }
+
+            if (cs < numSettings)
+            {
+                settings[cs].callback = Explorer_RefreshUI;
+                settings[cs].data = NULL;
+                settings[cs].hEvent = NULL;
+                settings[cs].hKey = NULL;
+                wcscpy_s(settings[cs].name, MAX_PATH, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Search");
+                settings[cs].origin = HKEY_CURRENT_USER;
+                cs++;
+            }
+
+            if (cs < numSettings)
+            {
+                settings[cs].callback = Explorer_RefreshUI;
+                settings[cs].data = NULL;
+                settings[cs].hEvent = NULL;
+                settings[cs].hKey = NULL;
+                wcscpy_s(settings[cs].name, MAX_PATH, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced\\People");
+                settings[cs].origin = HKEY_CURRENT_USER;
+                cs++;
+            }
+
+            if (cs < numSettings)
+            {
+                settings[cs].callback = Explorer_RefreshUI;
+                settings[cs].data = NULL;
+                settings[cs].hEvent = NULL;
+                settings[cs].hKey = NULL;
+                wcscpy_s(settings[cs].name, MAX_PATH, L"SOFTWARE\\Microsoft\\TabletTip\\1.7");
+                settings[cs].origin = HKEY_CURRENT_USER;
+                cs++;
+            }
+
+            if (cs < numSettings)
+            {
+                settings[cs].callback = SetEvent;
+                settings[cs].data = hSwsSettingsChanged;
+                settings[cs].hEvent = NULL;
+                settings[cs].hKey = NULL;
+                wcscpy_s(settings[cs].name, MAX_PATH, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer");
+                settings[cs].origin = HKEY_CURRENT_USER;
+                cs++;
+            }
+
+            if (cs < numSettings)
+            {
+                settings[cs].callback = UpdateStartMenuPositioning;
+                settings[cs].data = MAKELPARAM(FALSE, TRUE);
+                settings[cs].hEvent = NULL;
+                settings[cs].hKey = NULL;
+                wcscpy_s(settings[cs].name, MAX_PATH, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced");
+                settings[cs].origin = HKEY_CURRENT_USER;
+                cs++;
+            }
+
+            settingsParams = calloc(1, sizeof(SettingsChangeParameters));
+            if (settingsParams)
+            {
+                settingsParams->settings = settings;
+                InterlockedExchange(&(settingsParams->size), numSettings);
+                settingsParams->hThread = CreateThread(
+                    0,
+                    0,
+                    MonitorSettings,
+                    settingsParams,
+                    0,
+                    0
+                );
+            }
+            else
+            {
+                if (numSettings && settings[0].hEvent)
+                {
+                    CloseHandle(settings[0].hEvent);
+                }
+                free(settings);
+                settings = NULL;
+            }
+        }
     } 
 
     InjectBasicFunctions(bIsExplorer, TRUE);
@@ -4699,6 +4764,14 @@ HRESULT WINAPI _DllRegisterServer()
                 wszFilename,
                 (wcslen(wszFilename) + 1) * sizeof(wchar_t)
             );
+            dwLastError = RegSetValueExW(
+                hKey,
+                L"ThreadingModel",
+                0,
+                REG_SZ,
+                L"Apartment",
+                10 * sizeof(wchar_t)
+            );
             RegCloseKey(hKey);
         }
     }
@@ -4734,6 +4807,14 @@ HRESULT WINAPI _DllRegisterServer()
                 REG_SZ,
                 wszFilename,
                 (wcslen(wszFilename) + 1) * sizeof(wchar_t)
+            );
+            dwLastError = RegSetValueExW(
+                hKey,
+                L"ThreadingModel",
+                0,
+                REG_SZ,
+                L"Apartment",
+                10 * sizeof(wchar_t)
             );
             RegCloseKey(hKey);
         }
@@ -5213,6 +5294,25 @@ BOOL WINAPI DllMain(
     case DLL_THREAD_DETACH:
         break;
     case DLL_PROCESS_DETACH:
+        if (!lpvReserved && bInstanced)
+        {
+            if (settings && settingsParams)
+            {
+                SetEvent(settings[0].hEvent);
+                if (WaitForSingleObject(settingsParams->hThread, 0) != WAIT_OBJECT_0)
+                {
+                    while (InterlockedCompareExchange(&(settingsParams->size), 0, 0)) {};
+                }
+                CloseHandle(settings[0].hEvent);
+                CloseHandle(settingsParams->hThread);
+                free(settingsParams);
+                settingsParams = NULL;
+                free(settings);
+                settings = NULL;
+            }
+            InjectBasicFunctions(FALSE, FALSE);
+            bInstanced = FALSE;
+        }
         break;
     }
     return TRUE;
