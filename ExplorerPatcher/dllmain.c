@@ -75,6 +75,7 @@ HANDLE hIsWinXShown = NULL;
 HANDLE hWinXThread = NULL;
 HANDLE hSwsSettingsChanged = NULL;
 HANDLE hSwsOpacityMaybeChanged = NULL;
+HANDLE hWin11AltTabInitialized = NULL;
 BYTE* lpShouldDisplayCCButton = NULL;
 HMONITOR hMonitorList[30];
 DWORD dwMonitorCount = 0;
@@ -862,6 +863,11 @@ void UpdateStartMenuPositioning(LPARAM loIsShouldInitializeArray_hiIsShouldRoIni
 {
     BOOL bShouldInitialize = LOWORD(loIsShouldInitializeArray_hiIsShouldRoInitialize);
     BOOL bShouldRoInitialize = HIWORD(loIsShouldInitializeArray_hiIsShouldRoInitialize);
+
+    if (!bOldTaskbar)
+    {
+        return;
+    }
 
     DWORD dwPosCurrent = GetStartMenuPosition(SHRegGetValueFromHKCUHKLMFunc);
     if (bShouldInitialize || InterlockedAdd(&dwTaskbarAl, 0) != dwPosCurrent)
@@ -2475,6 +2481,9 @@ void sws_ReadSettings(sws_WindowSwitcher* sws)
 
 DWORD WindowSwitcher(DWORD unused)
 {
+    WaitForSingleObject(hWin11AltTabInitialized, INFINITE);
+    Sleep(500);
+
     while (TRUE)
     {
         sws_ReadSettings(NULL);
@@ -3122,7 +3131,7 @@ HWND CreateWindowExWHook(
     {
         SetWindowSubclass(hWnd, ShowDesktopSubclassProc, ShowDesktopSubclassProc, 0);
     }
-    else if (bIsExplorerProcess && (*((WORD*)&(lpClassName)+1)) && !wcscmp(lpClassName, L"Shell_TrayWnd"))
+    else if (bOldTaskbar && bIsExplorerProcess && (*((WORD*)&(lpClassName)+1)) && !wcscmp(lpClassName, L"Shell_TrayWnd"))
     {
         SetWindowSubclass(hWnd, Shell_TrayWndSubclassProc, Shell_TrayWndSubclassProc, 0);
     }
@@ -3769,6 +3778,38 @@ LSTATUS explorer_RegGetValueW(
     return lRes;
 }
 
+LSTATUS twinuipcshell_RegGetValueW(
+    HKEY    hkey,
+    LPCWSTR lpSubKey,
+    LPCWSTR lpValue,
+    DWORD   dwFlags,
+    LPDWORD pdwType,
+    PVOID   pvData,
+    LPDWORD pcbData
+)
+{
+    LSTATUS lRes = RegGetValueW(hkey, lpSubKey, lpValue, dwFlags, pdwType, pvData, pcbData);
+
+    if (!lstrcmpW(lpValue, L"AltTabSettings"))
+    {
+        if (*(DWORD*)pvData)
+        {
+            *(DWORD*)pvData = 1;
+        }
+
+        if (hWin11AltTabInitialized)
+        {
+            SetEvent(hWin11AltTabInitialized);
+            CloseHandle(hWin11AltTabInitialized);
+            hWin11AltTabInitialized = NULL;
+        }
+
+        lRes = ERROR_SUCCESS;
+    }
+
+    return lRes;
+}
+
 BOOL CALLBACK GetMonitorByIndex(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, RECT* rc)
 {
     //printf(">> %d %d %d %d\n", lprcMonitor->left, lprcMonitor->top, lprcMonitor->right, lprcMonitor->bottom);
@@ -4115,6 +4156,7 @@ __declspec(dllexport) DWORD WINAPI main(
 #ifdef _WIN64
     if (bIsExplorer)
     {
+        hWin11AltTabInitialized = CreateEventW(NULL, FALSE, FALSE, NULL);
         CreateThread(
             0,
             0,
@@ -4165,10 +4207,10 @@ __declspec(dllexport) DWORD WINAPI main(
 
     HANDLE hExplorer = GetModuleHandleW(NULL);
     SetChildWindowNoActivateFunc = GetProcAddress(GetModuleHandleW(L"user32.dll"), (LPCSTR)2005);
-    VnPatchIAT(hExplorer, "user32.dll", (LPCSTR)2005, explorer_SetChildWindowNoActivateHook);
-    VnPatchDelayIAT(hExplorer, "ext-ms-win-rtcore-ntuser-window-ext-l1-1-0.dll", "SendMessageW", explorer_SendMessageW);
     if (bOldTaskbar)
     {
+        VnPatchIAT(hExplorer, "user32.dll", (LPCSTR)2005, explorer_SetChildWindowNoActivateHook);
+        VnPatchDelayIAT(hExplorer, "ext-ms-win-rtcore-ntuser-window-ext-l1-1-0.dll", "SendMessageW", explorer_SendMessageW);
         VnPatchIAT(hExplorer, "api-ms-win-core-libraryloader-l1-2-0.dll", "GetProcAddress", explorer_GetProcAddressHook);
         VnPatchIAT(hExplorer, "shell32.dll", "ShellExecuteW", explorer_ShellExecuteW);
         VnPatchIAT(hExplorer, "API-MS-WIN-CORE-REGISTRY-L1-1-0.DLL", "RegGetValueW", explorer_RegGetValueW);
@@ -4197,7 +4239,7 @@ __declspec(dllexport) DWORD WINAPI main(
         VnPatchIAT(hExplorer, "user32.dll", "SetWindowCompositionAttribute", explorer_SetWindowCompositionAttribute);
     }
     //VnPatchDelayIAT(hExplorer, "ext-ms-win-rtcore-ntuser-window-ext-l1-1-0.dll", "CreateWindowExW", explorer_CreateWindowExW);
-    if (dwIMEStyle)
+    if (bOldTaskbar && dwIMEStyle)
     {
         VnPatchIAT(hExplorer, "api-ms-win-core-com-l1-1-0.dll", "CoCreateInstance", explorer_CoCreateInstanceHook);
     }
@@ -4309,6 +4351,7 @@ __declspec(dllexport) DWORD WINAPI main(
             }
         }
     }
+    VnPatchIAT(hTwinuiPcshell, "API-MS-WIN-CORE-REGISTRY-L1-1-0.DLL", "RegGetValueW", twinuipcshell_RegGetValueW);
     printf("Setup twinui.pcshell functions done\n");
 
 
@@ -4386,27 +4429,32 @@ __declspec(dllexport) DWORD WINAPI main(
         ResetEvent(hEvent);
     }*/
 
+    if (bOldTaskbar)
+    {
+        CreateThread(
+            0,
+            0,
+            PlayStartupSound,
+            0,
+            0,
+            0
+        );
+        printf("Play startup sound thread...\n");
+    }
 
-    CreateThread(
-        0,
-        0,
-        PlayStartupSound,
-        0,
-        0,
-        0
-    );
-    printf("Play startup sound thread...\n");
 
-
-    CreateThread(
-        0,
-        0,
-        SignalShellReady,
-        dwExplorerReadyDelay,
-        0,
-        0
-    );
-    printf("Signal shell ready...\n");
+    if (bOldTaskbar)
+    {
+        CreateThread(
+            0,
+            0,
+            SignalShellReady,
+            dwExplorerReadyDelay,
+            0,
+            0
+        );
+        printf("Signal shell ready...\n");
+    }
 
 
     CreateThread(

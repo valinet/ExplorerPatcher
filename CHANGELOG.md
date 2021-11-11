@@ -8,7 +8,8 @@ Tested on build 22000.318.
 
 #### Fixes
 
-* Lots of bug and issue fixes for shell extension failing to work under certain circumstances; fixed #259
+* Fixes an issue that prevented Explorer from starting up when Windows 10 taskbar was disabled and Windows 10 window switcher was enabled (#313) (.1)
+* Lots of bug and issue fixes for shell extension failing to work under certain circumstances (#259)
 
 ## 22000.318.35
 
