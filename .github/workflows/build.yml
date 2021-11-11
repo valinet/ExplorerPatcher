@@ -118,3 +118,25 @@ jobs:
         asset_path: ./build/Release/dxgi.dll
         asset_name: dxgi.dll
         asset_content_type: application/x-msdownload
+
+    - name: Upload ExplorerPatcher.amd64.dll
+      uses: actions/upload-release-asset@v1
+      if: github.ref == 'refs/heads/master'
+      env:
+        GITHUB_TOKEN: ${{ secrets.PAT }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./build/Release/ExplorerPatcher.amd64.dll
+        asset_name: ExplorerPatcher.amd64.dll
+        asset_content_type: application/x-msdownload
+        
+    - name: Upload ExplorerPatcher.IA-32.dll
+      uses: actions/upload-release-asset@v1
+      if: github.ref == 'refs/heads/master'
+      env:
+        GITHUB_TOKEN: ${{ secrets.PAT }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./build/Release/ExplorerPatcher.IA-32.dll
+        asset_name: ExplorerPatcher.IA-32.dll
+        asset_content_type: application/x-msdownload
