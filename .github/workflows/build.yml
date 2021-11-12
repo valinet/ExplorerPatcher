@@ -17,6 +17,17 @@ on:
       - '**'
     tags-ignore:
       - '**'
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Commit'
+        required: true
+      config:
+        description: 'Configuration'
+        required: false
+      build_dir:
+        description: 'Build dir'
+        required: false
 
 env:
   SOLUTION_FILE_PATH: .
@@ -27,9 +38,24 @@ jobs:
     runs-on: windows-latest
 
     steps:
+    - name: Print inputs
+      shell: bash
+      run: |
+        echo "ref: ${{ github.event.inputs.ref }}"
+        echo "config: ${{ github.event.inputs.config }}"
+        echo "build_dir: ${{ github.event.inputs.build_dir }}"
+
     - name: Checkout latest build and submodules
       uses: actions/checkout@v2
+      if: github.event.inputs.ref == ''
       with:
+        submodules: recursive
+    
+    - name: Checkout specific build and submodules
+      uses: actions/checkout@v2
+      if: github.event.inputs.ref != ''
+      with:
+        ref: ${{ github.event.inputs.ref }}
         submodules: recursive
 
     - name: Add MSBuild to PATH
@@ -42,6 +68,17 @@ jobs:
         echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
         echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
       
+    - name: Enable SimpleWindowSwitcher support for newer Windows SDKs
+      shell: cmd
+      run: |
+        cd libs/sws
+        C:\msys64\usr\bin\wget.exe https://github.com/valinet/sws/commit/972acb76d1e6429133c92ed7cdefd29b9a2c6179.patch
+        C:\msys64\usr\bin\dos2unix.exe 972acb76d1e6429133c92ed7cdefd29b9a2c6179.patch
+        C:\msys64\usr\bin\dos2unix.exe SimpleWindowSwitcher/sws_def.h
+        C:\msys64\usr\bin\patch.exe -N SimpleWindowSwitcher/sws_def.h 972acb76d1e6429133c92ed7cdefd29b9a2c6179.patch
+        C:\msys64\usr\bin\unix2dos.exe SimpleWindowSwitcher/sws_def.h
+        exit /b 0
+      
     - name: Build funchook
       shell: powershell
       run: |
@@ -53,20 +90,35 @@ jobs:
         cmake --build . --config Release
         
     - name: Build EP IA-32
+      if: github.event.inputs.config == ''
       working-directory: ${{env.GITHUB_WORKSPACE}}
       run: |
         msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} /p:Platform=IA-32 ${{env.SOLUTION_FILE_PATH}}
-        
+
     - name: Build EP amd64
+      if: github.event.inputs.config == ''
       working-directory: ${{env.GITHUB_WORKSPACE}}
       run: |
         msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} /p:Platform=amd64 ${{env.SOLUTION_FILE_PATH}}
+
+    - name: Build EP custom
+      if: github.event.inputs.config != ''
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: |
+        msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} /p:Platform=${{ github.event.inputs.config }} ${{env.SOLUTION_FILE_PATH}}
+
+    - name: Create expected build directory
+      if: github.event.inputs.build_dir != ''
+      shell: bash
+      run: |
+        mkdir build
+        cp -r ${{ github.event.inputs.build_dir }}/Release build/Release
     
     - name: Generate dxgi.dll
-      shell: powershell
+      shell: bash
       working-directory: build/Release
       run: |
-        Copy-Item ExplorerPatcher.amd64.dll dxgi.dll
+        if [[ -f "ExplorerPatcher.amd64.dll" ]]; then cp ExplorerPatcher.amd64.dll dxgi.dll; fi
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v2
@@ -78,7 +130,7 @@ jobs:
     - name: Generate release name
       shell: bash
       working-directory: build/Release
-      if: github.ref == 'refs/heads/master'
+      if: github.ref == 'refs/heads/master' && github.event.inputs.ref == ''
       run: |
         echo "::set-output name=data::$(./ep_generate_release_name.exe)"
       id: release_name
@@ -86,7 +138,7 @@ jobs:
     - name: Generate release notes
       shell: bash
       working-directory: build/Release
-      if: github.ref == 'refs/heads/master'
+      if: github.ref == 'refs/heads/master' && github.event.inputs.ref == ''
       run: |
         MY_STRING=$(./ep_generate_release_description.exe ${{ steps.vars.outputs.sha_short }} ${{ steps.vars.outputs.branch }})
         MY_STRING="${MY_STRING//'%'/'%25'}"
@@ -97,7 +149,7 @@ jobs:
       
     - name: Create/update release
       uses: actions/create-release@v1
-      if: github.ref == 'refs/heads/master'
+      if: github.ref == 'refs/heads/master' && github.event.inputs.ref == ''
       id: create_release
       with:
         draft: false
@@ -110,7 +162,7 @@ jobs:
 
     - name: Upload dxgi.dll
       uses: actions/upload-release-asset@v1
-      if: github.ref == 'refs/heads/master'
+      if: github.ref == 'refs/heads/master' && github.event.inputs.ref == ''
       env:
         GITHUB_TOKEN: ${{ secrets.PAT }}
       with:
@@ -121,7 +173,7 @@ jobs:
 
     - name: Upload ExplorerPatcher.amd64.dll
       uses: actions/upload-release-asset@v1
-      if: github.ref == 'refs/heads/master'
+      if: github.ref == 'refs/heads/master' && github.event.inputs.ref == ''
       env:
         GITHUB_TOKEN: ${{ secrets.PAT }}
       with:
@@ -132,7 +184,7 @@ jobs:
         
     - name: Upload ExplorerPatcher.IA-32.dll
       uses: actions/upload-release-asset@v1
-      if: github.ref == 'refs/heads/master'
+      if: github.ref == 'refs/heads/master' && github.event.inputs.ref == ''
       env:
         GITHUB_TOKEN: ${{ secrets.PAT }}
       with:
