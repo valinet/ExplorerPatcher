@@ -4,8 +4,6 @@ DWORD WINAPI MonitorSettings(SettingsChangeParameters* params)
 {
 	BOOL bShouldExit = FALSE;
 	HANDLE* handles = NULL;
-	printf("[SettingsMonitor] Started %p\n", params->settings[0].hEvent);
-
 	while (TRUE)
 	{
 		handles = calloc(sizeof(HANDLE), params->size);
@@ -22,14 +20,18 @@ DWORD WINAPI MonitorSettings(SettingsChangeParameters* params)
 					}
 					else
 					{
-						InterlockedExchange(&(params->size), NULL);
+						free(handles);
+						free(params->settings);
+						free(params);
 						return 0;
 					}
 				}
 				params->settings[i].hEvent = CreateEventW(NULL, FALSE, FALSE, NULL);
 				if (!params->settings[i].hEvent)
 				{
-					InterlockedExchange(&(params->size), 0);
+					free(handles);
+					free(params->settings);
+					free(params);
 					return 0;
 				}
 				handles[i] = params->settings[i].hEvent;
@@ -45,7 +47,9 @@ DWORD WINAPI MonitorSettings(SettingsChangeParameters* params)
 					NULL
 				) != ERROR_SUCCESS)
 				{
-					InterlockedExchange(&(params->size), 0);
+					free(handles);
+					free(params->settings);
+					free(params);
 					return 0;
 				}
 				if (RegNotifyChangeKeyValue(
@@ -56,7 +60,9 @@ DWORD WINAPI MonitorSettings(SettingsChangeParameters* params)
 					TRUE
 				) != ERROR_SUCCESS)
 				{
-					InterlockedExchange(&(params->size), 0);
+					free(handles);
+					free(params->settings);
+					free(params);
 					return 0;
 				}
 			}
@@ -104,12 +110,13 @@ DWORD WINAPI MonitorSettings(SettingsChangeParameters* params)
 		}
 		else
 		{
-			InterlockedExchange(&(params->size), 0);
+			free(params->settings);
+			free(params);
 			return 0;
 		}
 	}
-	printf("[SettingsMonitor] Ended %p\n", params->settings[0].hEvent);
-	InterlockedExchange(&(params->size), 0);
+	free(params->settings);
+	free(params);
 	return 0;
 }
 
