@@ -420,4 +420,13 @@ inline void StartExplorer()
         CloseHandle(pi.hProcess);
     }
 }
+
+inline BOOL IncrementDLLReferenceCount(HINSTANCE hinst)
+{
+    HMODULE hMod;
+    GetModuleHandleExW(
+        GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
+        hinst,
+        &hMod);
+}
 #endif

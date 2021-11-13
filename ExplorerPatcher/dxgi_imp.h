@@ -22,10 +22,6 @@ __declspec(dllexport) HRESULT CreateDXGIFactory(void* p1, void** p2)
     return CreateDXGIFactoryFunc(p1, p2);
 }
 static HRESULT(*CreateDXGIFactory1Func)(void*, void**);
-__declspec(dllexport) HRESULT CreateDXGIFactory1(void* p1, void** p2)
-{
-    return CreateDXGIFactory1Func(p1, p2);
-}
 static HRESULT(*CreateDXGIFactory2Func)(UINT, void*, void**);
 __declspec(dllexport) HRESULT CreateDXGIFactory2(UINT p1, void* p2, void** p3)
 {

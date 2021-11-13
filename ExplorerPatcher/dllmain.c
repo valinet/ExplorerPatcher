@@ -80,6 +80,7 @@ BYTE* lpShouldDisplayCCButton = NULL;
 HMONITOR hMonitorList[30];
 DWORD dwMonitorCount = 0;
 int Code = 0;
+HRESULT InjectStartFromExplorer();
 
 
 void* P_Icon_Light_Search = NULL;
@@ -119,8 +120,6 @@ DWORD S_Icon_Dark_Widgets = 0;
 #endif
 #include "SettingsMonitor.h"
 #include "HideExplorerSearchBar.h"
-Setting* settings = NULL;
-SettingsChangeParameters* settingsParams = NULL;
 
 HRESULT WINAPI _DllRegisterServer();
 HRESULT WINAPI _DllUnregisterServer();
@@ -3954,9 +3953,7 @@ HRESULT WINAPI explorer_SHCreateStreamOnModuleResourceWHook(
     return explorer_SHCreateStreamOnModuleResourceWFunc(hModule, pwszName, pwszType, ppStream);
 }
 
-__declspec(dllexport) DWORD WINAPI main(
-    _In_ LPVOID bIsExplorer
-)
+DWORD Inject(BOOL bIsExplorer)
 {
 #if defined(DEBUG) | defined(_DEBUG)
     FILE* conout;
@@ -3987,160 +3984,157 @@ __declspec(dllexport) DWORD WINAPI main(
         hSwsOpacityMaybeChanged = CreateEventW(NULL, FALSE, FALSE, NULL);
     }
 
-    if (!settings && !settingsParams)
+    unsigned int numSettings = bIsExplorer ? 11 : 2;
+    Setting* settings = calloc(numSettings, sizeof(Setting));
+    if (settings)
     {
-        unsigned int numSettings = bIsExplorer ? 11 : 2;
-        settings = calloc(numSettings, sizeof(Setting));
-        if (settings)
+        unsigned int cs = 0;
+
+        if (cs < numSettings)
         {
-            unsigned int cs = 0;
-
-            if (cs < numSettings)
-            {
-                settings[cs].callback = NULL;
-                settings[cs].data = NULL;
-                settings[cs].hEvent = CreateEventW(NULL, FALSE, FALSE, NULL);
-                settings[cs].hKey = NULL;
-                ZeroMemory(settings[cs].name, MAX_PATH);
-                settings[cs].origin = NULL;
-                cs++;
-            }
-
-            if (cs < numSettings)
-            {
-                settings[cs].callback = LoadSettings;
-                settings[cs].data = bIsExplorer;
-                settings[cs].hEvent = NULL;
-                settings[cs].hKey = NULL;
-                wcscpy_s(settings[cs].name, MAX_PATH, TEXT(REGPATH));
-                settings[cs].origin = HKEY_CURRENT_USER;
-                cs++;
-            }
-
-            if (cs < numSettings)
-            {
-                settings[cs].callback = LoadSettings;
-                settings[cs].data = bIsExplorer;
-                settings[cs].hEvent = NULL;
-                settings[cs].hKey = NULL;
-                wcscpy_s(settings[cs].name, MAX_PATH, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartPage");
-                settings[cs].origin = HKEY_CURRENT_USER;
-                cs++;
-            }
-
-            if (cs < numSettings)
-            {
-                settings[cs].callback = SetEvent;
-                settings[cs].data = hSwsSettingsChanged;
-                settings[cs].hEvent = NULL;
-                settings[cs].hKey = NULL;
-                wcscpy_s(settings[cs].name, MAX_PATH, TEXT(REGPATH) L"\\sws");
-                settings[cs].origin = HKEY_CURRENT_USER;
-                cs++;
-            }
-
-            if (cs < numSettings)
-            {
-                settings[cs].callback = SetEvent;
-                settings[cs].data = hSwsOpacityMaybeChanged;
-                settings[cs].hEvent = NULL;
-                settings[cs].hKey = NULL;
-                wcscpy_s(settings[cs].name, MAX_PATH, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\MultitaskingView\\AltTabViewHost");
-                settings[cs].origin = HKEY_CURRENT_USER;
-                cs++;
-            }
-
-            if (cs < numSettings)
-            {
-                settings[cs].callback = Explorer_RefreshUI;
-                settings[cs].data = NULL;
-                settings[cs].hEvent = NULL;
-                settings[cs].hKey = NULL;
-                wcscpy_s(settings[cs].name, MAX_PATH, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced");
-                settings[cs].origin = HKEY_CURRENT_USER;
-                cs++;
-            }
-
-            if (cs < numSettings)
-            {
-                settings[cs].callback = Explorer_RefreshUI;
-                settings[cs].data = NULL;
-                settings[cs].hEvent = NULL;
-                settings[cs].hKey = NULL;
-                wcscpy_s(settings[cs].name, MAX_PATH, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Search");
-                settings[cs].origin = HKEY_CURRENT_USER;
-                cs++;
-            }
-
-            if (cs < numSettings)
-            {
-                settings[cs].callback = Explorer_RefreshUI;
-                settings[cs].data = NULL;
-                settings[cs].hEvent = NULL;
-                settings[cs].hKey = NULL;
-                wcscpy_s(settings[cs].name, MAX_PATH, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced\\People");
-                settings[cs].origin = HKEY_CURRENT_USER;
-                cs++;
-            }
-
-            if (cs < numSettings)
-            {
-                settings[cs].callback = Explorer_RefreshUI;
-                settings[cs].data = NULL;
-                settings[cs].hEvent = NULL;
-                settings[cs].hKey = NULL;
-                wcscpy_s(settings[cs].name, MAX_PATH, L"SOFTWARE\\Microsoft\\TabletTip\\1.7");
-                settings[cs].origin = HKEY_CURRENT_USER;
-                cs++;
-            }
-
-            if (cs < numSettings)
-            {
-                settings[cs].callback = SetEvent;
-                settings[cs].data = hSwsSettingsChanged;
-                settings[cs].hEvent = NULL;
-                settings[cs].hKey = NULL;
-                wcscpy_s(settings[cs].name, MAX_PATH, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer");
-                settings[cs].origin = HKEY_CURRENT_USER;
-                cs++;
-            }
-
-            if (cs < numSettings)
-            {
-                settings[cs].callback = UpdateStartMenuPositioning;
-                settings[cs].data = MAKELPARAM(FALSE, TRUE);
-                settings[cs].hEvent = NULL;
-                settings[cs].hKey = NULL;
-                wcscpy_s(settings[cs].name, MAX_PATH, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced");
-                settings[cs].origin = HKEY_CURRENT_USER;
-                cs++;
-            }
-
-            settingsParams = calloc(1, sizeof(SettingsChangeParameters));
-            if (settingsParams)
-            {
-                settingsParams->settings = settings;
-                InterlockedExchange(&(settingsParams->size), numSettings);
-                settingsParams->hThread = CreateThread(
-                    0,
-                    0,
-                    MonitorSettings,
-                    settingsParams,
-                    0,
-                    0
-                );
-            }
-            else
-            {
-                if (numSettings && settings[0].hEvent)
-                {
-                    CloseHandle(settings[0].hEvent);
-                }
-                free(settings);
-                settings = NULL;
-            }
+            settings[cs].callback = NULL;
+            settings[cs].data = NULL;
+            settings[cs].hEvent = CreateEventW(NULL, FALSE, FALSE, NULL);
+            settings[cs].hKey = NULL;
+            ZeroMemory(settings[cs].name, MAX_PATH);
+            settings[cs].origin = NULL;
+            cs++;
         }
-    } 
+
+        if (cs < numSettings)
+        {
+            settings[cs].callback = LoadSettings;
+            settings[cs].data = bIsExplorer;
+            settings[cs].hEvent = NULL;
+            settings[cs].hKey = NULL;
+            wcscpy_s(settings[cs].name, MAX_PATH, TEXT(REGPATH));
+            settings[cs].origin = HKEY_CURRENT_USER;
+            cs++;
+        }
+
+        if (cs < numSettings)
+        {
+            settings[cs].callback = LoadSettings;
+            settings[cs].data = bIsExplorer;
+            settings[cs].hEvent = NULL;
+            settings[cs].hKey = NULL;
+            wcscpy_s(settings[cs].name, MAX_PATH, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartPage");
+            settings[cs].origin = HKEY_CURRENT_USER;
+            cs++;
+        }
+
+        if (cs < numSettings)
+        {
+            settings[cs].callback = SetEvent;
+            settings[cs].data = hSwsSettingsChanged;
+            settings[cs].hEvent = NULL;
+            settings[cs].hKey = NULL;
+            wcscpy_s(settings[cs].name, MAX_PATH, TEXT(REGPATH) L"\\sws");
+            settings[cs].origin = HKEY_CURRENT_USER;
+            cs++;
+        }
+
+        if (cs < numSettings)
+        {
+            settings[cs].callback = SetEvent;
+            settings[cs].data = hSwsOpacityMaybeChanged;
+            settings[cs].hEvent = NULL;
+            settings[cs].hKey = NULL;
+            wcscpy_s(settings[cs].name, MAX_PATH, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\MultitaskingView\\AltTabViewHost");
+            settings[cs].origin = HKEY_CURRENT_USER;
+            cs++;
+        }
+
+        if (cs < numSettings)
+        {
+            settings[cs].callback = Explorer_RefreshUI;
+            settings[cs].data = NULL;
+            settings[cs].hEvent = NULL;
+            settings[cs].hKey = NULL;
+            wcscpy_s(settings[cs].name, MAX_PATH, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced");
+            settings[cs].origin = HKEY_CURRENT_USER;
+            cs++;
+        }
+
+        if (cs < numSettings)
+        {
+            settings[cs].callback = Explorer_RefreshUI;
+            settings[cs].data = NULL;
+            settings[cs].hEvent = NULL;
+            settings[cs].hKey = NULL;
+            wcscpy_s(settings[cs].name, MAX_PATH, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Search");
+            settings[cs].origin = HKEY_CURRENT_USER;
+            cs++;
+        }
+
+        if (cs < numSettings)
+        {
+            settings[cs].callback = Explorer_RefreshUI;
+            settings[cs].data = NULL;
+            settings[cs].hEvent = NULL;
+            settings[cs].hKey = NULL;
+            wcscpy_s(settings[cs].name, MAX_PATH, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced\\People");
+            settings[cs].origin = HKEY_CURRENT_USER;
+            cs++;
+        }
+
+        if (cs < numSettings)
+        {
+            settings[cs].callback = Explorer_RefreshUI;
+            settings[cs].data = NULL;
+            settings[cs].hEvent = NULL;
+            settings[cs].hKey = NULL;
+            wcscpy_s(settings[cs].name, MAX_PATH, L"SOFTWARE\\Microsoft\\TabletTip\\1.7");
+            settings[cs].origin = HKEY_CURRENT_USER;
+            cs++;
+        }
+
+        if (cs < numSettings)
+        {
+            settings[cs].callback = SetEvent;
+            settings[cs].data = hSwsSettingsChanged;
+            settings[cs].hEvent = NULL;
+            settings[cs].hKey = NULL;
+            wcscpy_s(settings[cs].name, MAX_PATH, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer");
+            settings[cs].origin = HKEY_CURRENT_USER;
+            cs++;
+        }
+
+        if (cs < numSettings)
+        {
+            settings[cs].callback = UpdateStartMenuPositioning;
+            settings[cs].data = MAKELPARAM(FALSE, TRUE);
+            settings[cs].hEvent = NULL;
+            settings[cs].hKey = NULL;
+            wcscpy_s(settings[cs].name, MAX_PATH, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced");
+            settings[cs].origin = HKEY_CURRENT_USER;
+            cs++;
+        }
+
+        SettingsChangeParameters* settingsParams = calloc(1, sizeof(SettingsChangeParameters));
+        if (settingsParams)
+        {
+            settingsParams->settings = settings;
+            settingsParams->size = numSettings;
+            settingsParams->hThread = CreateThread(
+                0,
+                0,
+                MonitorSettings,
+                settingsParams,
+                0,
+                0
+            );
+        }
+        else
+        {
+            if (numSettings && settings[0].hEvent)
+            {
+                CloseHandle(settings[0].hEvent);
+            }
+            free(settings);
+            settings = NULL;
+        }
+    }
 
     InjectBasicFunctions(bIsExplorer, TRUE);
     //if (!hDelayedInjectionThread)
@@ -4491,7 +4485,7 @@ __declspec(dllexport) DWORD WINAPI main(
         HookStartMenuParams* params2 = calloc(1, sizeof(HookStartMenuParams));
         params2->dwTimeout = 1000;
         params2->hModule = hModule;
-        params2->proc = _DllGetClassObject;
+        params2->proc = InjectStartFromExplorer;
         GetModuleFileNameW(hModule, params2->wszModulePath, MAX_PATH);
         CreateThread(0, 0, HookStartMenu, params2, 0, 0);
     }
@@ -5089,241 +5083,290 @@ HRESULT WINAPI _DllCanUnloadNow()
     return S_FALSE;
 }
 
+void InjectStartMenu()
+{
 #ifdef _WIN64
+    funchook = funchook_create();
+
+    StartMenu_LoadSettings(FALSE);
+
+    Setting* settings = calloc(3, sizeof(Setting));
+    settings[0].callback = NULL;
+    settings[0].data = NULL;
+    settings[0].hEvent = CreateEventW(NULL, FALSE, FALSE, NULL);
+    settings[0].hKey = NULL;
+    ZeroMemory(settings[0].name, MAX_PATH);
+    settings[0].origin = NULL;
+    settings[1].callback = StartMenu_LoadSettings;
+    settings[1].data = FALSE;
+    settings[1].hEvent = NULL;
+    settings[1].hKey = NULL;
+    wcscpy_s(settings[1].name, MAX_PATH, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartPage");
+    settings[1].origin = HKEY_CURRENT_USER;
+    settings[2].callback = StartMenu_LoadSettings;
+    settings[2].data = TRUE;
+    settings[2].hEvent = NULL;
+    settings[2].hKey = NULL;
+    wcscpy_s(settings[2].name, MAX_PATH, TEXT(REGPATH));
+    settings[2].origin = HKEY_CURRENT_USER;
+
+    SettingsChangeParameters* params = calloc(1, sizeof(SettingsChangeParameters));
+    params->settings = settings;
+    params->size = 3;
+    CreateThread(
+        0,
+        0,
+        MonitorSettings,
+        params,
+        0,
+        0
+    );
+
+    int rv;
+
+    DWORD dwVal0 = 0x62254, dwVal1 = 0x188EBC, dwVal2 = 0x187120, dwVal3 = 0x3C10, dwVal4 = 0x160AEC;
+
+    HMODULE hModule = LoadLibraryW(L"Shlwapi.dll");
+    if (hModule)
+    {
+        DWORD dwStatus = 0, dwSize = sizeof(DWORD);
+        FARPROC SHRegGetValueFromHKCUHKLMFunc = GetProcAddress(hModule, "SHRegGetValueFromHKCUHKLM");
+
+        if (SHRegGetValueFromHKCUHKLMFunc)
+        {
+
+            dwSize = sizeof(DWORD);
+            SHRegGetValueFromHKCUHKLMFunc(
+                TEXT(REGPATH) TEXT("\\") TEXT(STARTDOCKED_SB_NAME),
+                TEXT(STARTDOCKED_SB_0),
+                SRRF_RT_REG_DWORD,
+                NULL,
+                &dwVal0,
+                (LPDWORD)(&dwSize)
+            );
+            SHRegGetValueFromHKCUHKLMFunc(
+                TEXT(REGPATH) TEXT("\\") TEXT(STARTDOCKED_SB_NAME),
+                TEXT(STARTDOCKED_SB_1),
+                SRRF_RT_REG_DWORD,
+                NULL,
+                &dwVal1,
+                (LPDWORD)(&dwSize)
+            );
+            SHRegGetValueFromHKCUHKLMFunc(
+                TEXT(REGPATH) TEXT("\\") TEXT(STARTDOCKED_SB_NAME),
+                TEXT(STARTDOCKED_SB_2),
+                SRRF_RT_REG_DWORD,
+                NULL,
+                &dwVal2,
+                (LPDWORD)(&dwSize)
+            );
+            SHRegGetValueFromHKCUHKLMFunc(
+                TEXT(REGPATH) TEXT("\\") TEXT(STARTDOCKED_SB_NAME),
+                TEXT(STARTDOCKED_SB_3),
+                SRRF_RT_REG_DWORD,
+                NULL,
+                &dwVal3,
+                (LPDWORD)(&dwSize)
+            );
+            SHRegGetValueFromHKCUHKLMFunc(
+                TEXT(REGPATH) TEXT("\\") TEXT(STARTDOCKED_SB_NAME),
+                TEXT(STARTDOCKED_SB_4),
+                SRRF_RT_REG_DWORD,
+                NULL,
+                &dwVal4,
+                (LPDWORD)(&dwSize)
+            );
+
+        }
+        FreeLibrary(hModule);
+    }
+
+    LoadLibraryW(L"StartDocked.dll");
+    HANDLE hStartDocked = GetModuleHandle(L"StartDocked.dll");
+    if (dwVal1 != 0xFFFFFFFF)
+    {
+        StartDocked_LauncherFrame_ShowAllAppsFunc = (INT64(*)(void*))
+            ((uintptr_t)hStartDocked + dwVal1);
+    }
+    if (dwVal2 != 0xFFFFFFFF)
+    {
+        StartDocked_LauncherFrame_OnVisibilityChangedFunc = (INT64(*)(void*, INT64, void*))
+            ((uintptr_t)hStartDocked + dwVal2);
+        rv = funchook_prepare(
+            funchook,
+            (void**)&StartDocked_LauncherFrame_OnVisibilityChangedFunc,
+            StartDocked_LauncherFrame_OnVisibilityChangedHook
+        );
+        if (rv != 0)
+        {
+            FreeLibraryAndExitThread(hModule, rv);
+            return rv;
+        }
+    }
+    if (dwVal3 != 0xFFFFFFFF)
+    {
+        StartDocked_SystemListPolicyProvider_GetMaximumFrequentAppsFunc = (INT64(*)(void*, INT64, void*))
+            ((uintptr_t)hStartDocked + dwVal3);
+        rv = funchook_prepare(
+            funchook,
+            (void**)&StartDocked_SystemListPolicyProvider_GetMaximumFrequentAppsFunc,
+            StartDocked_SystemListPolicyProvider_GetMaximumFrequentAppsHook
+        );
+        if (rv != 0)
+        {
+            FreeLibraryAndExitThread(hModule, rv);
+            return rv;
+        }
+    }
+    if (dwVal4 != 0xFFFFFFFF)
+    {
+        /*StartDocked_StartSizingFrame_StartSizingFrameFunc = (INT64(*)(void*, INT64, void*))
+            ((uintptr_t)hStartDocked + dwVal4);
+        rv = funchook_prepare(
+            funchook,
+            (void**)&StartDocked_StartSizingFrame_StartSizingFrameFunc,
+            StartDocked_StartSizingFrame_StartSizingFrameHook
+        );
+        if (rv != 0)
+        {
+            FreeLibraryAndExitThread(hModule, rv);
+            return rv;
+        }*/
+    }
+
+    rv = funchook_install(funchook, 0);
+    if (rv != 0)
+    {
+        FreeLibraryAndExitThread(hModule, rv);
+        return rv;
+    }
+#endif
+}
+
+#define DLL_INJECTION_METHOD_DXGI 0
+#define DLL_INJECTION_METHOD_COM 1
+#define DLL_INJECTION_METHOD_START_INJECTION 2
+HRESULT EntryPoint(DWORD dwMethod)
+{
+    if (bInstanced)
+    {
+        return E_NOINTERFACE;
+    }
+
+    TCHAR exePath[MAX_PATH], dllName[MAX_PATH];
+    GetModuleFileNameW(hModule, dllName, MAX_PATH);
+    PathStripPathW(dllName);
+    BOOL bIsDllNameDXGI = !_wcsicmp(dllName, L"dxgi.dll");
+    if (dwMethod == DLL_INJECTION_METHOD_DXGI && !bIsDllNameDXGI)
+    {
+        return E_NOINTERFACE;
+    }
+
+    HANDLE hProcess = OpenProcess(
+        PROCESS_QUERY_INFORMATION,
+        FALSE,
+        GetCurrentProcessId()
+    );
+    if (!hProcess)
+    {
+        return E_NOINTERFACE;
+    }
+    DWORD dwLength = MAX_PATH;
+    QueryFullProcessImageNameW(
+        hProcess,
+        0,
+        exePath,
+        &dwLength
+    );
+    CloseHandle(hProcess);
+
+    TCHAR wszExplorerExpectedPath[MAX_PATH];
+    GetWindowsDirectoryW(wszExplorerExpectedPath, MAX_PATH);
+    wcscat_s(wszExplorerExpectedPath, MAX_PATH, L"\\explorer.exe");
+    BOOL bIsThisExplorer = !_wcsicmp(exePath, wszExplorerExpectedPath);
+
+    TCHAR wszStartExpectedPath[MAX_PATH];
+    GetWindowsDirectoryW(wszStartExpectedPath, MAX_PATH);
+    wcscat_s(wszStartExpectedPath, MAX_PATH, L"\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\StartMenuExperienceHost.exe");
+    BOOL bIsThisStartMEH = !_wcsicmp(exePath, wszStartExpectedPath);
+
+    if (dwMethod == DLL_INJECTION_METHOD_DXGI)
+    {
+        if (!(bIsThisExplorer || bIsThisStartMEH))
+        {
+            return E_NOINTERFACE;
+        }
+        TCHAR wszRealDXGIPath[MAX_PATH];
+        GetSystemDirectoryW(wszRealDXGIPath, MAX_PATH);
+        wcscat_s(wszRealDXGIPath, MAX_PATH, L"\\dxgi.dll");
+#ifdef _WIN64
+        SetupDXGIImportFunctions(LoadLibraryW(wszRealDXGIPath));
+#endif
+    }
+    if (dwMethod == DLL_INJECTION_METHOD_COM && (bIsThisExplorer || bIsThisStartMEH))
+    {
+        return E_NOINTERFACE;
+    }
+    if (dwMethod == DLL_INJECTION_METHOD_START_INJECTION && !bIsThisStartMEH)
+    {
+        return E_NOINTERFACE;
+    }
+
+    bIsExplorerProcess = bIsThisExplorer;
+    if (bIsThisExplorer)
+    {
+        Inject(!IsDesktopWindowAlreadyPresent());
+        IncrementDLLReferenceCount(hModule);
+        bInstanced = TRUE;
+    }
+    else if (bIsThisStartMEH)
+    {
+        InjectStartMenu();
+        IncrementDLLReferenceCount(hModule);
+        bInstanced = TRUE;
+    }
+    else if (dwMethod == DLL_INJECTION_METHOD_COM)
+    {
+        Inject(FALSE);
+        IncrementDLLReferenceCount(hModule);
+        bInstanced = TRUE;
+    }
+
+    return E_NOINTERFACE;
+}
+
+#ifdef _WIN64
+// for explorer.exe
+__declspec(dllexport) HRESULT DXGIDeclareAdapterRemovalSupport()
+{
+    EntryPoint(DLL_INJECTION_METHOD_DXGI);
+    return DXGIDeclareAdapterRemovalSupportFunc();
+}
+// for StartMenuExperienceHost.exe via DXGI
+__declspec(dllexport) HRESULT CreateDXGIFactory1(void* p1, void** p2)
+{
+    EntryPoint(DLL_INJECTION_METHOD_DXGI);
+    return CreateDXGIFactory1Func(p1, p2);
+}
+// for StartMenuExperienceHost.exe via injection from explorer
+HRESULT InjectStartFromExplorer()
+{
+    EntryPoint(DLL_INJECTION_METHOD_START_INJECTION);
+    return HRESULT_FROM_WIN32(GetLastError());
+}
 #pragma comment(linker, "/export:DllGetClassObject=_DllGetClassObject")
 #else
 #pragma comment(linker, "/export:DllGetClassObject=__DllGetClassObject@12")
 #endif
+// for everything else
 HRESULT WINAPI _DllGetClassObject(
     REFCLSID rclsid,
     REFIID   riid,
     LPVOID* ppv
 )
 {
-    if (bInstanced)
-    {
-        return E_NOINTERFACE;
-    }
-    TCHAR exeName[MAX_PATH + 1];
-    GetProcessImageFileNameW(
-        OpenProcess(
-            PROCESS_QUERY_INFORMATION,
-            FALSE,
-            GetCurrentProcessId()
-        ),
-        exeName,
-        MAX_PATH
-    );
-    PathStripPathW(exeName);
-    TCHAR wszSystemPath[MAX_PATH + 1];
-    GetSystemDirectory(wszSystemPath, MAX_PATH + 1);
-    wcscat_s(wszSystemPath, MAX_PATH + 1, L"\\dxgi.dll");
-    /*HMODULE hModule = LoadLibraryW(wszSystemPath);
-    SetupDXGIImportFunctions(hModule);*/
-    if (!wcscmp(exeName, L"explorer.exe") && FileExistsW(wszSystemPath))
-    {
-        bInstanced = TRUE;
-        return E_NOINTERFACE;
-    }
-    bIsExplorerProcess = !wcscmp(exeName, L"explorer.exe");
-    if (!wcscmp(exeName, L"explorer.exe"))
-    {
-        main(!IsDesktopWindowAlreadyPresent());
-    }
-    else if (!wcscmp(exeName, L"StartMenuExperienceHost.exe"))
-    {
-#ifdef _WIN64
-        funchook = funchook_create();
-
-        StartMenu_LoadSettings(FALSE);
-
-        Setting* settings = calloc(2, sizeof(Setting));
-        settings[0].callback = StartMenu_LoadSettings;
-        settings[0].data = FALSE;
-        settings[0].hEvent = NULL;
-        settings[0].hKey = NULL;
-        wcscpy_s(settings[0].name, MAX_PATH, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartPage");
-        settings[0].origin = HKEY_CURRENT_USER;
-        settings[1].callback = StartMenu_LoadSettings;
-        settings[1].data = TRUE;
-        settings[1].hEvent = NULL;
-        settings[1].hKey = NULL;
-        wcscpy_s(settings[1].name, MAX_PATH, TEXT(REGPATH));
-        settings[1].origin = HKEY_CURRENT_USER;
-
-        SettingsChangeParameters* params = calloc(1, sizeof(SettingsChangeParameters));
-        params->settings = settings;
-        params->size = 2;
-        CreateThread(
-            0,
-            0,
-            MonitorSettings,
-            params,
-            0,
-            0
-        );
-
-        int rv;
-
-        DWORD dwVal0 = 0x62254, dwVal1 = 0x188EBC, dwVal2 = 0x187120, dwVal3 = 0x3C10, dwVal4 = 0x160AEC;
-
-        HMODULE hModule = LoadLibraryW(L"Shlwapi.dll");
-        if (hModule)
-        {
-            DWORD dwStatus = 0, dwSize = sizeof(DWORD);
-            FARPROC SHRegGetValueFromHKCUHKLMFunc = GetProcAddress(hModule, "SHRegGetValueFromHKCUHKLM");
-
-            if (SHRegGetValueFromHKCUHKLMFunc)
-            {
-
-                dwSize = sizeof(DWORD);
-                SHRegGetValueFromHKCUHKLMFunc(
-                    TEXT(REGPATH) TEXT("\\") TEXT(STARTDOCKED_SB_NAME),
-                    TEXT(STARTDOCKED_SB_0),
-                    SRRF_RT_REG_DWORD,
-                    NULL,
-                    &dwVal0,
-                    (LPDWORD)(&dwSize)
-                );
-                SHRegGetValueFromHKCUHKLMFunc(
-                    TEXT(REGPATH) TEXT("\\") TEXT(STARTDOCKED_SB_NAME),
-                    TEXT(STARTDOCKED_SB_1),
-                    SRRF_RT_REG_DWORD,
-                    NULL,
-                    &dwVal1,
-                    (LPDWORD)(&dwSize)
-                );
-                SHRegGetValueFromHKCUHKLMFunc(
-                    TEXT(REGPATH) TEXT("\\") TEXT(STARTDOCKED_SB_NAME),
-                    TEXT(STARTDOCKED_SB_2),
-                    SRRF_RT_REG_DWORD,
-                    NULL,
-                    &dwVal2,
-                    (LPDWORD)(&dwSize)
-                );
-                SHRegGetValueFromHKCUHKLMFunc(
-                    TEXT(REGPATH) TEXT("\\") TEXT(STARTDOCKED_SB_NAME),
-                    TEXT(STARTDOCKED_SB_3),
-                    SRRF_RT_REG_DWORD,
-                    NULL,
-                    &dwVal3,
-                    (LPDWORD)(&dwSize)
-                );
-                SHRegGetValueFromHKCUHKLMFunc(
-                    TEXT(REGPATH) TEXT("\\") TEXT(STARTDOCKED_SB_NAME),
-                    TEXT(STARTDOCKED_SB_4),
-                    SRRF_RT_REG_DWORD,
-                    NULL,
-                    &dwVal4,
-                    (LPDWORD)(&dwSize)
-                );
-
-            }
-            FreeLibrary(hModule);
-        }
-
-        LoadLibraryW(L"StartDocked.dll");
-        HANDLE hStartDocked = GetModuleHandle(L"StartDocked.dll");
-        if (dwVal1 != 0xFFFFFFFF)
-        {
-            StartDocked_LauncherFrame_ShowAllAppsFunc = (INT64(*)(void*))
-                ((uintptr_t)hStartDocked + dwVal1);
-        }
-        if (dwVal2 != 0xFFFFFFFF)
-        {
-            StartDocked_LauncherFrame_OnVisibilityChangedFunc = (INT64(*)(void*, INT64, void*))
-                ((uintptr_t)hStartDocked + dwVal2);
-            rv = funchook_prepare(
-                funchook,
-                (void**)&StartDocked_LauncherFrame_OnVisibilityChangedFunc,
-                StartDocked_LauncherFrame_OnVisibilityChangedHook
-            );
-            if (rv != 0)
-            {
-                FreeLibraryAndExitThread(hModule, rv);
-                return rv;
-            }
-        }
-        if (dwVal3 != 0xFFFFFFFF)
-        {
-            StartDocked_SystemListPolicyProvider_GetMaximumFrequentAppsFunc = (INT64(*)(void*, INT64, void*))
-                ((uintptr_t)hStartDocked + dwVal3);
-            rv = funchook_prepare(
-                funchook,
-                (void**)&StartDocked_SystemListPolicyProvider_GetMaximumFrequentAppsFunc,
-                StartDocked_SystemListPolicyProvider_GetMaximumFrequentAppsHook
-            );
-            if (rv != 0)
-            {
-                FreeLibraryAndExitThread(hModule, rv);
-                return rv;
-            }
-        }
-        if (dwVal4 != 0xFFFFFFFF)
-        {
-            /*StartDocked_StartSizingFrame_StartSizingFrameFunc = (INT64(*)(void*, INT64, void*))
-                ((uintptr_t)hStartDocked + dwVal4);
-            rv = funchook_prepare(
-                funchook,
-                (void**)&StartDocked_StartSizingFrame_StartSizingFrameFunc,
-                StartDocked_StartSizingFrame_StartSizingFrameHook
-            );
-            if (rv != 0)
-            {
-                FreeLibraryAndExitThread(hModule, rv);
-                return rv;
-            }*/
-        }
-
-        rv = funchook_install(funchook, 0);
-        if (rv != 0)
-        {
-            FreeLibraryAndExitThread(hModule, rv);
-            return rv;
-        }
-#endif
-    }
-    else if (!wcscmp(exeName, L"regsvr32.exe"))
-    {
-    }
-    else
-    {
-        main(FALSE);
-    }
-    bInstanced = TRUE;
-    return E_NOINTERFACE;
+    return EntryPoint(DLL_INJECTION_METHOD_COM);
 }
-#ifdef _WIN64
-__declspec(dllexport) HRESULT DXGIDeclareAdapterRemovalSupport()
-{
-    TCHAR exeName[MAX_PATH], dllName[MAX_PATH];
-    GetProcessImageFileNameW(
-        OpenProcess(
-            PROCESS_QUERY_INFORMATION,
-            FALSE,
-            GetCurrentProcessId()
-        ),
-        exeName,
-        MAX_PATH
-    );
-    PathStripPathW(exeName);
-    GetModuleFileNameW(hModule, dllName, MAX_PATH);
-    PathStripPathW(dllName);
-    TCHAR wszSystemPath[MAX_PATH];
-    GetSystemDirectory(wszSystemPath, MAX_PATH);
-    wcscat_s(wszSystemPath, MAX_PATH, L"\\dxgi.dll");
-    HMODULE hModule = LoadLibraryW(wszSystemPath);
-    SetupDXGIImportFunctions(hModule);
-    bIsExplorerProcess = !wcscmp(exeName, L"explorer.exe");
-    if (!wcscmp(exeName, L"explorer.exe") && !wcscmp(dllName, L"dxgi.dll"))
-    {
-        // CreateEventW(NULL, FALSE, FALSE, L"ExplorerPatcher_Guard_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}") && GetLastError() != ERROR_ALREADY_EXISTS
-        main(!IsDesktopWindowAlreadyPresent()); //wcsstr(GetCommandLineW(), L"NoUACCheck") // !IsDesktopWindowAlreadyPresent()
-        bInstanced = TRUE;
-    }
-    return DXGIDeclareAdapterRemovalSupportFunc();
-}
-#endif
 
 BOOL WINAPI DllMain(
     _In_ HINSTANCE hinstDLL,
@@ -5342,25 +5385,6 @@ BOOL WINAPI DllMain(
     case DLL_THREAD_DETACH:
         break;
     case DLL_PROCESS_DETACH:
-        if (!lpvReserved && bInstanced)
-        {
-            if (settings && settingsParams)
-            {
-                SetEvent(settings[0].hEvent);
-                if (WaitForSingleObject(settingsParams->hThread, 0) != WAIT_OBJECT_0)
-                {
-                    while (InterlockedCompareExchange(&(settingsParams->size), 0, 0)) {};
-                }
-                CloseHandle(settings[0].hEvent);
-                CloseHandle(settingsParams->hThread);
-                free(settingsParams);
-                settingsParams = NULL;
-                free(settings);
-                settings = NULL;
-            }
-            InjectBasicFunctions(FALSE, FALSE);
-            bInstanced = FALSE;
-        }
         break;
     }
     return TRUE;
