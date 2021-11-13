@@ -4,6 +4,7 @@
 //#define USE_PRIVATE_INTERFACES
 #endif
 #include <Windows.h>
+#include <stdio.h>
 #include <tchar.h>
 #include <windows.data.xml.dom.h>
 #include <accctrl.h>
@@ -211,6 +212,8 @@ static void(*GetThemeName)(void*, void*, void*);
 static BOOL AppsShouldUseDarkMode() { return TRUE; }
 
 void* ReadFromFile(wchar_t* wszFileName, DWORD* dwSize);
+
+int ComputeFileHash(LPCWSTR filename, LPCWSTR hash, DWORD dwHash);
 
 inline long long milliseconds_now() {
     LARGE_INTEGER s_frequency;

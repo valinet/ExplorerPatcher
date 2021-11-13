@@ -539,7 +539,16 @@ BOOL LoadSymbols(symbols_addr* symbols_PTRS, HMODULE hModule)
         ubr
     );
 
-    if (IsBuild(rovi, ubr, 22000, 282) || IsBuild(rovi, ubr, 22000, 318))
+    BOOL bIsStartHardcoded = FALSE;
+    BOOL bIsTwinuiPcshellHardcoded = FALSE;
+    WCHAR hash[100];
+    ZeroMemory(hash, 100 * sizeof(WCHAR));
+    TCHAR wszPath[MAX_PATH];
+
+    GetSystemDirectoryW(wszPath, MAX_PATH);
+    wcscat_s(wszPath, MAX_PATH, L"\\" TEXT(TWINUI_PCSHELL_SB_NAME) L".dll");
+    ComputeFileHash(wszPath, hash, 100);
+    if (!_wcsicmp(hash, L"8b23b02962856e89b8d8a3956de1d76c")) // 282, 318
     {
         symbols_PTRS->twinui_pcshell_PTRS[0] = 0x217CE6;
         symbols_PTRS->twinui_pcshell_PTRS[1] = 0x5CC570;
@@ -549,14 +558,108 @@ BOOL LoadSymbols(symbols_addr* symbols_PTRS, HMODULE hModule)
         symbols_PTRS->twinui_pcshell_PTRS[5] = 0x5DA8C4;
         symbols_PTRS->twinui_pcshell_PTRS[6] = 0x5CD9C0;
         symbols_PTRS->twinui_pcshell_PTRS[7] = 0x52980;
+        bIsTwinuiPcshellHardcoded = TRUE;
+    }
+    else if (!_wcsicmp(hash, L"03487ccd5bc5a194fad61b616b0a2b28")) // 346
+    {
+        symbols_PTRS->twinui_pcshell_PTRS[0] = 0x21B036;
+        symbols_PTRS->twinui_pcshell_PTRS[1] = 0x5CD740;
+        symbols_PTRS->twinui_pcshell_PTRS[2] = 0x5F7058;
+        symbols_PTRS->twinui_pcshell_PTRS[3] = 0x5F7860;
+        symbols_PTRS->twinui_pcshell_PTRS[4] = 0x5DBDD8;
+        symbols_PTRS->twinui_pcshell_PTRS[5] = 0x5DBA94;
+        symbols_PTRS->twinui_pcshell_PTRS[6] = 0x5CEB90;
+        symbols_PTRS->twinui_pcshell_PTRS[7] = 0x4D780;
+        bIsTwinuiPcshellHardcoded = TRUE;
+    }
+    if (bIsTwinuiPcshellHardcoded)
+    {
+        wprintf(L"[Symbols] Identified known \"" TEXT(TWINUI_PCSHELL_SB_NAME) L".dll\" with hash %s.\n", hash);
+    }
 
+    GetWindowsDirectoryW(wszPath, MAX_PATH);
+    wcscat_s(wszPath, MAX_PATH, L"\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\" TEXT(STARTDOCKED_SB_NAME) L".dll");
+    ComputeFileHash(wszPath, hash, 100);
+    if (!_wcsicmp(hash, L"b57bb94a48d2422de9a78c5fcba28f98")) // 282, 318
+    {
         symbols_PTRS->startdocked_PTRS[0] = 0x188EBC;
         symbols_PTRS->startdocked_PTRS[1] = 0x188EBC;
         symbols_PTRS->startdocked_PTRS[2] = 0x187120;
         symbols_PTRS->startdocked_PTRS[3] = 0x3C10;
         symbols_PTRS->startdocked_PTRS[4] = 0x160AEC;
+        bIsStartHardcoded = TRUE;
     }
-    else
+    else if (!_wcsicmp(hash, L"e9c1c45a659dafabf671cb0ae195f8d9")) // 346
+    {
+        symbols_PTRS->startdocked_PTRS[0] = 0x18969C;
+        symbols_PTRS->startdocked_PTRS[1] = 0x18969C;
+        symbols_PTRS->startdocked_PTRS[2] = 0x187900;
+        symbols_PTRS->startdocked_PTRS[3] = 0x3C00;
+        symbols_PTRS->startdocked_PTRS[4] = 0x1612CC;
+        bIsStartHardcoded = TRUE;
+    }
+    if (bIsStartHardcoded)
+    {
+        wprintf(L"[Symbols] Identified known \"" TEXT(STARTDOCKED_SB_NAME) L".dll\" with hash %s.\n", hash);
+
+        RegCreateKeyExW(
+            HKEY_CURRENT_USER,
+            TEXT(REGPATH) L"\\" TEXT(STARTDOCKED_SB_NAME),
+            0,
+            NULL,
+            REG_OPTION_NON_VOLATILE,
+            KEY_WRITE,
+            NULL,
+            &hKey,
+            &dwDisposition
+        );
+        if (hKey)
+        {
+            RegSetValueExW(
+                hKey,
+                TEXT(STARTDOCKED_SB_0),
+                0,
+                REG_DWORD,
+                &(symbols_PTRS->startdocked_PTRS[0]),
+                sizeof(DWORD)
+            );
+            RegSetValueExW(
+                hKey,
+                TEXT(STARTDOCKED_SB_1),
+                0,
+                REG_DWORD,
+                &(symbols_PTRS->startdocked_PTRS[1]),
+                sizeof(DWORD)
+            );
+            RegSetValueExW(
+                hKey,
+                TEXT(STARTDOCKED_SB_2),
+                0,
+                REG_DWORD,
+                &(symbols_PTRS->startdocked_PTRS[2]),
+                sizeof(DWORD)
+            );
+            RegSetValueExW(
+                hKey,
+                TEXT(STARTDOCKED_SB_3),
+                0,
+                REG_DWORD,
+                &(symbols_PTRS->startdocked_PTRS[3]),
+                sizeof(DWORD)
+            );
+            RegSetValueExW(
+                hKey,
+                TEXT(STARTDOCKED_SB_4),
+                0,
+                REG_DWORD,
+                &(symbols_PTRS->startdocked_PTRS[4]),
+                sizeof(DWORD)
+            );
+            RegCloseKey(hKey);
+        }
+    }
+
+    if (!bIsTwinuiPcshellHardcoded || !bIsStartHardcoded)
     {
         RegCreateKeyExW(
             HKEY_CURRENT_USER,
@@ -728,10 +831,7 @@ BOOL LoadSymbols(symbols_addr* symbols_PTRS, HMODULE hModule)
         &dwSize
     );
     RegCloseKey(hKey);
-    if (!bNeedToDownload &&
-        !IsBuild(rovi, ubr, 22000, 282) &&
-        !IsBuild(rovi, ubr, 22000, 318)
-        )
+    if (!bNeedToDownload && (!bIsTwinuiPcshellHardcoded || !bIsStartHardcoded))
     {
         bNeedToDownload = wcscmp(szReportedVersion, szStoredVersion);
     }

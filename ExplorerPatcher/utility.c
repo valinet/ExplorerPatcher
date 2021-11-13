@@ -413,3 +413,115 @@ void* ReadFromFile(wchar_t* wszFileName, DWORD* dwSize)
     }
     return ok;
 }
+
+int ComputeFileHash(LPCWSTR filename, LPCWSTR hash, DWORD dwHash)
+{
+    DWORD dwStatus = 0;
+    BOOL bResult = FALSE;
+    HCRYPTPROV hProv = 0;
+    HCRYPTHASH hHash = 0;
+    HANDLE hFile = NULL;
+    BYTE* rgbFile;
+    DWORD cbRead = 0;
+    BYTE rgbHash[16];
+    DWORD cbHash = 0;
+    WCHAR rgbDigits[] = L"0123456789abcdef";
+    // Logic to check usage goes here.
+
+    hFile = CreateFile(filename,
+        GENERIC_READ,
+        FILE_SHARE_READ,
+        NULL,
+        OPEN_EXISTING,
+        FILE_FLAG_SEQUENTIAL_SCAN,
+        NULL);
+
+    if (INVALID_HANDLE_VALUE == hFile)
+    {
+        dwStatus = GetLastError();
+        return dwStatus;
+    }
+
+    LARGE_INTEGER dwFileSize;
+    GetFileSizeEx(hFile, &dwFileSize);
+    if (!dwFileSize.LowPart)
+    {
+        dwStatus = GetLastError();
+        CloseHandle(hFile);
+        return dwStatus;
+    }
+
+    rgbFile = malloc(dwFileSize.LowPart);
+    if (!rgbFile)
+    {
+        dwStatus = E_OUTOFMEMORY;
+        CloseHandle(hFile);
+        return dwStatus;
+    }
+
+    // Get handle to the crypto provider
+    if (!CryptAcquireContext(&hProv,
+        NULL,
+        NULL,
+        PROV_RSA_FULL,
+        CRYPT_VERIFYCONTEXT))
+    {
+        dwStatus = GetLastError();
+        CloseHandle(hFile);
+        return dwStatus;
+    }
+
+    if (!CryptCreateHash(hProv, CALG_MD5, 0, 0, &hHash))
+    {
+        dwStatus = GetLastError();
+        CloseHandle(hFile);
+        CryptReleaseContext(hProv, 0);
+        return dwStatus;
+    }
+
+    while (bResult = ReadFile(hFile, rgbFile, dwFileSize.LowPart, &cbRead, NULL))
+    {
+        if (0 == cbRead)
+        {
+            break;
+        }
+
+        if (!CryptHashData(hHash, rgbFile, cbRead, 0))
+        {
+            dwStatus = GetLastError();
+            CryptReleaseContext(hProv, 0);
+            CryptDestroyHash(hHash);
+            CloseHandle(hFile);
+            return dwStatus;
+        }
+    }
+
+    if (!bResult)
+    {
+        dwStatus = GetLastError();
+        CryptReleaseContext(hProv, 0);
+        CryptDestroyHash(hHash);
+        CloseHandle(hFile);
+        return dwStatus;
+    }
+
+    cbHash = 16;
+    if (CryptGetHashParam(hHash, HP_HASHVAL, rgbHash, &cbHash, 0))
+    {
+        for (DWORD i = 0; i < cbHash; i++)
+        {
+            swprintf_s(hash + (i * 2), dwHash, L"%c%c", rgbDigits[rgbHash[i] >> 4], rgbDigits[rgbHash[i] & 0xf]);
+        }
+    }
+    else
+    {
+        dwStatus = GetLastError();
+    }
+
+    CryptDestroyHash(hHash);
+    CryptReleaseContext(hProv, 0);
+    CloseHandle(hFile);
+    free(rgbFile);
+
+    return dwStatus;
+}
