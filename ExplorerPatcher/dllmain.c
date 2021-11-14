@@ -2936,7 +2936,7 @@ DWORD WindowSwitcher(DWORD unused)
     if (!bOldTaskbar)
     {
         WaitForSingleObject(hWin11AltTabInitialized, INFINITE);
-        Sleep(500);
+        Sleep(1000);
     }
 
     while (TRUE)
