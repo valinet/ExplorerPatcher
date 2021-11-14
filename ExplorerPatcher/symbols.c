@@ -125,7 +125,7 @@ DWORD DownloadSymbols(DownloadSymbolsParams* params)
     );
     SHGetFolderPathA(
         NULL,
-        SPECIAL_FOLDER,
+        SPECIAL_FOLDER_LEGACY,
         NULL,
         SHGFP_TYPE_CURRENT,
         szSettingsPath

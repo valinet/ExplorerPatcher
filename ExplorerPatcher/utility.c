@@ -1,17 +1,17 @@
 #include "utility.h"
 
 #pragma region "Weird stuff"
-INT64 nimpl4_1(INT64 a1, DWORD* a2)
+INT64 STDMETHODCALLTYPE nimpl4_1(INT64 a1, DWORD* a2)
 {
     *a2 = 1;
     return 0;
 }
-INT64 nimpl4_0(INT64 a1, DWORD* a2)
+INT64 STDMETHODCALLTYPE nimpl4_0(INT64 a1, DWORD* a2)
 {
     *a2 = 0;
     return 0;
 }
-__int64 __fastcall nimpl2(__int64 a1, uintptr_t* a2)
+__int64 STDMETHODCALLTYPE nimpl2(__int64 a1, uintptr_t* a2)
 {
     __int64 v2; // rax
 
@@ -22,15 +22,15 @@ __int64 __fastcall nimpl2(__int64 a1, uintptr_t* a2)
     *a2 = v2;
     return 0i64;
 }
-ULONG nimpl3()
+ULONG STDMETHODCALLTYPE nimpl3()
 {
     return 1;
 }
-HRESULT nimpl()
+HRESULT STDMETHODCALLTYPE nimpl()
 {
     return E_NOTIMPL;
 }
-HRESULT nimpl1(__int64 a1, uintptr_t* a2, uintptr_t* a3)
+HRESULT STDMETHODCALLTYPE nimpl1(__int64 a1, uintptr_t* a2, uintptr_t* a3)
 {
     __int64 v4 = a1; // rcx
 
@@ -40,7 +40,7 @@ HRESULT nimpl1(__int64 a1, uintptr_t* a2, uintptr_t* a3)
     *a3 = v4;
     return S_OK;
 }
-HRESULT nimpl1_2(__int64 a1, uintptr_t* a2, uintptr_t* a3)
+HRESULT STDMETHODCALLTYPE nimpl1_2(__int64 a1, uintptr_t* a2, uintptr_t* a3)
 {
     __int64 v4 = a1 - sizeof(__int64); // rcx
 
@@ -50,7 +50,7 @@ HRESULT nimpl1_2(__int64 a1, uintptr_t* a2, uintptr_t* a3)
     *a3 = v4;
     return S_OK;
 }
-HRESULT nimpl1_3(__int64 a1, uintptr_t* a2, uintptr_t* a3)
+HRESULT STDMETHODCALLTYPE nimpl1_3(__int64 a1, uintptr_t* a2, uintptr_t* a3)
 {
     __int64 v4 = a1 - 2 * sizeof(__int64); // rcx
 
@@ -60,7 +60,7 @@ HRESULT nimpl1_3(__int64 a1, uintptr_t* a2, uintptr_t* a3)
     *a3 = v4;
     return S_OK;
 }
-__int64 nimpl4(__int64 a1, __int64 a2, __int64 a3, BYTE* a4)
+__int64 STDMETHODCALLTYPE nimpl4(__int64 a1, __int64 a2, __int64 a3, BYTE* a4)
 {
     *a4 = 0;
     return 0i64;
@@ -270,123 +270,6 @@ __declspec(dllexport) CALLBACK ZZRestartExplorer(HWND hWnd, HINSTANCE hInstance,
     FinishExplorerRestart();
 }
 
-POINT GetDefaultWinXPosition(BOOL bUseRcWork, BOOL* lpBottom, BOOL* lpRight, BOOL bAdjust)
-{
-    if (lpBottom) *lpBottom = FALSE;
-    if (lpRight) *lpRight = FALSE;
-    POINT point;
-    point.x = 0;
-    point.y = 0;
-    POINT ptCursor;
-    GetCursorPos(&ptCursor);
-    MONITORINFO mi;
-    mi.cbSize = sizeof(MONITORINFO);
-    HWND hWnd = GetMonitorInfoFromPointForTaskbarFlyoutActivation(
-        ptCursor,
-        MONITOR_DEFAULTTOPRIMARY,
-        &mi
-    );
-    if (hWnd)
-    {
-        RECT rc;
-        GetWindowRect(hWnd, &rc);
-        if (rc.left - mi.rcMonitor.left <= 0)
-        {
-            if (bUseRcWork)
-            {
-                point.x = mi.rcWork.left;
-            }
-            else
-            {
-                point.x = mi.rcMonitor.left;
-            }
-            if (bAdjust)
-            {
-                point.x++;
-            }
-            if (rc.top - mi.rcMonitor.top <= 0)
-            {
-                if (bUseRcWork)
-                {
-                    point.y = mi.rcWork.top;
-                }
-                else
-                {
-                    point.y = mi.rcMonitor.top;
-                }
-                if (bAdjust)
-                {
-                    point.y++;
-                }
-            }
-            else
-            {
-                if (lpBottom) *lpBottom = TRUE;
-                if (bUseRcWork)
-                {
-                    point.y = mi.rcWork.bottom;
-                }
-                else
-                {
-                    point.y = mi.rcMonitor.bottom;
-                }
-                if (bAdjust)
-                {
-                    point.y--;
-                }
-            }
-        }
-        else
-        {
-            if (lpRight) *lpRight = TRUE;
-            if (bUseRcWork)
-            {
-                point.x = mi.rcWork.right;
-            }
-            else
-            {
-                point.x = mi.rcMonitor.right;
-            }
-            if (bAdjust)
-            {
-                point.x--;
-            }
-            if (rc.top - mi.rcMonitor.top <= 0)
-            {
-                if (bUseRcWork)
-                {
-                    point.y = mi.rcWork.top;
-                }
-                else
-                {
-                    point.y = mi.rcMonitor.top;
-                }
-                if (bAdjust)
-                {
-                    point.y++;
-                }
-            }
-            else
-            {
-                if (lpBottom) *lpBottom = TRUE;
-                if (bUseRcWork)
-                {
-                    point.y = mi.rcWork.bottom;
-                }
-                else
-                {
-                    point.y = mi.rcMonitor.bottom;
-                }
-                if (bAdjust)
-                {
-                    point.y--;
-                }
-            }
-        }
-    }
-    return point;
-}
-
 void* ReadFromFile(wchar_t* wszFileName, DWORD* dwSize)
 {
     void* ok = NULL;
@@ -414,7 +297,7 @@ void* ReadFromFile(wchar_t* wszFileName, DWORD* dwSize)
     return ok;
 }
 
-int ComputeFileHash(LPCWSTR filename, LPCWSTR hash, DWORD dwHash)
+int ComputeFileHash(LPCWSTR filename, LPCSTR hash, DWORD dwHash)
 {
     DWORD dwStatus = 0;
     BOOL bResult = FALSE;
@@ -510,7 +393,7 @@ int ComputeFileHash(LPCWSTR filename, LPCWSTR hash, DWORD dwHash)
     {
         for (DWORD i = 0; i < cbHash; i++)
         {
-            swprintf_s(hash + (i * 2), dwHash, L"%c%c", rgbDigits[rgbHash[i] >> 4], rgbDigits[rgbHash[i] & 0xf]);
+            sprintf_s(hash + (i * 2), 3, "%c%c", rgbDigits[rgbHash[i] >> 4], rgbDigits[rgbHash[i] & 0xf]);
         }
     }
     else
@@ -524,4 +407,96 @@ int ComputeFileHash(LPCWSTR filename, LPCWSTR hash, DWORD dwHash)
     free(rgbFile);
 
     return dwStatus;
+}
+
+void LaunchPropertiesGUI(HMODULE hModule)
+{
+    //CreateThread(0, 0, ZZGUI, 0, 0, 0);
+    wchar_t wszPath[MAX_PATH * 2];
+    ZeroMemory(
+        wszPath,
+        (MAX_PATH * 2) * sizeof(wchar_t)
+    );
+    wszPath[0] = '\"';
+    GetSystemDirectoryW(
+        wszPath + 1,
+        MAX_PATH
+    );
+    wcscat_s(
+        wszPath,
+        MAX_PATH * 2,
+        L"\\rundll32.exe\" \""
+    );
+    GetModuleFileNameW(
+        hModule,
+        wszPath + wcslen(wszPath),
+        MAX_PATH
+    );
+    wcscat_s(
+        wszPath,
+        MAX_PATH * 2,
+        L"\",ZZGUI"
+    );
+    wprintf(L"Launching : %s\n", wszPath);
+    STARTUPINFO si;
+    ZeroMemory(&si, sizeof(STARTUPINFO));
+    si.cb = sizeof(si);
+    PROCESS_INFORMATION pi;
+    ZeroMemory(&pi, sizeof(PROCESS_INFORMATION));
+    if (CreateProcessW(
+        NULL,
+        wszPath,
+        NULL,
+        NULL,
+        TRUE,
+        CREATE_UNICODE_ENVIRONMENT,
+        NULL,
+        NULL,
+        &si,
+        &pi
+    ))
+    {
+        CloseHandle(pi.hThread);
+        CloseHandle(pi.hProcess);
+    }
+}
+
+
+BOOL SystemShutdown(BOOL reboot)
+{
+    HANDLE hToken;
+    TOKEN_PRIVILEGES tkp;
+
+    // Get a token for this process. 
+
+    if (!OpenProcessToken(GetCurrentProcess(),
+        TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hToken))
+        return(FALSE);
+
+    // Get the LUID for the shutdown privilege. 
+
+    LookupPrivilegeValue(NULL, SE_SHUTDOWN_NAME,
+        &tkp.Privileges[0].Luid);
+
+    tkp.PrivilegeCount = 1;  // one privilege to set    
+    tkp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+
+    // Get the shutdown privilege for this process. 
+
+    AdjustTokenPrivileges(hToken, FALSE, &tkp, 0,
+        (PTOKEN_PRIVILEGES)NULL, 0);
+
+    if (GetLastError() != ERROR_SUCCESS)
+        return FALSE;
+
+    // Shut down the system and force all applications to close. 
+
+    if (!ExitWindowsEx((reboot ? EWX_REBOOT : EWX_SHUTDOWN) | EWX_FORCE,
+        SHTDN_REASON_MAJOR_OPERATINGSYSTEM |
+        SHTDN_REASON_MINOR_UPGRADE |
+        SHTDN_REASON_FLAG_PLANNED))
+        return FALSE;
+
+    //shutdown was successful
+    return TRUE;
 }
