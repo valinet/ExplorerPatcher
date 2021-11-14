@@ -303,7 +303,7 @@ BOOL IsUpdateAvailable(LPCWSTR wszDataStore, char* szCheckAgainst, BOOL* lpFail)
     BOOL bIsPolicyMatch = FALSE;
     CHAR szUpdateURL[MAX_PATH];
     ZeroMemory(szUpdateURL, MAX_PATH * sizeof(CHAR));
-    strcat_s(szUpdateURL, MAX_PATH, "https://github.com/valinet/ExplorerPatcher/releases/latest/download/");
+    strcat_s(szUpdateURL, MAX_PATH, DEFAULT_UPDATE_URL);
 #ifdef UPDATES_VERBOSE_OUTPUT
     printf("[Updates] Checking against hash \"%s\"\n", szCheckAgainst);
 #endif
@@ -361,7 +361,7 @@ BOOL UpdateProduct(LPCWSTR wszDataStore)
     BOOL bIsPolicyMatch = FALSE;
     CHAR szUpdateURL[MAX_PATH];
     ZeroMemory(szUpdateURL, MAX_PATH * sizeof(CHAR));
-    strcat_s(szUpdateURL, MAX_PATH, "https://github.com/valinet/ExplorerPatcher/releases/latest/download/");
+    strcat_s(szUpdateURL, MAX_PATH, DEFAULT_UPDATE_URL);
 
     DWORD dwUpdateTimeout = UPDATES_DEFAULT_TIMEOUT;
 
