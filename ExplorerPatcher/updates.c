@@ -129,7 +129,7 @@ BOOL IsUpdateAvailableHelper(char* url, char* szCheckAgainst, DWORD dwUpdateTime
                 {
                     WCHAR wszPath[MAX_PATH];
                     ZeroMemory(wszPath, MAX_PATH * sizeof(WCHAR));
-                    SHGetFolderPathW(NULL, SPECIAL_FOLDER, NULL, SHGFP_TYPE_CURRENT, wszPath);
+                    SHGetFolderPathW(NULL, SPECIAL_FOLDER_LEGACY, NULL, SHGFP_TYPE_CURRENT, wszPath);
                     wcscat_s(wszPath, MAX_PATH, _T(APP_RELATIVE_PATH));
                     BOOL bRet = CreateDirectoryW(wszPath, NULL);
                     if (bRet || (!bRet && GetLastError() == ERROR_ALREADY_EXISTS))
