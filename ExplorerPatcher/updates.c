@@ -71,11 +71,11 @@ BOOL IsUpdateAvailableHelper(char* url, char* szCheckAgainst, DWORD dwUpdateTime
         INTERNET_OPEN_TYPE_PRECONFIG,
         NULL,
         NULL,
-        INTERNET_FLAG_ASYNC
+        0 //INTERNET_FLAG_ASYNC
     ))
     {
-        InternetSetOptionA(hInternet, INTERNET_OPTION_CONNECT_TIMEOUT, &dwUpdateTimeout, sizeof(DWORD));
-        if (InternetSetStatusCallbackA(hInternet, IsUpdateAvailableHelperCallback) != INTERNET_INVALID_STATUS_CALLBACK)
+        //InternetSetOptionA(hInternet, INTERNET_OPTION_CONNECT_TIMEOUT, &dwUpdateTimeout, sizeof(DWORD));
+        //if (InternetSetStatusCallbackA(hInternet, IsUpdateAvailableHelperCallback) != INTERNET_INVALID_STATUS_CALLBACK)
         {
             HINTERNET hConnect = InternetOpenUrlA(
                 hInternet,
@@ -87,16 +87,17 @@ BOOL IsUpdateAvailableHelper(char* url, char* szCheckAgainst, DWORD dwUpdateTime
                 INTERNET_FLAG_RESYNCHRONIZE |
                 INTERNET_FLAG_NO_COOKIES |
                 INTERNET_FLAG_NO_UI |
-                INTERNET_FLAG_NO_CACHE_WRITE,
+                INTERNET_FLAG_NO_CACHE_WRITE |
+                INTERNET_FLAG_DONT_CACHE,
                 &params
             );
-            if (!hConnect && GetLastError() == ERROR_IO_PENDING)
+            /*if (!hConnect && GetLastError() == ERROR_IO_PENDING)
             {
                 if (WaitForSingleObject(params.hEvent, dwUpdateTimeout) == WAIT_OBJECT_0)
                 {
                     hConnect = params.hInternet;
                 }
-            }
+            }*/
             if (hConnect)
             {
                 if (szCheckAgainst)
@@ -122,6 +123,9 @@ BOOL IsUpdateAvailableHelper(char* url, char* szCheckAgainst, DWORD dwUpdateTime
                     }
                     else
                     {
+#ifdef UPDATES_VERBOSE_OUTPUT
+                        printf("[Updates] Failed. Read %d bytes.\n");
+#endif
                         if (lpFail) *lpFail = TRUE;
                     }
                 }
@@ -129,7 +133,7 @@ BOOL IsUpdateAvailableHelper(char* url, char* szCheckAgainst, DWORD dwUpdateTime
                 {
                     WCHAR wszPath[MAX_PATH];
                     ZeroMemory(wszPath, MAX_PATH * sizeof(WCHAR));
-                    SHGetFolderPathW(NULL, SPECIAL_FOLDER, NULL, SHGFP_TYPE_CURRENT, wszPath);
+                    SHGetFolderPathW(NULL, SPECIAL_FOLDER_LEGACY, NULL, SHGFP_TYPE_CURRENT, wszPath);
                     wcscat_s(wszPath, MAX_PATH, _T(APP_RELATIVE_PATH));
                     BOOL bRet = CreateDirectoryW(wszPath, NULL);
                     if (bRet || (!bRet && GetLastError() == ERROR_ALREADY_EXISTS))
