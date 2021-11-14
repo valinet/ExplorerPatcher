@@ -108,6 +108,9 @@
     <ClInclude Include="queryversion.h">
       <Filter>Header Files\internal</Filter>
     </ClInclude>
+    <ClInclude Include="updates.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="ExplorerPatcher.rc">
@@ -174,6 +177,9 @@
     </ClCompile>
     <ClCompile Include="..\libs\sws\SimpleWindowSwitcher\sws_window.c">
       <Filter>Source Files\sws</Filter>
+    </ClCompile>
+    <ClCompile Include="updates.c">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

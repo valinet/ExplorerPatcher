@@ -51,8 +51,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 22000,318,37,0
- PRODUCTVERSION 22000,318,37,0
+ FILEVERSION 2021,11,13,1
+ PRODUCTVERSION 2021,11,13,1
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -60,7 +60,7 @@ VS_VERSION_INFO VERSIONINFO
  FILEFLAGS 0x0L
 #endif
  FILEOS 0x40004L
- FILETYPE 0x2L
+ FILETYPE 0x1L
  FILESUBTYPE 0x0L
 BEGIN
     BLOCK "StringFileInfo"
@@ -68,13 +68,13 @@ BEGIN
         BLOCK "040904b0"
         BEGIN
             VALUE "CompanyName", "VALINET Solutions SRL"
-            VALUE "FileDescription", "ExplorerPatcher"
-            VALUE "FileVersion", "22000.318.37.0"
-            VALUE "InternalName", "ExplorerPatcher.dll"
+            VALUE "FileDescription", "ExplorerPatcher Setup Program"
+            VALUE "FileVersion", "2021.11.13.1"
+            VALUE "InternalName", "ep_setup.exe"
             VALUE "LegalCopyright", "Copyright (C) 2006-2021 VALINET Solutions SRL. All rights reserved."
-            VALUE "OriginalFilename", "ExplorerPatcher.dll"
+            VALUE "OriginalFilename", "ep_setup.exe"
             VALUE "ProductName", "ExplorerPatcher"
-            VALUE "ProductVersion", "22000.318.37.0"
+            VALUE "ProductVersion", "2021.11.13.1"
         END
     END
     BLOCK "VarFileInfo"
@@ -89,33 +89,9 @@ END
 // RCDATA
 //
 
-IDR_REGISTRY1           RCDATA                  "settings.reg"
+IDR_EP_AMD64            RCDATA             "..\\build\\Release\\ExplorerPatcher.amd64.dll"
 
-
-/////////////////////////////////////////////////////////////////////////////
-//
-// String Table
-//
-
-STRINGTABLE
-BEGIN
-    IDS_PRODUCTNAME         "ExplorerPatcher"
-    IDS_COPYRIGHT           "Copyright (C) 2006-2021 VALINET Solutions SRL. All rights reserved."
-    IDS_VERSION             "Version %d.%d.%d.%d"
-    IDS_PRODUCTTAG          "This project aims to bring back a productive working environment\r\non Windows 11. Proudly programmed by Valentin-Gabriel Radu."
-    IDS_VISITGITHUB         "Visit project Github"
-    IDS_VISITWEBSITE        "Visit web site"
-    IDS_LICENSEINFO         "E-mail author"
-    IDS_INSTALL_SUCCESS_TEXT "Installation succeeded."
-    IDS_INSTALL_ERROR_TEXT  "Installation failed."
-    IDS_UNINSTALL_SUCCESS_TEXT "Uninstallation succeeded."
-END
-
-STRINGTABLE
-BEGIN
-    IDS_UNINSTALL_ERROR_TEXT "Uninstallation failed."
-    IDS_OPERATION_NONE      "No action has been taken."
-END
+IDR_EP_IA32             RCDATA             "..\\build\\Release\\ExplorerPatcher.IA-32.dll"
 
 #endif    // English (United States) resources
 /////////////////////////////////////////////////////////////////////////////
