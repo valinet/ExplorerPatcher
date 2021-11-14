@@ -341,7 +341,7 @@
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
 ;i Do not hook Start menu from main Explorer process (permanently disabled) *
 "HookStartMenu"=dword:00000001
-;c 12 Supplimentary delay at logon *
+;c 12 Supplementary delay at logon *
 ;x 0 None (default)
 ;x 300 300 ms
 ;x 600 600 ms

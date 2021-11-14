@@ -40,6 +40,7 @@ Tested on build 22000.318 and 22000.346 (currently in Windows Insider beta and r
 * Fixed a memory leak in "Settings Manager"
 * Removed verbose output from "Settings Manager"
 * Corrected import from `dxgi.dll`
+* Fixed typo in configuration UI (#346) (.1)
 
 ## 22000.318.36
 
