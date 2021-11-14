@@ -541,14 +541,14 @@ BOOL LoadSymbols(symbols_addr* symbols_PTRS, HMODULE hModule)
 
     BOOL bIsStartHardcoded = FALSE;
     BOOL bIsTwinuiPcshellHardcoded = FALSE;
-    WCHAR hash[100];
-    ZeroMemory(hash, 100 * sizeof(WCHAR));
+    CHAR hash[100];
+    ZeroMemory(hash, 100 * sizeof(CHAR));
     TCHAR wszPath[MAX_PATH];
 
     GetSystemDirectoryW(wszPath, MAX_PATH);
     wcscat_s(wszPath, MAX_PATH, L"\\" TEXT(TWINUI_PCSHELL_SB_NAME) L".dll");
     ComputeFileHash(wszPath, hash, 100);
-    if (!_wcsicmp(hash, L"8b23b02962856e89b8d8a3956de1d76c")) // 282, 318
+    if (!_stricmp(hash, "8b23b02962856e89b8d8a3956de1d76c")) // 282, 318
     {
         symbols_PTRS->twinui_pcshell_PTRS[0] = 0x217CE6;
         symbols_PTRS->twinui_pcshell_PTRS[1] = 0x5CC570;
@@ -560,7 +560,7 @@ BOOL LoadSymbols(symbols_addr* symbols_PTRS, HMODULE hModule)
         symbols_PTRS->twinui_pcshell_PTRS[7] = 0x52980;
         bIsTwinuiPcshellHardcoded = TRUE;
     }
-    else if (!_wcsicmp(hash, L"03487ccd5bc5a194fad61b616b0a2b28")) // 346
+    else if (!_stricmp(hash, "03487ccd5bc5a194fad61b616b0a2b28")) // 346
     {
         symbols_PTRS->twinui_pcshell_PTRS[0] = 0x21B036;
         symbols_PTRS->twinui_pcshell_PTRS[1] = 0x5CD740;
@@ -574,13 +574,13 @@ BOOL LoadSymbols(symbols_addr* symbols_PTRS, HMODULE hModule)
     }
     if (bIsTwinuiPcshellHardcoded)
     {
-        wprintf(L"[Symbols] Identified known \"" TEXT(TWINUI_PCSHELL_SB_NAME) L".dll\" with hash %s.\n", hash);
+        printf("[Symbols] Identified known \"" TWINUI_PCSHELL_SB_NAME ".dll\" with hash %s.\n", hash);
     }
 
     GetWindowsDirectoryW(wszPath, MAX_PATH);
     wcscat_s(wszPath, MAX_PATH, L"\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\" TEXT(STARTDOCKED_SB_NAME) L".dll");
     ComputeFileHash(wszPath, hash, 100);
-    if (!_wcsicmp(hash, L"b57bb94a48d2422de9a78c5fcba28f98")) // 282, 318
+    if (!_stricmp(hash, "b57bb94a48d2422de9a78c5fcba28f98")) // 282, 318
     {
         symbols_PTRS->startdocked_PTRS[0] = 0x188EBC;
         symbols_PTRS->startdocked_PTRS[1] = 0x188EBC;
@@ -589,7 +589,7 @@ BOOL LoadSymbols(symbols_addr* symbols_PTRS, HMODULE hModule)
         symbols_PTRS->startdocked_PTRS[4] = 0x160AEC;
         bIsStartHardcoded = TRUE;
     }
-    else if (!_wcsicmp(hash, L"e9c1c45a659dafabf671cb0ae195f8d9")) // 346
+    else if (!_stricmp(hash, "e9c1c45a659dafabf671cb0ae195f8d9")) // 346
     {
         symbols_PTRS->startdocked_PTRS[0] = 0x18969C;
         symbols_PTRS->startdocked_PTRS[1] = 0x18969C;
@@ -600,7 +600,7 @@ BOOL LoadSymbols(symbols_addr* symbols_PTRS, HMODULE hModule)
     }
     if (bIsStartHardcoded)
     {
-        wprintf(L"[Symbols] Identified known \"" TEXT(STARTDOCKED_SB_NAME) L".dll\" with hash %s.\n", hash);
+        printf("[Symbols] Identified known \"" STARTDOCKED_SB_NAME ".dll\" with hash %s.\n", hash);
 
         RegCreateKeyExW(
             HKEY_CURRENT_USER,
