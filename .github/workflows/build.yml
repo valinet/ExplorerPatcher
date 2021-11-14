@@ -119,6 +119,13 @@ jobs:
       working-directory: build/Release
       run: |
         if [[ -f "ExplorerPatcher.amd64.dll" ]]; then cp ExplorerPatcher.amd64.dll dxgi.dll; fi
+        
+    - name: Patch setup
+      shell: cmd
+      working-directory: build/Release
+      run: |
+        ep_setup_patch.exe
+        exit 0
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v2
@@ -160,35 +167,13 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.PAT }}
 
-    - name: Upload dxgi.dll
+    - name: Upload setup
       uses: actions/upload-release-asset@v1
       if: github.ref == 'refs/heads/master' && github.event.inputs.ref == ''
       env:
         GITHUB_TOKEN: ${{ secrets.PAT }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./build/Release/dxgi.dll
-        asset_name: dxgi.dll
-        asset_content_type: application/x-msdownload
-
-    - name: Upload ExplorerPatcher.amd64.dll
-      uses: actions/upload-release-asset@v1
-      if: github.ref == 'refs/heads/master' && github.event.inputs.ref == ''
-      env:
-        GITHUB_TOKEN: ${{ secrets.PAT }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./build/Release/ExplorerPatcher.amd64.dll
-        asset_name: ExplorerPatcher.amd64.dll
-        asset_content_type: application/x-msdownload
-        
-    - name: Upload ExplorerPatcher.IA-32.dll
-      uses: actions/upload-release-asset@v1
-      if: github.ref == 'refs/heads/master' && github.event.inputs.ref == ''
-      env:
-        GITHUB_TOKEN: ${{ secrets.PAT }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./build/Release/ExplorerPatcher.IA-32.dll
-        asset_name: ExplorerPatcher.IA-32.dll
+        asset_path: ./build/Release/ep_setup.exe
+        asset_name: ep_setup.exe
         asset_content_type: application/x-msdownload
