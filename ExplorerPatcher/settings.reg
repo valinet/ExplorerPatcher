@@ -4,11 +4,13 @@
 
 ;T Taskbar
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
-;b Enable Windows 10 taskbar *
+;z 2 Taskbar style *
+;x 0 Windows 11 (default)
+;x 1 Windows 10
 "OldTaskbar"=dword:00000001
-;t The following settings only apply to the Windows 10 taskbar:                        
-;l Enable missing system tray icons
-;shell:::{05d7b0f4-2121-4eff-bf6b-ed3f69b894d9}\SystemIcons
+;y More taskbar options in the Settings app 🡕
+;ms-settings:taskbar
+;t The following additional settings only apply to the Windows 10 taskbar:                        
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
 ;c 3 Combine taskbar icons on main taskbar
 ;x 0 Always combine
@@ -41,11 +43,13 @@
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
 ;b Show Desktop button
 "TaskbarSD"=dword:00000001
-;t 
+[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
+;b Add shortcut to program settings in Win+X menu
+"PropertiesInWinX"=dword:00000001
 ;t 
 
 ;T System tray
-;l Enable missing system tray icons
+;y Enable missing system tray icons 🡕
 ;shell:::{05d7b0f4-2121-4eff-bf6b-ed3f69b894d9}\SystemIcons
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
 ;b Show seconds in the clock
@@ -107,29 +111,31 @@
 ;d Disable the Windows 11 context menu *
 @=""
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
-;i Use immersive menus when displaying Windows 10 context menus
+;i Use immersive menus when displaying Windows 10 context menus **
 "DisableImmersiveContextMenu"=dword:00000000
 [-HKEY_CURRENT_USER\Software\Classes\CLSID\{056440FD-8568-48e7-A632-72157243B55B}\InprocServer32]
-;d Disable navigation bar
+;d Disable navigation bar **
 @=""
 [-HKEY_CURRENT_USER\Software\Classes\CLSID\{1d64637d-31e9-4b06-9124-e83fb178ac6e}\TreatAs]
 ;d Disable modern search bar
 @="{64bc32b5-4eec-4de7-972d-bd8bd0324537}"
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
-;b Hide search bar completely
+;b Hide search bar completely **
 "HideExplorerSearchBar"=dword:00000000
 ;p 2
 ;b Mica effect on title bar
 "MicaEffectOnTitlebar"=dword:00000000
-[-HKEY_CURRENT_USER\Software\Classes\CLSID\{1eeb5b5a-06fb-4732-96b3-975c0194eb39}\InprocServer32]
-;d Enable legacy list view *
-@=""
+[-HKEY_LOCAL_MACHINE\Software\Classes\CLSID\{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}\InprocServer32]
+;d Register as shell extension
+@="{64bc32b5-4eec-4de7-972d-bd8bd0324537}"
+
+;t ________________________
+;e For the settings marked with (**) to work in Open/Save file dialogs as well, register this
+;e utility as shell extension using the option above.
+;y Learn more 🡕
+;https://github.com/valinet/ExplorerPatcher/wiki/Using-ExplorerPatcher-as-shell-extension
 
 ;T Start menu
-[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
-;b Enable Start menu support
-"HookStartMenu"=dword:00000001
-;t The following settings only work when the above is enabled:
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\StartPage]
 ;i Open Start on monitor containing the cursor
 "MonitorOverride"=dword:00000001
@@ -137,11 +143,6 @@
 "OpenAtLogon"=dword:00000000
 ;b Open Start in All apps by default
 "MakeAllAppsDefault"=dword:00000000
-[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
-;c 2 Location on screen
-;x 0 Left
-;x 1 Center (default)
-"TaskbarAl"=dword:00000001
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
 ;c 22 Maximum number of frequent apps to show
 ;x 0 None
@@ -167,10 +168,16 @@
 ;x 20 20
 ;x 99999 Unlimited
 "Start_MaximumFrequentApps"=dword:00000006
+[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
+;c 2 Position on screen
+;x 0 Left
+;x 1 Center (default)
+"TaskbarAl"=dword:00000001
+
 
 ;T Window switcher
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer]
-;c 3 Window switcher (Alt+Tab) style *
+;z 3 Window switcher (Alt+Tab) style *
 ;x 0 Windows 11
 ;x 2 Windows 10
 ;x 1 Windows NT
@@ -276,6 +283,7 @@
 ;x 500 500 ms
 "ShowDelay"=dword:00000064
 
+
 ;T Other
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
 ;b Open clock flyout when pressing Win+C instead of Microsoft Teams
@@ -292,8 +300,27 @@
 ;b Show Command Prompt instead of PowerShell in Win+X menu *
 "DontUsePowerShellOnWinX"=dword:00000000
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
-;b Remove shortcut key from menu item
+;b Remove shortcut key from program settings item in Win+X menu
 "NoMenuAccelerator"=dword:00000000
+
+
+;T Updates
+[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
+;z 3 When File Explorer starts
+;x 1 Notify about available updates (default)
+;x 0 Prompt to install available updates
+;x 2 Do not check for updates
+"UpdatePolicy"=dword:00000001
+;t ________________________
+;y Check for updates
+;;;EP_CHECK_FOR_UPDATES
+;y Install latest version
+;;;EP_INSTALL_UPDATES
+;y Read about changes in the latest releases 🡕
+;https://github.com/valinet/ExplorerPatcher/blob/master/CHANGELOG.md
+;y Learn more 🡕
+;https://github.com/valinet/ExplorerPatcher/wiki/Configure-updates
+
 
 ;T Advanced
 ;t Only change these settings if you know what you are doing. You've been warned!
@@ -302,6 +329,18 @@
 "AllocConsole"=dword:00000000
 ;b Dump memory leaks
 "Memcheck"=dword:00000000
+[HKEY_CURRENT_USER\Control Panel\Desktop]
+;b Show Windows build info on the desktop *
+"PaintDesktopversion"=dword:00000000
+[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
+;b Enable advanced mitigations for correct rendering using classic theme *
+"ClassicThemeMitigations"=dword:00000000
+[-HKEY_CURRENT_USER\Software\Classes\CLSID\{1eeb5b5a-06fb-4732-96b3-975c0194eb39}\InprocServer32]
+;d Enable SysListView32 for Explorer views *
+@=""
+[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
+;i Do not hook Start menu from main Explorer process (permanently disabled) *
+"HookStartMenu"=dword:00000001
 ;c 12 Supplimentary delay at logon *
 ;x 0 None (default)
 ;x 300 300 ms
@@ -316,14 +355,9 @@
 ;x 8000 8 seconds
 ;x 10000 10 seconds
 "ExplorerReadyDelay"=dword:00000000
-[HKEY_CURRENT_USER\Control Panel\Desktop]
-;b Show Windows build info on the desktop *
-"PaintDesktopversion"=dword:00000000
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
-;b Enable advanced mitigations for correct rendering using classic theme *
-"ClassicThemeMitigations"=dword:00000000
 ;a Only change the following option if you have a single taskbar !!!
-;c 21 Always show main taskbar on this monitor * (experimental)
+;c 21 Always show main taskbar on this monitor * (not working)
 ;x 0 Primary (default)
 ;x 1 1
 ;x 2 2
@@ -346,6 +380,10 @@
 ;x 19 19
 ;x 20 20
 "TaskbarMonitorOverride"=dword:00000000
+;t ________________________
+;e Only change these settings after reading the documentation about them.
+;y Learn more 🡕
+;https://github.com/valinet/ExplorerPatcher/wiki/About-advanced-settings
 
 
 ;T About
@@ -355,14 +393,16 @@
 ;e 
 ;e This project aims to bring back a productive working environment on Windows 11.
 ;t Proudly programmed by Valentin-Gabriel Radu.
-;l Visit project GitHub (https://github.com/valinet)
+;y Visit project GitHub (https://github.com/valinet) 🡕
 ;https://github.com/valinet
-;l Visit web site (https://www.valinet.ro)
+;y Visit web site (https://www.valinet.ro) 🡕
 ;https://www.valinet.ro
-;l E-mail author (valentingabrielradu@gmail.com)
+;y E-mail author (valentingabrielradu@gmail.com) 🡕
 ;mailto:valentingabrielradu@gmail.com
-;l Donate (using PayPal)
+;y Donate (using PayPal) 🡕
 ;https://www.paypal.com/donate?business=valentingabrielradu%40gmail.com&no_recurring=0&item_name=ExplorerPatcher&currency_code=EUR
+;y Frequently Asked Questions 🡕
+;https://github.com/valinet/ExplorerPatcher/wiki/Frequently-asked-questions
 
 ;f
 ;t Settings marked with an (*) require restarting File Explorer. 

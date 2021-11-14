@@ -335,7 +335,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                     topAdj = dwMaxHeight + GUI_CAPTION_LINE_HEIGHT * dy;
                     hOldFont = SelectObject(hdcPaint, hFontCaption);
                 }
-                else if (!strncmp(line, ";u ", 3))
+                else if (!strncmp(line, ";u ", 3) || (!strncmp(line, ";y ", 3) && !strstr(line, "\xF0\x9F")))
                 {
                     hOldFont = SelectObject(hdcPaint, hFontUnderline);
                 }
@@ -513,7 +513,30 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                             {
                                 if (FindWindowW(L"Shell_TrayWnd", NULL))
                                 {
-                                    ZZRestartExplorer();
+                                    //ZZRestartExplorer(0, 0, 0, 0);
+                                    WCHAR wszPath[MAX_PATH];
+                                    ZeroMemory(wszPath, MAX_PATH * sizeof(WCHAR));
+                                    GetSystemDirectoryW(wszPath, MAX_PATH);
+                                    wcscat_s(wszPath, MAX_PATH, L"\\taskkill.exe");
+                                    ShellExecuteW(
+                                        NULL,
+                                        L"open",
+                                        wszPath,
+                                        L"/f /im explorer.exe",
+                                        NULL,
+                                        SW_SHOWMINIMIZED
+                                    );
+                                    GetWindowsDirectoryW(wszPath, MAX_PATH);
+                                    wcscat_s(wszPath, MAX_PATH, L"\\explorer.exe");
+                                    Sleep(1000);
+                                    ShellExecuteW(
+                                        NULL,
+                                        L"open",
+                                        wszPath,
+                                        NULL,
+                                        NULL,
+                                        SW_SHOWNORMAL
+                                    );
                                 }
                                 else
                                 {
@@ -669,7 +692,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                         tabOrder++;
                     }
                 }
-                else if (!strncmp(line, ";l ", 3) || !strncmp(line, ";c ", 3) || !strncmp(line, ";b ", 3) || !strncmp(line, ";i ", 3) || !strncmp(line, ";d ", 3) || !strncmp(line, ";v ", 3))
+                else if (!strncmp(line, ";l ", 3) || !strncmp(line, ";y ", 3) || !strncmp(line, ";c ", 3) || !strncmp(line, ";z ", 3) || !strncmp(line, ";b ", 3) || !strncmp(line, ";i ", 3) || !strncmp(line, ";d ", 3) || !strncmp(line, ";v ", 3))
                 {
                     ZeroMemory(text, (MAX_LINE_LENGTH + 3) * sizeof(wchar_t));
                     text[0] = L'\u2795';
@@ -678,7 +701,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                     MultiByteToWideChar(
                         CP_UTF8,
                         MB_PRECOMPOSED,
-                        !strncmp(line, ";c ", 3) ? strchr(line + 3, ' ') + 1 : line + 3,
+                        !strncmp(line, ";c ", 3) || !strncmp(line, ";z ", 3) ? strchr(line + 3, ' ') + 1 : line + 3,
                         numChRd - 3,
                         text + 3,
                         MAX_LINE_LENGTH
@@ -688,16 +711,17 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                     if (x) *x = 0;
                     x = wcschr(text, L'\r');
                     if (x) *x = 0;
-                    if (!strncmp(line, ";c ", 3) || !strncmp(line, ";b ", 3) || !strncmp(line, ";i ", 3) || !strncmp(line, ";d ", 3) || !strncmp(line, ";v ", 3))
+                    if (!strncmp(line, ";c ", 3) || !strncmp(line, ";z ", 3) || !strncmp(line, ";b ", 3) || !strncmp(line, ";i ", 3) || !strncmp(line, ";d ", 3) || !strncmp(line, ";v ", 3))
                     {
                         HMENU hMenu = NULL;
                         BOOL bChoice = !strncmp(line, ";c ", 3);
+                        BOOL bChoiceLefted = !strncmp(line, ";z ", 3);
                         BOOL bInvert = !strncmp(line, ";i ", 3);
                         BOOL bJustCheck = !strncmp(line, ";d ", 3);
                         BOOL bBool = !strncmp(line, ";b ", 3);
                         BOOL bValue = !strncmp(line, ";v ", 3);
                         DWORD numChoices = 0;
-                        if (bChoice)
+                        if (bChoice || bChoiceLefted)
                         {
                             char* p = strchr(line + 3, ' ');
                             if (p) *p = 0;
@@ -764,6 +788,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                         wchar_t* p = wcschr(name, L'"');
                         if (p) *p = 0;
                         HKEY hKey = NULL;
+                        BOOL bIsHKLM = wcsstr(section, L"HKEY_LOCAL_MACHINE");
                         DWORD dwDisposition;
                         DWORD dwSize = sizeof(DWORD);
                         DWORD value = FALSE;
@@ -779,12 +804,12 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                         if (!bJustCheck)
                         {
                             RegCreateKeyExW(
-                                HKEY_CURRENT_USER,
+                                bIsHKLM ? HKEY_LOCAL_MACHINE : HKEY_CURRENT_USER,
                                 wcschr(section, L'\\') + 1,
                                 0,
                                 NULL,
                                 REG_OPTION_NON_VOLATILE,
-                                KEY_READ | (hDC ? 0 : KEY_WRITE),
+                                KEY_READ | (hDC ? 0 : (!bIsHKLM ? KEY_WRITE : 0)),
                                 NULL,
                                 &hKey,
                                 &dwDisposition
@@ -809,10 +834,10 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                         else
                         {
                             RegOpenKeyExW(
-                                HKEY_CURRENT_USER,
+                                bIsHKLM ? HKEY_LOCAL_MACHINE : HKEY_CURRENT_USER,
                                 wcschr(section, L'\\') + 1,
                                 REG_OPTION_NON_VOLATILE,
-                                KEY_READ | (hDC ? 0 : KEY_WRITE),
+                                KEY_READ | (hDC ? 0 : (!bIsHKLM ? KEY_WRITE : 0)),
                                 &hKey
                             );
                             if (hKey == NULL || hKey == INVALID_HANDLE_VALUE)
@@ -849,7 +874,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                 buf
                             );
                         }
-                        else if (bChoice)
+                        else if (bChoice || bChoiceLefted)
                         {
                             wcscat_s(
                                 text,
@@ -881,7 +906,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                 &rcTemp,
                                 DT_CALCRECT
                             );
-                            rcText.left += rcTemp.right - rcTemp.left;
+                            rcText.left += (!bChoiceLefted ? (rcTemp.right - rcTemp.left) : 0);
                             for (unsigned int i = 0; i < wcslen(text); ++i)
                             {
                                 text[i] = text[i + 3];
@@ -901,52 +926,110 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                         {
                             if (bJustCheck)
                             {
-                                if (hKey)
+                                if (bIsHKLM && wcsstr(section, L"Software\\Classes\\CLSID\\" _T(EP_CLSID) L"\\InprocServer32"))
                                 {
-                                    RegCloseKey(hKey);
-                                    hKey = NULL;
-                                    RegDeleteKeyExW(
-                                        HKEY_CURRENT_USER,
-                                        wcschr(section, L'\\') + 1,
-                                        REG_OPTION_NON_VOLATILE,
-                                        0
-                                    );
+                                    WCHAR wszArgs[MAX_PATH];
+                                    if (!hKey)
+                                    {
+                                        wszArgs[0] = L'\"';
+                                        SHGetFolderPathW(NULL, SPECIAL_FOLDER, NULL, SHGFP_TYPE_CURRENT, wszArgs + 1);
+                                        wcscat_s(wszArgs, MAX_PATH, _T(APP_RELATIVE_PATH) L"\\" _T(PRODUCT_NAME) L".amd64.dll\"");
+                                    }
+                                    else
+                                    {
+                                        wszArgs[0] = L'/';
+                                        wszArgs[1] = L'u';
+                                        wszArgs[2] = L' ';
+                                        wszArgs[3] = L'"';
+                                        SHGetFolderPathW(NULL, SPECIAL_FOLDER, NULL, SHGFP_TYPE_CURRENT, wszArgs + 4);
+                                        wcscat_s(wszArgs, MAX_PATH, _T(APP_RELATIVE_PATH) L"\\" _T(PRODUCT_NAME) L".amd64.dll\"");
+                                    }
+                                    wprintf(L"%s\n", wszArgs);
+                                    WCHAR wszApp[MAX_PATH * 2];
+                                    GetSystemDirectoryW(wszApp, MAX_PATH * 2);
+                                    wcscat_s(wszApp, MAX_PATH * 2, L"\\regsvr32.exe");
+                                    wprintf(L"%s\n", wszApp);
+                                    SHELLEXECUTEINFOW sei;
+                                    ZeroMemory(&sei, sizeof(SHELLEXECUTEINFOW));
+                                    sei.cbSize = sizeof(sei);
+                                    sei.fMask = SEE_MASK_NOCLOSEPROCESS;
+                                    sei.hwnd = NULL;
+                                    sei.hInstApp = NULL;
+                                    sei.lpVerb = L"runas";
+                                    sei.lpFile = wszApp;
+                                    sei.lpParameters = wszArgs;
+                                    sei.hwnd = NULL;
+                                    sei.nShow = SW_NORMAL;
+                                    if (ShellExecuteExW(&sei) && sei.hProcess)
+                                    {
+                                        WaitForSingleObject(sei.hProcess, INFINITE);
+                                        DWORD dwExitCode = 0;
+                                        if (GetExitCodeProcess(sei.hProcess, &dwExitCode) && !dwExitCode)
+                                        {
+
+                                        }
+                                        else
+                                        {
+
+                                        }
+                                    }
+                                    else
+                                    {
+                                        DWORD dwError = GetLastError();
+                                        if (dwError == ERROR_CANCELLED)
+                                        {
+                                        }
+                                    }
                                 }
                                 else
                                 {
-                                    RegCreateKeyExW(
-                                        HKEY_CURRENT_USER,
-                                        wcschr(section, L'\\') + 1,
-                                        0,
-                                        NULL,
-                                        REG_OPTION_NON_VOLATILE,
-                                        KEY_WRITE,
-                                        NULL,
-                                        &hKey,
-                                        &dwDisposition
-                                    );
-                                    if (hKey == NULL || hKey == INVALID_HANDLE_VALUE)
+                                    if (hKey)
                                     {
+                                        RegCloseKey(hKey);
                                         hKey = NULL;
-                                    }
-                                    if (d[1] == '"')
-                                    {
-                                        wchar_t* p = wcschr(d + 2, L'"');
-                                        if (p) *p = 0;
-                                        RegSetValueExW(
-                                            hKey,
-                                            !wcsncmp(name, L"@", 1) ? NULL : name,
-                                            0,
-                                            REG_SZ,
-                                            d + 2,
-                                            wcslen(d + 2) * sizeof(wchar_t)
+                                        RegDeleteKeyExW(
+                                            bIsHKLM ? HKEY_LOCAL_MACHINE : HKEY_CURRENT_USER,
+                                            wcschr(section, L'\\') + 1,
+                                            REG_OPTION_NON_VOLATILE,
+                                            0
                                         );
+                                    }
+                                    else
+                                    {
+                                        RegCreateKeyExW(
+                                            bIsHKLM ? HKEY_LOCAL_MACHINE : HKEY_CURRENT_USER,
+                                            wcschr(section, L'\\') + 1,
+                                            0,
+                                            NULL,
+                                            REG_OPTION_NON_VOLATILE,
+                                            KEY_WRITE,
+                                            NULL,
+                                            &hKey,
+                                            &dwDisposition
+                                        );
+                                        if (hKey == NULL || hKey == INVALID_HANDLE_VALUE)
+                                        {
+                                            hKey = NULL;
+                                        }
+                                        if (d[1] == '"')
+                                        {
+                                            wchar_t* p = wcschr(d + 2, L'"');
+                                            if (p) *p = 0;
+                                            RegSetValueExW(
+                                                hKey,
+                                                !wcsncmp(name, L"@", 1) ? NULL : name,
+                                                0,
+                                                REG_SZ,
+                                                d + 2,
+                                                wcslen(d + 2) * sizeof(wchar_t)
+                                            );
+                                        }
                                     }
                                 }
                             }
                             else
                             {
-                                if (bChoice)
+                                if (bChoice || bChoiceLefted)
                                 {
                                     RECT rcTemp;
                                     rcTemp = rcText;
@@ -958,7 +1041,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                         DT_CALCRECT
                                     );
                                     POINT p;
-                                    p.x = rcText.left + rcTemp.right - rcTemp.left;
+                                    p.x = rcText.left + (bChoiceLefted ? 0 : (rcTemp.right - rcTemp.left));
                                     p.y = rcText.bottom;
                                     ClientToScreen(
                                         hwnd,
@@ -998,7 +1081,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                         {
                             RegCloseKey(hKey);
                         }
-                        if (bChoice)
+                        if (bChoice || bChoiceLefted)
                         {
                             for (unsigned int i = 0; i < numChoices; ++i)
                             {
@@ -1015,7 +1098,24 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                             DestroyMenu(hMenu);
                         }
                     }
-                    if (!hDC && !strncmp(line, ";l ", 3))
+                    if (hDC && (!strncmp(line, ";l ", 3) || !strncmp(line, ";y ", 3)))
+                    {
+                        RECT rcTemp;
+                        rcTemp = rcText;
+                        DrawTextW(
+                            hdcPaint,
+                            text,
+                            3,
+                            &rcTemp,
+                            DT_CALCRECT
+                        );
+                        rcText.left += (!strncmp(line, ";l ", 3) ? (rcTemp.right - rcTemp.left) : 0);
+                        for (unsigned int i = 0; i < wcslen(text); ++i)
+                        {
+                            text[i] = text[i + 3];
+                        }
+                    }
+                    if (!hDC && (!strncmp(line, ";l ", 3) || !strncmp(line, ";y ", 3)))
                     {
                         RECT rcTemp;
                         rcTemp = rcText;
@@ -1037,14 +1137,52 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                             if (p) *p = 0;
                             if (line[1] != 0)
                             {
-                                ShellExecuteA(
-                                    NULL,
-                                    "open",
-                                    line + 1,
-                                    NULL,
-                                    NULL,
-                                    SW_SHOWNORMAL
-                                );
+                                if (line[1] == ';')
+                                {
+                                    if (!strcmp(line + 2, ";EP_CHECK_FOR_UPDATES"))
+                                    {
+                                        HANDLE hEvent = CreateEventW(NULL, FALSE, FALSE, L"EP_Ev_CheckForUpdates_" _T(EP_CLSID));
+                                        if (hEvent)
+                                        {
+                                            if (GetLastError() != ERROR_ALREADY_EXISTS)
+                                            {
+                                                CloseHandle(hEvent);
+                                            }
+                                            else
+                                            {
+                                                SetEvent(hEvent);
+                                                CloseHandle(hEvent);
+                                            }
+                                        }
+                                    }
+                                    else if(!strcmp(line + 2, ";EP_INSTALL_UPDATES"))
+                                    {
+                                        HANDLE hEvent = CreateEventW(NULL, FALSE, FALSE, L"EP_Ev_InstallUpdates_" _T(EP_CLSID));
+                                        if (hEvent)
+                                        {
+                                            if (GetLastError() != ERROR_ALREADY_EXISTS)
+                                            {
+                                                CloseHandle(hEvent);
+                                            }
+                                            else
+                                            {
+                                                SetEvent(hEvent);
+                                                CloseHandle(hEvent);
+                                            }
+                                        }
+                                    }
+                                }
+                                else
+                                {
+                                    ShellExecuteA(
+                                        NULL,
+                                        "open",
+                                        line + 1,
+                                        NULL,
+                                        NULL,
+                                        SW_SHOWNORMAL
+                                    );
+                                }
                             }
                         }
                     }
@@ -1379,6 +1517,13 @@ static LRESULT CALLBACK GUI_WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
 
 __declspec(dllexport) int ZZGUI(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLine, int nCmdShow)
 {
+    HWND hOther = NULL;
+    if (hOther = FindWindowW(L"ExplorerPatcher_GUI_" _T(EP_CLSID), NULL))
+    {
+        SetForegroundWindow(hOther);
+        return 0;
+    }
+
     HKEY hKey = NULL;
     DWORD dwDisposition;
     DWORD dwSize = sizeof(DWORD);
@@ -1509,7 +1654,7 @@ __declspec(dllexport) int ZZGUI(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLin
     wc.lpfnWndProc = GUI_WindowProc;
     wc.hbrBackground = _this.hBackgroundBrush;
     wc.hInstance = hModule;
-    wc.lpszClassName = L"ExplorerPatcherGUI";
+    wc.lpszClassName = L"ExplorerPatcher_GUI_" _T(EP_CLSID);
     wc.hCursor = LoadCursorW(NULL, IDC_ARROW);
     HMODULE hShell32 = LoadLibraryExW(wszPath, NULL, LOAD_LIBRARY_AS_DATAFILE);
     if (hShell32)
@@ -1569,7 +1714,7 @@ __declspec(dllexport) int ZZGUI(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLin
     }
     HWND hwnd = CreateWindowEx(
         NULL,
-        L"ExplorerPatcherGUI",
+        L"ExplorerPatcher_GUI_" _T(EP_CLSID),
         title,
         WS_SYSMENU | WS_CAPTION | WS_MINIMIZEBOX,
         0,
@@ -1582,6 +1727,7 @@ __declspec(dllexport) int ZZGUI(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLin
     {
         return 1;
     }
+
     if (IsThemeActive())
     {
         if (bIsCompositionEnabled)
