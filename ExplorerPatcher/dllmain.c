@@ -1069,7 +1069,7 @@ HMENU explorer_LoadMenuW(HINSTANCE hInstance, LPCWSTR lpMenuName)
             ZeroMemory(&menuInfo, sizeof(MENUITEMINFOW));
             menuInfo.cbSize = sizeof(MENUITEMINFOW);
             menuInfo.fMask = MIIM_ID | MIIM_STRING | MIIM_DATA;
-            menuInfo.wID = 3999;
+            menuInfo.wID = 12100;
             menuInfo.dwItemData = CheckForUpdatesThread;
             menuInfo.fType = MFT_STRING;
             menuInfo.dwTypeData = buffer;
@@ -1533,7 +1533,7 @@ BOOL CheckIfMenuContainsOwnPropertiesItem(HMENU hMenu)
             mii.cbSize = sizeof(MENUITEMINFO);
             mii.fMask = MIIM_DATA | MIIM_ID;
             BOOL b = GetMenuItemInfoW(hMenu, i, TRUE, &mii);
-            if (b && (mii.wID == 3999 || mii.wID == 4000) && mii.dwItemData == CheckForUpdatesThread)
+            if (b && (mii.wID >= 12000 && mii.wID <= 12200) && mii.dwItemData == CheckForUpdatesThread)
             {
                 return TRUE;
             }
@@ -1599,7 +1599,7 @@ BOOL TrackPopupMenuHookEx(
                 lptpm
             );
 #ifdef _WIN64
-            if (bContainsOwn && (bRet == 3999 || bRet == 4000))
+            if (bContainsOwn && (bRet >= 12000 && bRet <= 12200))
             {
                 LaunchPropertiesGUI(hModule);
                 return FALSE;
@@ -1618,7 +1618,7 @@ BOOL TrackPopupMenuHookEx(
         lptpm
     );
 #ifdef _WIN64
-    if (bContainsOwn && (b == 3999 || b == 4000))
+    if (bContainsOwn && (b >= 12000 && b <= 12200))
     {
         LaunchPropertiesGUI(hModule);
         return FALSE;
@@ -1685,7 +1685,7 @@ BOOL TrackPopupMenuHook(
                 prcRect
             );
 #ifdef _WIN64
-            if (bContainsOwn && (bRet == 3999 || bRet == 4000))
+            if (bContainsOwn && (bRet >= 12000 && bRet <= 12200))
             {
                 LaunchPropertiesGUI(hModule);
                 return FALSE;
@@ -1705,7 +1705,7 @@ BOOL TrackPopupMenuHook(
         prcRect
     );
 #ifdef _WIN64
-    if (bContainsOwn && (b == 3999 || b == 4000))
+    if (bContainsOwn && (b >= 12000 && b <= 12200))
     {
         LaunchPropertiesGUI(hModule);
         return FALSE;
@@ -1862,7 +1862,7 @@ BOOL explorer_TrackPopupMenuExHook(
             hWnd,
             lptpm
         );
-        if (bContainsOwn && (b == 3999 || b == 4000))
+        if (bContainsOwn && (b >= 12000 && b <= 12200))
         {
             LaunchPropertiesGUI(hModule);
             return FALSE;
