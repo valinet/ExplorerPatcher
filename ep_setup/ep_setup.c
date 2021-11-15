@@ -431,6 +431,7 @@ int WINAPI wWinMain(
                         DWORD dwExitCode = 0;
                         GetExitCodeProcess(sei.hProcess, &dwExitCode);
                         SetLastError(dwExitCode);
+                        CloseHandle(sei.hProcess);
                     }
                 }
             }

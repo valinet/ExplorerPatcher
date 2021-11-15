@@ -974,6 +974,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                         {
 
                                         }
+                                        CloseHandle(sei.hProcess);
                                     }
                                     else
                                     {

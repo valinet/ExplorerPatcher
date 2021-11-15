@@ -61,6 +61,7 @@ int main(int argc, char** argv)
             WaitForSingleObject(ShExecInfo.hProcess, INFINITE);
             DWORD dwExitCode = 0;
             GetExitCodeProcess(ShExecInfo.hProcess, &dwExitCode);
+            CloseHandle(ShExecInfo.hProcess);
             return dwExitCode;
         }
     }
