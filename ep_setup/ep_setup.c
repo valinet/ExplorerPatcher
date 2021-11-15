@@ -357,6 +357,9 @@ int WINAPI wWinMain(
     {
         bOk = TRUE;
 
+        BeginExplorerRestart();
+        Sleep(100);
+
         GetSystemDirectoryW(wszPath, MAX_PATH);
         wcscat_s(wszPath, MAX_PATH, L"\\taskkill.exe");
         ShellExecuteW(

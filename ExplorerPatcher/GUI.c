@@ -513,6 +513,8 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                             {
                                 if (FindWindowW(L"Shell_TrayWnd", NULL))
                                 {
+                                    BeginExplorerRestart();
+                                    Sleep(100);
                                     //ZZRestartExplorer(0, 0, 0, 0);
                                     WCHAR wszPath[MAX_PATH];
                                     ZeroMemory(wszPath, MAX_PATH * sizeof(WCHAR));
