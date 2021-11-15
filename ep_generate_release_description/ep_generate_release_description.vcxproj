@@ -157,9 +157,6 @@
   <ItemGroup>
     <ResourceCompile Include="..\ExplorerPatcher\ExplorerPatcher.rc" />
   </ItemGroup>
-  <ItemGroup>
-    <None Include="..\ExplorerPatcher\settings.reg" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

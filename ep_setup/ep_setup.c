@@ -502,14 +502,14 @@ int WINAPI wWinMain(
         {
             MessageBoxW(
                 NULL,
-                L"An error has occured while servicing this product.\n"
-                L"Most likely, this is caused by one or more of the backup files still being in use (from"
-                L"a previous update). Unlocking the files will most likely fix this issue.\n\n"
+                L"An error has occurred while servicing this product.\n"
+                L"This is most likely caused by one or more of the backup files from a previous update still being in use. "
+                L"Unlocking the files will most likely fix this issue.\n\n"
                 L"Troubleshooting steps:\n"
-                L"* Close and reopen the \"Properties\" dialog, if you have it currently open.\n"
+                L"* Close and reopen the \"Properties\" dialog if it is currently open.\n"
                 L"* Kill and restart all \"explorer.exe\" processes.\n"
-                L"* If you have registered this as shell extension, restarting the computer will probably fix this.\n"
-                L"* After everything else, reboot the computer and try again.",
+                L"* If you have registered this application as a shell extension, then restarting the computer will probably fix this.\n"
+                L"* Lastly, reboot the computer and try this operation again.",
                 _T(PRODUCT_NAME),
                 MB_ICONERROR | MB_OK | MB_DEFBUTTON1
             );

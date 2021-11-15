@@ -57,12 +57,14 @@ int main(int argc, char** argv)
         free(line);
         printf(
             "Please consult the [README](https://github.com/valinet/ExplorerPatcher/blob/master/README.md) for more details.\n"
-            "A detailed change log is available [here](https://github.com/valinet/ExplorerPatcher/blob/master/CHANGELOG.md).\n\n"
+            "A detailed change log is available [here](https://github.com/valinet/ExplorerPatcher/blob/master/CHANGELOG.md).\n"
+            "An archive containing all the files generated during the build process (including `dxgi.dll` and symbol files) is available [here](%s).\n\n"
             "*This release has been published automatically from %s %s in branch [%s](https://github.com/valinet/ExplorerPatcher/tree/%s/).*",
-            argc == 3 ? "commits up to and including" : "the latest commits",
-            argc == 3 ? argv[1] : "",
-            argc == 3 ? argv[2] : "master",
-            argc == 3 ? argv[2] : "master"
+            argv == 4 ? argv[3] : "https://github.com/valinet/ExplorerPatcher/actions",
+            argc == 4 ? "commits up to and including" : "the latest commits",
+            argc == 4 ? argv[1] : "",
+            argc == 4 ? argv[2] : "master",
+            argc == 4 ? argv[2] : "master"
         );
         fclose(f);
     }

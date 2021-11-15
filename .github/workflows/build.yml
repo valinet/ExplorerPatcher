@@ -147,7 +147,7 @@ jobs:
       working-directory: build/Release
       if: github.ref == 'refs/heads/master' && github.event.inputs.ref == ''
       run: |
-        MY_STRING=$(./ep_generate_release_description.exe ${{ steps.vars.outputs.sha_short }} ${{ steps.vars.outputs.branch }})
+        MY_STRING=$(./ep_generate_release_description.exe ${{ steps.vars.outputs.sha_short }} ${{ steps.vars.outputs.branch }} ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
         MY_STRING="${MY_STRING//'%'/'%25'}"
         MY_STRING="${MY_STRING//$'\n'/'%0A'}"
         MY_STRING="${MY_STRING//$'\r'/'%0D'}"
