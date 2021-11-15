@@ -150,6 +150,23 @@ DWORD CheckForUpdatesThread(LPVOID unused)
     __x_ABI_CWindows_CUI_CNotifications_CIToastNotificationFactory* notifFactory = NULL;
     __x_ABI_CWindows_CUI_CNotifications_CIToastNotification* toast = NULL;
 
+    while (TRUE)
+    {
+        HWND hShell_TrayWnd = FindWindowExW(
+            NULL,
+            NULL,
+            L"Shell_TrayWnd",
+            NULL
+        );
+        if (hShell_TrayWnd)
+        {
+            Sleep(5000);
+            break;
+        }
+        Sleep(100);
+    }
+    printf("[Updates] Starting daemon.\n");
+
     if (SUCCEEDED(hr))
     {
         hr = RoInitialize(RO_INIT_MULTITHREADED);
@@ -1288,10 +1305,6 @@ INT64 Shell_TrayWndSubclassProc(
     {
         DWORD dwThreadId = GetCurrentThreadId();
         Shell_TrayWndMouseHook = SetWindowsHookExW(WH_MOUSE, Shell_TrayWndMouseProc, NULL, dwThreadId);
-    }
-    else if (uMsg == WM_COMMAND)
-    {
-        printf("DA\n");
     }
     else if (uMsg == RegisterWindowMessageW(L"Windows11ContextMenu_" _T(EP_CLSID)))
     {
