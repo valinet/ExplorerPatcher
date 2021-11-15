@@ -554,7 +554,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                 );
                                 SHGetFolderPathW(
                                     NULL,
-                                    SPECIAL_FOLDER,
+                                    SPECIAL_FOLDER_LEGACY,
                                     NULL,
                                     SHGFP_TYPE_CURRENT,
                                     wszPath

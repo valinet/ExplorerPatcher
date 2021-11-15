@@ -47,6 +47,7 @@ Tested on build 22000.318 and 22000.346 (currently in Windows Insider beta and r
 * As you may have noticed, releases do not contain unpacked files anymore. Thus, for people looking for a quick way to get the unpacked files, the release notes now include a link to the artifacts generated during during the build process. The artifacts include the usual DLLs (including `dxgi.dll`), plus symbol files and all the helper executables generated during the build. (#351) (.2)
 * Setup program version is synchronized with the version of the application (.2)
 * Fixed a mismatch between the default value for the setting "Add shortcut to program settings in Win+X menu" displayed in the UI and actually used in the software (#352) (.2)
+* Fixed an issue that prevented "Restore default settings" in the "Properties" UI from working (#374) (.3)
 
 ## 22000.318.36
 
