@@ -54,7 +54,15 @@ void IsUpdateAvailableHelperCallback(
     }
 }
 
-BOOL IsUpdateAvailableHelper(char* url, char* szCheckAgainst, DWORD dwUpdateTimeout, BOOL* lpFail)
+BOOL IsUpdateAvailableHelper(
+    char* url, 
+    char* szCheckAgainst, 
+    DWORD dwUpdateTimeout, 
+    BOOL* lpFail,
+    __x_ABI_CWindows_CUI_CNotifications_CIToastNotifier* notifier,
+    __x_ABI_CWindows_CUI_CNotifications_CIToastNotificationFactory* notifFactory,
+    __x_ABI_CWindows_CUI_CNotifications_CIToastNotification** toast
+)
 {
     BOOL bIsUpdateAvailable = FALSE;
 
@@ -234,6 +242,14 @@ BOOL IsUpdateAvailableHelper(char* url, char* szCheckAgainst, DWORD dwUpdateTime
                                     "\", please allow the elevation request.\n"
                                 );
 #endif
+
+                                if (*toast)
+                                {
+                                    notifier->lpVtbl->Hide(notifier, *toast);
+                                    (*toast)->lpVtbl->Release((*toast));
+                                    (*toast) = NULL;
+                                }
+
                                 SHELLEXECUTEINFO ShExecInfo = { 0 };
                                 ShExecInfo.cbSize = sizeof(SHELLEXECUTEINFO);
                                 ShExecInfo.fMask = SEE_MASK_NOCLOSEPROCESS;
@@ -354,10 +370,21 @@ BOOL IsUpdateAvailable(LPCWSTR wszDataStore, char* szCheckAgainst, BOOL* lpFail)
 #ifdef UPDATES_VERBOSE_OUTPUT
     printf("[Updates] Update URL: %s\n", szUpdateURL);
 #endif
-    return IsUpdateAvailableHelper(szUpdateURL, szCheckAgainst, dwUpdateTimeout, lpFail);
+    return IsUpdateAvailableHelper(
+        szUpdateURL, 
+        szCheckAgainst, 
+        dwUpdateTimeout, 
+        lpFail,
+        NULL, NULL, NULL
+    );
 }
 
-BOOL UpdateProduct(LPCWSTR wszDataStore)
+BOOL UpdateProduct(
+    LPCWSTR wszDataStore,
+    __x_ABI_CWindows_CUI_CNotifications_CIToastNotifier* notifier,
+    __x_ABI_CWindows_CUI_CNotifications_CIToastNotificationFactory* notifFactory,
+    __x_ABI_CWindows_CUI_CNotifications_CIToastNotification** toast
+)
 {
     HKEY hKey = NULL;
     DWORD dwSize = 0;
@@ -410,11 +437,108 @@ BOOL UpdateProduct(LPCWSTR wszDataStore)
 #ifdef UPDATES_VERBOSE_OUTPUT
     printf("[Updates] Update URL: %s\n", szUpdateURL);
 #endif
-    return IsUpdateAvailableHelper(szUpdateURL, NULL, dwUpdateTimeout, NULL);
+    return IsUpdateAvailableHelper(
+        szUpdateURL, 
+        NULL, 
+        dwUpdateTimeout, 
+        NULL,
+        notifier,
+        notifFactory,
+        toast
+    );
 }
 
-BOOL InstallUpdatesIfAvailable(DWORD dwOperation, DWORD bAllocConsole, DWORD dwUpdatePolicy)
+BOOL InstallUpdatesIfAvailable(
+    HMODULE hModule,
+    BOOL bIsPostUpdate,
+    __x_ABI_CWindows_CUI_CNotifications_CIToastNotifier* notifier,
+    __x_ABI_CWindows_CUI_CNotifications_CIToastNotificationFactory* notifFactory,
+    __x_ABI_CWindows_CUI_CNotifications_CIToastNotification** toast,
+    DWORD dwOperation, 
+    DWORD bAllocConsole, 
+    DWORD dwUpdatePolicy
+)
 {
+    wchar_t buf[TOAST_BUFSIZ];
+    DWORD dwLeftMost = 0;
+    DWORD dwSecondLeft = 0;
+    DWORD dwSecondRight = 0;
+    DWORD dwRightMost = 0;
+    QueryVersionInfo(hModule, VS_VERSION_INFO, &dwLeftMost, &dwSecondLeft, &dwSecondRight, &dwRightMost);
+
+    if (bIsPostUpdate)
+    {
+        __x_ABI_CWindows_CData_CXml_CDom_CIXmlDocument* inputXml = NULL;
+        const wchar_t text[] =
+            L"<toast displayTimestamp=\"2021-08-29T00:00:00.000Z\" scenario=\"reminder\" "
+            L"activationType=\"protocol\" launch=\"https://github.com/valinet/ExplorerPatcher/releases/latest\" duration=\"short\">\r\n"
+            L"	<visual>\r\n"
+            L"		<binding template=\"ToastGeneric\">\r\n"
+            L"			<text><![CDATA[Update successful]]></text>\r\n"
+            L"			<text><![CDATA[Installed version: %d.%d.%d.%d]]></text>\r\n"
+            L"			<text placement=\"attribution\"><![CDATA[ExplorerPatcher]]></text>\r\n"
+            L"		</binding>\r\n"
+            L"	</visual>\r\n"
+            L"	<audio src=\"ms-winsoundevent:Notification.Default\" loop=\"false\" silent=\"false\"/>\r\n"
+            L"</toast>\r\n";
+        swprintf_s(buf, TOAST_BUFSIZ, text, dwLeftMost, dwSecondLeft, dwSecondRight, dwRightMost);
+        String2IXMLDocument(
+            buf,
+            wcslen(buf),
+            &inputXml,
+            NULL
+        );
+        if (*toast)
+        {
+            notifier->lpVtbl->Hide(notifier, *toast);
+            (*toast)->lpVtbl->Release((*toast));
+            (*toast) = NULL;
+        }
+        notifFactory->lpVtbl->CreateToastNotification(notifFactory, inputXml, toast);
+        if (*toast)
+        {
+            notifier->lpVtbl->Show(notifier, *toast);
+        }
+        if (inputXml)
+        {
+            inputXml->lpVtbl->Release(inputXml);
+        }
+        
+        HKEY hKey = NULL;
+        DWORD dwSize = 0;
+
+        RegCreateKeyExW(
+            HKEY_CURRENT_USER,
+            TEXT(REGPATH),
+            0,
+            NULL,
+            REG_OPTION_NON_VOLATILE,
+            KEY_READ | KEY_WOW64_64KEY | KEY_WRITE,
+            NULL,
+            &hKey,
+            NULL
+        );
+        if (hKey == NULL || hKey == INVALID_HANDLE_VALUE)
+        {
+            hKey = NULL;
+        }
+        if (hKey)
+        {
+            dwSize = FALSE;
+            RegSetValueExW(
+                hKey,
+                TEXT("IsUpdatePending"),
+                0,
+                REG_DWORD,
+                &dwSize,
+                sizeof(DWORD)
+            );
+            RegCloseKey(hKey);
+        }
+
+        SwitchToThread();
+    }
+
     if (bAllocConsole)
     {
         switch (dwUpdatePolicy)
@@ -439,42 +563,69 @@ BOOL InstallUpdatesIfAvailable(DWORD dwOperation, DWORD bAllocConsole, DWORD dwU
         }
     }
 
+    __x_ABI_CWindows_CData_CXml_CDom_CIXmlDocument* inputXml = NULL;
     if (dwOperation == UPDATES_OP_INSTALL)
     {
-        const wchar_t UpdateAvailableXML[] =
+        const wchar_t text[] =
             L"<toast displayTimestamp=\"2021-08-29T00:00:00.000Z\" scenario=\"reminder\" "
-            L"activationType=\"protocol\" launch=\"https://github.com/valinet/ExplorerPatcher/releases/latest\" duration=\"short\">\r\n"
+            L"activationType=\"protocol\" launch=\"https://github.com/valinet/ExplorerPatcher/releases/latest\" duration=\"long\">\r\n"
             L"	<visual>\r\n"
             L"		<binding template=\"ToastGeneric\">\r\n"
             L"			<text><![CDATA[Downloading and installing updates]]></text>\r\n"
-            L"			<text><![CDATA[An installation screen will show as soon as the download completes.]]></text>\r\n"
+            L"			<text><![CDATA[Installed version: %d.%d.%d.%d]]></text>\r\n"
             L"			<text placement=\"attribution\"><![CDATA[ExplorerPatcher]]></text>\r\n"
             L"		</binding>\r\n"
             L"	</visual>\r\n"
             L"	<audio src=\"ms-winsoundevent:Notification.Default\" loop=\"false\" silent=\"false\"/>\r\n"
             L"</toast>\r\n";
-        HRESULT hr = S_OK;
-        __x_ABI_CWindows_CData_CXml_CDom_CIXmlDocument* inputXml = NULL;
-        hr = String2IXMLDocument(
-            UpdateAvailableXML,
-            wcslen(UpdateAvailableXML),
+        swprintf_s(buf, TOAST_BUFSIZ, text, dwLeftMost, dwSecondLeft, dwSecondRight, dwRightMost);
+        String2IXMLDocument(
+            buf,
+            wcslen(buf),
             &inputXml,
-#ifdef DEBUG
-            stdout
-#else
             NULL
-#endif
         );
-        hr = ShowToastMessage(
-            inputXml,
-            APPID,
-            sizeof(APPID) / sizeof(TCHAR) - 1,
-#ifdef DEBUG
-            stdout
-#else
+    }
+    else if (dwOperation == UPDATES_OP_CHECK)
+    {
+        const wchar_t text[] =
+            L"<toast displayTimestamp=\"2021-08-29T00:00:00.000Z\" scenario=\"reminder\" "
+            L"activationType=\"protocol\" launch=\"https://github.com/valinet/ExplorerPatcher/releases/latest\" duration=\"long\">\r\n"
+            L"	<visual>\r\n"
+            L"		<binding template=\"ToastGeneric\">\r\n"
+            L"			<text><![CDATA[Checking for updates]]></text>\r\n"
+            L"			<text><![CDATA[Installed version: %d.%d.%d.%d]]></text>\r\n"
+            L"			<text placement=\"attribution\"><![CDATA[ExplorerPatcher]]></text>\r\n"
+            L"		</binding>\r\n"
+            L"	</visual>\r\n"
+            L"	<audio src=\"ms-winsoundevent:Notification.Default\" loop=\"false\" silent=\"false\"/>\r\n"
+            L"</toast>\r\n";
+        swprintf_s(buf, TOAST_BUFSIZ, text, dwLeftMost, dwSecondLeft, dwSecondRight, dwRightMost);
+        String2IXMLDocument(
+            buf,
+            wcslen(buf),
+            &inputXml,
             NULL
-#endif
         );
+    }
+
+    if (dwOperation == UPDATES_OP_CHECK || dwOperation == UPDATES_OP_INSTALL)
+    {
+        if (*toast)
+        {
+            notifier->lpVtbl->Hide(notifier, *toast);
+            (*toast)->lpVtbl->Release((*toast));
+            (*toast) = NULL;
+        }
+        notifFactory->lpVtbl->CreateToastNotification(notifFactory, inputXml, toast);
+        if ((*toast))
+        {
+            notifier->lpVtbl->Show(notifier, *toast);
+        }
+        if (inputXml)
+        {
+            inputXml->lpVtbl->Release(inputXml);
+        }
     }
 
     WCHAR dllName[MAX_PATH];
@@ -491,11 +642,54 @@ BOOL InstallUpdatesIfAvailable(DWORD dwOperation, DWORD bAllocConsole, DWORD dwU
         printf("[Updates] An update is available.\n");
         if ((dwOperation == UPDATES_OP_DEFAULT && dwUpdatePolicy == UPDATE_POLICY_AUTO) || (dwOperation == UPDATES_OP_INSTALL))
         {
-            UpdateProduct(_T(REGPATH));
+            __x_ABI_CWindows_CData_CXml_CDom_CIXmlDocument* inputXml = NULL;
+            BOOL bOk = UpdateProduct(_T(REGPATH), notifier, notifFactory, toast);
+            if (!bOk)
+            {
+                if (dwOperation == UPDATES_OP_INSTALL)
+                {
+                    const wchar_t text[] =
+                        L"<toast displayTimestamp=\"2021-08-29T00:00:00.000Z\" scenario=\"reminder\" "
+                        L"activationType=\"protocol\" launch=\"https://github.com/valinet/ExplorerPatcher/releases/latest\" duration=\"short\">\r\n"
+                        L"	<visual>\r\n"
+                        L"		<binding template=\"ToastGeneric\">\r\n"
+                        L"			<text><![CDATA[Update failed]]></text>\r\n"
+                        L"			<text><![CDATA[An error occured when attempting to install this update.]]></text>\r\n"
+                        L"			<text placement=\"attribution\"><![CDATA[ExplorerPatcher]]></text>\r\n"
+                        L"		</binding>\r\n"
+                        L"	</visual>\r\n"
+                        L"	<audio src=\"ms-winsoundevent:Notification.Default\" loop=\"false\" silent=\"false\"/>\r\n"
+                        L"</toast>\r\n";
+                    String2IXMLDocument(
+                        text,
+                        wcslen(text),
+                        &inputXml,
+                        NULL
+                    );
+                }
+            }
+            if (bOk || (!bOk && (dwOperation == UPDATES_OP_INSTALL)))
+            {
+                if (*toast)
+                {
+                    notifier->lpVtbl->Hide(notifier, *toast);
+                    (*toast)->lpVtbl->Release((*toast));
+                    (*toast) = NULL;
+                }
+                notifFactory->lpVtbl->CreateToastNotification(notifFactory, inputXml, toast);
+                if ((*toast))
+                {
+                    notifier->lpVtbl->Show(notifier, *toast);
+                }
+                if (inputXml)
+                {
+                    inputXml->lpVtbl->Release(inputXml);
+                }
+            }
         }
         else if ((dwOperation == UPDATES_OP_DEFAULT && dwUpdatePolicy == UPDATE_POLICY_NOTIFY) || (dwOperation == UPDATES_OP_CHECK))
         {
-            const wchar_t UpdateAvailableXML[] =
+            const wchar_t text[] =
                 L"<toast displayTimestamp=\"2021-08-29T00:00:00.000Z\" scenario=\"reminder\" "
                 L"activationType=\"protocol\" launch=\"https://github.com/valinet/ExplorerPatcher/releases/latest\" duration=\"long\">\r\n"
                 L"	<visual>\r\n"
@@ -507,28 +701,28 @@ BOOL InstallUpdatesIfAvailable(DWORD dwOperation, DWORD bAllocConsole, DWORD dwU
                 L"	</visual>\r\n"
                 L"	<audio src=\"ms-winsoundevent:Notification.Default\" loop=\"false\" silent=\"false\"/>\r\n"
                 L"</toast>\r\n";
-            HRESULT hr = S_OK;
             __x_ABI_CWindows_CData_CXml_CDom_CIXmlDocument* inputXml = NULL;
-            hr = String2IXMLDocument(
-                UpdateAvailableXML,
-                wcslen(UpdateAvailableXML),
+            String2IXMLDocument(
+                text,
+                wcslen(text),
                 &inputXml,
-#ifdef DEBUG
-                stdout
-#else
                 NULL
-#endif
             );
-            hr = ShowToastMessage(
-                inputXml,
-                APPID,
-                sizeof(APPID) / sizeof(TCHAR) - 1,
-#ifdef DEBUG
-                stdout
-#else
-                NULL
-#endif
-            );
+            if (*toast)
+            {
+                notifier->lpVtbl->Hide(notifier, *toast);
+                (*toast)->lpVtbl->Release((*toast));
+                (*toast) = NULL;
+            }
+            notifFactory->lpVtbl->CreateToastNotification(notifFactory, inputXml, toast);
+            if ((*toast))
+            {
+                notifier->lpVtbl->Show(notifier, *toast);
+            }
+            if (inputXml)
+            {
+                inputXml->lpVtbl->Release(inputXml);
+            }
         }
 
         return TRUE;
@@ -545,7 +739,7 @@ BOOL InstallUpdatesIfAvailable(DWORD dwOperation, DWORD bAllocConsole, DWORD dwU
         }
         if (dwOperation == UPDATES_OP_CHECK || dwOperation == UPDATES_OP_INSTALL)
         {
-            const wchar_t UpdateAvailableXML[] =
+            const wchar_t text[] =
                 L"<toast displayTimestamp=\"2021-08-29T00:00:00.000Z\" scenario=\"reminder\" "
                 L"activationType=\"protocol\" launch=\"https://github.com/valinet/ExplorerPatcher/releases/latest\" duration=\"short\">\r\n"
                 L"	<visual>\r\n"
@@ -557,7 +751,7 @@ BOOL InstallUpdatesIfAvailable(DWORD dwOperation, DWORD bAllocConsole, DWORD dwU
                 L"	</visual>\r\n"
                 L"	<audio src=\"ms-winsoundevent:Notification.Default\" loop=\"false\" silent=\"false\"/>\r\n"
                 L"</toast>\r\n";
-            const wchar_t UpdateAvailableXML2[] =
+            const wchar_t text2[] =
                 L"<toast displayTimestamp=\"2021-08-29T00:00:00.000Z\" scenario=\"reminder\" "
                 L"activationType=\"protocol\" launch=\"https://github.com/valinet/ExplorerPatcher/releases/latest\" duration=\"short\">\r\n"
                 L"	<visual>\r\n"
@@ -569,28 +763,28 @@ BOOL InstallUpdatesIfAvailable(DWORD dwOperation, DWORD bAllocConsole, DWORD dwU
                 L"	</visual>\r\n"
                 L"	<audio src=\"ms-winsoundevent:Notification.Default\" loop=\"false\" silent=\"false\"/>\r\n"
                 L"</toast>\r\n";
-            HRESULT hr = S_OK;
             __x_ABI_CWindows_CData_CXml_CDom_CIXmlDocument* inputXml = NULL;
-            hr = String2IXMLDocument(
-                bFail ? UpdateAvailableXML2 : UpdateAvailableXML,
-                wcslen(bFail ? UpdateAvailableXML2 : UpdateAvailableXML),
+            String2IXMLDocument(
+                bFail ? text2 : text,
+                wcslen(bFail ? text2 : text),
                 &inputXml,
-#ifdef DEBUG
-                stdout
-#else
                 NULL
-#endif
             );
-            hr = ShowToastMessage(
-                inputXml,
-                APPID,
-                sizeof(APPID) / sizeof(TCHAR) - 1,
-#ifdef DEBUG
-                stdout
-#else
-                NULL
-#endif
-            );
+            if (*toast)
+            {
+                notifier->lpVtbl->Hide(notifier, *toast);
+                (*toast)->lpVtbl->Release((*toast));
+                (*toast) = NULL;
+            }
+            notifFactory->lpVtbl->CreateToastNotification(notifFactory, inputXml, toast);
+            if ((*toast))
+            {
+                notifier->lpVtbl->Show(notifier, *toast);
+            }
+            if (inputXml)
+            {
+                inputXml->lpVtbl->Release(inputXml);
+            }
         }
         return FALSE;
     }

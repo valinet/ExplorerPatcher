@@ -33,7 +33,12 @@ typedef struct IsUpdateAvailableParameters
 };
 
 BOOL IsUpdatePolicy(LPCWSTR wszDataStore, DWORD dwUpdatePolicy);
-BOOL IsUpdateAvailable(LPCWSTR wszDataStore, char* szCheckAgainst);
-BOOL UpdateProduct(LPCWSTR wszDataStore);
-BOOL InstallUpdatesIfAvailable(DWORD dwOperation, DWORD bAllocConsole, DWORD dwUpdatePolicy);
+BOOL InstallUpdatesIfAvailable(
+	HMODULE hModule,
+	BOOL bIsPostUpdate,
+	__x_ABI_CWindows_CUI_CNotifications_CIToastNotifier* notifier,
+	__x_ABI_CWindows_CUI_CNotifications_CIToastNotificationFactory* notifFactory,
+	__x_ABI_CWindows_CUI_CNotifications_CIToastNotification** toast,
+	DWORD dwOperation, DWORD bAllocConsole, DWORD dwUpdatePolicy
+);
 #endif

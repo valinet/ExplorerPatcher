@@ -29,6 +29,7 @@ Tested on build 22000.318 and 22000.346 (currently in Windows Insider beta and r
 
 * Hardcoded symbols are now based on file hashes, not build numbers
 * Better organization for the settings in "Properties"
+* Update toast notifications are displayed only as long as they are required. Subsequent notifications no longer have to wait for the previous ones to timeout, but rather they replace the previous ones (#346) (.2)
 
 #### Fixes
 
@@ -41,6 +42,11 @@ Tested on build 22000.318 and 22000.346 (currently in Windows Insider beta and r
 * Removed verbose output from "Settings Manager"
 * Corrected import from `dxgi.dll`
 * Fixed typo in configuration UI (#346) (.1)
+* Fixed typos and spelling in error message (#346) (.2)
+* Fixed bug that prevented "Properties" from working when invoked from Quick Launch or other toolbars (#349) (.2)
+* As you may have noticed, releases do not contain unpacked files anymore. Thus, for people looking for a quick way to get the unpacked files, the release notes now include a link to the artifacts generated during during the build process. The artifacts include the usual DLLs (including `dxgi.dll`), plus symbol files and all the helper executables generated during the build. (#351) (.2)
+* Setup program version is synchronized with the version of the application (.2)
+* Fixed a mismatch between the default value for the setting "Add shortcut to program settings in Win+X menu" displayed in the UI and actually used in the software (#352) (.2)
 
 ## 22000.318.36
 

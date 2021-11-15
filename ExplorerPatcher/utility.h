@@ -29,6 +29,7 @@
 #define DOSMODE_OFFSET 78
 #define SETUP_UTILITY_NAME "ep_setup.exe"
 #define DEFAULT_UPDATE_URL "https://github.com/valinet/ExplorerPatcher/releases/latest/download/"
+#define TOAST_BUFSIZ 1024
 
 // This allows compiling with older Windows SDKs as well
 #ifndef DWMWA_USE_HOSTBACKDROPBRUSH

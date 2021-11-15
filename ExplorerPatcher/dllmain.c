@@ -69,6 +69,7 @@ DWORD bNoMenuAccelerator = FALSE;
 DWORD bTaskbarMonitorOverride = 0;
 DWORD dwIMEStyle = 0;
 DWORD dwTaskbarAl = 0;
+DWORD bShowUpdateToast = FALSE;
 HMODULE hModule = NULL;
 HANDLE hDelayedInjectionThread = NULL;
 HANDLE hIsWinXShown = NULL;
@@ -137,6 +138,74 @@ HRESULT WINAPI _DllGetClassObject(
 #ifdef _WIN64
 DWORD CheckForUpdatesThread(LPVOID unused)
 {
+    HRESULT hr = S_OK;
+    HSTRING_HEADER header_AppIdHString;
+    HSTRING AppIdHString = NULL;
+    HSTRING_HEADER header_ToastNotificationManagerHString;
+    HSTRING ToastNotificationManagerHString = NULL;
+    __x_ABI_CWindows_CUI_CNotifications_CIToastNotificationManagerStatics* toastStatics = NULL;
+    __x_ABI_CWindows_CUI_CNotifications_CIToastNotifier* notifier = NULL;
+    HSTRING_HEADER header_ToastNotificationHString;
+    HSTRING ToastNotificationHString = NULL;
+    __x_ABI_CWindows_CUI_CNotifications_CIToastNotificationFactory* notifFactory = NULL;
+    __x_ABI_CWindows_CUI_CNotifications_CIToastNotification* toast = NULL;
+
+    if (SUCCEEDED(hr))
+    {
+        hr = RoInitialize(RO_INIT_MULTITHREADED);
+    }
+    if (SUCCEEDED(hr))
+    {
+        hr = WindowsCreateStringReference(
+            APPID,
+            (UINT32)(sizeof(APPID) / sizeof(TCHAR) - 1),
+            &header_AppIdHString,
+            &AppIdHString
+        );
+    }
+    if (SUCCEEDED(hr))
+    {
+        hr = WindowsCreateStringReference(
+            RuntimeClass_Windows_UI_Notifications_ToastNotificationManager,
+            (UINT32)(sizeof(RuntimeClass_Windows_UI_Notifications_ToastNotificationManager) / sizeof(wchar_t) - 1),
+            &header_ToastNotificationManagerHString,
+            &ToastNotificationManagerHString
+        );
+    }
+    if (SUCCEEDED(hr))
+    {
+        hr = RoGetActivationFactory(
+            ToastNotificationManagerHString,
+            &UIID_IToastNotificationManagerStatics,
+            (LPVOID*)&toastStatics
+        );
+    }
+    if (SUCCEEDED(hr))
+    {
+        hr = toastStatics->lpVtbl->CreateToastNotifierWithId(
+            toastStatics,
+            AppIdHString,
+            &notifier
+        );
+    }
+    if (SUCCEEDED(hr))
+    {
+        hr = WindowsCreateStringReference(
+            RuntimeClass_Windows_UI_Notifications_ToastNotification,
+            (UINT32)(sizeof(RuntimeClass_Windows_UI_Notifications_ToastNotification) / sizeof(wchar_t) - 1),
+            &header_ToastNotificationHString,
+            &ToastNotificationHString
+        );
+    }
+    if (SUCCEEDED(hr))
+    {
+        hr = RoGetActivationFactory(
+            ToastNotificationHString,
+            &UIID_IToastNotificationFactory,
+            (LPVOID*)&notifFactory
+        );
+    }
+
     HANDLE hEvents[2];
     hEvents[0] = CreateEventW(NULL, FALSE, FALSE, L"EP_Ev_CheckForUpdates_" _T(EP_CLSID));
     hEvents[1] = CreateEventW(NULL, FALSE, FALSE, L"EP_Ev_InstallUpdates_" _T(EP_CLSID));
@@ -144,7 +213,7 @@ DWORD CheckForUpdatesThread(LPVOID unused)
     {
         if (dwUpdatePolicy != UPDATE_POLICY_MANUAL)
         {
-            InstallUpdatesIfAvailable(UPDATES_OP_DEFAULT, bAllocConsole, dwUpdatePolicy);
+            InstallUpdatesIfAvailable(hModule, bShowUpdateToast, notifier, notifFactory, &toast, UPDATES_OP_DEFAULT, bAllocConsole, dwUpdatePolicy);
         }
         DWORD dwRet = 0;
         while (TRUE)
@@ -153,12 +222,12 @@ DWORD CheckForUpdatesThread(LPVOID unused)
             {
             case WAIT_OBJECT_0:
             {
-                InstallUpdatesIfAvailable(UPDATES_OP_CHECK, bAllocConsole, dwUpdatePolicy);
+                InstallUpdatesIfAvailable(hModule, bShowUpdateToast, notifier, notifFactory, &toast, UPDATES_OP_CHECK, bAllocConsole, dwUpdatePolicy);
                 break;
             }
             case WAIT_OBJECT_0 + 1:
             {
-                InstallUpdatesIfAvailable(UPDATES_OP_INSTALL, bAllocConsole, dwUpdatePolicy);
+                InstallUpdatesIfAvailable(hModule, bShowUpdateToast, notifier, notifFactory, &toast, UPDATES_OP_INSTALL, bAllocConsole, dwUpdatePolicy);
                 break;
             }
             default:
@@ -169,6 +238,35 @@ DWORD CheckForUpdatesThread(LPVOID unused)
         }
         CloseHandle(hEvents[0]);
         CloseHandle(hEvents[1]);
+    }
+
+    if (toast)
+    {
+        toast->lpVtbl->Release(toast);
+    }
+    if (notifFactory)
+    {
+        notifFactory->lpVtbl->Release(notifFactory);
+    }
+    if (ToastNotificationHString)
+    {
+        WindowsDeleteString(ToastNotificationHString);
+    }
+    if (notifier)
+    {
+        notifier->lpVtbl->Release(notifier);
+    }
+    if (toastStatics)
+    {
+        toastStatics->lpVtbl->Release(toastStatics);
+    }
+    if (ToastNotificationManagerHString)
+    {
+        WindowsDeleteString(ToastNotificationManagerHString);
+    }
+    if (AppIdHString)
+    {
+        WindowsDeleteString(AppIdHString);
     }
 }
 #endif
@@ -3286,6 +3384,15 @@ void WINAPI LoadSettings(BOOL bIsExplorer)
             0,
             NULL,
             &dwUpdatePolicy,
+            &dwSize
+        );
+        dwSize = sizeof(DWORD);
+        RegQueryValueExW(
+            hKey,
+            TEXT("IsUpdatePending"),
+            0,
+            NULL,
+            &bShowUpdateToast,
             &dwSize
         );
         RegCloseKey(hKey);

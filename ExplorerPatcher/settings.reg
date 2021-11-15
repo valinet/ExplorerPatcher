@@ -45,7 +45,7 @@
 "TaskbarSD"=dword:00000001
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
 ;b Add shortcut to program settings in Win+X menu
-"PropertiesInWinX"=dword:00000001
+"PropertiesInWinX"=dword:00000000
 ;t 
 
 ;T System tray
@@ -314,7 +314,7 @@
 ;t ________________________
 ;y Check for updates
 ;;;EP_CHECK_FOR_UPDATES
-;y Install latest version
+;y Update
 ;;;EP_INSTALL_UPDATES
 ;y Read about changes in the latest releases 🡕
 ;https://github.com/valinet/ExplorerPatcher/blob/master/CHANGELOG.md

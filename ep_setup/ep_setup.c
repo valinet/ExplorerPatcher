@@ -291,7 +291,7 @@ int WINAPI wWinMain(
     _In_ int nShowCmd
 )
 {
-    BOOL bOk = TRUE, bInstall = TRUE, bWasShellExt = FALSE;
+    BOOL bOk = TRUE, bInstall = TRUE, bWasShellExt = FALSE, bIsUpdate = FALSE;
 
     SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
 
@@ -326,6 +326,8 @@ int WINAPI wWinMain(
         &argc
     );
 
+    bIsUpdate = (argc >= 1 && !_wcsicmp(wargv[0], L"/update_silent"));
+
     WCHAR wszPath[MAX_PATH];
     ZeroMemory(wszPath, MAX_PATH * sizeof(WCHAR));
     if (bOk)
@@ -335,7 +337,7 @@ int WINAPI wWinMain(
     if (bOk)
     {
         wcscat_s(wszPath, MAX_PATH, L"\\dxgi.dll");
-        bInstall = !FileExistsW(wszPath) || (argc >= 1 && !_wcsicmp(wargv[0], L"/update_silent"));
+        bInstall = !FileExistsW(wszPath) || bIsUpdate;
     }
     if (!bInstall)
     {
@@ -498,6 +500,40 @@ int WINAPI wWinMain(
             }
             else
             {
+                if (bIsUpdate)
+                {
+                    HKEY hKey = NULL;
+                    DWORD dwSize = 0;
+
+                    RegCreateKeyExW(
+                        HKEY_CURRENT_USER,
+                        TEXT(REGPATH),
+                        0,
+                        NULL,
+                        REG_OPTION_NON_VOLATILE,
+                        KEY_READ | KEY_WOW64_64KEY | KEY_WRITE,
+                        NULL,
+                        &hKey,
+                        NULL
+                    );
+                    if (hKey == NULL || hKey == INVALID_HANDLE_VALUE)
+                    {
+                        hKey = NULL;
+                    }
+                    if (hKey)
+                    {
+                        dwSize = TRUE;
+                        RegSetValueExW(
+                            hKey,
+                            TEXT("IsUpdatePending"),
+                            0,
+                            REG_DWORD,
+                            &dwSize,
+                            sizeof(DWORD)
+                        );
+                        RegCloseKey(hKey);
+                    }
+                }
                 //ZZRestartExplorer(0, 0, 0, 0);
             }
         }
