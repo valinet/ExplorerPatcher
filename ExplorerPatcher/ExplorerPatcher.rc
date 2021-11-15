@@ -49,10 +49,11 @@ END
 //
 // Version
 //
+#include "..\version.h"
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 22000,318,37,1
- PRODUCTVERSION 22000,318,37,1
+ FILEVERSION VER_FILE
+ PRODUCTVERSION VER_PRODUCT
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -69,12 +70,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "VALINET Solutions SRL"
             VALUE "FileDescription", "ExplorerPatcher"
-            VALUE "FileVersion", "22000.318.37.1"
+            VER_FILE_STRING
             VALUE "InternalName", "ExplorerPatcher.dll"
             VALUE "LegalCopyright", "Copyright (C) 2006-2021 VALINET Solutions SRL. All rights reserved."
             VALUE "OriginalFilename", "ExplorerPatcher.dll"
             VALUE "ProductName", "ExplorerPatcher"
-            VALUE "ProductVersion", "22000.318.37.1"
+            VER_PRODUCT_STRING
         END
     END
     BLOCK "VarFileInfo"

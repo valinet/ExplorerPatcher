@@ -111,6 +111,9 @@
     <ClInclude Include="updates.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\version.h">
+      <Filter>Header Files\internal</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="ExplorerPatcher.rc">
