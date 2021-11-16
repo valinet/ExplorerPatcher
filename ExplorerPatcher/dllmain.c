@@ -70,6 +70,7 @@ DWORD bTaskbarMonitorOverride = 0;
 DWORD dwIMEStyle = 0;
 DWORD dwTaskbarAl = 0;
 DWORD bShowUpdateToast = FALSE;
+DWORD bToolbarSeparators = FALSE;
 HMODULE hModule = NULL;
 HANDLE hDelayedInjectionThread = NULL;
 HANDLE hIsWinXShown = NULL;
@@ -3408,6 +3409,15 @@ void WINAPI LoadSettings(BOOL bIsExplorer)
             &bShowUpdateToast,
             &dwSize
         );
+        dwSize = sizeof(DWORD);
+        RegQueryValueExW(
+            hKey,
+            TEXT("ToolbarSeparators"),
+            0,
+            NULL,
+            &bToolbarSeparators,
+            &dwSize
+        );
         RegCloseKey(hKey);
     }
 
@@ -3701,6 +3711,15 @@ HWND CreateWindowExWHook(
             dwExStyle |= WS_EX_CLIENTEDGE;
         }
     }
+    if (bIsExplorerProcess && bToolbarSeparators && (*((WORD*)&(lpClassName)+1)) && !wcscmp(lpClassName, L"ReBarWindow32"))
+    {
+        wchar_t wszClassName[200];
+        GetClassNameW(hWndParent, wszClassName, 200);
+        if (!wcscmp(wszClassName, L"Shell_TrayWnd"))
+        {
+            dwStyle |= RBS_BANDBORDERS;
+        }
+    }
     HWND hWnd = CreateWindowExWFunc(
         dwExStyle,
         lpClassName,
@@ -3742,6 +3761,62 @@ HWND CreateWindowExWHook(
     */
     //SetWindowTheme(hWnd, L" ", L" ");
     return hWnd;
+}
+
+LONG_PTR(*SetWindowLongPtrWFunc)(
+    HWND     hWnd,
+    int      nIndex,
+    LONG_PTR dwNewLong
+    );
+LONG_PTR SetWindowLongPtrWHook(
+    HWND     hWnd,
+    int      nIndex,
+    LONG_PTR dwNewLong
+)
+{
+    WCHAR lpClassName[200];
+    GetClassNameW(hWnd, lpClassName, 200);
+    HWND hWndParent = GetParent(hWnd);
+
+    if (bClassicThemeMitigations && (*((WORD*)&(lpClassName)+1)) && !wcscmp(lpClassName, L"TrayNotifyWnd"))
+    {
+        if (nIndex == GWL_EXSTYLE)
+        {
+            dwNewLong |= WS_EX_STATICEDGE;
+        }
+    }
+    if (bClassicThemeMitigations && (*((WORD*)&(lpClassName)+1)) && !wcscmp(lpClassName, L"NotifyIconOverflowWindow"))
+    {
+        if (nIndex == GWL_EXSTYLE)
+        {
+            dwNewLong |= WS_EX_STATICEDGE;
+        }
+    }
+    if (bClassicThemeMitigations && (*((WORD*)&(lpClassName)+1)) && (!wcscmp(lpClassName, L"SysListView32") || !wcscmp(lpClassName, L"SysTreeView32"))) // !wcscmp(lpClassName, L"FolderView")
+    {
+        wchar_t wszClassName[200];
+        GetClassNameW(GetAncestor(hWndParent, GA_ROOT), wszClassName, 200);
+        if (!wcscmp(wszClassName, L"CabinetWClass"))
+        {
+            if (nIndex == GWL_EXSTYLE)
+            {
+                dwNewLong |= WS_EX_CLIENTEDGE;
+            }
+        }
+    }
+    if (bIsExplorerProcess && bToolbarSeparators && (*((WORD*)&(lpClassName)+1)) && !wcscmp(lpClassName, L"ReBarWindow32"))
+    {
+        wchar_t wszClassName[200];
+        GetClassNameW(hWndParent, wszClassName, 200);
+        if (!wcscmp(wszClassName, L"Shell_TrayWnd"))
+        {
+            if (nIndex == GWL_STYLE)
+            {
+                dwNewLong |= RBS_BANDBORDERS;
+            }
+        }
+    }
+    return SetWindowLongPtrWFunc(hWnd, nIndex, dwNewLong);
 }
 
 #ifdef _WIN64
@@ -4549,6 +4624,8 @@ DWORD InjectBasicFunctions(BOOL bIsExplorer, BOOL bInstall)
         {
             CreateWindowExWFunc = CreateWindowExW;
             VnPatchIAT(hShell32, "user32.dll", "CreateWindowExW", CreateWindowExWHook);
+            SetWindowLongPtrWFunc = SetWindowLongPtrW;
+            VnPatchIAT(hShell32, "user32.dll", "SetWindowLongPtrW", SetWindowLongPtrWHook);
         }
     }
     else
@@ -4558,6 +4635,7 @@ DWORD InjectBasicFunctions(BOOL bIsExplorer, BOOL bInstall)
         if (!bIsExplorer)
         {
             VnPatchIAT(hShell32, "user32.dll", "CreateWindowExW", CreateWindowExW);
+            VnPatchIAT(hShell32, "user32.dll", "SetWindowLongPtrW", SetWindowLongPtrW);
         }
         FreeLibrary(hShell32);
         FreeLibrary(hShell32);
@@ -4584,6 +4662,8 @@ DWORD InjectBasicFunctions(BOOL bIsExplorer, BOOL bInstall)
         {
             CreateWindowExWFunc = CreateWindowExW;
             VnPatchIAT(hExplorerFrame, "user32.dll", "CreateWindowExW", CreateWindowExWHook);
+            SetWindowLongPtrWFunc = SetWindowLongPtrW;
+            VnPatchIAT(hExplorerFrame, "user32.dll", "SetWindowLongPtrW", SetWindowLongPtrWHook);
         }
     }
     else
@@ -4594,6 +4674,7 @@ DWORD InjectBasicFunctions(BOOL bIsExplorer, BOOL bInstall)
         if (!bIsExplorer)
         {
             VnPatchIAT(hExplorerFrame, "user32.dll", "CreateWindowExW", CreateWindowExW);
+            VnPatchIAT(hExplorerFrame, "user32.dll", "SetWindowLongPtrW", SetWindowLongPtrW);
         }
         FreeLibrary(hExplorerFrame);
         FreeLibrary(hExplorerFrame);
@@ -4608,6 +4689,8 @@ DWORD InjectBasicFunctions(BOOL bIsExplorer, BOOL bInstall)
         {
             CreateWindowExWFunc = CreateWindowExW;
             VnPatchIAT(hWindowsUIFileExplorer, "user32.dll", "CreateWindowExW", CreateWindowExWHook);
+            SetWindowLongPtrWFunc = SetWindowLongPtrW;
+            VnPatchIAT(hWindowsUIFileExplorer, "user32.dll", "SetWindowLongPtrW", SetWindowLongPtrWHook);
         }
     }
     else
@@ -4617,6 +4700,7 @@ DWORD InjectBasicFunctions(BOOL bIsExplorer, BOOL bInstall)
         if (!bIsExplorer)
         {
             VnPatchIAT(hWindowsUIFileExplorer, "user32.dll", "CreateWindowExW", CreateWindowExW);
+            VnPatchIAT(hWindowsUIFileExplorer, "user32.dll", "SetWindowLongPtrW", SetWindowLongPtrW);
         }
         FreeLibrary(hWindowsUIFileExplorer);
         FreeLibrary(hWindowsUIFileExplorer);
@@ -4929,6 +5013,17 @@ DWORD Inject(BOOL bIsExplorer)
         funchook,
         (void**)&CreateWindowExWFunc,
         CreateWindowExWHook
+    );
+    if (rv != 0)
+    {
+        FreeLibraryAndExitThread(hModule, rv);
+        return rv;
+    }
+    SetWindowLongPtrWFunc = SetWindowLongPtrW;
+    rv = funchook_prepare(
+        funchook,
+        (void**)&SetWindowLongPtrWFunc,
+        SetWindowLongPtrWHook
     );
     if (rv != 0)
     {

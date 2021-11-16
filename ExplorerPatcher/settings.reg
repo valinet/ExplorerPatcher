@@ -44,9 +44,10 @@
 ;b Show Desktop button
 "TaskbarSD"=dword:00000001
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
+;b Show separators between toolbars *
+"ToolbarSeparators"=dword:00000000
 ;b Add shortcut to program settings in Win+X menu
 "PropertiesInWinX"=dword:00000000
-;t 
 
 ;T System tray
 ;y Enable missing system tray icons 🡕

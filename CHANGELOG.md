@@ -48,6 +48,8 @@ Tested on build 22000.318 and 22000.346 (currently in Windows Insider beta and r
 * Setup program version is synchronized with the version of the application (.2)
 * Fixed a mismatch between the default value for the setting "Add shortcut to program settings in Win+X menu" displayed in the UI and actually used in the software (#352) (.2)
 * Fixed an issue that prevented "Restore default settings" in the "Properties" UI from working (#374) (.3)
+* Improved some wording in the Properties UI (#377) (.4)
+* Added option to show separators between toolbars in the taskbar (#379) (.4)
 
 ## 22000.318.36
 
