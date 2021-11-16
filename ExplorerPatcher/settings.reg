@@ -10,7 +10,7 @@
 "OldTaskbar"=dword:00000001
 ;y More taskbar options in the Settings app 🡕
 ;ms-settings:taskbar
-;t The following additional settings only apply to the Windows 10 taskbar:                        
+;t The following settings only apply to the Windows 10 taskbar:                          
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
 ;c 3 Combine taskbar icons on main taskbar
 ;x 0 Always combine
@@ -46,11 +46,13 @@
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
 ;b Show separators between toolbars *
 "ToolbarSeparators"=dword:00000000
-;b Add shortcut to program settings in Win+X menu
-"PropertiesInWinX"=dword:00000000
+;t 
+;t 
 
 ;T System tray
-;y Enable missing system tray icons 🡕
+;y Customize notification area icons 🡕
+;shell:::{05d7b0f4-2121-4eff-bf6b-ed3f69b894d9}
+;y Customize system icons in the notification area 🡕
 ;shell:::{05d7b0f4-2121-4eff-bf6b-ed3f69b894d9}\SystemIcons
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
 ;b Show seconds in the clock
@@ -131,8 +133,8 @@
 @="{64bc32b5-4eec-4de7-972d-bd8bd0324537}"
 
 ;t ________________________
-;e For the settings marked with (**) to work in Open/Save file dialogs as well, register this
-;e utility as shell extension using the option above.
+;e For the settings marked with (**) to work in Open/Save file dialogs as well, register
+;e this utility as shell extension using the option above.
 ;y Learn more 🡕
 ;https://github.com/valinet/ExplorerPatcher/wiki/Using-ExplorerPatcher-as-shell-extension
 
@@ -286,11 +288,21 @@
 
 
 ;T Other
-[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
+[HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
+;b Remember last used section in this window
+"LastSectionInProperties"=dword:00000000
 ;b Open clock flyout when pressing Win+C instead of Microsoft Teams
 "ClockFlyoutOnWinC"=dword:00000000
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
-;c 6 Default action in shutdown dialog (Alt+F4 on desktop)
+;b Show Command Prompt instead of PowerShell in Win+X menu *
+"DontUsePowerShellOnWinX"=dword:00000000
+[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
+;b Add shortcut to program settings in Win+X menu
+"PropertiesInWinX"=dword:00000000
+;b Remove shortcut key from program settings item in Win+X menu
+"NoMenuAccelerator"=dword:00000000
+[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
+;c 6 Default action in the Alt+F4 dialog on the desktop
 ;x 256 Switch user
 ;x 1 Sign out
 ;x 16 Sleep
@@ -298,11 +310,6 @@
 ;x 2 Shut down (default)
 ;x 4 Restart
 "Start_PowerButtonAction"=dword:00000002
-;b Show Command Prompt instead of PowerShell in Win+X menu *
-"DontUsePowerShellOnWinX"=dword:00000000
-[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
-;b Remove shortcut key from program settings item in Win+X menu
-"NoMenuAccelerator"=dword:00000000
 
 
 ;T Updates
@@ -324,9 +331,8 @@
 
 
 ;T Advanced
-;t Only change these settings if you know what you are doing. You've been warned!
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
-;b Enable console *
+;b Enable console
 "AllocConsole"=dword:00000000
 ;b Dump memory leaks
 "Memcheck"=dword:00000000

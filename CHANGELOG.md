@@ -50,6 +50,8 @@ Tested on build 22000.318 and 22000.346 (currently in Windows Insider beta and r
 * Fixed an issue that prevented "Restore default settings" in the "Properties" UI from working (#374) (.3)
 * Improved some wording in the Properties UI (#377) (.4)
 * Added option to show separators between toolbars in the taskbar (#379) (.4)
+* "Properties" is restarted when doing an install/update and closed when uninstalling the application (.5)
+* "Properties" can open the last used section when starting (.5)
 
 ## 22000.318.36
 

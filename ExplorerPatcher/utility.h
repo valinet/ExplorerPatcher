@@ -31,6 +31,9 @@
 #define DEFAULT_UPDATE_URL "https://github.com/valinet/ExplorerPatcher/releases/latest/download/"
 #define TOAST_BUFSIZ 1024
 
+#define WM_MSG_GUI_SECTION WM_USER + 1
+#define WM_MSG_GUI_SECTION_GET 1
+
 // This allows compiling with older Windows SDKs as well
 #ifndef DWMWA_USE_HOSTBACKDROPBRUSH
 #define DWMWA_USE_HOSTBACKDROPBRUSH 17            // [set] BOOL, Allows the use of host backdrop brushes for the window.

@@ -3430,16 +3430,9 @@ void WINAPI LoadSettings(BOOL bIsExplorer)
         );
         if (dwTemp)
         {
+#ifdef _WIN64
             LaunchPropertiesGUI(hModule);
-            dwTemp = 0;
-            RegSetValueExW(
-                hKey,
-                TEXT("OpenPropertiesAtNextStart"),
-                0,
-                REG_DWORD,
-                &dwTemp,
-                sizeof(DWORD)
-            );
+#endif
         }
         RegCloseKey(hKey);
     }

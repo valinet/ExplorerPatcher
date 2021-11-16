@@ -381,46 +381,50 @@ int WINAPI wWinMain(
             CloseHandle(sei.hProcess);
         }
 
-        DWORD dwGUIPid = 0;
-        GetWindowThreadProcessId(FindWindowW(L"ExplorerPatcher_GUI_" _T(EP_CLSID), NULL), &dwGUIPid);
-        if (dwGUIPid)
+        HWND hWnd = FindWindowW(L"ExplorerPatcher_GUI_" _T(EP_CLSID), NULL);
+        if (hWnd)
         {
-            HANDLE hProcess = OpenProcess(PROCESS_TERMINATE, FALSE, dwGUIPid);
-            if (hProcess)
+            DWORD dwGUIPid = 0;
+            GetWindowThreadProcessId(hWnd, &dwGUIPid);
+            if (dwGUIPid)
             {
-                TerminateProcess(hProcess, 0);
-                CloseHandle(hProcess);
-
-                HKEY hKey = NULL;
-                DWORD dwSize = 0;
-
-                RegCreateKeyExW(
-                    HKEY_CURRENT_USER,
-                    TEXT(REGPATH),
-                    0,
-                    NULL,
-                    REG_OPTION_NON_VOLATILE,
-                    KEY_READ | KEY_WOW64_64KEY | KEY_WRITE,
-                    NULL,
-                    &hKey,
-                    NULL
-                );
-                if (hKey == NULL || hKey == INVALID_HANDLE_VALUE)
+                HANDLE hProcess = OpenProcess(PROCESS_TERMINATE, FALSE, dwGUIPid);
+                if (hProcess)
                 {
-                    hKey = NULL;
-                }
-                if (hKey)
-                {
-                    dwSize = TRUE;
-                    RegSetValueExW(
-                        hKey,
-                        TEXT("OpenPropertiesAtNextStart"),
+                    DWORD dwSection = SendMessageW(hWnd, WM_MSG_GUI_SECTION, WM_MSG_GUI_SECTION_GET, 0);
+
+                    TerminateProcess(hProcess, 0);
+                    CloseHandle(hProcess);
+
+                    HKEY hKey = NULL;
+
+                    RegCreateKeyExW(
+                        HKEY_CURRENT_USER,
+                        TEXT(REGPATH),
                         0,
-                        REG_DWORD,
-                        &dwSize,
-                        sizeof(DWORD)
+                        NULL,
+                        REG_OPTION_NON_VOLATILE,
+                        KEY_READ | KEY_WOW64_64KEY | KEY_WRITE,
+                        NULL,
+                        &hKey,
+                        NULL
                     );
-                    RegCloseKey(hKey);
+                    if (hKey == NULL || hKey == INVALID_HANDLE_VALUE)
+                    {
+                        hKey = NULL;
+                    }
+                    if (hKey)
+                    {
+                        RegSetValueExW(
+                            hKey,
+                            TEXT("OpenPropertiesAtNextStart"),
+                            0,
+                            REG_DWORD,
+                            &dwSection,
+                            sizeof(DWORD)
+                        );
+                        RegCloseKey(hKey);
+                    }
                 }
             }
         }

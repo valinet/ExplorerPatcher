@@ -79,6 +79,62 @@ static HRESULT GUI_AboutProc(
     return S_OK;
 }
 
+static void GUI_SetSection(GUI* _this, BOOL bCheckEnablement, int dwSection)
+{
+    _this->section = dwSection;
+
+    HKEY hKey = NULL;
+    DWORD dwSize = sizeof(DWORD);
+    RegCreateKeyExW(
+        HKEY_CURRENT_USER,
+        TEXT(REGPATH),
+        0,
+        NULL,
+        REG_OPTION_NON_VOLATILE,
+        KEY_READ | KEY_WOW64_64KEY | KEY_WRITE,
+        NULL,
+        &hKey,
+        NULL
+    );
+    if (hKey == NULL || hKey == INVALID_HANDLE_VALUE)
+    {
+        return;
+    }
+
+    BOOL bEnabled = FALSE;
+    if (bCheckEnablement)
+    {
+        dwSize = sizeof(DWORD);
+        RegQueryValueExW(
+            hKey,
+            TEXT("LastSectionInProperties"),
+            0,
+            NULL,
+            &bEnabled,
+            &dwSize
+        );
+        dwSection++;
+    }
+    else
+    {
+        bEnabled = TRUE;
+    }
+
+    if (bEnabled)
+    {
+        RegSetValueExW(
+            hKey,
+            TEXT("LastSectionInProperties"),
+            0,
+            REG_DWORD,
+            &dwSection,
+            sizeof(DWORD)
+        );
+    }
+
+    RegCloseKey(hKey);
+}
+
 static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
 {
     GUI* _this;
@@ -190,6 +246,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
             SetBkMode(hdcPaint, TRANSPARENT);
         }
 
+        BOOL bWasSpecifiedSectionValid = FALSE;
         FILE* f = fmemopen(pRscr, cbRscr, "r");
         char* line = malloc(MAX_LINE_LENGTH * sizeof(char));
         wchar_t* text = malloc((MAX_LINE_LENGTH + 3) * sizeof(wchar_t)); 
@@ -198,6 +255,10 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
         size_t bufsiz = MAX_LINE_LENGTH, numChRd = 0, tabOrder = 1, currentSection = -1, topAdj = 0;
         while ((numChRd = getline(&line, &bufsiz, f)) != -1)
         {
+            if (currentSection == _this->section)
+            {
+                bWasSpecifiedSectionValid = TRUE;
+            }
             if (strcmp(line, "Windows Registry Editor Version 5.00\r\n") && strcmp(line, "\r\n") && (currentSection == -1 || currentSection == _this->section || !strncmp(line, ";T ", 3) || !strncmp(line, ";f", 2)))
             {
 #ifndef USE_PRIVATE_INTERFACES
@@ -322,7 +383,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                         rcTemp.bottom = rcText.bottom;
                         if (PtInRect(&rcTemp, pt))
                         {
-                            _this->section = currentSection + 1;
+                            GUI_SetSection(_this, TRUE, currentSection + 1);
                             InvalidateRect(hwnd, NULL, FALSE);
                         }
                     }
@@ -790,7 +851,8 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                         wchar_t* p = wcschr(name, L'"');
                         if (p) *p = 0;
                         HKEY hKey = NULL;
-                        BOOL bIsHKLM = wcsstr(section, L"HKEY_LOCAL_MACHINE");
+                        wchar_t* bIsHKLM = wcsstr(section, L"HKEY_LOCAL_MACHINE");
+                        bIsHKLM = !bIsHKLM ? NULL : ((bIsHKLM - section) < 3);
                         DWORD dwDisposition;
                         DWORD dwSize = sizeof(DWORD);
                         DWORD value = FALSE;
@@ -1069,6 +1131,10 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                 {
                                     value = !value;
                                 }
+                                if (!wcscmp(name, L"LastSectionInProperties") && wcsstr(section, _T(REGPATH)) && value)
+                                {
+                                    value = _this->section + 1;
+                                }
                                 RegSetValueExW(
                                     hKey,
                                     name,
@@ -1264,6 +1330,11 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
         free(name);
         free(text);
         free(line);
+        if (!bWasSpecifiedSectionValid)
+        {
+            GUI_SetSection(_this, FALSE, 0);
+            InvalidateRect(hwnd, NULL, FALSE);
+        }
 
         SelectObject(hdcPaint, hOldFont);
         if (!hDC)
@@ -1310,9 +1381,70 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
             dwMaxHeight,
             SWP_NOZORDER | SWP_NOACTIVATE
         );
+
+        DWORD dwReadSection = 0;
+
+        HKEY hKey = NULL;
+        DWORD dwSize = sizeof(DWORD);
+        RegCreateKeyExW(
+            HKEY_CURRENT_USER,
+            TEXT(REGPATH),
+            0,
+            NULL,
+            REG_OPTION_NON_VOLATILE,
+            KEY_READ | KEY_WOW64_64KEY | KEY_WRITE,
+            NULL,
+            &hKey,
+            NULL
+        );
+        if (hKey == NULL || hKey == INVALID_HANDLE_VALUE)
+        {
+            hKey = NULL;
+        }
+        if (hKey)
+        {
+            dwReadSection = 0;
+            dwSize = sizeof(DWORD);
+            RegQueryValueExW(
+                hKey,
+                TEXT("LastSectionInProperties"),
+                0,
+                NULL,
+                &dwReadSection,
+                &dwSize
+            );
+            if (dwReadSection)
+            {
+                _this->section = dwReadSection - 1;
+            }
+            dwReadSection = 0;
+            dwSize = sizeof(DWORD);
+            RegQueryValueExW(
+                hKey,
+                TEXT("OpenPropertiesAtNextStart"),
+                0,
+                NULL,
+                &dwReadSection,
+                &dwSize
+            );
+            if (dwReadSection)
+            {
+                _this->section = dwReadSection - 1;
+                dwReadSection = 0;
+                RegSetValueExW(
+                    hKey,
+                    TEXT("OpenPropertiesAtNextStart"),
+                    0,
+                    REG_DWORD,
+                    &dwReadSection,
+                    sizeof(DWORD)
+                );
+            }
+            RegCloseKey(hKey);
+        }
+
         _this->bCalcExtent = FALSE;
         InvalidateRect(hwnd, NULL, FALSE);
-
     }
 
     EndBufferedPaint(hBufferedPaint, TRUE);
@@ -1444,10 +1576,10 @@ static LRESULT CALLBACK GUI_WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
             return 0;
         }
         // this should be determined from the file, but for now it works
-        else if (wParam >= 0x30 + 1 && wParam <= 0x30 + 9) 
+        else if (wParam >= '1' && wParam <= '9') 
         {
             _this->tabOrder = 0;
-            _this->section = wParam - 0x30 - 1;
+            GUI_SetSection(_this, TRUE, wParam - '1');
             InvalidateRect(hWnd, NULL, FALSE);
             return 0;
         }
@@ -1515,6 +1647,10 @@ static LRESULT CALLBACK GUI_WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
         EndPaint(hWnd, &ps);
         return 0;
     }
+    else if (uMsg == WM_MSG_GUI_SECTION && wParam == WM_MSG_GUI_SECTION_GET)
+    {
+        return _this->section + 1;
+    }
     return DefWindowProc(hWnd, uMsg, wParam, lParam);
 }
 
@@ -1528,7 +1664,6 @@ __declspec(dllexport) int ZZGUI(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLin
     }
 
     HKEY hKey = NULL;
-    DWORD dwDisposition;
     DWORD dwSize = sizeof(DWORD);
     RegCreateKeyExW(
         HKEY_CURRENT_USER,
@@ -1536,48 +1671,51 @@ __declspec(dllexport) int ZZGUI(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLin
         0,
         NULL,
         REG_OPTION_NON_VOLATILE,
-        KEY_READ,
+        KEY_READ | KEY_WOW64_64KEY,
         NULL,
         &hKey,
-        &dwDisposition
+        NULL
     );
     if (hKey == NULL || hKey == INVALID_HANDLE_VALUE)
     {
         hKey = NULL;
     }
     DWORD bAllocConsole = FALSE;
-    RegQueryValueExW(
-        hKey,
-        TEXT("AllocConsole"),
-        0,
-        NULL,
-        &bAllocConsole,
-        &dwSize
-    );
-    if (bAllocConsole)
-    {
-        FILE* conout;
-        AllocConsole();
-        freopen_s(
-            &conout,
-            "CONOUT$",
-            "w",
-            stdout
-        );
-    }
-    dwSize = LOCALE_NAME_MAX_LENGTH;
-    locale = GetUserDefaultUILanguage();
-    RegQueryValueExW(
-        hKey,
-        TEXT("Language"),
-        0,
-        NULL,
-        &locale,
-        &dwSize
-    );
     if (hKey)
     {
-        RegCloseKey(hKey);
+        dwSize = sizeof(DWORD);
+        RegQueryValueExW(
+            hKey,
+            TEXT("AllocConsole"),
+            0,
+            NULL,
+            &bAllocConsole,
+            &dwSize
+        );
+        if (bAllocConsole)
+        {
+            FILE* conout;
+            AllocConsole();
+            freopen_s(
+                &conout,
+                "CONOUT$",
+                "w",
+                stdout
+            );
+        }
+    }
+    locale = GetUserDefaultUILanguage();
+    dwSize = LOCALE_NAME_MAX_LENGTH;
+    if (hKey)
+    {
+        RegQueryValueExW(
+            hKey,
+            TEXT("Language"),
+            0,
+            NULL,
+            &locale,
+            &dwSize
+        );
     }
 
     wchar_t wszPath[MAX_PATH];
@@ -1620,6 +1758,7 @@ __declspec(dllexport) int ZZGUI(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLin
     SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
 
     GUI _this;
+    ZeroMemory(&_this, sizeof(GUI));
     _this.hBackgroundBrush = (HBRUSH)(CreateSolidBrush(RGB(255, 255, 255)));// (HBRUSH)GetStockObject(BLACK_BRUSH);
     _this.location.x = GUI_POSITION_X;
     _this.location.y = GUI_POSITION_Y;
@@ -1749,6 +1888,10 @@ __declspec(dllexport) int ZZGUI(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLin
         }
     }
     ShowWindow(hwnd, SW_SHOW);
+    if (hKey)
+    {
+        RegCloseKey(hKey);
+    }
 
     MSG msg = { 0 };
     while (GetMessage(&msg, NULL, 0, 0))
