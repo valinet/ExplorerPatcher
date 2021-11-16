@@ -3,7 +3,12 @@
 #pragma comment(lib, "Shlwapi.lib")
 #include "../ExplorerPatcher/utility.h"
 
-int main(int argc, char** argv)
+int WINAPI wWinMain(
+    _In_ HINSTANCE hInstance,
+    _In_opt_ HINSTANCE hPrevInstance,
+    _In_ LPWSTR lpCmdLine,
+    _In_ int nShowCmd
+) 
 {
     WCHAR wszPath[MAX_PATH];
     GetModuleFileNameW(GetModuleHandle(NULL), wszPath, MAX_PATH);
@@ -44,7 +49,7 @@ int main(int argc, char** argv)
     CloseHandle(hFileMapping);
     CloseHandle(hFile);
 
-    if (argc > 1)
+    if (__argc > 1)
     {
         SHELLEXECUTEINFO ShExecInfo = { 0 };
         ShExecInfo.cbSize = sizeof(SHELLEXECUTEINFO);
