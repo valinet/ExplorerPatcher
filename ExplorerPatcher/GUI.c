@@ -1444,7 +1444,7 @@ static LRESULT CALLBACK GUI_WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
             return 0;
         }
         // this should be determined from the file, but for now it works
-        else if (wParam >= 0x30 + 1 && wParam <= 0x30 + 7) 
+        else if (wParam >= 0x30 + 1 && wParam <= 0x30 + 9) 
         {
             _this->tabOrder = 0;
             _this->section = wParam - 0x30 - 1;
