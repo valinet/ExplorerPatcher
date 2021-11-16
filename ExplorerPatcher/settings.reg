@@ -314,7 +314,7 @@
 ;t ________________________
 ;y Check for updates
 ;;;EP_CHECK_FOR_UPDATES
-;y Update
+;y Update program and restart File Explorer
 ;;;EP_INSTALL_UPDATES
 ;y Read about changes in the latest releases 🡕
 ;https://github.com/valinet/ExplorerPatcher/blob/master/CHANGELOG.md
@@ -405,7 +405,7 @@
 ;https://github.com/valinet/ExplorerPatcher/wiki/Frequently-asked-questions
 
 ;f
-;t Settings marked with an (*) require restarting File Explorer. 
+;t For settings marked with * to take effect, restart File Explorer. 
 ;u Restart File Explorer
 ;restart
 ;u Restore default settings
