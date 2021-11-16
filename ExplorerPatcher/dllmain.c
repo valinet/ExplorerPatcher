@@ -3129,7 +3129,7 @@ DWORD WindowSwitcher(DWORD unused)
 void WINAPI LoadSettings(BOOL bIsExplorer)
 {
     HKEY hKey = NULL;
-    DWORD dwSize = 0;
+    DWORD dwSize = 0, dwTemp = 0;
 
     RegCreateKeyExW(
         HKEY_CURRENT_USER,
@@ -3137,7 +3137,7 @@ void WINAPI LoadSettings(BOOL bIsExplorer)
         0,
         NULL,
         REG_OPTION_NON_VOLATILE,
-        KEY_READ | KEY_WOW64_64KEY,
+        KEY_READ | KEY_WOW64_64KEY | KEY_WRITE,
         NULL,
         &hKey,
         NULL
@@ -3157,17 +3157,17 @@ void WINAPI LoadSettings(BOOL bIsExplorer)
             &bAllocConsole,
             &dwSize
         );
-        DWORD bMemcheck = FALSE;
         dwSize = sizeof(DWORD);
+        dwTemp = 0;
         RegQueryValueExW(
             hKey,
             TEXT("Memcheck"),
             0,
             NULL,
-            &bMemcheck,
+            &dwTemp,
             &dwSize
         );
-        if (bMemcheck)
+        if (dwTemp)
         {
 #if defined(DEBUG) | defined(_DEBUG)
             _CrtSetReportMode(_CRT_WARN, _CRTDBG_MODE_FILE);
@@ -3178,13 +3178,13 @@ void WINAPI LoadSettings(BOOL bIsExplorer)
             _CrtSetReportFile(_CRT_ASSERT, _CRTDBG_FILE_STDOUT);
             _CrtDumpMemoryLeaks();
 #endif
-            bMemcheck = FALSE;
+            dwTemp = 0;
             RegSetValueExW(
                 hKey,
                 TEXT("Memcheck"),
                 0,
                 REG_DWORD,
-                &bMemcheck,
+                &dwTemp,
                 sizeof(DWORD)
             );
         }
@@ -3418,6 +3418,29 @@ void WINAPI LoadSettings(BOOL bIsExplorer)
             &bToolbarSeparators,
             &dwSize
         );
+        dwSize = sizeof(DWORD);
+        dwTemp = 0;
+        RegQueryValueExW(
+            hKey,
+            TEXT("OpenPropertiesAtNextStart"),
+            0,
+            NULL,
+            &dwTemp,
+            &dwSize
+        );
+        if (dwTemp)
+        {
+            LaunchPropertiesGUI(hModule);
+            dwTemp = 0;
+            RegSetValueExW(
+                hKey,
+                TEXT("OpenPropertiesAtNextStart"),
+                0,
+                REG_DWORD,
+                &dwTemp,
+                sizeof(DWORD)
+            );
+        }
         RegCloseKey(hKey);
     }
 

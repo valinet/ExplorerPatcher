@@ -364,14 +364,66 @@ int WINAPI wWinMain(
 
         GetSystemDirectoryW(wszPath, MAX_PATH);
         wcscat_s(wszPath, MAX_PATH, L"\\taskkill.exe");
-        ShellExecuteW(
-            NULL,
-            L"open",
-            wszPath,
-            L"/f /im explorer.exe",
-            NULL,
-            SW_SHOWMINIMIZED
-        );
+        SHELLEXECUTEINFOW sei;
+        ZeroMemory(&sei, sizeof(SHELLEXECUTEINFOW));
+        sei.cbSize = sizeof(sei);
+        sei.fMask = SEE_MASK_NOCLOSEPROCESS;
+        sei.hwnd = NULL;
+        sei.hInstApp = NULL;
+        sei.lpVerb = NULL;
+        sei.lpFile = wszPath;
+        sei.lpParameters = L"/f /im explorer.exe";
+        sei.hwnd = NULL;
+        sei.nShow = SW_SHOWMINIMIZED;
+        if (ShellExecuteExW(&sei) && sei.hProcess)
+        {
+            WaitForSingleObject(sei.hProcess, INFINITE);
+            CloseHandle(sei.hProcess);
+        }
+
+        DWORD dwGUIPid = 0;
+        GetWindowThreadProcessId(FindWindowW(L"ExplorerPatcher_GUI_" _T(EP_CLSID), NULL), &dwGUIPid);
+        if (dwGUIPid)
+        {
+            HANDLE hProcess = OpenProcess(PROCESS_TERMINATE, FALSE, dwGUIPid);
+            if (hProcess)
+            {
+                TerminateProcess(hProcess, 0);
+                CloseHandle(hProcess);
+
+                HKEY hKey = NULL;
+                DWORD dwSize = 0;
+
+                RegCreateKeyExW(
+                    HKEY_CURRENT_USER,
+                    TEXT(REGPATH),
+                    0,
+                    NULL,
+                    REG_OPTION_NON_VOLATILE,
+                    KEY_READ | KEY_WOW64_64KEY | KEY_WRITE,
+                    NULL,
+                    &hKey,
+                    NULL
+                );
+                if (hKey == NULL || hKey == INVALID_HANDLE_VALUE)
+                {
+                    hKey = NULL;
+                }
+                if (hKey)
+                {
+                    dwSize = TRUE;
+                    RegSetValueExW(
+                        hKey,
+                        TEXT("OpenPropertiesAtNextStart"),
+                        0,
+                        REG_DWORD,
+                        &dwSize,
+                        sizeof(DWORD)
+                    );
+                    RegCloseKey(hKey);
+                }
+            }
+        }
 
         if (bOk)
         {
