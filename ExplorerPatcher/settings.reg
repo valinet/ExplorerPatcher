@@ -44,7 +44,7 @@ Windows Registry Editor Version 5.00
 ;b 바탕화면 보기 버튼 보이기
 "TaskbarSD"=dword:00000001
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
-;b Show separators between toolbars *
+;b 툴바 간 분리선 보이기 *
 "ToolbarSeparators"=dword:00000000
 ;t 
 ;t 
@@ -64,7 +64,7 @@ Windows Registry Editor Version 5.00
 "CenterMenus"=dword:00000001
 ;b 트레이 아이콘 팝업 메뉴 표시에 플라이아웃 스타일 적용
 "FlyoutMenus"=dword:00000001
-;b Hide Control Center button *
+;b 제어 센터 버튼 숨기기 *
 "HideControlCenterButton"=dword:00000000
 ;p 2
 ;b 시스템 트레이 아이콘에 Windows 11 스타일 적용 *
