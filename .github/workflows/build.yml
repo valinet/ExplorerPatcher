@@ -165,13 +165,13 @@ jobs:
         tag_name: ${{ steps.release_name.outputs.data }}_${{ steps.vars.outputs.sha_short }}
         body: ${{ steps.release_description.outputs.data }}
       env:
-        GITHUB_TOKEN: ${{ secrets.PAT }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Upload setup
       uses: actions/upload-release-asset@v1
       if: github.ref == 'refs/heads/master' && github.event.inputs.ref == ''
       env:
-        GITHUB_TOKEN: ${{ secrets.PAT }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
         asset_path: ./build/Release/ep_setup.exe
