@@ -1,47 +1,47 @@
-﻿Windows Registry Editor Version 5.00
+Windows Registry Editor Version 5.00
 
-;M Settings
+;M 설정
 
-;T Taskbar
+;T 작업 표시줄
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
-;z 2 Taskbar style *
-;x 0 Windows 11 (default)
+;z 2 작업 표시줄 스타일 *
+;x 0 Windows 11 (기본값)
 ;x 1 Windows 10
 "OldTaskbar"=dword:00000001
-;y More taskbar options in the Settings app 🡕
+;y 설정 앱에서 더 많은 작업 표시줄 옵션 보기 🡕
 ;ms-settings:taskbar
-;t The following settings only apply to the Windows 10 taskbar:                          
+;t 아래의 설정 항목들은 Windows 10 작업 표시줄을 사용할 때만 적용됩니다:                          
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
-;c 3 Combine taskbar icons on main taskbar
-;x 0 Always combine
-;x 1 Combine when taskbar is full
-;x 2 Never combine
+;c 3 주 작업 표시줄에서 아이콘 합치기
+;x 0 항상 합치기
+;x 1 작업 표시줄이 가득 찰 때만 합치기
+;x 2 항상 합치지 않기
 "TaskbarGlomLevel"=dword:00000002
-;c 3 Combine taskbar icons on other taskbars
-;x 0 Always combine
-;x 1 Combine when taskbar is full
-;x 2 Never combine
+;c 3 다른 작업 표시줄에서 아이콘 합치기
+;x 0 항상 합치기
+;x 1 작업 표시줄이 가득 찰 때만 합치기
+;x 2 항상 합치지 않기
 "MMTaskbarGlomLevel"=dword:00000002
-;c 2 Taskbar icon size
-;x 1 Small
-;x 0 Large (default)
+;c 2 작업 표시줄 아이콘 크기
+;x 1 작게
+;x 0 크게 (기본값)
 "TaskbarSmallIcons"=dword:00000000
-;c 3 Cortana button should be
-;x 0 Hidden (default)
-;x 2 Shown and open Cortana
-;x 1 Shown and open Widgets
+;c 3 Cortana 버튼 동작 설정
+;x 0 숨겨짐 (기본값)
+;x 2 Cortana 열기
+;x 1 위젯 열기
 "TaskbarDa"=dword:00000000
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Search]
-;b Show Search button
+;b 검색 버튼 보이기
 "SearchboxTaskbarMode"=dword:00000000
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
-;b Show Task view button
+;b 작업 보기(타임라인) 버튼 보이기
 "ShowTaskViewButton"=dword:00000000
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\People]
-;b Show People on the taskbar *
+;b 작업 표시줄에 피플 버튼 보이기 *
 "TaskbarMn"=dword:00000000
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
-;b Show Desktop button
+;b 바탕화면 보기 버튼 보이기
 "TaskbarSD"=dword:00000001
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
 ;b Show separators between toolbars *
@@ -49,41 +49,41 @@
 ;t 
 ;t 
 
-;T System tray
-;y Customize notification area icons 🡕
+;T 시스템 트레이
+;y 작업 표시줄에 표시할 아이콘 및 알림 선택 🡕
 ;shell:::{05d7b0f4-2121-4eff-bf6b-ed3f69b894d9}
-;y Customize system icons in the notification area 🡕
+;y 알림 영역에 표시할 시스템 아이콘 및 기능 선택 🡕
 ;shell:::{05d7b0f4-2121-4eff-bf6b-ed3f69b894d9}\SystemIcons
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
-;b Show seconds in the clock
+;b 시계에 초 단위까지 보이기
 "ShowSecondsInSystemClock"=dword:00000000
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
-;b Skin taskbar and tray pop-up menus
+;b 작업 표시줄과 트레이 팝업 메뉴에 스킨 적용
 "SkinMenus"=dword:00000001
-;b Center tray icon pop-up menus
+;b 트레이 아이콘 팝업 메뉴를 아이콘 기준 중앙에 맞춰 띄우기
 "CenterMenus"=dword:00000001
-;b Flyout behavior for tray icon pop-up menus
+;b 트레이 아이콘 팝업 메뉴 표시에 플라이아웃 스타일 적용
 "FlyoutMenus"=dword:00000001
 ;b Hide Control Center button *
 "HideControlCenterButton"=dword:00000000
 ;p 2
-;b Apply Windows 11 style to system tray icons *
+;b 시스템 트레이 아이콘에 Windows 11 스타일 적용 *
 "SkinIcons"=dword:00000001
 [HKEY_CURRENT_USER\Software\Microsoft\TabletTip\1.7]
-;b Show touch keyboard button *
+;b 터치 키보드 버튼 보이기 *
 "TipbandDesiredVisibility"=dword:00000000
 [HKEY_CURRENT_USER\Software\Microsoft\Windows NT\CurrentVersion\MTCUVC]
-;i Use legacy volume flyout
+;i 레거시 볼륨 조절 플라이아웃 사용하기
 "EnableMtcUvc"=dword:00000001
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\ImmersiveShell]
-;c 3 Clock flyout style
+;c 3 시계/달력 플라이아웃 스타일
 ;x 2 Windows 11
-;x 0 Windows 10 (default)
+;x 0 Windows 10 (기본값)
 ;x 1 Windows 7
 "UseWin32TrayClockExperience"=dword:00000000
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
-;c 6 Language switcher flyout style *
-;x 0 Windows 11 (default)
+;c 6 입력기 언어 변경 플라이아웃 스타일 *
+;x 0 Windows 11 (기본값)
 ;x 1 Windows 10
 ;x 2 "LOGONUI"
 ;x 3 "UAC"
@@ -91,70 +91,70 @@
 ;x 5 "OOBE"
 "IMEStyle"=dword:00000000
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
-;a Choosing 'Open Network && Internet settings' when right clicking the
-;c 3 network icon should open:
-;x 0 Network section in the Settings app (default)
-;x 1 Network and Sharing Center in Control Panel
-;x 2 Network Connections in Control Panel
+;a 네트워크 아이콘을 우클릭하여 '네트워크 및 인터넷 설정 열기'를
+;c 3 선택하였을 때 열 항목:
+;x 0 설정 앱의 네트워크 항목 (기본값)
+;x 1 제어판의 네트워크 및 공유 센터
+;x 2 제어판의 네트워크 연결
 "ReplaceNetwork"=dword:00000000
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Control Panel\Settings\Network]
-;c 5 Network icon should open
-;x 0 WiFi list (default)
-;x 1 Network section in the Settings app
-;x 2 Windows 8 network flyout
-;x 3 Network and Sharing Center in Control Panel
-;x 4 Network Connections in Control Panel
+;c 5 네트워크 아이콘을 클릭하였을 때 열 항목:
+;x 0 WiFi 목록 (기본값)
+;x 1 설정 앱의 네트워크 항목
+;x 2 Windows 8 네트워크 플라이아웃
+;x 3 제어판의 네트워크 및 공유 센터
+;x 4 제어판의 네트워크 연결
 "ReplaceVan"=dword:00000000
 
-;T File Explorer
+;T 파일 탐색기
 [-HKEY_CURRENT_USER\Software\Classes\CLSID\{d93ed569-3b3e-4bff-8355-3c44f6a52bb5}\InprocServer32]
-;d Disable the Windows 11 command bar *
+;d Windows 11 파일 탐색기 툴바 숨기기 *
 @=""
 [-HKEY_CURRENT_USER\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32]
-;d Disable the Windows 11 context menu *
+;d Windows 11 우클릭 컨텍스트 메뉴 숨기기 *
 @=""
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
-;i Use immersive menus when displaying Windows 10 context menus **
+;i Windows 10 우클릭 컨텍스트 메뉴에 이머시브 메뉴 보이기 **
 "DisableImmersiveContextMenu"=dword:00000000
 [-HKEY_CURRENT_USER\Software\Classes\CLSID\{056440FD-8568-48e7-A632-72157243B55B}\InprocServer32]
-;d Disable navigation bar **
+;d 주소표시줄 숨기기 **
 @=""
 [-HKEY_CURRENT_USER\Software\Classes\CLSID\{1d64637d-31e9-4b06-9124-e83fb178ac6e}\TreatAs]
-;d Disable modern search bar
+;d 모던 검색 표시줄 숨기기
 @="{64bc32b5-4eec-4de7-972d-bd8bd0324537}"
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
-;b Hide search bar completely **
+;b 검색 표시줄 완전히 숨기기 **
 "HideExplorerSearchBar"=dword:00000000
 ;p 2
-;b Mica effect on title bar
+;b 창 제목 영역에 Mica 효과 적용
 "MicaEffectOnTitlebar"=dword:00000000
 [-HKEY_LOCAL_MACHINE\Software\Classes\CLSID\{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}\InprocServer32]
-;d Register as shell extension
+;d 쉘 익스텐션으로 등록
 @="{64bc32b5-4eec-4de7-972d-bd8bd0324537}"
 
 ;t ________________________
-;e For the settings marked with (**) to work in Open/Save file dialogs as well, register
-;e this utility as shell extension using the option above.
-;y Learn more 🡕
+;e 설정 항목 중 (**) 표시된 것이 파일 Open/Save 창에서도 제대로 작동하려면,
+;e 바로 위의 항목을 사용하여 ExplorerPatcher를 쉘 익스텐션으로 등록해야 합니다.
+;y 더 자세히 알아보기 🡕
 ;https://github.com/valinet/ExplorerPatcher/wiki/Using-ExplorerPatcher-as-shell-extension
 
-;T Start menu
+;T 시작 메뉴
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\StartPage]
-;i Open Start on monitor containing the cursor
+;i 마우스가 위치한 모니터에서 시작 메뉴 열기
 "MonitorOverride"=dword:00000001
-;b Open Start at logon
+;b 로그온 시 시작 메뉴 열기
 "OpenAtLogon"=dword:00000000
-;b Open Start in All apps by default
+;b 시작 메뉴에서 모든 앱 보이기를 기본으로 설정
 "MakeAllAppsDefault"=dword:00000000
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
-;c 22 Maximum number of frequent apps to show
-;x 0 None
+;c 22 자주 사용한 앱(고정)에 보일 최대 개수
+;x 0 없음
 ;x 1 1
 ;x 2 2
 ;x 3 3
 ;x 4 4
 ;x 5 5
-;x 6 6 (default)
+;x 6 6 (기본값)
 ;x 7 7
 ;x 8 8
 ;x 9 9
@@ -169,48 +169,48 @@
 ;x 18 18
 ;x 19 19
 ;x 20 20
-;x 99999 Unlimited
+;x 99999 제한 없음
 "Start_MaximumFrequentApps"=dword:00000006
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
-;c 2 Position on screen
-;x 0 Left
-;x 1 Center (default)
+;c 2 정렬 위치
+;x 0 왼쪽
+;x 1 중앙 (기본값)
 "TaskbarAl"=dword:00000001
 
 
-;T Window switcher
+;T 윈도우 스위처
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer]
-;z 3 Window switcher (Alt+Tab) style *
+;z 3 윈도우 스위처 (Alt+Tab) 스타일 *
 ;x 0 Windows 11
 ;x 2 Windows 10
 ;x 1 Windows NT
 "AltTabSettings"=dword:00000000
-;t The following settings only apply to the Windows 10 window switcher:
+;t 아래의 설정 항목들은 Windows 10의 윈도우 스위처를 사용할 때만 적용됩니다:
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher\sws]
-;b Include desktop
+;b 바탕화면 포함
 "IncludeWallpaper"=dword:00000001
-;b Always show on primary monitor
+;b 항상 주 모니터에 표시하기
 "PrimaryOnly"=dword:00000000
-;b Show windows only from current monitor
+;b 현재 모니터의 창(들)만 보이기
 "PerMonitor"=dword:00000000
-;c 3 Theme
-;x 2 Mica (default)
+;c 3 테마
+;x 2 Mica (기본값)
 ;x 1 Acrylic
-;x 0 None
+;x 0 없음
 "Theme"=dword:00000002
-;c 3 Corner preference
-;x 2 Rounded (default)
-;x 3 Small rounded
-;x 1 Not rounded
+;c 3 모서리 유형
+;x 2 둥근 모서리 (기본값)
+;x 3 작은 둥근 모서리
+;x 1 각진 모서리
 "CornerPreference"=dword:00000002
-;c 3 Color scheme
-;x 0 Follow system setting (default)
-;x 1 Light
-;x 2 Dark
+;c 3 컬러 스키마
+;x 0 시스템 설정대로 (기본값)
+;x 1 밝게
+;x 2 어둡게
 "ColorScheme"=dword:00000000
 [HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\MultitaskingView\AltTabViewHost]
-;c 15 Opacity (works only with 'Acrylic' theme)
-;x 100 Opaque
+;c 15 불투명도 ('Acrylic' 테마에만 적용됨)
+;x 100 불투명
 ;x 95 95 %
 ;x 90 90 %
 ;x 85 85 %
@@ -218,7 +218,7 @@
 ;x 75 75 %
 ;x 70 70 %
 ;x 65 65 %
-;x 60 60 % (default)
+;x 60 60 % (기본값)
 ;x 55 55 %
 ;x 50 50 %
 ;x 45 45 %
@@ -227,7 +227,7 @@
 ;x 30 30 %
 "Grid_backgroundPercent"=dword:0000003c
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher\sws]
-;c 20 Row height
+;c 20 행 높이
 ;x 330 330 pt
 ;x 320 320 pt
 ;x 310 310 pt
@@ -238,7 +238,7 @@
 ;x 260 260 pt
 ;x 250 250 pt
 ;x 240 240 pt
-;x 230 230 pt (default)
+;x 230 230 pt (기본값)
 ;x 220 220 pt
 ;x 210 210 pt
 ;x 200 200 pt
@@ -249,36 +249,36 @@
 ;x 150 150 pt
 ;x 140 140 pt
 "RowHeight"=dword:000000e6
-;c 10 Maximum width (percentage of screen width)
-;x 100 100 % (not recommended)
+;c 10 최대 너비 (화면 너비의 백분율로)
+;x 100 100 % (권장하지 않음)
 ;x 95 95 %
 ;x 90 90 %
 ;x 85 85 %
-;x 80 80 % (default)
+;x 80 80 % (기본값)
 ;x 75 75 %
 ;x 70 70 %
 ;x 65 65 %
 ;x 60 60 %
 ;x 55 55 %
 "MaxWidth"=dword:00000050
-;c 10 Maximum height (percentage of screen height)
-;x 100 100 % (not recommended)
+;c 10 최대 높이 (화면 높이의 백분율로)
+;x 100 100 % (권장하지 않음)
 ;x 95 95 %
 ;x 90 90 %
 ;x 85 85 %
-;x 80 80 % (default)
+;x 80 80 % (기본값)
 ;x 75 75 %
 ;x 70 70 %
 ;x 65 65 %
 ;x 60 60 %
 ;x 55 55 %
 "MaxHeight"=dword:00000050
-;c 10 Show delay
-;x 0 None
+;c 10 표시 전 지연 시간
+;x 0 없음
 ;x 25 25 ms
 ;x 50 50 ms
 ;x 75 75 ms
-;x 100 100 ms (default)
+;x 100 100 ms (기본값)
 ;x 150 150 ms
 ;x 200 200 ms
 ;x 300 300 ms
@@ -287,85 +287,85 @@
 "ShowDelay"=dword:00000064
 
 
-;T Other
+;T 기타
 [HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
-;b Remember last used section in this window
+;b 현재 설정 창에서 마지막으로 열려 있던 항목 기억하기
 "LastSectionInProperties"=dword:00000000
-;b Open clock flyout when pressing Win+C instead of Microsoft Teams
+;b Win+C를 눌렀을 때 Microsoft Teams 대신 시계/달력 플라이아웃 열기
 "ClockFlyoutOnWinC"=dword:00000000
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
-;b Show Command Prompt instead of PowerShell in Win+X menu *
+;b Win+X 메뉴에 PowerShell 대신 Command Prompt 보이기 *
 "DontUsePowerShellOnWinX"=dword:00000000
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
-;b Add shortcut to program settings in Win+X menu
+;b Win+X 메뉴에 ExplorerPatcher 속성 바로가기 추가
 "PropertiesInWinX"=dword:00000000
-;b Remove shortcut key from program settings item in Win+X menu
+;b Win+X 메뉴의 프로그램 설정에서 속성 바로가기 제거
 "NoMenuAccelerator"=dword:00000000
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
-;c 6 Default action in the Alt+F4 dialog on the desktop
-;x 256 Switch user
-;x 1 Sign out
-;x 16 Sleep
-;x 64 Hibernate
-;x 2 Shut down (default)
-;x 4 Restart
+;c 6 Alt+F4 창에서 기본값으로 보일 동작
+;x 256 사용자 전환
+;x 1 로그아웃
+;x 16 절전
+;x 64 최대 절전
+;x 2 시스템 종료 (기본값)
+;x 4 다시 시작
 "Start_PowerButtonAction"=dword:00000002
 
 
-;T Updates
+;T 업데이트
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
-;z 3 When File Explorer starts
-;x 1 Notify about available updates (default)
-;x 0 Prompt to install available updates
-;x 2 Do not check for updates
+;z 3 파일 탐색기를 열 때
+;x 1 사용 가능한 업데이트 알림 보이기 (기본값)
+;x 0 사용 가능한 업데이트 설치 프롬프트 보이기
+;x 2 새 업데이트 확인하지 않음
 "UpdatePolicy"=dword:00000001
 ;t ________________________
-;y Check for updates
+;y 업데이트 확인
 ;;;EP_CHECK_FOR_UPDATES
-;y Update program and restart File Explorer
+;y 업데이트 후 파일 탐색기 재시작
 ;;;EP_INSTALL_UPDATES
-;y Read about changes in the latest releases 🡕
+;y 마지막 업데이트의 변경 사항 읽어보기 🡕
 ;https://github.com/valinet/ExplorerPatcher/blob/master/CHANGELOG.md
-;y Learn more 🡕
+;y 더 알아보기 🡕
 ;https://github.com/valinet/ExplorerPatcher/wiki/Configure-updates
 
 
-;T Advanced
+;T 고급
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
-;b Enable console
+;b Console 활성화
 "AllocConsole"=dword:00000000
-;b Dump memory leaks
+;b 메모리 누수 덤프
 "Memcheck"=dword:00000000
 [HKEY_CURRENT_USER\Control Panel\Desktop]
-;b Show Windows build info on the desktop *
+;b 바탕화면에 Windows 빌드 정보 보이기 *
 "PaintDesktopversion"=dword:00000000
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
-;b Enable advanced mitigations for correct rendering using classic theme *
+;b Classic Theme 사용 시 올바른 렌더링을 위한 advanced mitigation 적용 *
 "ClassicThemeMitigations"=dword:00000000
 [-HKEY_CURRENT_USER\Software\Classes\CLSID\{1eeb5b5a-06fb-4732-96b3-975c0194eb39}\InprocServer32]
-;d Enable SysListView32 for Explorer views *
+;d 파일 탐색기에 SysListView32 사용하기 *
 @=""
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
-;i Do not hook Start menu from main Explorer process (permanently disabled) *
+;i 주 Explorer 프로세스에서 Start menu 후킹하지 않기 (영구적으로 비활성화) *
 "HookStartMenu"=dword:00000001
-;c 12 Supplementary delay at logon *
-;x 0 None (default)
+;c 12 로그온 시 추가로 기다릴 시간 *
+;x 0 없음 (기본값)
 ;x 300 300 ms
 ;x 600 600 ms
-;x 1000 1 second
-;x 1500 1.5 seconds
-;x 2000 2 seconds
-;x 3000 3 seconds
-;x 4000 4 seconds
-;x 5000 5 seconds
-;x 6000 6 seconds
-;x 8000 8 seconds
-;x 10000 10 seconds
+;x 1000 1 s
+;x 1500 1.5 s
+;x 2000 2 s
+;x 3000 3 s
+;x 4000 4 s
+;x 5000 5 s
+;x 6000 6 s
+;x 8000 8 s
+;x 10000 10 s
 "ExplorerReadyDelay"=dword:00000000
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
-;a Only change the following option if you have a single taskbar !!!
-;c 21 Always show main taskbar on this monitor * (not working)
-;x 0 Primary (default)
+;a 작업 표시줄을 하나만 사용하는 경우에만 아래 설정을 변경하세요!!!
+;c 21 항상 현재 모니터에 주 작업 표시줄 보이기 * (작동 안함)
+;x 0 주 모니터 (기본값)
 ;x 1 1
 ;x 2 2
 ;x 3 3
@@ -388,34 +388,34 @@
 ;x 20 20
 "TaskbarMonitorOverride"=dword:00000000
 ;t ________________________
-;e Only change these settings after reading the documentation about them.
-;y Learn more 🡕
+;e 이 설정은 반드시 관련 안내문을 읽은 뒤에 사용하는 것을 고려하십시오.
+;y 더 알아보기 🡕
 ;https://github.com/valinet/ExplorerPatcher/wiki/About-advanced-settings
 
 
-;T About
+;T 정보
 ;e ExplorerPatcher
-;e Version %VERSIONINFO%
+;e 버전 %VERSIONINFO%
 ;t Copyright (C) 2006-2021 VALINET Solutions SRL. All rights reserved.
 ;e 
 ;e This project aims to bring back a productive working environment on Windows 11.
-;t Proudly programmed by Valentin-Gabriel Radu.
-;y Visit project GitHub (https://github.com/valinet) 🡕
+;t Proudly programmed by Valentin-Gabriel Radu. 번역은 개발자와 무관합니다.
+;y GitHub에서 프로젝트 살펴보기 (https://github.com/valinet) 🡕
 ;https://github.com/valinet
-;y Visit web site (https://www.valinet.ro) 🡕
+;y 웹사이트 방문하기 (https://www.valinet.ro) 🡕
 ;https://www.valinet.ro
-;y E-mail author (valentingabrielradu@gmail.com) 🡕
+;y E-mail로 문의하기 (valentingabrielradu@gmail.com) 🡕
 ;mailto:valentingabrielradu@gmail.com
-;y Donate (using PayPal) 🡕
+;y 기부하기 (PayPal) 🡕
 ;https://www.paypal.com/donate?business=valentingabrielradu%40gmail.com&no_recurring=0&item_name=ExplorerPatcher&currency_code=EUR
-;y Frequently Asked Questions 🡕
+;y 자주 질문하는 항목들 🡕
 ;https://github.com/valinet/ExplorerPatcher/wiki/Frequently-asked-questions
 
 ;f
-;t For settings marked with * to take effect, restart File Explorer. 
-;u Restart File Explorer
+;t * 표시가 있는 설정 항목을 적용하려면, 파일 탐색기를 재시작해야 합니다. 
+;u 파일 탐색기 재시작
 ;restart
-;u Restore default settings
+;u 기본값으로 설정 초기화
 ;reset
-;;u About ExplorerPatcher
+;;u ExplorerPatcher 정보
 ;;about
