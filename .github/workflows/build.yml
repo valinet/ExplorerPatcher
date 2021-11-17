@@ -129,6 +129,7 @@ jobs:
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v2
+      if: github.event_name != 'pull_request'
       with:
         name: ep_bin_multi_${{ steps.vars.outputs.sha_short }}_${{ steps.vars.outputs.branch }}
         path: |
@@ -154,9 +155,9 @@ jobs:
         echo "::set-output name=data::$MY_STRING"
       id: release_description
       
-    - name: Create/update release
+    - name: Create/update release(valinet)
       uses: actions/create-release@v1
-      if: github.ref == 'refs/heads/master' && github.event.inputs.ref == ''
+      if: github.repository_owner == 'valinet' && github.ref == 'refs/heads/master' && github.event.inputs.ref == '' && github.event_name != 'pull_request'
       id: create_release
       with:
         draft: false
@@ -167,13 +168,37 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Upload setup
+    - name: Upload setup(valinet)
       uses: actions/upload-release-asset@v1
-      if: github.ref == 'refs/heads/master' && github.event.inputs.ref == ''
+      if: github.repository_owner == 'valinet' && github.ref == 'refs/heads/master' && github.event.inputs.ref == ''&& github.event_name != 'pull_request'
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./build/Release/ep_setup.exe
+        asset_name: ep_setup.exe
+        asset_content_type: application/x-msdownload
+    
+    - name: Create/update release(fork)
+      uses: actions/create-release@v1
+      if: github.repository_owner != 'valinet' && github.ref == 'refs/heads/master' && github.event.inputs.ref == '' && github.event_name == 'push'
+      id: create_release_fork
+      with:
+        draft: false
+        prerelease: false
+        release_name: ${{ steps.release_name.outputs.data }}
+        tag_name: ${{ steps.release_name.outputs.data }}_${{ steps.vars.outputs.sha_short }}
+        body: ${{ steps.release_description.outputs.data }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Upload setup(fork)
+      uses: actions/upload-release-asset@v1
+      if: github.repository_owner != 'valinet' && github.ref == 'refs/heads/master' && github.event.inputs.ref == ''&& github.event_name != 'pull_request'
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release_fork.outputs.upload_url }}
         asset_path: ./build/Release/ep_setup.exe
         asset_name: ep_setup.exe
         asset_content_type: application/x-msdownload
