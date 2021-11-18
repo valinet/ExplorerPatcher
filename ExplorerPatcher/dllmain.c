@@ -4622,6 +4622,20 @@ LSTATUS explorer_SHGetValueW(HKEY a1, const WCHAR* a2, const WCHAR* a3, DWORD* a
     return SHGetValueW(a1, v10, a3, a4, a5, a6);
 }
 
+LSTATUS explorer_OpenRegStream(HKEY hkey, PCWSTR pszSubkey, PCWSTR pszValue, DWORD grfMode)
+{
+    DWORD flOldProtect[6];
+
+    if (!lstrcmpiW(pszValue, L"TaskbarWinXP")
+        && VirtualProtect(pszValue, 0xC8ui64, 0x40u, flOldProtect))
+    {
+        lstrcpyW(pszValue, L"TaskbarWinEP");
+        VirtualProtect(pszValue, 0xC8ui64, flOldProtect[0], flOldProtect);
+    }
+
+    return OpenRegStream(hkey, pszSubkey, pszValue, grfMode);
+}
+
 LSTATUS explorer_RegOpenKeyExW(HKEY a1, WCHAR* a2, DWORD a3, REGSAM a4, HKEY* a5)
 {
     DWORD flOldProtect[6];
@@ -5249,6 +5263,7 @@ DWORD Inject(BOOL bIsExplorer)
         VnPatchIAT(hExplorer, "user32.dll", "LoadMenuW", explorer_LoadMenuW);
     }
     VnPatchIAT(hExplorer, "API-MS-WIN-CORE-REGISTRY-L1-1-0.DLL", "RegOpenKeyExW", explorer_RegOpenKeyExW);
+    VnPatchIAT(hExplorer, "shell32.dll", (LPCSTR)85, explorer_OpenRegStream);
     VnPatchIAT(hExplorer, "user32.dll", "TrackPopupMenuEx", explorer_TrackPopupMenuExHook);
     if (bClassicThemeMitigations)
     {

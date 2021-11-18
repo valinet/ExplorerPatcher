@@ -15,6 +15,7 @@ Tested on build 22000.318 and 22000.346 (currently in Windows Insider beta and r
   * `ep_setup /extract` - extracts `ExplorerPatcher.IA-32.dll` and `ExplorerPatcher.amd64.dll` to current directory
   * `ep-setup /extract test` - extracts to `test` folder in current directory
   * `ep-setup /extract "C:\test with space"` - extracts to `C:\test with space` directory
+* Taskbar toolbar layouts are preserved when switching between Windows 10 and Windows 11 taskbars and in general (these will be reset when installing this update but should be subsequently remembered) (#395) (.2)
 
 
 #### Feature enhancements
