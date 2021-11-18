@@ -11,7 +11,7 @@ Tested on build 22000.318 and 22000.346 (currently in Windows Insider beta and r
 * Functional Windows 10 network flyout
 * Functional Windows 10 battery flyout
 * Implemented support for Windows 7 battery flyout (#274)
-* Implemented `/extract` switch which unpacks the files from `ep_setup.exe` to disk (#396):
+* Implemented `/extract` switch which unpacks the files from `ep_setup.exe` to disk (#396) (.1):
   * `ep_setup /extract` - extracts `ExplorerPatcher.IA-32.dll` and `ExplorerPatcher.amd64.dll` to current directory
   * `ep-setup /extract test` - extracts to `test` folder in current directory
   * `ep-setup /extract "C:\test with space"` - extracts to `C:\test with space` directory
@@ -21,6 +21,10 @@ Tested on build 22000.318 and 22000.346 (currently in Windows Insider beta and r
 
 * Improved reliability when invoking Control Center (`Win`+`A`) when the taskbar icon is disabled (the icon should now not reappear anymore sometimes) (#242)
 * Small reorganization of some options in "Properties"
+
+#### Fixes
+
+* Windows 10 network and battery flyout should now always launch when the tray icon is clicked (#410) (.1)
 
 ## 22000.318.37
 

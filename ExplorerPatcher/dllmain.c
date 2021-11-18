@@ -462,8 +462,9 @@ POINT GetDefaultWinXPosition(BOOL bUseRcWork, BOOL* lpBottom, BOOL* lpRight, BOO
     return point;
 }
 
-void TerminateShellExperienceHost()
+BOOL TerminateShellExperienceHost()
 {
+    BOOL bRet = FALSE;
     WCHAR wszKnownPath[MAX_PATH];
     GetWindowsDirectoryW(wszKnownPath, MAX_PATH);
     wcscat_s(wszKnownPath, MAX_PATH, L"\\SystemApps\\ShellExperienceHost_cw5n1h2txyewy\\ShellExperienceHost.exe");
@@ -500,6 +501,7 @@ void TerminateShellExperienceHost()
                     if (!_wcsicmp(wszProcessPath, wszKnownPath))
                     {
                         TerminateProcess(hProcess, 0);
+                        bRet = TRUE;
                     }
                     CloseHandle(hProcess);
                     hProcess = NULL;
@@ -511,6 +513,7 @@ void TerminateShellExperienceHost()
             CloseHandle(hSnapshot);
         }
     }
+    return bRet;
 }
 
 long long elapsedCheckForeground = 0;
@@ -546,6 +549,7 @@ DWORD CheckForegroundThread(DWORD dwMode)
     {
         RegDeleteKeyW(HKEY_CURRENT_USER, _T(SEH_REGPATH));
         TerminateShellExperienceHost();
+        Sleep(100);
     }
     printf("Ended \"Check foreground window\" thread.\n");
     return 0;
@@ -2498,6 +2502,10 @@ HRESULT stobject_CoCreateInstanceHook(
         {
             if (hCheckForegroundThread)
             {
+                if (WaitForSingleObject(hCheckForegroundThread, 0) == WAIT_TIMEOUT)
+                {
+                    return E_NOINTERFACE;
+                }
                 WaitForSingleObject(hCheckForegroundThread, INFINITE);
                 CloseHandle(hCheckForegroundThread);
                 hCheckForegroundThread = NULL;
@@ -2518,6 +2526,8 @@ HRESULT stobject_CoCreateInstanceHook(
                 RegCloseKey(hKey);
             }
             TerminateShellExperienceHost();
+            InvokeFlyout(0, INVOKE_FLYOUT_BATTERY);
+            Sleep(100);
             hCheckForegroundThread = CreateThread(
                 0,
                 0,
@@ -2596,6 +2606,10 @@ HRESULT pnidui_CoCreateInstanceHook(
         {
             if (hCheckForegroundThread)
             {
+                if (WaitForSingleObject(hCheckForegroundThread, 0) == WAIT_TIMEOUT)
+                {
+                    return E_NOINTERFACE;
+                }
                 WaitForSingleObject(hCheckForegroundThread, INFINITE);
                 CloseHandle(hCheckForegroundThread);
                 hCheckForegroundThread = NULL;
@@ -2616,6 +2630,8 @@ HRESULT pnidui_CoCreateInstanceHook(
                 RegCloseKey(hKey);
             }
             TerminateShellExperienceHost();
+            InvokeFlyout(0, INVOKE_FLYOUT_NETWORK);
+            Sleep(100);
             hCheckForegroundThread = CreateThread(
                 0,
                 0,
@@ -6290,10 +6306,11 @@ void InjectShellExperienceHost()
 {
 #ifdef _WIN64
     HKEY hKey;
-    if (RegOpenKeyW(HKEY_CURRENT_USER, _T(SEH_REGPATH), &hKey))
+    if (RegOpenKeyW(HKEY_CURRENT_USER, _T(SEH_REGPATH), &hKey) != ERROR_SUCCESS)
     {
         return;
     }
+    RegCloseKey(hKey);
     HMODULE hQA = LoadLibraryW(L"Windows.UI.QuickActions.dll");
     if (hQA)
     {
