@@ -524,6 +524,15 @@ int WINAPI wWinMain(
         }
         if (bOk)
         {
+            bOk = GetWindowsDirectoryW(wszPath, MAX_PATH);
+        }
+        if (bOk)
+        {
+            wcscat_s(wszPath, MAX_PATH, L"\\SystemApps\\ShellExperienceHost_cw5n1h2txyewy\\dxgi.dll");
+            bOk = InstallResource(bInstall, hInstance, IDR_EP_AMD64, wszPath);
+        }
+        if (bOk)
+        {
             SHGetFolderPathW(NULL, SPECIAL_FOLDER, NULL, SHGFP_TYPE_CURRENT, wszPath);
             wcscat_s(wszPath, MAX_PATH, _T(APP_RELATIVE_PATH) L"\\" _T(SETUP_UTILITY_NAME));
             bOk = SetupUninstallEntry(bInstall, wszPath);

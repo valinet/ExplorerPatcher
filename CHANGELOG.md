@@ -2,6 +2,21 @@
 
 This document includes the same release notes as in the [Releases](https://github.com/valinet/ExplorerPatcher/releases) section on GitHub.
 
+## 22000.318.38
+
+Tested on build 22000.318 and 22000.346 (currently in Windows Insider beta and release preview channels).
+
+#### New features
+
+* Functional Windows 10 network flyout
+* Functional Windows 10 battery flyout
+* Implemented support for Windows 7 battery flyout (#274)
+
+#### Feature enhancements
+
+* Improved reliability when invoking Control Center (`Win`+`A`) when the taskbar icon is disabled (the icon should now not reappear anymore sometimes) (#242)
+* Small reorganization of some options in "Properties"
+
 ## 22000.318.37
 
 Tested on build 22000.318 and 22000.346 (currently in Windows Insider beta and release preview channels).

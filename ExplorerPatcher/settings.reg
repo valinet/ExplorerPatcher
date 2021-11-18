@@ -10,6 +10,10 @@
 "OldTaskbar"=dword:00000001
 ;y More taskbar options in the Settings app 🡕
 ;ms-settings:taskbar
+;y Customize notification area icons 🡕
+;shell:::{05d7b0f4-2121-4eff-bf6b-ed3f69b894d9}
+;y Customize system icons in the notification area 🡕
+;shell:::{05d7b0f4-2121-4eff-bf6b-ed3f69b894d9}\SystemIcons
 ;t The following settings only apply to the Windows 10 taskbar:                          
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
 ;c 3 Combine taskbar icons on main taskbar
@@ -46,14 +50,8 @@
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
 ;b Show separators between toolbars *
 "ToolbarSeparators"=dword:00000000
-;t 
-;t 
 
 ;T System tray
-;y Customize notification area icons 🡕
-;shell:::{05d7b0f4-2121-4eff-bf6b-ed3f69b894d9}
-;y Customize system icons in the notification area 🡕
-;shell:::{05d7b0f4-2121-4eff-bf6b-ed3f69b894d9}\SystemIcons
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
 ;b Show seconds in the clock
 "ShowSecondsInSystemClock"=dword:00000000
@@ -72,24 +70,6 @@
 [HKEY_CURRENT_USER\Software\Microsoft\TabletTip\1.7]
 ;b Show touch keyboard button *
 "TipbandDesiredVisibility"=dword:00000000
-[HKEY_CURRENT_USER\Software\Microsoft\Windows NT\CurrentVersion\MTCUVC]
-;i Use legacy volume flyout
-"EnableMtcUvc"=dword:00000001
-[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\ImmersiveShell]
-;c 3 Clock flyout style
-;x 2 Windows 11
-;x 0 Windows 10 (default)
-;x 1 Windows 7
-"UseWin32TrayClockExperience"=dword:00000000
-[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
-;c 6 Language switcher flyout style *
-;x 0 Windows 11 (default)
-;x 1 Windows 10
-;x 2 "LOGONUI"
-;x 3 "UAC"
-;x 4 "SETTINGSPANE"
-;x 5 "OOBE"
-"IMEStyle"=dword:00000000
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
 ;a Choosing 'Open Network && Internet settings' when right clicking the
 ;c 3 network icon should open:
@@ -97,14 +77,41 @@
 ;x 1 Network and Sharing Center in Control Panel
 ;x 2 Network Connections in Control Panel
 "ReplaceNetwork"=dword:00000000
+;t When clicking a system icon in the tray, open:
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Control Panel\Settings\Network]
-;c 5 Network icon should open
-;x 0 WiFi list (default)
+;c 6 Network
+;x 5 Windows 11 WiFi flyout
+;x 0 Windows 10 flyout (default)
+;x 2 Windows 8 flyout
 ;x 1 Network section in the Settings app
-;x 2 Windows 8 network flyout
 ;x 3 Network and Sharing Center in Control Panel
 ;x 4 Network Connections in Control Panel
 "ReplaceVan"=dword:00000000
+[HKEY_CURRENT_USER\Software\Microsoft\Windows NT\CurrentVersion\MTCUVC]
+;c 2 Sound
+;x 1 Windows 10 flyout (default)
+;x 0 Windows 7 flyout
+"EnableMtcUvc"=dword:00000001
+[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\ImmersiveShell]
+;c 3 Clock
+;x 2 Windows 11 flyout
+;x 0 Windows 10 flyout (default)
+;x 1 Windows 7
+"UseWin32TrayClockExperience"=dword:00000000
+[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\ImmersiveShell]
+;c 2 Battery
+;x 0 Windows 10 flyout (default)
+;x 1 Windows 7
+"UseWin32BatteryFlyout"=dword:00000000
+[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
+;c 6 Language switcher *
+;x 0 Windows 11 (default)
+;x 1 Windows 10
+;x 2 "LOGONUI"
+;x 3 "UAC"
+;x 4 "SETTINGSPANE"
+;x 5 "OOBE"
+"IMEStyle"=dword:00000000
 
 ;T File Explorer
 [-HKEY_CURRENT_USER\Software\Classes\CLSID\{d93ed569-3b3e-4bff-8355-3c44f6a52bb5}\InprocServer32]

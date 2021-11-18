@@ -122,6 +122,7 @@ DWORD S_Icon_Dark_Widgets = 0;
 #endif
 #include "SettingsMonitor.h"
 #include "HideExplorerSearchBar.h"
+#include "ImmersiveFlyouts.h"
 #include "updates.h"
 DWORD dwUpdatePolicy = UPDATE_POLICY_DEFAULT;
 
@@ -461,9 +462,60 @@ POINT GetDefaultWinXPosition(BOOL bUseRcWork, BOOL* lpBottom, BOOL* lpRight, BOO
     return point;
 }
 
+void TerminateShellExperienceHost()
+{
+    WCHAR wszKnownPath[MAX_PATH];
+    GetWindowsDirectoryW(wszKnownPath, MAX_PATH);
+    wcscat_s(wszKnownPath, MAX_PATH, L"\\SystemApps\\ShellExperienceHost_cw5n1h2txyewy\\ShellExperienceHost.exe");
+    HANDLE hSnapshot = NULL;
+    PROCESSENTRY32 pe32;
+    ZeroMemory(&pe32, sizeof(PROCESSENTRY32));
+    pe32.dwSize = sizeof(PROCESSENTRY32);
+    hSnapshot = CreateToolhelp32Snapshot(
+        TH32CS_SNAPPROCESS,
+        0
+    );
+    if (Process32First(hSnapshot, &pe32) == TRUE)
+    {
+        do
+        {
+            if (!wcscmp(pe32.szExeFile, TEXT("ShellExperienceHost.exe")))
+            {
+                HANDLE hProcess = OpenProcess(
+                    PROCESS_QUERY_LIMITED_INFORMATION |
+                    PROCESS_TERMINATE,
+                    FALSE,
+                    pe32.th32ProcessID
+                );
+                if (hProcess)
+                {
+                    TCHAR wszProcessPath[MAX_PATH];
+                    DWORD dwLength = MAX_PATH;
+                    QueryFullProcessImageNameW(
+                        hProcess,
+                        0,
+                        wszProcessPath,
+                        &dwLength
+                    );
+                    if (!_wcsicmp(wszProcessPath, wszKnownPath))
+                    {
+                        TerminateProcess(hProcess, 0);
+                    }
+                    CloseHandle(hProcess);
+                    hProcess = NULL;
+                }
+            }
+        } while (Process32Next(hSnapshot, &pe32) == TRUE);
+        if (hSnapshot)
+        {
+            CloseHandle(hSnapshot);
+        }
+    }
+}
+
 long long elapsedCheckForeground = 0;
 HANDLE hCheckForegroundThread = NULL;
-DWORD CheckForegroundThread(wchar_t* wszClassName)
+DWORD CheckForegroundThread(DWORD dwMode)
 {
     printf("Started \"Check foreground window\" thread.\n");
     UINT i = 0;
@@ -471,7 +523,7 @@ DWORD CheckForegroundThread(wchar_t* wszClassName)
     {
         wchar_t text[200];
         GetClassNameW(GetForegroundWindow(), text, 200);
-        if (!wcscmp(text, wszClassName))
+        if (!wcscmp(text, L"Windows.UI.Core.CoreWindow"))
         {
             break;
         }
@@ -483,13 +535,18 @@ DWORD CheckForegroundThread(wchar_t* wszClassName)
     {
         wchar_t text[200];
         GetClassNameW(GetForegroundWindow(), text, 200);
-        if (wcscmp(text, wszClassName))
+        if (wcscmp(text, L"Windows.UI.Core.CoreWindow"))
         {
             break;
         }
         Sleep(100);
     }
     elapsedCheckForeground = milliseconds_now();
+    if (!dwMode)
+    {
+        RegDeleteKeyW(HKEY_CURRENT_USER, _T(SEH_REGPATH));
+        TerminateShellExperienceHost();
+    }
     printf("Ended \"Check foreground window\" thread.\n");
     return 0;
 }
@@ -498,6 +555,10 @@ void LaunchNetworkTargets(DWORD dwTarget)
 {
     // very helpful: https://www.tenforums.com/tutorials/3123-clsid-key-guid-shortcuts-list-windows-10-a.html
     if (!dwTarget)
+    {
+        InvokeFlyout(INVOKE_FLYOUT_SHOW, INVOKE_FLYOUT_NETWORK);
+    }
+    else if (dwTarget == 5)
     {
         ShellExecuteW(
             NULL,
@@ -1287,7 +1348,9 @@ INT64 Shell_TrayWndSubclassProc(
     }
     else if (uMsg == WM_HOTKEY && wParam == 500 && lParam == MAKELPARAM(MOD_WIN, 0x41))
     {
-        if (lpShouldDisplayCCButton)
+        InvokeActionCenter();
+        return 0;
+        /*if (lpShouldDisplayCCButton)
         {
             *lpShouldDisplayCCButton = 1;
         }
@@ -1296,7 +1359,7 @@ INT64 Shell_TrayWndSubclassProc(
         {
             *lpShouldDisplayCCButton = bHideControlCenterButton;
         }
-        return lRes;
+        return lRes;*/
     }
     else if (uMsg == WM_DISPLAYCHANGE)
     {
@@ -2121,6 +2184,62 @@ BOOL sndvolsso_TrackPopupMenuExHook(
     }
     return b;
 }
+long long stobject_TrackPopupMenuExElapsed = 0;
+BOOL stobject_TrackPopupMenuExHook(
+    HMENU       hMenu,
+    UINT        uFlags,
+    int         x,
+    int         y,
+    HWND        hWnd,
+    LPTPMPARAMS lptpm
+)
+{
+    long long elapsed = milliseconds_now() - stobject_TrackPopupMenuExElapsed;
+    BOOL b = FALSE;
+    if (elapsed > POPUPMENU_SAFETOREMOVE_TIMEOUT || !bFlyoutMenus)
+    {
+        if (bCenterMenus)
+        {
+            PopupMenuAdjustCoordinatesAndFlags(&x, &y, &uFlags);
+        }
+        INT64* unknown_array = NULL;
+        POINT pt;
+        if (bSkinMenus)
+        {
+            unknown_array = calloc(4, sizeof(INT64));
+            pt.x = x;
+            pt.y = y;
+            ImmersiveContextMenuHelper_ApplyOwnerDrawToMenuFunc(
+                hMenu,
+                hWnd,
+                &(pt),
+                0xc,
+                unknown_array
+            );
+            SetWindowSubclass(hWnd, OwnerDrawSubclassProc, OwnerDrawSubclassProc, 0);
+        }
+        b = TrackPopupMenuEx(
+            hMenu,
+            uFlags | TPM_RIGHTBUTTON,
+            x,
+            y,
+            hWnd,
+            lptpm
+        );
+        stobject_TrackPopupMenuExElapsed = milliseconds_now();
+        if (bSkinMenus)
+        {
+            RemoveWindowSubclass(hWnd, OwnerDrawSubclassProc, OwnerDrawSubclassProc);
+            ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc(
+                hMenu,
+                hWnd,
+                &(pt)
+            );
+            free(unknown_array);
+        }
+    }
+    return b;
+}
 long long stobject_TrackPopupMenuElapsed = 0;
 BOOL stobject_TrackPopupMenuHook(
     HMENU       hMenu,
@@ -2326,18 +2445,104 @@ HWND WINAPI explorerframe_SHCreateWorkerWindowHook(
 #pragma endregion
 
 
+#pragma region "Fix battery flyout"
+#ifdef _WIN64
+LSTATUS stobject_RegGetValueW(
+    HKEY    hkey,
+    LPCWSTR lpSubKey,
+    LPCWSTR lpValue,
+    DWORD   dwFlags,
+    LPDWORD pdwType,
+    PVOID   pvData,
+    LPDWORD pcbData
+)
+{
+    if (!lstrcmpW(lpValue, L"UseWin32BatteryFlyout"))
+    {
+        if (SHRegGetValueFromHKCUHKLMFunc)
+        {
+            return SHRegGetValueFromHKCUHKLMFunc(
+                lpSubKey,
+                lpValue,
+                SRRF_RT_REG_DWORD,
+                pdwType,
+                pvData,
+                pcbData
+            );
+        }
+    }
+    return RegGetValueW(hkey, lpSubKey, lpValue, dwFlags, pdwType, pvData, pcbData);
+}
+
+HRESULT stobject_CoCreateInstanceHook(
+    REFCLSID  rclsid,
+    LPUNKNOWN pUnkOuter,
+    DWORD     dwClsContext,
+    REFIID    riid,
+    LPVOID* ppv
+)
+{
+    DWORD dwVal = 0, dwSize = sizeof(DWORD);
+    if (IsEqualGUID(rclsid, &CLSID_ImmersiveShell) &&
+        IsEqualGUID(riid, &IID_IServiceProvider) &&
+        SHRegGetValueFromHKCUHKLMFunc && SHRegGetValueFromHKCUHKLMFunc(
+            TEXT("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\ImmersiveShell"),
+            TEXT("UseWin32BatteryFlyout"),
+            SRRF_RT_REG_DWORD,
+            NULL,
+            &dwVal,
+            (LPDWORD)(&dwSize)
+        ) == ERROR_SUCCESS)
+    {
+        if (!dwVal)
+        {
+            if (hCheckForegroundThread)
+            {
+                WaitForSingleObject(hCheckForegroundThread, INFINITE);
+                CloseHandle(hCheckForegroundThread);
+                hCheckForegroundThread = NULL;
+            }
+            HKEY hKey = NULL;
+            if (RegCreateKeyExW(
+                HKEY_CURRENT_USER,
+                _T(SEH_REGPATH),
+                0,
+                NULL,
+                REG_OPTION_VOLATILE,
+                KEY_READ,
+                NULL,
+                &hKey,
+                NULL
+            ) == ERROR_SUCCESS)
+            {
+                RegCloseKey(hKey);
+            }
+            TerminateShellExperienceHost();
+            hCheckForegroundThread = CreateThread(
+                0,
+                0,
+                CheckForegroundThread,
+                dwVal,
+                0,
+                0
+            );
+        }
+    }
+    return CoCreateInstance(
+        rclsid,
+        pUnkOuter,
+        dwClsContext,
+        riid,
+        ppv
+    );
+}
+#endif
+#pragma endregion
+
+
+
 #pragma region "Show WiFi networks on network icon click"
 #ifdef _WIN64
-DEFINE_GUID(GUID_c2f03a33_21f5_47fa_b4bb_156362a2f239,
-    0xc2f03a33,
-    0x21f5, 0x47fa, 0xb4, 0xbb,
-    0x15, 0x63, 0x62, 0xa2, 0xf2, 0x39
-);
-DEFINE_GUID(GUID_6d5140c1_7436_11ce_8034_00aa006009fa,
-    0x6d5140c1,
-    0x7436, 0x11ce, 0x80, 0x34,
-    0x00, 0xaa, 0x00, 0x60, 0x09, 0xfa
-);
 HRESULT pnidui_CoCreateInstanceHook(
     REFCLSID  rclsid,
     LPUNKNOWN pUnkOuter,
@@ -2347,8 +2552,8 @@ HRESULT pnidui_CoCreateInstanceHook(
 )
 {
     DWORD dwVal = 0, dwSize = sizeof(DWORD);
-    if (IsEqualGUID(rclsid, &GUID_c2f03a33_21f5_47fa_b4bb_156362a2f239) && 
-        IsEqualGUID(riid, &GUID_6d5140c1_7436_11ce_8034_00aa006009fa) &&
+    if (IsEqualGUID(rclsid, &CLSID_ImmersiveShell) && 
+        IsEqualGUID(riid, &IID_IServiceProvider) &&
         SHRegGetValueFromHKCUHKLMFunc && SHRegGetValueFromHKCUHKLMFunc(
             TEXT("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Control Panel\\Settings\\Network"),
             TEXT("ReplaceVan"),
@@ -2358,30 +2563,68 @@ HRESULT pnidui_CoCreateInstanceHook(
             (LPDWORD)(&dwSize)
         ) == ERROR_SUCCESS)
     {
-        if (dwVal != 0)
+        if (dwVal)
         {
-            LaunchNetworkTargets(dwVal);
+            if (dwVal == 5)
+            {
+                if (hCheckForegroundThread)
+                {
+                    WaitForSingleObject(hCheckForegroundThread, INFINITE);
+                    CloseHandle(hCheckForegroundThread);
+                    hCheckForegroundThread = NULL;
+                }
+                if (milliseconds_now() - elapsedCheckForeground > CHECKFOREGROUNDELAPSED_TIMEOUT)
+                {
+                    LaunchNetworkTargets(dwVal);
+                    hCheckForegroundThread = CreateThread(
+                        0,
+                        0,
+                        CheckForegroundThread,
+                        dwVal,
+                        0,
+                        0
+                    );
+                }
+            }
+            else
+            {
+                LaunchNetworkTargets(dwVal);
+            }
             return E_NOINTERFACE;
         }
-        if (hCheckForegroundThread)
+        else
         {
-            WaitForSingleObject(hCheckForegroundThread, INFINITE);
-            CloseHandle(hCheckForegroundThread);
-            hCheckForegroundThread = NULL;
-        }
-        if (milliseconds_now() - elapsedCheckForeground > CHECKFOREGROUNDELAPSED_TIMEOUT)
-        {
-            LaunchNetworkTargets(dwVal);
+            if (hCheckForegroundThread)
+            {
+                WaitForSingleObject(hCheckForegroundThread, INFINITE);
+                CloseHandle(hCheckForegroundThread);
+                hCheckForegroundThread = NULL;
+            }
+            HKEY hKey = NULL;
+            if (RegCreateKeyExW(
+                HKEY_CURRENT_USER,
+                _T(SEH_REGPATH),
+                0,
+                NULL,
+                REG_OPTION_NON_VOLATILE,
+                KEY_READ,
+                NULL,
+                &hKey,
+                NULL
+            ) == ERROR_SUCCESS)
+            {
+                RegCloseKey(hKey);
+            }
+            TerminateShellExperienceHost();
             hCheckForegroundThread = CreateThread(
-                0, 
-                0, 
+                0,
+                0,
                 CheckForegroundThread,
-                L"Windows.UI.Core.CoreWindow",
-                0, 
+                dwVal,
+                0,
                 0
             );
         }
-        return E_NOINTERFACE;
     }
     return CoCreateInstance(
         rclsid,
@@ -2471,7 +2714,7 @@ INT64 winrt_Windows_Internal_Shell_implementation_MeetAndChatManager_OnMessageHo
             hWnd = FindWindowExW(hWnd, NULL, L"ClockButton", NULL);
             if (hWnd)
             {
-                if (ShouldShowLegacyClockExperience())
+                if (ShouldShowLegacyClockExperience() == 1)
                 {
                     if (!FindWindowW(L"ClockFlyoutWindow", NULL))
                     {
@@ -2481,6 +2724,11 @@ INT64 winrt_Windows_Internal_Shell_implementation_MeetAndChatManager_OnMessageHo
                     {
                         return PostMessageW(FindWindowW(L"ClockFlyoutWindow", NULL), WM_CLOSE, 0, 0);
                     }
+                }
+                else if (ShouldShowLegacyClockExperience() == 2)
+                {
+                    ToggleNotificationsFlyout();
+                    return 0;
                 }
                 INT64* CTrayInstance = (BYTE*)(GetWindowLongPtrW(hShellTray_Wnd, 0)); // -> CTray
                 void* ClockButtonInstance = (BYTE*)(GetWindowLongPtrW(hWnd, 0)); // -> ClockButton
@@ -5135,7 +5383,10 @@ DWORD Inject(BOOL bIsExplorer)
 
 
     HANDLE hStobject = LoadLibraryW(L"stobject.dll");
+    VnPatchIAT(hStobject, "api-ms-win-core-registry-l1-1-0.dll", "RegGetValueW", stobject_RegGetValueW);
+    VnPatchIAT(hStobject, "api-ms-win-core-com-l1-1-0.dll", "CoCreateInstance", stobject_CoCreateInstanceHook);
     VnPatchDelayIAT(hStobject, "user32.dll", "TrackPopupMenu", stobject_TrackPopupMenuHook);
+    VnPatchDelayIAT(hStobject, "user32.dll", "TrackPopupMenuEx", stobject_TrackPopupMenuExHook);
 #ifdef USE_PRIVATE_INTERFACES
     if (bSkinIcons)
     {
@@ -6035,6 +6286,110 @@ void InjectStartMenu()
 #endif
 }
 
+void InjectShellExperienceHost()
+{
+#ifdef _WIN64
+    HKEY hKey;
+    if (RegOpenKeyW(HKEY_CURRENT_USER, _T(SEH_REGPATH), &hKey))
+    {
+        return;
+    }
+    HMODULE hQA = LoadLibraryW(L"Windows.UI.QuickActions.dll");
+    if (hQA)
+    {
+        PIMAGE_DOS_HEADER dosHeader = hQA;
+        if (dosHeader->e_magic == IMAGE_DOS_SIGNATURE)
+        {
+            PIMAGE_NT_HEADERS64 ntHeader = (PIMAGE_NT_HEADERS64)((u_char*)dosHeader + dosHeader->e_lfanew);
+            if (ntHeader->Signature == IMAGE_NT_SIGNATURE)
+            {
+                char* pSEHPatchArea = NULL;
+                char seh_pattern1[14] =
+                {
+                    // mov al, 1
+                    0xB0, 0x01,
+                    // jmp + 2
+                    0xEB, 0x02,
+                    // xor al, al
+                    0x32, 0xC0,
+                    // add rsp, 0x20
+                    0x48, 0x83, 0xC4, 0x20,
+                    // pop rdi
+                    0x5F,
+                    // pop rsi
+                    0x5E,
+                    // pop rbx
+                    0x5B,
+                    // ret
+                    0xC3
+                };
+                char seh_off = 12;
+                char seh_pattern2[5] =
+                {
+                    // mov r8b, 3
+                    0x41, 0xB0, 0x03,
+                    // mov dl, 1
+                    0xB2, 0x01
+                };
+                BOOL bTwice = FALSE;
+                PIMAGE_SECTION_HEADER section = IMAGE_FIRST_SECTION(ntHeader);
+                for (unsigned int i = 0; i < ntHeader->FileHeader.NumberOfSections; ++i)
+                {
+                    if (section->Characteristics & IMAGE_SCN_CNT_CODE)
+                    {
+                        if (section->SizeOfRawData && !bTwice)
+                        {
+                            DWORD dwOldProtect;
+                            VirtualProtect(hQA + section->VirtualAddress, section->SizeOfRawData, PAGE_EXECUTE_READWRITE, &dwOldProtect);
+                            char* pCandidate = NULL;
+                            while (TRUE)
+                            {
+                                pCandidate = memmem(
+                                    !pCandidate ? hQA + section->VirtualAddress : pCandidate,
+                                    !pCandidate ? section->SizeOfRawData : (uintptr_t)section->SizeOfRawData - (uintptr_t)(pCandidate - (hQA + section->VirtualAddress)),
+                                    seh_pattern1,
+                                    sizeof(seh_pattern1)
+                                );
+                                if (!pCandidate)
+                                {
+                                    break;
+                                }
+                                char* pCandidate2 = pCandidate - seh_off - sizeof(seh_pattern2);
+                                if (pCandidate2 > section->VirtualAddress)
+                                {
+                                    if (memmem(pCandidate2, sizeof(seh_pattern2), seh_pattern2, sizeof(seh_pattern2)))
+                                    {
+                                        if (!pSEHPatchArea)
+                                        {
+                                            pSEHPatchArea = pCandidate;
+                                        }
+                                        else
+                                        {
+                                            bTwice = TRUE;
+                                        }
+                                    }
+                                }
+                                pCandidate += sizeof(seh_pattern1);
+                            }
+                            VirtualProtect(hQA + section->VirtualAddress, section->SizeOfRawData, dwOldProtect, &dwOldProtect);
+                        }
+                    }
+                    section++;
+                }
+                if (pSEHPatchArea && !bTwice)
+                {
+                    DWORD dwOldProtect;
+                    VirtualProtect(pSEHPatchArea, sizeof(seh_pattern1), PAGE_EXECUTE_READWRITE, &dwOldProtect);
+                    pSEHPatchArea[2] = 0x90;
+                    pSEHPatchArea[3] = 0x90;
+                    VirtualProtect(pSEHPatchArea, sizeof(seh_pattern1), dwOldProtect, &dwOldProtect);
+                }
+            }
+        }
+    }
+#endif
+}
+
 #define DLL_INJECTION_METHOD_DXGI 0
 #define DLL_INJECTION_METHOD_COM 1
 #define DLL_INJECTION_METHOD_START_INJECTION 2
@@ -6082,9 +6437,14 @@ HRESULT EntryPoint(DWORD dwMethod)
     wcscat_s(wszStartExpectedPath, MAX_PATH, L"\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\StartMenuExperienceHost.exe");
     BOOL bIsThisStartMEH = !_wcsicmp(exePath, wszStartExpectedPath);
 
+    TCHAR wszShellExpectedPath[MAX_PATH];
+    GetWindowsDirectoryW(wszShellExpectedPath, MAX_PATH);
+    wcscat_s(wszShellExpectedPath, MAX_PATH, L"\\SystemApps\\ShellExperienceHost_cw5n1h2txyewy\\ShellExperienceHost.exe");
+    BOOL bIsThisShellEH = !_wcsicmp(exePath, wszShellExpectedPath);
+
     if (dwMethod == DLL_INJECTION_METHOD_DXGI)
     {
-        if (!(bIsThisExplorer || bIsThisStartMEH))
+        if (!(bIsThisExplorer || bIsThisStartMEH || bIsThisShellEH))
         {
             return E_NOINTERFACE;
         }
@@ -6095,7 +6455,7 @@ HRESULT EntryPoint(DWORD dwMethod)
         SetupDXGIImportFunctions(LoadLibraryW(wszRealDXGIPath));
 #endif
     }
-    if (dwMethod == DLL_INJECTION_METHOD_COM && (bIsThisExplorer || bIsThisStartMEH))
+    if (dwMethod == DLL_INJECTION_METHOD_COM && (bIsThisExplorer || bIsThisStartMEH || bIsThisShellEH))
     {
         return E_NOINTERFACE;
     }
@@ -6117,6 +6477,12 @@ HRESULT EntryPoint(DWORD dwMethod)
         IncrementDLLReferenceCount(hModule);
         bInstanced = TRUE;
     }
+    else if (bIsThisShellEH)
+    {
+        InjectShellExperienceHost();
+        IncrementDLLReferenceCount(hModule);
+        bInstanced = TRUE;
+    }
     else if (dwMethod == DLL_INJECTION_METHOD_COM)
     {
         Inject(FALSE);
@@ -6128,7 +6494,7 @@ HRESULT EntryPoint(DWORD dwMethod)
 }
 
 #ifdef _WIN64
-// for explorer.exe
+// for explorer.exe and ShellExperienceHost.exe
 __declspec(dllexport) HRESULT DXGIDeclareAdapterRemovalSupport()
 {
     EntryPoint(DLL_INJECTION_METHOD_DXGI);
