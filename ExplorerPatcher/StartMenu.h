@@ -10,18 +10,13 @@
 #pragma comment(lib, "Psapi.lib")
 #include <roapi.h>
 #include <winstring.h>
+#include "utility.h"
 
 #pragma comment(lib, "ntdll.lib")
 EXTERN_C NTSYSAPI PIMAGE_NT_HEADERS NTAPI RtlImageNtHeader(PVOID);
 
 extern DWORD bMonitorOverride;
 extern DWORD bOpenAtLogon;
-
-DEFINE_GUID(CLSID_ImmersiveShell,
-    0xc2f03a33,
-    0x21f5, 0x47fa, 0xb4, 0xbb,
-    0x15, 0x63, 0x62, 0xa2, 0xf2, 0x39
-);
 
 DEFINE_GUID(SID_IImmersiveMonitorService,
     0x47094e3a,

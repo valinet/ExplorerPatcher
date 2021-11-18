@@ -30,6 +30,7 @@
 #define SETUP_UTILITY_NAME "ep_setup.exe"
 #define DEFAULT_UPDATE_URL "https://github.com/valinet/ExplorerPatcher/releases/latest/download/"
 #define TOAST_BUFSIZ 1024
+#define SEH_REGPATH "Control Panel\\Quick Actions\\Control Center\\QuickActionsStateCapture\\ExplorerPatcher"
 
 #define WM_MSG_GUI_SECTION WM_USER + 1
 #define WM_MSG_GUI_SECTION_GET 1
@@ -71,6 +72,12 @@
 #ifndef DWMWA_MICA_EFFFECT
 #define DWMWA_MICA_EFFFECT 1029
 #endif
+
+DEFINE_GUID(CLSID_ImmersiveShell,
+    0xc2f03a33,
+    0x21f5, 0x47fa, 0xb4, 0xbb,
+    0x15, 0x63, 0x62, 0xa2, 0xf2, 0x39
+);
 
 #pragma region "Weird stuff"
 INT64 STDMETHODCALLTYPE nimpl4_1(INT64 a1, DWORD* a2);
