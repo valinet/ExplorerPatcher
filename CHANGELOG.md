@@ -11,6 +11,11 @@ Tested on build 22000.318 and 22000.346 (currently in Windows Insider beta and r
 * Functional Windows 10 network flyout
 * Functional Windows 10 battery flyout
 * Implemented support for Windows 7 battery flyout (#274)
+* Implemented `/extract` switch which unpacks the files from `ep_setup.exe` to disk (#396):
+  * `ep_setup /extract` - extracts `ExplorerPatcher.IA-32.dll` and `ExplorerPatcher.amd64.dll` to current directory
+  * `ep-setup /extract test` - extracts to `test` folder in current directory
+  * `ep-setup /extract "C:\test with space"` - extracts to `C:\test with space` directory
+
 
 #### Feature enhancements
 

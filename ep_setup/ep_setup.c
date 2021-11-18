@@ -295,6 +295,49 @@ int WINAPI wWinMain(
 
     SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
 
+    int argc = 0;
+    LPWSTR* wargv = CommandLineToArgvW(
+        lpCmdLine,
+        &argc
+    );
+
+    bIsUpdate = (argc >= 1 && !_wcsicmp(wargv[0], L"/update_silent"));
+
+    WCHAR wszPath[MAX_PATH];
+    ZeroMemory(wszPath, MAX_PATH * sizeof(WCHAR));
+
+    if (argc >= 1 && !_wcsicmp(wargv[0], L"/extract"))
+    {
+        if (argc >= 2)
+        {
+            wcsncpy_s(wszPath, MAX_PATH, wargv[1], MAX_PATH);
+            CreateDirectoryW(wargv[1], NULL);
+        }
+        else
+        {
+            GetCurrentDirectoryW(MAX_PATH, wszPath);
+        }
+        if (bOk)
+        {
+            wcscat_s(wszPath, MAX_PATH, L"\\" _T(PRODUCT_NAME) L".IA-32.dll");
+            bOk = InstallResource(TRUE, hInstance, IDR_EP_IA32, wszPath);
+        }
+        if (argc >= 2)
+        {
+            wcsncpy_s(wszPath, MAX_PATH, wargv[1], MAX_PATH);
+        }
+        else
+        {
+            GetCurrentDirectoryW(MAX_PATH, wszPath);
+        }
+        if (bOk)
+        {
+            wcscat_s(wszPath, MAX_PATH, L"\\" _T(PRODUCT_NAME) L".amd64.dll");
+            bOk = InstallResource(TRUE, hInstance, IDR_EP_AMD64, wszPath);
+        }
+        return 0;
+    }
+
     if (!IsAppRunningAsAdminMode())
     {
         WCHAR wszPath[MAX_PATH];
@@ -320,16 +363,6 @@ int WINAPI wWinMain(
         }
     }
 
-    int argc = 0;
-    LPWSTR* wargv = CommandLineToArgvW(
-        lpCmdLine,
-        &argc
-    );
-
-    bIsUpdate = (argc >= 1 && !_wcsicmp(wargv[0], L"/update_silent"));
-
-    WCHAR wszPath[MAX_PATH];
-    ZeroMemory(wszPath, MAX_PATH * sizeof(WCHAR));
     if (bOk)
     {
         bOk = GetWindowsDirectoryW(wszPath, MAX_PATH);
