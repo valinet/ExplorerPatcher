@@ -37,10 +37,10 @@
 "TaskbarDa"=dword:00000000
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Search]
 ;b Show Search button
-"SearchboxTaskbarMode"=dword:00000000
+"SearchboxTaskbarMode"=dword:00000001
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
 ;b Show Task view button
-"ShowTaskViewButton"=dword:00000000
+"ShowTaskViewButton"=dword:00000001
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\People]
 ;b Show People on the taskbar *
 "TaskbarMn"=dword:00000000

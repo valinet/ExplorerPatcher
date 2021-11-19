@@ -684,7 +684,7 @@ DWORD GetStartMenuPosition(FARPROC SHRegGetValueFromHKCUHKLMFunc)
 {
     DWORD dwSize = sizeof(DWORD);
 
-    DWORD dwTaskbarAl = 0;
+    DWORD dwTaskbarAl = 1;
     if (!SHRegGetValueFromHKCUHKLMFunc || SHRegGetValueFromHKCUHKLMFunc(
         TEXT("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced"),
         TEXT("TaskbarAl"),
@@ -694,7 +694,7 @@ DWORD GetStartMenuPosition(FARPROC SHRegGetValueFromHKCUHKLMFunc)
         (LPDWORD)(&dwSize)
     ) != ERROR_SUCCESS)
     {
-        dwTaskbarAl = 0;
+        dwTaskbarAl = 1;
     }
 
     return dwTaskbarAl;
