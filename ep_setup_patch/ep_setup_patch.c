@@ -57,7 +57,7 @@ int WINAPI wWinMain(
         ShExecInfo.hwnd = NULL;
         ShExecInfo.lpVerb = L"runas";
         ShExecInfo.lpFile = wszPath;
-        ShExecInfo.lpParameters = L"/update_silent";
+        ShExecInfo.lpParameters = NULL;
         ShExecInfo.lpDirectory = NULL;
         ShExecInfo.nShow = SW_SHOW;
         ShExecInfo.hInstApp = NULL;

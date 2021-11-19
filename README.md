@@ -42,13 +42,13 @@ Items marked with "bug" that are still "Open" represent known issues. Active wor
 
 ## Uninstalling
 
-* Run `ep_setup.exe` again.
-* Via "Programs and Features" in Control Panel, or "Apps and features" in the Settings app.
+* Use "Programs and Features" in Control Panel, or "Apps and features" in the Settings app.
+* Run `ep_setup.exe /uninstall`.
 
 ## Updating
 
 * The program features built-in updates: go to "Properties" - "Updates" to configure, check for and install the latest updates.
-* Download latest setup file and run `ep_setup.exe /update_silent`
+* Download the latest version's setup file and simply run it
 
 ## More information
 

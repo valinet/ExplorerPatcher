@@ -17,6 +17,7 @@ Tested on build 22000.318 and 22000.346 (currently in Windows Insider beta and r
   * `ep-setup /extract "C:\test with space"` - extracts to `C:\test with space` directory
 * Taskbar toolbar layouts are preserved when switching between Windows 10 and Windows 11 taskbars and in general (these will be reset when installing this update but should be subsequently remembered) (#395) (.2)
 * Implemented option to toggle taskbar auto-hide when double clicking the main taskbar (#389) (.3)
+* Running `ep-setup.exe` again while EP is already installed will now update the program to the latest version. To uninstall, as the previous behavior did, run `ep_setup.exe /uninstall` (.4)
 
 
 #### Feature enhancements
