@@ -16,6 +16,7 @@ Tested on build 22000.318 and 22000.346 (currently in Windows Insider beta and r
   * `ep-setup /extract test` - extracts to `test` folder in current directory
   * `ep-setup /extract "C:\test with space"` - extracts to `C:\test with space` directory
 * Taskbar toolbar layouts are preserved when switching between Windows 10 and Windows 11 taskbars and in general (these will be reset when installing this update but should be subsequently remembered) (#395) (.2)
+* Implemented option to toggle taskbar auto-hide when double clicking the main taskbar (#389) (.3)
 
 
 #### Feature enhancements
@@ -26,6 +27,7 @@ Tested on build 22000.318 and 22000.346 (currently in Windows Insider beta and r
 #### Fixes
 
 * Windows 10 network and battery flyout should now always launch when the tray icon is clicked (#410) (.1)
+* Fixed mismatches between defaults from EP and Windows' defaults (.3)
 
 ## 22000.318.37
 

@@ -71,6 +71,7 @@ DWORD dwIMEStyle = 0;
 DWORD dwTaskbarAl = 1;
 DWORD bShowUpdateToast = FALSE;
 DWORD bToolbarSeparators = FALSE;
+DWORD bTaskbarAutohideOnDoubleClick = FALSE;
 HMODULE hModule = NULL;
 HANDLE hDelayedInjectionThread = NULL;
 HANDLE hIsWinXShown = NULL;
@@ -1349,6 +1350,21 @@ INT64 Shell_TrayWndSubclassProc(
     if (uMsg == WM_NCDESTROY)
     {
         RemoveWindowSubclass(hWnd, Shell_TrayWndSubclassProc, Shell_TrayWndSubclassProc);
+    }
+    else if (uMsg == WM_LBUTTONDBLCLK && bTaskbarAutohideOnDoubleClick)
+    {
+        APPBARDATA abd;
+        abd.cbSize = sizeof(APPBARDATA);
+        if (SHAppBarMessage(ABM_GETSTATE, &abd) == ABS_AUTOHIDE)
+        {
+            abd.lParam = 0;
+            SHAppBarMessage(ABM_SETSTATE, &abd);
+        }
+        else
+        {
+            abd.lParam = ABS_AUTOHIDE;
+            SHAppBarMessage(ABM_SETSTATE, &abd);
+        }
     }
     else if (uMsg == WM_HOTKEY && wParam == 500 && lParam == MAKELPARAM(MOD_WIN, 0x41))
     {
@@ -3680,6 +3696,15 @@ void WINAPI LoadSettings(BOOL bIsExplorer)
             0,
             NULL,
             &bToolbarSeparators,
+            &dwSize
+        );
+        dwSize = sizeof(DWORD);
+        RegQueryValueExW(
+            hKey,
+            TEXT("TaskbarAutohideOnDoubleClick"),
+            0,
+            NULL,
+            &bTaskbarAutohideOnDoubleClick,
             &dwSize
         );
         dwSize = sizeof(DWORD);

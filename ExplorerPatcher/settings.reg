@@ -1,6 +1,8 @@
 ﻿Windows Registry Editor Version 5.00
 
+
 ;M Settings
+
 
 ;T Taskbar
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
@@ -50,6 +52,7 @@
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
 ;b Show separators between toolbars *
 "ToolbarSeparators"=dword:00000000
+
 
 ;T System tray
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
@@ -113,6 +116,7 @@
 ;x 5 "OOBE"
 "IMEStyle"=dword:00000000
 
+
 ;T File Explorer
 [-HKEY_CURRENT_USER\Software\Classes\CLSID\{d93ed569-3b3e-4bff-8355-3c44f6a52bb5}\InprocServer32]
 ;d Disable the Windows 11 command bar *
@@ -138,12 +142,12 @@
 [-HKEY_LOCAL_MACHINE\Software\Classes\CLSID\{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}\InprocServer32]
 ;d Register as shell extension
 @="{64bc32b5-4eec-4de7-972d-bd8bd0324537}"
-
 ;t ________________________
 ;e For the settings marked with (**) to work in Open/Save file dialogs as well, register
 ;e this utility as shell extension using the option above.
 ;y Learn more 🡕
 ;https://github.com/valinet/ExplorerPatcher/wiki/Using-ExplorerPatcher-as-shell-extension
+
 
 ;T Start menu
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\StartPage]
@@ -300,6 +304,8 @@
 "LastSectionInProperties"=dword:00000000
 ;b Open clock flyout when pressing Win+C instead of Microsoft Teams
 "ClockFlyoutOnWinC"=dword:00000000
+;b Toggle Windows 10 taskbar auto-hide by double clicking on the main taskbar
+"TaskbarAutohideOnDoubleClick"=dword:00000000
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
 ;b Show Command Prompt instead of PowerShell in Win+X menu *
 "DontUsePowerShellOnWinX"=dword:00000000
@@ -417,6 +423,7 @@
 ;https://www.paypal.com/donate?business=valentingabrielradu%40gmail.com&no_recurring=0&item_name=ExplorerPatcher&currency_code=EUR
 ;y Frequently Asked Questions 🡕
 ;https://github.com/valinet/ExplorerPatcher/wiki/Frequently-asked-questions
+
 
 ;f
 ;t For settings marked with * to take effect, restart File Explorer. 
