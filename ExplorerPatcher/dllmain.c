@@ -3314,6 +3314,24 @@ void sws_ReadSettings(sws_WindowSwitcher* sws)
                 &(sws->bPerMonitor),
                 &dwSize
             );
+            dwSize = sizeof(DWORD);
+            RegQueryValueExW(
+                hKey,
+                TEXT("MaxWidthAbs"),
+                0,
+                NULL,
+                &(sws->dwMaxAbsoluteWP),
+                &dwSize
+            );
+            dwSize = sizeof(DWORD);
+            RegQueryValueExW(
+                hKey,
+                TEXT("MaxHeightAbs"),
+                0,
+                NULL,
+                &(sws->dwMaxAbsoluteHP),
+                &dwSize
+            );
             if (sws)
             {
                 sws_WindowSwitcher_RefreshTheme(sws);
