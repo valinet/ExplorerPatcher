@@ -2446,7 +2446,7 @@ HWND WINAPI explorerframe_SHCreateWorkerWindowHook(
     if (dwExStyle == 0x10000 && dwStyle == 0x46000000)
     {
 #ifdef USE_PRIVATE_INTERFACES
-        if (bMicaEffectOnTitlebar)
+        if (bMicaEffectOnTitlebar && result)
         {
             BOOL value = TRUE;
             SetPropW(hWndParent, L"NavBarGlass", HANDLE_FLAG_INHERIT);
@@ -5604,7 +5604,6 @@ DWORD Inject(BOOL bIsExplorer)
             HMODULE hExtra = LoadLibraryW(wszExtraLibPath);
             if (hExtra)
             {
-
                 printf("[Extra] Found library: %p.\n", hExtra);
                 FARPROC ep_extra_entrypoint = GetProcAddress(hExtra, "ep_extra_EntryPoint");
                 if (ep_extra_entrypoint)
