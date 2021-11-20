@@ -19,6 +19,7 @@ Tested on build 22000.318 and 22000.346 (currently in Windows Insider beta and r
 * Implemented option to toggle taskbar auto-hide when double clicking the main taskbar (#389) (.3)
 * Running `ep-setup.exe` again while EP is already installed will now update the program to the latest version. To uninstall, as the previous behavior did, run `ep_setup.exe /uninstall` (.4)
 * Implemented absolute height and width parameters for the Windows 10 switcher. These are especially useful for ultra wide monitors, in a scenario similar to the one described in [this post](https://github.com/valinet/ExplorerPatcher/discussions/110#discussioncomment-1673007) - to configure, set `MaxWidthAbs` and/or `MaxHeightAbs` DWORD values in `HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher\sws` (#110) (.5)
+* Provides a simple mechanism for chainloading a custom library when the shell interface is created, from which you can execute your custom code (subject to change, see [this](https://github.com/valinet/ExplorerPatcher/discussions/408#discussioncomment-1674348) for more details) (#408) (.6)
 
 
 #### Feature enhancements

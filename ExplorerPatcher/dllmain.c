@@ -5594,6 +5594,35 @@ DWORD Inject(BOOL bIsExplorer)
     CreateThread(NULL, 0, CheckForUpdatesThread, 0, 0, NULL);
 
 
+
+    WCHAR wszExtraLibPath[MAX_PATH];
+    if (GetWindowsDirectoryW(wszExtraLibPath, MAX_PATH))
+    {
+        wcscat_s(wszExtraLibPath, MAX_PATH, L"\\ep_extra.dll");
+        if (FileExistsW(wszExtraLibPath))
+        {
+            HMODULE hExtra = LoadLibraryW(wszExtraLibPath);
+            if (hExtra)
+            {
+
+                printf("[Extra] Found library: %p.\n", hExtra);
+                FARPROC ep_extra_entrypoint = GetProcAddress(hExtra, "ep_extra_EntryPoint");
+                if (ep_extra_entrypoint)
+                {
+                    printf("[Extra] Running entry point...\n");
+                    ep_extra_entrypoint();
+                    printf("[Extra] Finished running entry point.\n");
+                }
+            }
+            else
+            {
+                printf("[Extra] LoadLibraryW failed with 0x%x.", GetLastError());
+            }
+        }
+    }
+
+
+
     /*if (bHookStartMenu)
     {
         HookStartMenuParams* params2 = calloc(1, sizeof(HookStartMenuParams));
