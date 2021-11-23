@@ -72,6 +72,7 @@ DWORD bShowUpdateToast = FALSE;
 DWORD bToolbarSeparators = FALSE;
 DWORD bTaskbarAutohideOnDoubleClick = FALSE;
 DWORD dwOrbStyle = 0;
+DWORD bEnableSymbolDownload = FALSE;
 HMODULE hModule = NULL;
 HANDLE hDelayedInjectionThread = NULL;
 HANDLE hIsWinXShown = NULL;
@@ -726,43 +727,43 @@ static INT64(*winrt_Windows_Internal_Shell_implementation_MeetAndChatManager_OnM
     void* _this,
     INT64 a2,
     INT a3
-    );
+    ) = NULL;
 static INT64(*CLauncherTipContextMenu_ShowLauncherTipContextMenuFunc)(
     void* _this,
     POINT* pt
-    );
+    ) = NULL;
 static void(*CLauncherTipContextMenu_ExecuteCommandFunc)(
     void* _this,
     int a2
-    );
+    ) = NULL;
 static void(*CLauncherTipContextMenu_ExecuteShutdownCommandFunc)(
     void* _this,
     void* a2
-    );
+    ) = NULL;
 static INT64(*ImmersiveContextMenuHelper_ApplyOwnerDrawToMenuFunc)(
     HMENU h1,
     HMENU h2,
     HWND a3,
     unsigned int a4,
     void* data
-    );
+    ) = NULL;
 static void(*ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc)(
     HMENU _this,
     HMENU hWnd,
     HWND a3
-    );
+    ) = NULL;
 static INT64(*CLauncherTipContextMenu_GetMenuItemsAsyncFunc)(
     void* _this,
     void* rect,
     void** iunk
-    );
+    ) = NULL;
 static INT64(*CImmersiveContextMenuOwnerDrawHelper_s_ContextMenuWndProcFunc)(
     HWND hWnd,
     int a2,
     HWND a3,
     int a4,
     BOOL* a5
-    );
+    ) = NULL;
 
 LRESULT CALLBACK CLauncherTipContextMenu_WndProc(
     _In_ HWND   hWnd,
@@ -819,6 +820,7 @@ LRESULT CALLBACK CLauncherTipContextMenu_WndProc(
         void* _this = GetWindowLongPtr(hWnd, GWLP_USERDATA);
         BOOL v12 = FALSE;
         if ((uMsg == WM_DRAWITEM || uMsg == WM_MEASUREITEM) &&
+            CImmersiveContextMenuOwnerDrawHelper_s_ContextMenuWndProcFunc &&
             CImmersiveContextMenuOwnerDrawHelper_s_ContextMenuWndProcFunc(
                 hWnd,
                 uMsg,
@@ -953,13 +955,16 @@ DWORD ShowLauncherTipContextMenu(
     if (bSkinMenus)
     {
         unknown_array = calloc(4, sizeof(INT64));
-        ImmersiveContextMenuHelper_ApplyOwnerDrawToMenuFunc(
-            *((HMENU*)((char*)params->_this + 0xe8)),
-            hWinXWnd,
-            &(params->point),
-            0xc,
-            unknown_array
-        );
+        if (ImmersiveContextMenuHelper_ApplyOwnerDrawToMenuFunc)
+        {
+            ImmersiveContextMenuHelper_ApplyOwnerDrawToMenuFunc(
+                *((HMENU*)((char*)params->_this + 0xe8)),
+                hWinXWnd,
+                &(params->point),
+                0xc,
+                unknown_array
+            );
+        }
     }
 
     BOOL res = TrackPopupMenu(
@@ -974,11 +979,14 @@ DWORD ShowLauncherTipContextMenu(
 
     if (bSkinMenus)
     {
-        ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc(
-            *((HMENU*)((char*)params->_this + 0xe8)),
-            hWinXWnd,
-            &(params->point)
-        );
+        if (ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc)
+        {
+            ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc(
+                *((HMENU*)((char*)params->_this + 0xe8)),
+                hWinXWnd,
+                &(params->point)
+            );
+        }
         free(unknown_array);
     }
 
@@ -1000,18 +1008,24 @@ DWORD ShowLauncherTipContextMenu(
         else if (res < 4000)
         {
             INT64 info = *(INT64*)((char*)(*(INT64*)((char*)params->_this + 0xa8 - 0x58)) + (INT64)res * 8 - 8);
-            CLauncherTipContextMenu_ExecuteCommandFunc(
-                (char*)params->_this - 0x58,
-                &info
-            );
+            if (CLauncherTipContextMenu_ExecuteCommandFunc)
+            {
+                CLauncherTipContextMenu_ExecuteCommandFunc(
+                    (char*)params->_this - 0x58,
+                    &info
+                );
+            }
         }
         else
         {
             INT64 info = *(INT64*)((char*)(*(INT64*)((char*)params->_this + 0xc8 - 0x58)) + ((INT64)res - 4000) * 8);
-            CLauncherTipContextMenu_ExecuteShutdownCommandFunc(
-                (char*)params->_this - 0x58,
-                &info
-            );
+            if (CLauncherTipContextMenu_ExecuteShutdownCommandFunc)
+            {
+                CLauncherTipContextMenu_ExecuteShutdownCommandFunc(
+                    (char*)params->_this - 0x58,
+                    &info
+                );
+            }
         }
     }
 
@@ -1132,33 +1146,42 @@ INT64 CLauncherTipContextMenu_ShowLauncherTipContextMenuHook(
         point = GetDefaultWinXPosition(FALSE, NULL, NULL, TRUE);
     }
 
-    IUnknown* iunk;
-    INT64 r = CLauncherTipContextMenu_GetMenuItemsAsyncFunc(
-        _this,
-        &point,
-        &iunk
-    );
-    iunk->lpVtbl->AddRef(iunk);
+    IUnknown* iunk = NULL;
+    if (CLauncherTipContextMenu_GetMenuItemsAsyncFunc)
+    {
+        CLauncherTipContextMenu_GetMenuItemsAsyncFunc(
+            _this,
+            &point,
+            &iunk
+        );
+    }
+    if (iunk)
+    {
+        iunk->lpVtbl->AddRef(iunk);
 
-    ShowLauncherTipContextMenuParameters* params = malloc(
-        sizeof(ShowLauncherTipContextMenuParameters)
-    );
-    params->_this = _this;
-    params->point = point;
-    params->iunk = iunk;
-    params->bShouldCenterWinXHorizontally = bShouldCenterWinXHorizontally;
-    hIsWinXShown = CreateThread(
-        0,
-        0,
-        ShowLauncherTipContextMenu,
-        params,
-        0,
-        0
-    );
-    hWinXThread = hIsWinXShown;
-
+        ShowLauncherTipContextMenuParameters* params = malloc(
+            sizeof(ShowLauncherTipContextMenuParameters)
+        );
+        params->_this = _this;
+        params->point = point;
+        params->iunk = iunk;
+        params->bShouldCenterWinXHorizontally = bShouldCenterWinXHorizontally;
+        hIsWinXShown = CreateThread(
+            0,
+            0,
+            ShowLauncherTipContextMenu,
+            params,
+            0,
+            0
+        );
+        hWinXThread = hIsWinXShown;
+    }
 finalize:
-    return CLauncherTipContextMenu_ShowLauncherTipContextMenuFunc(_this, pt);
+    if (CLauncherTipContextMenu_ShowLauncherTipContextMenuFunc)
+    {
+        return CLauncherTipContextMenu_ShowLauncherTipContextMenuFunc(_this, pt);
+    }
+    return 0;
 }
 #endif
 #pragma endregion
@@ -1466,13 +1489,16 @@ INT64 Shell_TrayWndSubclassProc(
                 if (bSkinMenus)
                 {
                     unknown_array = calloc(4, sizeof(INT64));
-                    ImmersiveContextMenuHelper_ApplyOwnerDrawToMenuFunc(
-                        hSubMenu,
-                        hWnd,
-                        &pt,
-                        0xc,
-                        unknown_array
-                    );
+                    if (ImmersiveContextMenuHelper_ApplyOwnerDrawToMenuFunc)
+                    {
+                        ImmersiveContextMenuHelper_ApplyOwnerDrawToMenuFunc(
+                            hSubMenu,
+                            hWnd,
+                            &pt,
+                            0xc,
+                            unknown_array
+                        );
+                    }
                 }
 
                 BOOL res = TrackPopupMenu(
@@ -1507,11 +1533,14 @@ INT64 Shell_TrayWndSubclassProc(
 
                 if (bSkinMenus)
                 {
-                    ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc(
-                        hSubMenu,
-                        hWnd,
-                        &pt
-                    );
+                    if (ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc)
+                    {
+                        ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc(
+                            hSubMenu,
+                            hWnd,
+                            &pt
+                        );
+                    }
                     free(unknown_array);
                 }
 
@@ -1769,10 +1798,12 @@ BOOL TrackPopupMenuHookEx(
         if (IsImmersiveMenu)
         {
             IsImmersiveMenu = FALSE;
-
+#ifndef _WIN64
             if (bIsExplorerProcess)
             {
-#ifdef _WIN64
+#else
+            if (bIsExplorerProcess && ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc)
+            {
                 POINT pt;
                 pt.x = x;
                 pt.y = y;
@@ -1855,9 +1886,12 @@ BOOL TrackPopupMenuHook(
         {
             IsImmersiveMenu = FALSE;
 
+#ifndef _WIN64
             if (bIsExplorerProcess)
             {
-#ifdef _WIN64
+#else
+            if (bIsExplorerProcess && ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc)
+            {
                 POINT pt;
                 pt.x = x;
                 pt.y = y;
@@ -1991,6 +2025,7 @@ INT64 OwnerDrawSubclassProc(
 {
     BOOL v12 = FALSE;
     if ((uMsg == WM_DRAWITEM || uMsg == WM_MEASUREITEM) &&
+        CImmersiveContextMenuOwnerDrawHelper_s_ContextMenuWndProcFunc &&
         CImmersiveContextMenuOwnerDrawHelper_s_ContextMenuWndProcFunc(
             hWnd,
             uMsg,
@@ -2041,14 +2076,21 @@ BOOL explorer_TrackPopupMenuExHook(
             EnumPropsA(hWnd, CheckIfImmersiveContextMenu);
             if (IsImmersiveMenu)
             {
-                POINT pt;
-                pt.x = x;
-                pt.y = y;
-                ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc(
-                    hMenu,
-                    hWnd,
-                    &(pt)
-                );
+                if (ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc)
+                {
+                    POINT pt;
+                    pt.x = x;
+                    pt.y = y;
+                    ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc(
+                        hMenu,
+                        hWnd,
+                        &(pt)
+                    );
+                }
+                else
+                {
+                    RemoveOwnerDrawFromMenu(0, hMenu);
+                }
             }
             IsImmersiveMenu = FALSE;
         }
@@ -2094,14 +2136,21 @@ BOOL pnidui_TrackPopupMenuHook(
             EnumPropsA(hWnd, CheckIfImmersiveContextMenu);
             if (IsImmersiveMenu)
             {
-                POINT pt;
-                pt.x = x;
-                pt.y = y;
-                ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc(
-                    hMenu,
-                    hWnd,
-                    &(pt)
-                );
+                if (ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc)
+                {
+                    POINT pt;
+                    pt.x = x;
+                    pt.y = y;
+                    ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc(
+                        hMenu,
+                        hWnd,
+                        &(pt)
+                    );
+                }
+                else
+                {
+                    RemoveOwnerDrawFromMenu(0, hMenu);
+                }
             }
             IsImmersiveMenu = FALSE;
         }
@@ -2147,14 +2196,21 @@ BOOL sndvolsso_TrackPopupMenuExHook(
             EnumPropsA(hWnd, CheckIfImmersiveContextMenu);
             if (IsImmersiveMenu)
             {
-                POINT pt;
-                pt.x = x;
-                pt.y = y;
-                ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc(
-                    hMenu,
-                    hWnd,
-                    &(pt)
-                );
+                if (ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc)
+                {
+                    POINT pt;
+                    pt.x = x;
+                    pt.y = y;
+                    ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc(
+                        hMenu,
+                        hWnd,
+                        &(pt)
+                    );
+                }
+                else
+                {
+                    RemoveOwnerDrawFromMenu(0, hMenu);
+                }
             }
             IsImmersiveMenu = FALSE;
         }
@@ -2232,13 +2288,16 @@ BOOL stobject_TrackPopupMenuExHook(
             unknown_array = calloc(4, sizeof(INT64));
             pt.x = x;
             pt.y = y;
-            ImmersiveContextMenuHelper_ApplyOwnerDrawToMenuFunc(
-                hMenu,
-                hWnd,
-                &(pt),
-                0xc,
-                unknown_array
-            );
+            if (ImmersiveContextMenuHelper_ApplyOwnerDrawToMenuFunc)
+            {
+                ImmersiveContextMenuHelper_ApplyOwnerDrawToMenuFunc(
+                    hMenu,
+                    hWnd,
+                    &(pt),
+                    0xc,
+                    unknown_array
+                );
+            }
             SetWindowSubclass(hWnd, OwnerDrawSubclassProc, OwnerDrawSubclassProc, 0);
         }
         b = TrackPopupMenuEx(
@@ -2253,11 +2312,14 @@ BOOL stobject_TrackPopupMenuExHook(
         if (bSkinMenus)
         {
             RemoveWindowSubclass(hWnd, OwnerDrawSubclassProc, OwnerDrawSubclassProc);
-            ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc(
-                hMenu,
-                hWnd,
-                &(pt)
-            );
+            if (ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc)
+            {
+                ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc(
+                    hMenu,
+                    hWnd,
+                    &(pt)
+                );
+            }
             free(unknown_array);
         }
     }
@@ -2289,13 +2351,16 @@ BOOL stobject_TrackPopupMenuHook(
             unknown_array = calloc(4, sizeof(INT64));
             pt.x = x;
             pt.y = y;
-            ImmersiveContextMenuHelper_ApplyOwnerDrawToMenuFunc(
-                hMenu,
-                hWnd,
-                &(pt),
-                0xc,
-                unknown_array
-            );
+            if (ImmersiveContextMenuHelper_ApplyOwnerDrawToMenuFunc)
+            {
+                ImmersiveContextMenuHelper_ApplyOwnerDrawToMenuFunc(
+                    hMenu,
+                    hWnd,
+                    &(pt),
+                    0xc,
+                    unknown_array
+                );
+            }
             SetWindowSubclass(hWnd, OwnerDrawSubclassProc, OwnerDrawSubclassProc, 0);
         }
         b = TrackPopupMenu(
@@ -2311,11 +2376,14 @@ BOOL stobject_TrackPopupMenuHook(
         if (bSkinMenus)
         {
             RemoveWindowSubclass(hWnd, OwnerDrawSubclassProc, OwnerDrawSubclassProc);
-            ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc(
-                hMenu,
-                hWnd,
-                &(pt)
-            );
+            if (ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc)
+            {
+                ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc(
+                    hMenu,
+                    hWnd,
+                    &(pt)
+                );
+            }
             free(unknown_array);
         }
     }
@@ -2346,13 +2414,16 @@ BOOL bthprops_TrackPopupMenuExHook(
             unknown_array = calloc(4, sizeof(INT64));
             pt.x = x;
             pt.y = y;
-            ImmersiveContextMenuHelper_ApplyOwnerDrawToMenuFunc(
-                hMenu,
-                hWnd,
-                &(pt),
-                0xc,
-                unknown_array
-            );
+            if (ImmersiveContextMenuHelper_ApplyOwnerDrawToMenuFunc)
+            {
+                ImmersiveContextMenuHelper_ApplyOwnerDrawToMenuFunc(
+                    hMenu,
+                    hWnd,
+                    &(pt),
+                    0xc,
+                    unknown_array
+                );
+            }
             SetWindowSubclass(hWnd, OwnerDrawSubclassProc, OwnerDrawSubclassProc, 0);
         }
         b = TrackPopupMenuEx(
@@ -2367,11 +2438,14 @@ BOOL bthprops_TrackPopupMenuExHook(
         if (bSkinMenus)
         {
             RemoveWindowSubclass(hWnd, OwnerDrawSubclassProc, OwnerDrawSubclassProc);
-            ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc(
-                hMenu,
-                hWnd,
-                &(pt)
-            );
+            if (ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc)
+            {
+                ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc(
+                    hMenu,
+                    hWnd,
+                    &(pt)
+                );
+            }
             free(unknown_array);
         }
     }
@@ -2699,7 +2773,11 @@ INT64 winrt_Windows_Internal_Shell_implementation_MeetAndChatManager_OnMessageHo
 {
     if (!bClockFlyoutOnWinC)
     {
-        return winrt_Windows_Internal_Shell_implementation_MeetAndChatManager_OnMessageFunc(_this, a2, a3);
+        if (winrt_Windows_Internal_Shell_implementation_MeetAndChatManager_OnMessageFunc)
+        {
+            return winrt_Windows_Internal_Shell_implementation_MeetAndChatManager_OnMessageFunc(_this, a2, a3);
+        }
+        return 0;
     }
     if (a2 == 786 && a3 == 107)
     {
@@ -3735,6 +3813,15 @@ void WINAPI LoadSettings(BOOL bIsExplorer)
             0,
             NULL,
             &dwOrbStyle,
+            &dwSize
+        );
+        dwSize = sizeof(DWORD);
+        RegQueryValueExW(
+            hKey,
+            TEXT("EnableSymbolDownload"),
+            0,
+            NULL,
+            &bEnableSymbolDownload,
             &dwSize
         );
         dwSize = sizeof(DWORD);
@@ -5330,11 +5417,18 @@ DWORD Inject(BOOL bIsExplorer)
     );
     if (LoadSymbols(&symbols_PTRS, hModule))
     {
-        printf("Symbols have to be (re)downloaded...\n");
-        DownloadSymbolsParams* params = malloc(sizeof(DownloadSymbolsParams));
-        params->hModule = hModule;
-        CreateThread(0, 0, DownloadSymbols, params, 0, 0);
-        return 0;
+        if (!bEnableSymbolDownload)
+        {
+            printf("Unable to load symbols; the program may have limited functionality.\n");
+        }
+        else
+        {
+            printf("Symbols have to be (re)downloaded...\n");
+            DownloadSymbolsParams* params = malloc(sizeof(DownloadSymbolsParams));
+            params->hModule = hModule;
+            CreateThread(0, 0, DownloadSymbols, params, 0, 0);
+            return 0;
+        }
     }
     else
     {
@@ -5444,43 +5538,43 @@ DWORD Inject(BOOL bIsExplorer)
 
     HANDLE hTwinuiPcshell = LoadLibraryW(L"twinui.pcshell.dll");
 
-    if (symbols_PTRS.twinui_pcshell_PTRS[0] != 0xFFFFFFFF)
+    if (symbols_PTRS.twinui_pcshell_PTRS[0] && symbols_PTRS.twinui_pcshell_PTRS[0] != 0xFFFFFFFF)
     {
         CImmersiveContextMenuOwnerDrawHelper_s_ContextMenuWndProcFunc = (INT64(*)(HWND, int, HWND, int, BOOL*))
             ((uintptr_t)hTwinuiPcshell + symbols_PTRS.twinui_pcshell_PTRS[0]);
     }
 
-    if (symbols_PTRS.twinui_pcshell_PTRS[1] != 0xFFFFFFFF)
+    if (symbols_PTRS.twinui_pcshell_PTRS[1] && symbols_PTRS.twinui_pcshell_PTRS[1] != 0xFFFFFFFF)
     {
         CLauncherTipContextMenu_GetMenuItemsAsyncFunc = (INT64(*)(void*, void*, void**))
             ((uintptr_t)hTwinuiPcshell + symbols_PTRS.twinui_pcshell_PTRS[1]);
     }
 
-    if (symbols_PTRS.twinui_pcshell_PTRS[2] != 0xFFFFFFFF)
+    if (symbols_PTRS.twinui_pcshell_PTRS[2] && symbols_PTRS.twinui_pcshell_PTRS[2] != 0xFFFFFFFF)
     {
         ImmersiveContextMenuHelper_ApplyOwnerDrawToMenuFunc = (INT64(*)(HMENU, HMENU, HWND, unsigned int, void*))
             ((uintptr_t)hTwinuiPcshell + symbols_PTRS.twinui_pcshell_PTRS[2]);
     }
 
-    if (symbols_PTRS.twinui_pcshell_PTRS[3] != 0xFFFFFFFF)
+    if (symbols_PTRS.twinui_pcshell_PTRS[3] && symbols_PTRS.twinui_pcshell_PTRS[3] != 0xFFFFFFFF)
     {
         ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc = (void(*)(HMENU, HMENU, HWND))
             ((uintptr_t)hTwinuiPcshell + symbols_PTRS.twinui_pcshell_PTRS[3]);
     }
 
-    if (symbols_PTRS.twinui_pcshell_PTRS[4] != 0xFFFFFFFF)
+    if (symbols_PTRS.twinui_pcshell_PTRS[4] && symbols_PTRS.twinui_pcshell_PTRS[4] != 0xFFFFFFFF)
     {
         CLauncherTipContextMenu_ExecuteShutdownCommandFunc = (void(*)(void*, void*))
             ((uintptr_t)hTwinuiPcshell + symbols_PTRS.twinui_pcshell_PTRS[4]);
     }
 
-    if (symbols_PTRS.twinui_pcshell_PTRS[5] != 0xFFFFFFFF)
+    if (symbols_PTRS.twinui_pcshell_PTRS[5] && symbols_PTRS.twinui_pcshell_PTRS[5] != 0xFFFFFFFF)
     {
         CLauncherTipContextMenu_ExecuteCommandFunc = (void(*)(void*, int))
             ((uintptr_t)hTwinuiPcshell + symbols_PTRS.twinui_pcshell_PTRS[5]);
     }
 
-    if (symbols_PTRS.twinui_pcshell_PTRS[6] != 0xFFFFFFFF)
+    if (symbols_PTRS.twinui_pcshell_PTRS[6] && symbols_PTRS.twinui_pcshell_PTRS[6] != 0xFFFFFFFF)
     {
         CLauncherTipContextMenu_ShowLauncherTipContextMenuFunc = (INT64(*)(void*, POINT*))
             ((uintptr_t)hTwinuiPcshell + symbols_PTRS.twinui_pcshell_PTRS[6]);
@@ -5496,22 +5590,19 @@ DWORD Inject(BOOL bIsExplorer)
         }
     }
 
-    if (symbols_PTRS.twinui_pcshell_PTRS[TWINUI_PCSHELL_SB_CNT - 1] != 0xFFFFFFFF)
+    if (symbols_PTRS.twinui_pcshell_PTRS[TWINUI_PCSHELL_SB_CNT - 1] && symbols_PTRS.twinui_pcshell_PTRS[TWINUI_PCSHELL_SB_CNT - 1] != 0xFFFFFFFF)
     {
-        if (symbols_PTRS.twinui_pcshell_PTRS[TWINUI_PCSHELL_SB_CNT - 1])
+        winrt_Windows_Internal_Shell_implementation_MeetAndChatManager_OnMessageFunc = (INT64(*)(void*, POINT*))
+            ((uintptr_t)hTwinuiPcshell + symbols_PTRS.twinui_pcshell_PTRS[TWINUI_PCSHELL_SB_CNT - 1]);
+        rv = funchook_prepare(
+            funchook,
+            (void**)&winrt_Windows_Internal_Shell_implementation_MeetAndChatManager_OnMessageFunc,
+            winrt_Windows_Internal_Shell_implementation_MeetAndChatManager_OnMessageHook
+        );
+        if (rv != 0)
         {
-            winrt_Windows_Internal_Shell_implementation_MeetAndChatManager_OnMessageFunc = (INT64(*)(void*, POINT*))
-                ((uintptr_t)hTwinuiPcshell + symbols_PTRS.twinui_pcshell_PTRS[TWINUI_PCSHELL_SB_CNT - 1]);
-            rv = funchook_prepare(
-                funchook,
-                (void**)&winrt_Windows_Internal_Shell_implementation_MeetAndChatManager_OnMessageFunc,
-                winrt_Windows_Internal_Shell_implementation_MeetAndChatManager_OnMessageHook
-            );
-            if (rv != 0)
-            {
-                FreeLibraryAndExitThread(hModule, rv);
-                return rv;
-            }
+            FreeLibraryAndExitThread(hModule, rv);
+            return rv;
         }
     }
     VnPatchIAT(hTwinuiPcshell, "API-MS-WIN-CORE-REGISTRY-L1-1-0.DLL", "RegGetValueW", twinuipcshell_RegGetValueW);
@@ -5830,31 +5921,38 @@ void StartMenu_LoadSettings(BOOL bRestartIfChanged)
     }
 }
 
-static INT64(*StartDocked_LauncherFrame_OnVisibilityChangedFunc)(void*, INT64, void*);
+static INT64(*StartDocked_LauncherFrame_OnVisibilityChangedFunc)(void*, INT64, void*) = NULL;
 
-static INT64(*StartDocked_LauncherFrame_ShowAllAppsFunc)(void* _this);
+static INT64(*StartDocked_LauncherFrame_ShowAllAppsFunc)(void* _this) = NULL;
 
 INT64 StartDocked_LauncherFrame_OnVisibilityChangedHook(void* _this, INT64 a2, void* VisibilityChangedEventArguments)
 {
-    INT64 r = StartDocked_LauncherFrame_OnVisibilityChangedFunc(_this, a2, VisibilityChangedEventArguments);
+    INT64 r = 0;
+    if (StartDocked_LauncherFrame_OnVisibilityChangedFunc)
+    {
+        r = StartDocked_LauncherFrame_OnVisibilityChangedFunc(_this, a2, VisibilityChangedEventArguments);
+    }
     if (StartMenu_ShowAllApps)
     {
         //if (VisibilityChangedEventArguments_GetVisible(VisibilityChangedEventArguments))
         {
-            StartDocked_LauncherFrame_ShowAllAppsFunc(_this);
+            if (StartDocked_LauncherFrame_ShowAllAppsFunc)
+            {
+                StartDocked_LauncherFrame_ShowAllAppsFunc(_this);
+            }
         }
     }
     return r;
 }
 
-INT64(*StartDocked_SystemListPolicyProvider_GetMaximumFrequentAppsFunc)(void*);
+INT64(*StartDocked_SystemListPolicyProvider_GetMaximumFrequentAppsFunc)(void*) = NULL;
 
 INT64 StartDocked_SystemListPolicyProvider_GetMaximumFrequentAppsHook(void* _this)
 {
     return StartMenu_maximumFreqApps;
 }
 
-INT64(*StartDocked_StartSizingFrame_StartSizingFrameFunc)(void* _this);
+INT64(*StartDocked_StartSizingFrame_StartSizingFrameFunc)(void* _this) = NULL;
 
 INT64 StartDocked_StartSizingFrame_StartSizingFrameHook(void* _this)
 {
@@ -6390,12 +6488,12 @@ void InjectStartMenu()
 
     LoadLibraryW(L"StartDocked.dll");
     HANDLE hStartDocked = GetModuleHandle(L"StartDocked.dll");
-    if (dwVal1 != 0xFFFFFFFF)
+    if (dwVal1 && dwVal1 != 0xFFFFFFFF)
     {
         StartDocked_LauncherFrame_ShowAllAppsFunc = (INT64(*)(void*))
             ((uintptr_t)hStartDocked + dwVal1);
     }
-    if (dwVal2 != 0xFFFFFFFF)
+    if (dwVal2 && dwVal2 != 0xFFFFFFFF)
     {
         StartDocked_LauncherFrame_OnVisibilityChangedFunc = (INT64(*)(void*, INT64, void*))
             ((uintptr_t)hStartDocked + dwVal2);
@@ -6410,7 +6508,7 @@ void InjectStartMenu()
             return rv;
         }
     }
-    if (dwVal3 != 0xFFFFFFFF)
+    if (dwVal3 && dwVal3 != 0xFFFFFFFF)
     {
         StartDocked_SystemListPolicyProvider_GetMaximumFrequentAppsFunc = (INT64(*)(void*, INT64, void*))
             ((uintptr_t)hStartDocked + dwVal3);
@@ -6425,7 +6523,7 @@ void InjectStartMenu()
             return rv;
         }
     }
-    if (dwVal4 != 0xFFFFFFFF)
+    if (dwVal4 && dwVal4 != 0xFFFFFFFF)
     {
         /*StartDocked_StartSizingFrame_StartSizingFrameFunc = (INT64(*)(void*, INT64, void*))
             ((uintptr_t)hStartDocked + dwVal4);

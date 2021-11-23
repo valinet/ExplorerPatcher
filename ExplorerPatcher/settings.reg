@@ -364,6 +364,8 @@
 ;d Enable SysListView32 for Explorer views *
 @=""
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
+;b Enable symbols download *
+"EnableSymbolDownload"=dword:00000000
 ;i Do not hook Start menu from main Explorer process (permanently disabled) *
 "HookStartMenu"=dword:00000001
 ;c 12 Supplementary delay at logon *
