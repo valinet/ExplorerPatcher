@@ -45,7 +45,6 @@
 BOOL bIsExplorerProcess = FALSE;
 BOOL bInstanced = FALSE;
 HWND archivehWnd;
-HMODULE hStartIsBack64 = 0;
 DWORD bOldTaskbar = TRUE;
 DWORD bAllocConsole = FALSE;
 DWORD bHideExplorerSearchBar = FALSE;
@@ -72,6 +71,7 @@ DWORD dwTaskbarAl = 1;
 DWORD bShowUpdateToast = FALSE;
 DWORD bToolbarSeparators = FALSE;
 DWORD bTaskbarAutohideOnDoubleClick = FALSE;
+DWORD dwOrbStyle = 0;
 HMODULE hModule = NULL;
 HANDLE hDelayedInjectionThread = NULL;
 HANDLE hIsWinXShown = NULL;
@@ -85,6 +85,9 @@ DWORD dwMonitorCount = 0;
 int Code = 0;
 HRESULT InjectStartFromExplorer();
 
+#define ORB_STYLE_WINDOWS10 0
+#define ORB_STYLE_WINDOWS11 1
+#define ORB_WINDOWS11_SEPARATOR 1
 
 void* P_Icon_Light_Search = NULL;
 DWORD S_Icon_Light_Search = 0;
@@ -3726,6 +3729,15 @@ void WINAPI LoadSettings(BOOL bIsExplorer)
             &dwSize
         );
         dwSize = sizeof(DWORD);
+        RegQueryValueExW(
+            hKey,
+            TEXT("OrbStyle"),
+            0,
+            NULL,
+            &dwOrbStyle,
+            &dwSize
+        );
+        dwSize = sizeof(DWORD);
         dwTemp = 0;
         RegQueryValueExW(
             hKey,
@@ -4162,6 +4174,7 @@ HRESULT explorer_SetWindowThemeHook(
     return explorer_SetWindowThemeFunc(hwnd, pszSubAppName, pszSubIdList);
 }
 
+HTHEME hStartOrbTheme = NULL;
 HRESULT explorer_DrawThemeBackground(
     HTHEME  hTheme,
     HDC     hdc,
@@ -4171,6 +4184,43 @@ HRESULT explorer_DrawThemeBackground(
     LPCRECT pClipRect
 )
 {
+    if (dwOrbStyle == ORB_STYLE_WINDOWS11 && hStartOrbTheme == hTheme)
+    {
+        BITMAPINFO bi;
+        ZeroMemory(&bi, sizeof(BITMAPINFO));
+        bi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+        bi.bmiHeader.biWidth = 1;
+        bi.bmiHeader.biHeight = 1;
+        bi.bmiHeader.biPlanes = 1;
+        bi.bmiHeader.biBitCount = 32;
+        bi.bmiHeader.biCompression = BI_RGB;
+        RGBQUAD transparent = { 0, 0, 0, 0 };
+        RGBQUAD color = { 0xFF, 0xFF, 0xFF, 0xFF };
+
+        StretchDIBits(hdc,
+            pRect->left,
+            pRect->top,
+            pRect->right - pRect->left,
+            pRect->bottom - pRect->top,
+            0, 0, 1, 1, &color, &bi,
+            DIB_RGB_COLORS, SRCCOPY);
+        StretchDIBits(hdc, 
+            pRect->left + ((pRect->right - pRect->left) / 2) - ORB_WINDOWS11_SEPARATOR / 2, 
+            pRect->top,
+            ORB_WINDOWS11_SEPARATOR,
+            pRect->bottom - pRect->top,
+            0, 0, 1, 1, &transparent, &bi,
+            DIB_RGB_COLORS, SRCCOPY);
+        StretchDIBits(hdc,
+            pRect->left,
+            pRect->top + ((pRect->bottom - pRect->top) / 2) - ORB_WINDOWS11_SEPARATOR / 2,
+            pRect->right - pRect->left,
+            ORB_WINDOWS11_SEPARATOR,
+            0, 0, 1, 1, &transparent, &bi,
+            DIB_RGB_COLORS, SRCCOPY);
+
+        return S_OK;
+    }
     if (bClassicThemeMitigations)
     {
         if (iPartId == 4 && iStateId == 1)
@@ -4233,6 +4283,16 @@ HTHEME explorer_OpenThemeDataForDpi(
     UINT    dpi
 )
 {
+    if (dwOrbStyle == ORB_STYLE_WINDOWS11 && (*((WORD*)&(pszClassList)+1)) && !wcscmp(pszClassList, L"TaskbarPearl"))
+    {
+        HTHEME hTheme = OpenThemeDataForDpi(hwnd, pszClassList, dpi);
+        if (hTheme)
+        {
+            hStartOrbTheme = hTheme;
+        }
+        return hTheme;
+    }
+
     // task list - Taskband2 from CTaskListWnd::_HandleThemeChanged
     if (bClassicThemeMitigations && (*((WORD*)&(pszClassList)+1)) && !wcscmp(pszClassList, L"Taskband2"))
     {
@@ -5308,6 +5368,8 @@ DWORD Inject(BOOL bIsExplorer)
     VnPatchIAT(hExplorer, "API-MS-WIN-CORE-REGISTRY-L1-1-0.DLL", "RegOpenKeyExW", explorer_RegOpenKeyExW);
     VnPatchIAT(hExplorer, "shell32.dll", (LPCSTR)85, explorer_OpenRegStream);
     VnPatchIAT(hExplorer, "user32.dll", "TrackPopupMenuEx", explorer_TrackPopupMenuExHook);
+    VnPatchIAT(hExplorer, "uxtheme.dll", "OpenThemeDataForDpi", explorer_OpenThemeDataForDpi);
+    VnPatchIAT(hExplorer, "uxtheme.dll", "DrawThemeBackground", explorer_DrawThemeBackground);
     if (bClassicThemeMitigations)
     {
         /*explorer_SetWindowThemeFunc = SetWindowTheme;
@@ -5324,8 +5386,8 @@ DWORD Inject(BOOL bIsExplorer)
         VnPatchIAT(hExplorer, "uxtheme.dll", "DrawThemeTextEx", explorer_DrawThemeTextEx);
         VnPatchIAT(hExplorer, "uxtheme.dll", "GetThemeMargins", explorer_GetThemeMargins);
         VnPatchIAT(hExplorer, "uxtheme.dll", "GetThemeMetric", explorer_GetThemeMetric);
-        VnPatchIAT(hExplorer, "uxtheme.dll", "OpenThemeDataForDpi", explorer_OpenThemeDataForDpi);
-        VnPatchIAT(hExplorer, "uxtheme.dll", "DrawThemeBackground", explorer_DrawThemeBackground);
+        //VnPatchIAT(hExplorer, "uxtheme.dll", "OpenThemeDataForDpi", explorer_OpenThemeDataForDpi);
+        //VnPatchIAT(hExplorer, "uxtheme.dll", "DrawThemeBackground", explorer_DrawThemeBackground);
         VnPatchIAT(hExplorer, "user32.dll", "SetWindowCompositionAttribute", explorer_SetWindowCompositionAttribute);
     }
     //VnPatchDelayIAT(hExplorer, "ext-ms-win-rtcore-ntuser-window-ext-l1-1-0.dll", "CreateWindowExW", explorer_CreateWindowExW);
