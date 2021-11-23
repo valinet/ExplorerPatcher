@@ -55,13 +55,16 @@ void IsUpdateAvailableHelperCallback(
 }
 
 BOOL IsUpdateAvailableHelper(
-    char* url, 
-    char* szCheckAgainst, 
-    DWORD dwUpdateTimeout, 
+    char* url,
+    char* szCheckAgainst,
+    DWORD dwUpdateTimeout,
     BOOL* lpFail,
     __x_ABI_CWindows_CUI_CNotifications_CIToastNotifier* notifier,
     __x_ABI_CWindows_CUI_CNotifications_CIToastNotificationFactory* notifFactory,
-    __x_ABI_CWindows_CUI_CNotifications_CIToastNotification** toast
+    __x_ABI_CWindows_CUI_CNotifications_CIToastNotification** toast,
+    BOOL bUpdatePreferStaging,
+    WCHAR* wszInfoURL,
+    DWORD dwInfoURLLen
 )
 {
     BOOL bIsUpdateAvailable = FALSE;
@@ -73,17 +76,18 @@ BOOL IsUpdateAvailableHelper(
         return bIsUpdateAvailable;
     }
 
+    char* staging_buffer = NULL;
     HINTERNET hInternet = NULL;
-    if (hInternet = InternetOpenA(
-        UPDATES_USER_AGENT,
-        INTERNET_OPEN_TYPE_PRECONFIG,
-        NULL,
-        NULL,
-        0 //INTERNET_FLAG_ASYNC
-    ))
+
+    if (bUpdatePreferStaging)
     {
-        //InternetSetOptionA(hInternet, INTERNET_OPTION_CONNECT_TIMEOUT, &dwUpdateTimeout, sizeof(DWORD));
-        //if (InternetSetStatusCallbackA(hInternet, IsUpdateAvailableHelperCallback) != INTERNET_INVALID_STATUS_CALLBACK)
+        if (hInternet = InternetOpenA(
+            UPDATES_USER_AGENT,
+            INTERNET_OPEN_TYPE_PRECONFIG,
+            NULL,
+            NULL,
+            0
+        ))
         {
             HINTERNET hConnect = InternetOpenUrlA(
                 hInternet,
@@ -99,201 +103,50 @@ BOOL IsUpdateAvailableHelper(
                 INTERNET_FLAG_DONT_CACHE,
                 &params
             );
-            /*if (!hConnect && GetLastError() == ERROR_IO_PENDING)
-            {
-                if (WaitForSingleObject(params.hEvent, dwUpdateTimeout) == WAIT_OBJECT_0)
-                {
-                    hConnect = params.hInternet;
-                }
-            }*/
             if (hConnect)
             {
-                if (szCheckAgainst)
+                DWORD dwSize = 5000;
+                DWORD dwRead = dwSize;
+                staging_buffer = calloc(dwSize, sizeof(char));
+                if (staging_buffer)
                 {
                     BOOL bRet = FALSE;
-                    DWORD dwRead = 0;
-                    char hash[DOSMODE_OFFSET + UPDATES_HASH_SIZE + 1];
-                    ZeroMemory(hash, DOSMODE_OFFSET + UPDATES_HASH_SIZE + 1);
                     if (bRet = InternetReadFile(
                         hConnect,
-                        hash,
-                        DOSMODE_OFFSET + UPDATES_HASH_SIZE,
+                        staging_buffer,
+                        dwSize - 1,
                         &dwRead
-                    ) && dwRead == DOSMODE_OFFSET + UPDATES_HASH_SIZE)
+                    ))
                     {
-#ifdef UPDATES_VERBOSE_OUTPUT
-                        printf("[Updates] Hash of remote file is \"%s\" (%s).\n", DOSMODE_OFFSET + hash, (hash[0] == 0x4D && hash[1] == 0x5A) ? "valid" : "invalid");
-#endif
-                        if (hash[0] == 0x4D && hash[1] == 0x5A && _stricmp(DOSMODE_OFFSET + hash, szCheckAgainst))
+                        char* a1 = strstr(staging_buffer, "\"browser_download_url\"");
+                        if (a1)
                         {
-                            bIsUpdateAvailable = TRUE;
-                        }
-                    }
-                    else
-                    {
-#ifdef UPDATES_VERBOSE_OUTPUT
-                        printf("[Updates] Failed. Read %d bytes.\n");
-#endif
-                        if (lpFail) *lpFail = TRUE;
-                    }
-                }
-                else
-                {
-                    WCHAR wszPath[MAX_PATH];
-                    ZeroMemory(wszPath, MAX_PATH * sizeof(WCHAR));
-                    SHGetFolderPathW(NULL, SPECIAL_FOLDER_LEGACY, NULL, SHGFP_TYPE_CURRENT, wszPath);
-                    wcscat_s(wszPath, MAX_PATH, _T(APP_RELATIVE_PATH));
-                    BOOL bRet = CreateDirectoryW(wszPath, NULL);
-                    if (bRet || (!bRet && GetLastError() == ERROR_ALREADY_EXISTS))
-                    {
-                        wcscat_s(wszPath, MAX_PATH, L"\\Update for " _T(PRODUCT_NAME) L" from ");
-                        WCHAR wszURL[MAX_PATH];
-                        ZeroMemory(wszURL, MAX_PATH * sizeof(WCHAR));
-                        MultiByteToWideChar(
-                            CP_UTF8,
-                            MB_PRECOMPOSED,
-                            url,
-                            -1,
-                            wszURL,
-                            MAX_PATH
-                        );
-                        if (wszURL[95])
-                        {
-                            wszURL[94] = L'.';
-                            wszURL[95] = L'.';
-                            wszURL[96] = L'.';
-                            wszURL[97] = L'e';
-                            wszURL[98] = L'x';
-                            wszURL[99] = L'e';
-                            wszURL[100] = 0;
-                        }
-                        for (unsigned int i = 0; i < wszURL; ++i)
-                        {
-                            if (!wszURL[i])
+                            char* a2 = strchr(a1 + 24, '"');
+                            if (a2)
                             {
-                                break;
-                            }
-                            if (wszURL[i] == L'/')
-                            {
-                                wszURL[i] = L'\u2215';
-                            }
-                            else if (wszURL[i] == L':')
-                            {
-                                wszURL[i] = L'\ua789';
-                            }
-                        }
-                        wcscat_s(wszPath, MAX_PATH, wszURL);
-#ifdef UPDATES_VERBOSE_OUTPUT
-                        wprintf(L"[Updates] Download path is \"%s\".\n", wszPath);
-#endif
-
-                        BOOL bRet = DeleteFileW(wszPath);
-                        if (bRet || (!bRet && GetLastError() == ERROR_FILE_NOT_FOUND))
-                        {
-                            FILE* f = NULL;
-                            if (!_wfopen_s(
-                                &f,
-                                wszPath,
-                                L"wb"
-                            ) && f)
-                            {
-                                BYTE* buffer = (BYTE*)malloc(UPDATES_BUFSIZ);
-                                if (buffer != NULL)
+                                a2[0] = 0;
+                                printf("[Updates] Prerelease update URL: \"%s\"\n", a1 + 24);
+                                url = a1 + 24;
+                                bUpdatePreferStaging = FALSE;
+                                if (wszInfoURL)
                                 {
-                                    DWORD dwRead = 0;
-                                    bRet = FALSE;
-                                    while (bRet = InternetReadFile(
-                                        hConnect,
-                                        buffer,
-                                        UPDATES_BUFSIZ,
-                                        &dwRead
-                                    ))
+                                    char* a3 = strstr(staging_buffer, "\"html_url\"");
+                                    if (a3)
                                     {
-                                        if (dwRead == 0)
+                                        char* a4 = strchr(a3 + 12, '"');
+                                        if (a4)
                                         {
-                                            bIsUpdateAvailable = TRUE;
-#ifdef UPDATES_VERBOSE_OUTPUT
-                                            printf("[Updates] Downloaded finished.\n");
-#endif
-                                            break;
+                                            a4[0] = 0;
+                                            printf("[Updates] Release notes URL: \"%s\"\n", a3 + 12);
+                                            MultiByteToWideChar(
+                                                CP_UTF8,
+                                                MB_PRECOMPOSED,
+                                                a3 + 12,
+                                                -1,
+                                                wszInfoURL,
+                                                dwInfoURLLen
+                                            );
                                         }
-#ifdef UPDATES_VERBOSE_OUTPUT
-                                        printf("[Updates] Downloaded %d bytes.\n", dwRead);
-#endif
-                                        fwrite(
-                                            buffer,
-                                            sizeof(BYTE),
-                                            dwRead,
-                                            f
-                                        );
-                                        dwRead = 0;
-                                    }
-                                    free(buffer);
-                                }
-                                fclose(f);
-                            }
-                            if (bIsUpdateAvailable)
-                            {
-                                bIsUpdateAvailable = FALSE;
-#ifdef UPDATES_VERBOSE_OUTPUT
-                                printf(
-                                    "[Updates] In order to install this update for the product \""
-                                    PRODUCT_NAME
-                                    "\", please allow the elevation request.\n"
-                                );
-#endif
-
-                                if (*toast)
-                                {
-                                    notifier->lpVtbl->Hide(notifier, *toast);
-                                    (*toast)->lpVtbl->Release((*toast));
-                                    (*toast) = NULL;
-                                }
-
-                                SHELLEXECUTEINFO ShExecInfo = { 0 };
-                                ShExecInfo.cbSize = sizeof(SHELLEXECUTEINFO);
-                                ShExecInfo.fMask = SEE_MASK_NOCLOSEPROCESS;
-                                ShExecInfo.hwnd = NULL;
-                                ShExecInfo.lpVerb = L"runas";
-                                ShExecInfo.lpFile = wszPath;
-                                ShExecInfo.lpParameters = L"/update_silent";
-                                ShExecInfo.lpDirectory = NULL;
-                                ShExecInfo.nShow = SW_SHOW;
-                                ShExecInfo.hInstApp = NULL;
-                                if (ShellExecuteExW(&ShExecInfo) && ShExecInfo.hProcess)
-                                {
-                                    WaitForSingleObject(ShExecInfo.hProcess, INFINITE);
-                                    DWORD dwExitCode = 0;
-                                    if (GetExitCodeProcess(ShExecInfo.hProcess, &dwExitCode) && !dwExitCode)
-                                    {
-                                        bIsUpdateAvailable = TRUE;
-#ifdef UPDATES_VERBOSE_OUTPUT
-                                        printf("[Updates] Update successful, File Explorer will probably restart momentarly.\n");
-#endif
-                                    }
-                                    else
-                                    {
-                                        SetLastError(dwExitCode);
-#ifdef UPDATES_VERBOSE_OUTPUT
-                                        printf("[Updates] Update failed because the following error has occured: %d.\n", dwExitCode);
-#endif
-                                    }
-                                    CloseHandle(ShExecInfo.hProcess);
-                                }
-                                else
-                                {
-                                    DWORD dwError = GetLastError();
-                                    if (dwError == ERROR_CANCELLED)
-                                    {
-#ifdef UPDATES_VERBOSE_OUTPUT
-                                        printf("[Updates] Update failed because the elevation request was denied.\n");
-#endif
-                                    }
-                                    else
-                                    {
-#ifdef UPDATES_VERBOSE_OUTPUT
-                                        printf("[Updates] Update failed because the following error has occured: %d.\n", GetLastError());
-#endif
                                     }
                                 }
                             }
@@ -302,20 +155,247 @@ BOOL IsUpdateAvailableHelper(
                 }
                 InternetCloseHandle(hConnect);
             }
+            InternetCloseHandle(hInternet);
+        }
+    }
+
+    if (!bUpdatePreferStaging && (hInternet = InternetOpenA(
+        UPDATES_USER_AGENT,
+        INTERNET_OPEN_TYPE_PRECONFIG,
+        NULL,
+        NULL,
+        0
+    )))
+    {
+        HINTERNET hConnect = InternetOpenUrlA(
+            hInternet,
+            url,
+            NULL,
+            0,
+            INTERNET_FLAG_RAW_DATA |
+            INTERNET_FLAG_RELOAD |
+            INTERNET_FLAG_RESYNCHRONIZE |
+            INTERNET_FLAG_NO_COOKIES |
+            INTERNET_FLAG_NO_UI |
+            INTERNET_FLAG_NO_CACHE_WRITE |
+            INTERNET_FLAG_DONT_CACHE,
+            &params
+        );
+        if (hConnect)
+        {
+            if (szCheckAgainst)
+            {
+                BOOL bRet = FALSE;
+                DWORD dwRead = 0;
+                char hash[DOSMODE_OFFSET + UPDATES_HASH_SIZE + 1];
+                ZeroMemory(hash, DOSMODE_OFFSET + UPDATES_HASH_SIZE + 1);
+                if (bRet = InternetReadFile(
+                    hConnect,
+                    hash,
+                    DOSMODE_OFFSET + UPDATES_HASH_SIZE,
+                    &dwRead
+                ) && dwRead == DOSMODE_OFFSET + UPDATES_HASH_SIZE)
+                {
+#ifdef UPDATES_VERBOSE_OUTPUT
+                    printf("[Updates] Hash of remote file is \"%s\" (%s).\n", DOSMODE_OFFSET + hash, (hash[0] == 0x4D && hash[1] == 0x5A) ? "valid" : "invalid");
+#endif
+                    if (hash[0] == 0x4D && hash[1] == 0x5A && _stricmp(DOSMODE_OFFSET + hash, szCheckAgainst))
+                    {
+                        bIsUpdateAvailable = TRUE;
+                    }
+                }
+                else
+                {
+#ifdef UPDATES_VERBOSE_OUTPUT
+                    printf("[Updates] Failed. Read %d bytes.\n");
+#endif
+                    if (lpFail) *lpFail = TRUE;
+                }
+            }
             else
             {
-                if (lpFail) *lpFail = TRUE;
+                WCHAR wszPath[MAX_PATH];
+                ZeroMemory(wszPath, MAX_PATH * sizeof(WCHAR));
+                SHGetFolderPathW(NULL, SPECIAL_FOLDER_LEGACY, NULL, SHGFP_TYPE_CURRENT, wszPath);
+                wcscat_s(wszPath, MAX_PATH, _T(APP_RELATIVE_PATH));
+                BOOL bRet = CreateDirectoryW(wszPath, NULL);
+                if (bRet || (!bRet && GetLastError() == ERROR_ALREADY_EXISTS))
+                {
+                    wcscat_s(wszPath, MAX_PATH, L"\\Update for " _T(PRODUCT_NAME) L" from ");
+                    WCHAR wszURL[MAX_PATH];
+                    ZeroMemory(wszURL, MAX_PATH * sizeof(WCHAR));
+                    MultiByteToWideChar(
+                        CP_UTF8,
+                        MB_PRECOMPOSED,
+                        url,
+                        -1,
+                        wszURL,
+                        MAX_PATH
+                    );
+                    if (wszURL[97])
+                    {
+                        wszURL[96] = L'.';
+                        wszURL[97] = L'.';
+                        wszURL[98] = L'.';
+                        wszURL[99] = L'e';
+                        wszURL[100] = L'x';
+                        wszURL[101] = L'e';
+                        wszURL[102] = 0;
+                    }
+                    for (unsigned int i = 0; i < wszURL; ++i)
+                    {
+                        if (!wszURL[i])
+                        {
+                            break;
+                        }
+                        if (wszURL[i] == L'/')
+                        {
+                            wszURL[i] = L'\u2215';
+                        }
+                        else if (wszURL[i] == L':')
+                        {
+                            wszURL[i] = L'\ua789';
+                        }
+                    }
+                    wcscat_s(wszPath, MAX_PATH, wszURL);
+#ifdef UPDATES_VERBOSE_OUTPUT
+                    wprintf(L"[Updates] Download path is \"%s\".\n", wszPath);
+#endif
+
+                    BOOL bRet = DeleteFileW(wszPath);
+                    if (bRet || (!bRet && GetLastError() == ERROR_FILE_NOT_FOUND))
+                    {
+                        FILE* f = NULL;
+                        if (!_wfopen_s(
+                            &f,
+                            wszPath,
+                            L"wb"
+                        ) && f)
+                        {
+                            BYTE* buffer = (BYTE*)malloc(UPDATES_BUFSIZ);
+                            if (buffer != NULL)
+                            {
+                                DWORD dwRead = 0;
+                                bRet = FALSE;
+                                while (bRet = InternetReadFile(
+                                    hConnect,
+                                    buffer,
+                                    UPDATES_BUFSIZ,
+                                    &dwRead
+                                ))
+                                {
+                                    if (dwRead == 0)
+                                    {
+                                        bIsUpdateAvailable = TRUE;
+#ifdef UPDATES_VERBOSE_OUTPUT
+                                        printf("[Updates] Downloaded finished.\n");
+#endif
+                                        break;
+                                    }
+#ifdef UPDATES_VERBOSE_OUTPUT
+                                    printf("[Updates] Downloaded %d bytes.\n", dwRead);
+#endif
+                                    fwrite(
+                                        buffer,
+                                        sizeof(BYTE),
+                                        dwRead,
+                                        f
+                                    );
+                                    dwRead = 0;
+                                }
+                                free(buffer);
+                            }
+                            fclose(f);
+                        }
+                        if (bIsUpdateAvailable)
+                        {
+                            bIsUpdateAvailable = FALSE;
+#ifdef UPDATES_VERBOSE_OUTPUT
+                            printf(
+                                "[Updates] In order to install this update for the product \""
+                                PRODUCT_NAME
+                                "\", please allow the elevation request.\n"
+                            );
+#endif
+
+                            if (*toast)
+                            {
+                                notifier->lpVtbl->Hide(notifier, *toast);
+                                (*toast)->lpVtbl->Release((*toast));
+                                (*toast) = NULL;
+                            }
+
+                            SHELLEXECUTEINFO ShExecInfo = { 0 };
+                            ShExecInfo.cbSize = sizeof(SHELLEXECUTEINFO);
+                            ShExecInfo.fMask = SEE_MASK_NOCLOSEPROCESS;
+                            ShExecInfo.hwnd = NULL;
+                            ShExecInfo.lpVerb = L"runas";
+                            ShExecInfo.lpFile = wszPath;
+                            ShExecInfo.lpParameters = L"/update_silent";
+                            ShExecInfo.lpDirectory = NULL;
+                            ShExecInfo.nShow = SW_SHOW;
+                            ShExecInfo.hInstApp = NULL;
+                            if (ShellExecuteExW(&ShExecInfo) && ShExecInfo.hProcess)
+                            {
+                                WaitForSingleObject(ShExecInfo.hProcess, INFINITE);
+                                DWORD dwExitCode = 0;
+                                if (GetExitCodeProcess(ShExecInfo.hProcess, &dwExitCode) && !dwExitCode)
+                                {
+                                    bIsUpdateAvailable = TRUE;
+#ifdef UPDATES_VERBOSE_OUTPUT
+                                    printf("[Updates] Update successful, File Explorer will probably restart momentarly.\n");
+#endif
+                                }
+                                else
+                                {
+                                    SetLastError(dwExitCode);
+#ifdef UPDATES_VERBOSE_OUTPUT
+                                    printf("[Updates] Update failed because the following error has occured: %d.\n", dwExitCode);
+#endif
+                                }
+                                CloseHandle(ShExecInfo.hProcess);
+                            }
+                            else
+                            {
+                                DWORD dwError = GetLastError();
+                                if (dwError == ERROR_CANCELLED)
+                                {
+#ifdef UPDATES_VERBOSE_OUTPUT
+                                    printf("[Updates] Update failed because the elevation request was denied.\n");
+#endif
+                                }
+                                else
+                                {
+#ifdef UPDATES_VERBOSE_OUTPUT
+                                    printf("[Updates] Update failed because the following error has occured: %d.\n", GetLastError());
+#endif
+                                }
+                            }
+                        }
+                    }
+                }
             }
+            InternetCloseHandle(hConnect);
+        }
+        else
+        {
+            if (lpFail) *lpFail = TRUE;
         }
         InternetCloseHandle(hInternet);
     }
 
     CloseHandle(params.hEvent);
 
+    if (staging_buffer)
+    {
+        free(staging_buffer);
+        staging_buffer = NULL;
+    }
+
     return bIsUpdateAvailable;
 }
 
-BOOL IsUpdateAvailable(LPCWSTR wszDataStore, char* szCheckAgainst, BOOL* lpFail)
+BOOL IsUpdateAvailable(LPCWSTR wszDataStore, char* szCheckAgainst, BOOL* lpFail, WCHAR* wszInfoURL, DWORD dwInfoURLLen)
 {
     HKEY hKey = NULL;
     DWORD dwSize = 0;
@@ -323,11 +403,12 @@ BOOL IsUpdateAvailable(LPCWSTR wszDataStore, char* szCheckAgainst, BOOL* lpFail)
     BOOL bIsPolicyMatch = FALSE;
     CHAR szUpdateURL[MAX_PATH];
     ZeroMemory(szUpdateURL, MAX_PATH * sizeof(CHAR));
-    strcat_s(szUpdateURL, MAX_PATH, DEFAULT_UPDATE_URL);
+    strcat_s(szUpdateURL, MAX_PATH, UPDATES_RELEASE_INFO_URL_STABLE);
 #ifdef UPDATES_VERBOSE_OUTPUT
     printf("[Updates] Checking against hash \"%s\"\n", szCheckAgainst);
 #endif
     DWORD dwUpdateTimeout = UPDATES_DEFAULT_TIMEOUT;
+    DWORD bUpdatePreferStaging = FALSE;
 
     RegCreateKeyExW(
         HKEY_CURRENT_USER,
@@ -355,7 +436,20 @@ BOOL IsUpdateAvailable(LPCWSTR wszDataStore, char* szCheckAgainst, BOOL* lpFail)
             szUpdateURL,
             &dwSize
         );
+        strcat_s(szUpdateURL, MAX_PATH, "/download/");
         strcat_s(szUpdateURL, MAX_PATH, SETUP_UTILITY_NAME);
+        if (wszInfoURL)
+        {
+            dwSize = dwInfoURLLen;
+            RegQueryValueExW(
+                hKey,
+                L"UpdateURL",
+                0,
+                NULL,
+                wszInfoURL,
+                &dwSize
+            );
+        }
         dwSize = sizeof(DWORD);
         RegQueryValueExA(
             hKey,
@@ -365,6 +459,29 @@ BOOL IsUpdateAvailable(LPCWSTR wszDataStore, char* szCheckAgainst, BOOL* lpFail)
             &dwUpdateTimeout,
             &dwSize
         );
+        dwSize = sizeof(DWORD);
+        RegQueryValueExA(
+            hKey,
+            "UpdatePreferStaging",
+            0,
+            NULL,
+            &bUpdatePreferStaging,
+            &dwSize
+        );
+        if (bUpdatePreferStaging)
+        {
+            ZeroMemory(szUpdateURL, MAX_PATH * sizeof(CHAR));
+            strcat_s(szUpdateURL, MAX_PATH, UPDATES_RELEASE_INFO_URL_STAGING);
+            dwSize = MAX_PATH;
+            RegQueryValueExA(
+                hKey,
+                "UpdateURLStaging",
+                0,
+                NULL,
+                szUpdateURL,
+                &dwSize
+            );
+        }
         RegCloseKey(hKey);
     }
 #ifdef UPDATES_VERBOSE_OUTPUT
@@ -375,7 +492,10 @@ BOOL IsUpdateAvailable(LPCWSTR wszDataStore, char* szCheckAgainst, BOOL* lpFail)
         szCheckAgainst, 
         dwUpdateTimeout, 
         lpFail,
-        NULL, NULL, NULL
+        NULL, NULL, NULL, 
+        bUpdatePreferStaging,
+        wszInfoURL,
+        dwInfoURLLen
     );
 }
 
@@ -392,9 +512,10 @@ BOOL UpdateProduct(
     BOOL bIsPolicyMatch = FALSE;
     CHAR szUpdateURL[MAX_PATH];
     ZeroMemory(szUpdateURL, MAX_PATH * sizeof(CHAR));
-    strcat_s(szUpdateURL, MAX_PATH, DEFAULT_UPDATE_URL);
+    strcat_s(szUpdateURL, MAX_PATH, UPDATES_RELEASE_INFO_URL_STABLE);
 
     DWORD dwUpdateTimeout = UPDATES_DEFAULT_TIMEOUT;
+    DWORD bUpdatePreferStaging = FALSE;
 
     RegCreateKeyExW(
         HKEY_CURRENT_USER,
@@ -422,6 +543,7 @@ BOOL UpdateProduct(
             szUpdateURL,
             &dwSize
         );
+        strcat_s(szUpdateURL, MAX_PATH, "/download/");
         strcat_s(szUpdateURL, MAX_PATH, SETUP_UTILITY_NAME);
         dwSize = sizeof(DWORD);
         RegQueryValueExA(
@@ -432,6 +554,29 @@ BOOL UpdateProduct(
             &dwUpdateTimeout,
             &dwSize
         );
+        dwSize = sizeof(DWORD);
+        RegQueryValueExA(
+            hKey,
+            "UpdatePreferStaging",
+            0,
+            NULL,
+            &bUpdatePreferStaging,
+            &dwSize
+        );
+        if (bUpdatePreferStaging)
+        {
+            ZeroMemory(szUpdateURL, MAX_PATH * sizeof(CHAR));
+            strcat_s(szUpdateURL, MAX_PATH, UPDATES_RELEASE_INFO_URL_STAGING);
+            dwSize = MAX_PATH;
+            RegQueryValueExA(
+                hKey,
+                "UpdateURLStaging",
+                0,
+                NULL,
+                szUpdateURL,
+                &dwSize
+            );
+        }
         RegCloseKey(hKey);
     }
 #ifdef UPDATES_VERBOSE_OUTPUT
@@ -444,7 +589,9 @@ BOOL UpdateProduct(
         NULL,
         notifier,
         notifFactory,
-        toast
+        toast,
+        bUpdatePreferStaging,
+        NULL, 0
     );
 }
 
@@ -459,6 +606,9 @@ BOOL InstallUpdatesIfAvailable(
     DWORD dwUpdatePolicy
 )
 {
+    wchar_t wszInfoURL[MAX_PATH];
+    ZeroMemory(wszInfoURL, MAX_PATH * sizeof(wchar_t));
+    wcscat_s(wszInfoURL, MAX_PATH, _T(UPDATES_RELEASE_INFO_URL_STABLE));
     wchar_t buf[TOAST_BUFSIZ];
     DWORD dwLeftMost = 0;
     DWORD dwSecondLeft = 0;
@@ -471,7 +621,7 @@ BOOL InstallUpdatesIfAvailable(
         __x_ABI_CWindows_CData_CXml_CDom_CIXmlDocument* inputXml = NULL;
         const wchar_t text[] =
             L"<toast displayTimestamp=\"2021-08-29T00:00:00.000Z\" scenario=\"reminder\" "
-            L"activationType=\"protocol\" launch=\"https://github.com/valinet/ExplorerPatcher/releases/latest\" duration=\"short\">\r\n"
+            L"activationType=\"protocol\" launch=\"" _T(UPDATES_RELEASE_INFO_URL) L"\" duration=\"short\">\r\n"
             L"	<visual>\r\n"
             L"		<binding template=\"ToastGeneric\">\r\n"
             L"			<text><![CDATA[Update successful]]></text>\r\n"
@@ -568,7 +718,7 @@ BOOL InstallUpdatesIfAvailable(
     {
         const wchar_t text[] =
             L"<toast displayTimestamp=\"2021-08-29T00:00:00.000Z\" scenario=\"reminder\" "
-            L"activationType=\"protocol\" launch=\"https://github.com/valinet/ExplorerPatcher/releases/latest\" duration=\"long\">\r\n"
+            L"activationType=\"protocol\" launch=\"" _T(UPDATES_RELEASE_INFO_URL) L"\" duration=\"long\">\r\n"
             L"	<visual>\r\n"
             L"		<binding template=\"ToastGeneric\">\r\n"
             L"			<text><![CDATA[Downloading and installing updates]]></text>\r\n"
@@ -590,7 +740,7 @@ BOOL InstallUpdatesIfAvailable(
     {
         const wchar_t text[] =
             L"<toast displayTimestamp=\"2021-08-29T00:00:00.000Z\" scenario=\"reminder\" "
-            L"activationType=\"protocol\" launch=\"https://github.com/valinet/ExplorerPatcher/releases/latest\" duration=\"long\">\r\n"
+            L"activationType=\"protocol\" launch=\"" _T(UPDATES_RELEASE_INFO_URL) L"\" duration=\"long\">\r\n"
             L"	<visual>\r\n"
             L"		<binding template=\"ToastGeneric\">\r\n"
             L"			<text><![CDATA[Checking for updates]]></text>\r\n"
@@ -637,7 +787,7 @@ BOOL InstallUpdatesIfAvailable(
     ComputeFileHash(dllName, hash, 100);
 
     BOOL bFail = FALSE;
-    if (IsUpdateAvailable(_T(REGPATH), hash, &bFail))
+    if (IsUpdateAvailable(_T(REGPATH), hash, &bFail, wszInfoURL, MAX_PATH))
     {
         printf("[Updates] An update is available.\n");
         if ((dwOperation == UPDATES_OP_DEFAULT && dwUpdatePolicy == UPDATE_POLICY_AUTO) || (dwOperation == UPDATES_OP_INSTALL))
@@ -650,7 +800,7 @@ BOOL InstallUpdatesIfAvailable(
                 {
                     const wchar_t text[] =
                         L"<toast displayTimestamp=\"2021-08-29T00:00:00.000Z\" scenario=\"reminder\" "
-                        L"activationType=\"protocol\" launch=\"https://github.com/valinet/ExplorerPatcher/releases/latest\" duration=\"short\">\r\n"
+                        L"activationType=\"protocol\" launch=\"" _T(UPDATES_RELEASE_INFO_URL) L"\" duration=\"short\">\r\n"
                         L"	<visual>\r\n"
                         L"		<binding template=\"ToastGeneric\">\r\n"
                         L"			<text><![CDATA[Update failed]]></text>\r\n"
@@ -691,7 +841,7 @@ BOOL InstallUpdatesIfAvailable(
         {
             const wchar_t text[] =
                 L"<toast displayTimestamp=\"2021-08-29T00:00:00.000Z\" scenario=\"reminder\" "
-                L"activationType=\"protocol\" launch=\"https://github.com/valinet/ExplorerPatcher/releases/latest\" duration=\"long\">\r\n"
+                L"activationType=\"protocol\" launch=\"%s\" duration=\"long\">\r\n"
                 L"	<visual>\r\n"
                 L"		<binding template=\"ToastGeneric\">\r\n"
                 L"			<text><![CDATA[New version available]]></text>\r\n"
@@ -701,10 +851,11 @@ BOOL InstallUpdatesIfAvailable(
                 L"	</visual>\r\n"
                 L"	<audio src=\"ms-winsoundevent:Notification.Default\" loop=\"false\" silent=\"false\"/>\r\n"
                 L"</toast>\r\n";
+            swprintf_s(buf, TOAST_BUFSIZ, text, wszInfoURL);
             __x_ABI_CWindows_CData_CXml_CDom_CIXmlDocument* inputXml = NULL;
             String2IXMLDocument(
-                text,
-                wcslen(text),
+                buf,
+                wcslen(buf),
                 &inputXml,
                 NULL
             );
@@ -741,7 +892,7 @@ BOOL InstallUpdatesIfAvailable(
         {
             const wchar_t text[] =
                 L"<toast displayTimestamp=\"2021-08-29T00:00:00.000Z\" scenario=\"reminder\" "
-                L"activationType=\"protocol\" launch=\"https://github.com/valinet/ExplorerPatcher/releases/latest\" duration=\"short\">\r\n"
+                L"activationType=\"protocol\" launch=\"" _T(UPDATES_RELEASE_INFO_URL) L"\" duration=\"short\">\r\n"
                 L"	<visual>\r\n"
                 L"		<binding template=\"ToastGeneric\">\r\n"
                 L"			<text><![CDATA[No updates are available]]></text>\r\n"
@@ -753,7 +904,7 @@ BOOL InstallUpdatesIfAvailable(
                 L"</toast>\r\n";
             const wchar_t text2[] =
                 L"<toast displayTimestamp=\"2021-08-29T00:00:00.000Z\" scenario=\"reminder\" "
-                L"activationType=\"protocol\" launch=\"https://github.com/valinet/ExplorerPatcher/releases/latest\" duration=\"short\">\r\n"
+                L"activationType=\"protocol\" launch=\"" _T(UPDATES_RELEASE_INFO_URL) L"\" duration=\"short\">\r\n"
                 L"	<visual>\r\n"
                 L"		<binding template=\"ToastGeneric\">\r\n"
                 L"			<text><![CDATA[Unable to check for updates]]></text>\r\n"

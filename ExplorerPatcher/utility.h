@@ -28,7 +28,6 @@
 #define EP_CLSID "{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}"
 #define DOSMODE_OFFSET 78
 #define SETUP_UTILITY_NAME "ep_setup.exe"
-#define DEFAULT_UPDATE_URL "https://github.com/valinet/ExplorerPatcher/releases/latest/download/"
 #define TOAST_BUFSIZ 1024
 #define SEH_REGPATH "Control Panel\\Quick Actions\\Control Center\\QuickActionsStateCapture\\ExplorerPatcher"
 

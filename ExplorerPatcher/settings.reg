@@ -337,6 +337,8 @@
 ;x 0 Prompt to install available updates
 ;x 2 Do not check for updates
 "UpdatePolicy"=dword:00000001
+;b Receive pre-release versions, if available (not recommended)
+"UpdatePreferStaging"=dword:00000000
 ;t ________________________
 ;y Check for updates
 ;;;EP_CHECK_FOR_UPDATES

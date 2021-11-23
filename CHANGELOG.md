@@ -13,11 +13,11 @@ Tested on build 22000.318.
 * Implemented support for Windows 7 battery flyout (#274)
 * Implemented `/extract` switch which unpacks the files from `ep_setup.exe` to disk (#396) (.1):
   * `ep_setup /extract` - extracts `ExplorerPatcher.IA-32.dll` and `ExplorerPatcher.amd64.dll` to current directory
-  * `ep-setup /extract test` - extracts to `test` folder in current directory
-  * `ep-setup /extract "C:\test with space"` - extracts to `C:\test with space` directory
+  * `ep_setup /extract test` - extracts to `test` folder in current directory
+  * `ep_setup /extract "C:\test with space"` - extracts to `C:\test with space` directory
 * Taskbar toolbar layouts are preserved when switching between Windows 10 and Windows 11 taskbars and in general (these will be reset when installing this update but should be subsequently remembered) (#395) (.2)
 * Implemented option to toggle taskbar auto-hide when double clicking the main taskbar (#389) (.3)
-* Running `ep-setup.exe` again while EP is already installed will now update the program to the latest version. To uninstall, as the previous behavior did, run `ep_setup.exe /uninstall` (.4)
+* Running `ep_setup.exe` again while EP is already installed will now update the program to the latest version. To uninstall, as the previous behavior did, run `ep_setup.exe /uninstall` (.4)
 * Implemented absolute height and width parameters for the Windows 10 switcher. These are especially useful for ultra wide monitors, in a scenario similar to the one described in [this post](https://github.com/valinet/ExplorerPatcher/discussions/110#discussioncomment-1673007) - to configure, set `MaxWidthAbs` and/or `MaxHeightAbs` DWORD values in `HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher\sws` (#110) (.5)
 * Provides a simple mechanism for chainloading a custom library when the shell interface is created, from which you can execute your custom code (subject to change, see [this](https://github.com/valinet/ExplorerPatcher/discussions/408#discussioncomment-1674348) for more details) (#408) (.6)
 
@@ -26,6 +26,7 @@ Tested on build 22000.318.
 
 * Improved reliability when invoking Control Center (`Win`+`A`) when the taskbar icon is disabled (the icon should now not reappear anymore sometimes) (#242)
 * Small reorganization of some options in "Properties"
+* Option to receive pre-release versions, if available, when checking for updates (.9)
 
 #### Fixes
 
