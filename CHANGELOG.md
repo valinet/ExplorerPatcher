@@ -2,6 +2,28 @@
 
 This document includes the same release notes as in the [Releases](https://github.com/valinet/ExplorerPatcher/releases) section on GitHub.
 
+## 22000.348.39
+
+Tested on build 22000.348.
+
+#### New features
+
+* Built-in support for build 22000.348.
+* Implemented option to toggle taskbar auto-hide when double clicking the main taskbar (#389)
+* Running `ep_setup.exe` again while EP is already installed will now update the program to the latest version. To uninstall, as the previous behavior did, run `ep_setup.exe /uninstall`
+* Implemented absolute height and width parameters for the Windows 10 switcher. These are especially useful for ultra wide monitors, in a scenario similar to the one described in [this post](https://github.com/valinet/ExplorerPatcher/discussions/110#discussioncomment-1673007) - to configure, set `MaxWidthAbs` and/or `MaxHeightAbs` DWORD values in `HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher\sws` (#110)
+* Provides a simple mechanism for chainloading a custom library when the shell interface is created, from which you can execute your custom code (subject to change, see [this](https://github.com/valinet/ExplorerPatcher/discussions/408#discussioncomment-1674348) for more details) (#408)
+
+#### Feature enhancements
+
+* Option to receive pre-release versions, if available, when checking for updates
+
+#### Fixes
+
+* Fixed mismatches between defaults from EP and Windows' defaults
+* Application starts with limited functionality on builds lacking hardcoded symbol information; symbol downloading is disabled for now, by default, but can be enabled in the "Advanced" settings section of "Properties"
+* Improvements to how hung windows are treated by the Windows 10 window switcher; fixed an issue that severely delayed the time it took the window switcher to display when a window hung on the screen (#449)
+
 ## 22000.318.38
 
 Tested on build 22000.318.
