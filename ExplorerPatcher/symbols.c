@@ -33,7 +33,7 @@ L"</toast>\r\n";
 
 const wchar_t DownloadOKXML[] =
 L"<toast displayTimestamp=\"2021-08-29T01:00:00.000Z\" scenario=\"reminder\" "
-L"activationType=\"protocol\" launch=\"https://github.com/valinet/ExplorerPatcher\" duration=\"short\">\r\n"
+L"activationType=\"protocol\" launch=\"https://github.com/valinet/ExplorerPatcher\" duration=\"long\">\r\n"
 L"	<visual>\r\n"
 L"		<binding template=\"ToastGeneric\">\r\n"
 L"			<text><![CDATA[Successfully downloaded symbols for OS build %s]]></text>\r\n"
