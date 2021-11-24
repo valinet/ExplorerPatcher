@@ -17,12 +17,14 @@ Tested on build 22000.348.
 #### Feature enhancements
 
 * Option to receive pre-release versions, if available, when checking for updates
+* Improved behavior regarding symbol data information; please refer to https://github.com/valinet/ExplorerPatcher/wiki/Symbols for more information (.1)
 
 #### Fixes
 
 * Fixed mismatches between defaults from EP and Windows' defaults
 * Application starts with limited functionality on builds lacking hardcoded symbol information; symbol downloading is disabled for now, by default, but can be enabled in the "Advanced" settings section of "Properties"
 * Improvements to how hung windows are treated by the Windows 10 window switcher; fixed an issue that severely delayed the time it took the window switcher to display when a window hung on the screen (#449)
+* Clicking "Close" in the Windows 10 window switcher is now more tolerant to small mouse movements (#110) (.1)
 
 ## 22000.318.38
 
