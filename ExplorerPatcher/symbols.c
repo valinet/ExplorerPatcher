@@ -23,7 +23,7 @@ L"<toast displayTimestamp=\"2021-08-29T00:00:00.000Z\" scenario=\"reminder\" "
 L"activationType=\"protocol\" launch=\"https://github.com/valinet/ExplorerPatcher\" duration=\"short\">\r\n"
 L"	<visual>\r\n"
 L"		<binding template=\"ToastGeneric\">\r\n"
-L"			<text><![CDATA[Unable to find symbols for OS version %s]]></text>\r\n"
+L"			<text><![CDATA[Unable to find symbols for OS build %s]]></text>\r\n"
 L"			<text><![CDATA[Downloading and applying symbol information, please wait...]]></text>\r\n"
 L"			<text placement=\"attribution\"><![CDATA[ExplorerPatcher]]></text>\r\n"
 L"		</binding>\r\n"
@@ -36,8 +36,8 @@ L"<toast displayTimestamp=\"2021-08-29T01:00:00.000Z\" scenario=\"reminder\" "
 L"activationType=\"protocol\" launch=\"https://github.com/valinet/ExplorerPatcher\" duration=\"short\">\r\n"
 L"	<visual>\r\n"
 L"		<binding template=\"ToastGeneric\">\r\n"
-L"			<text><![CDATA[Symbols downloaded and applied successfully!]]></text>\r\n"
-L"			<text><![CDATA[Now, please wait while dynamic Explorer patching is done...]]></text>\r\n"
+L"			<text><![CDATA[Successfully downloaded symbols for OS build %s]]></text>\r\n"
+L"			<text><![CDATA[Please restart File Explorer to apply the changes and enable additional functionality.]]></text>\r\n"
 L"			<text placement=\"attribution\"><![CDATA[ExplorerPatcher]]></text>\r\n"
 L"		</binding>\r\n"
 L"	</visual>\r\n"
@@ -64,9 +64,9 @@ DWORD DownloadSymbols(DownloadSymbolsParams* params)
 
     HMODULE hModule = params->hModule;
 
-    Sleep(3000);
+    Sleep(6000);
 
-    printf("Started \"Download symbols\" thread.\n");
+    printf("[Symbols] Started \"Download symbols\" thread.\n");
 
     RTL_OSVERSIONINFOW rovi;
     DWORD32 ubr = VnGetOSVersionAndUBR(&rovi);
@@ -84,37 +84,45 @@ DWORD DownloadSymbols(DownloadSymbolsParams* params)
         ubr
     );
 
-    TCHAR buffer[sizeof(DownloadSymbolsXML) / sizeof(wchar_t) + 30];
+    TCHAR buffer[1000];
     ZeroMemory(
         buffer,
-        (sizeof(DownloadSymbolsXML) / sizeof(wchar_t) + 30) * sizeof(TCHAR)
+        1000
     );
     wsprintf(
         buffer,
         DownloadSymbolsXML,
         szReportedVersion
     );
-    HRESULT hr = S_OK;
-    __x_ABI_CWindows_CData_CXml_CDom_CIXmlDocument* inputXml = NULL;
-    hr = String2IXMLDocument(
-        buffer,
-        wcslen(buffer),
-        &inputXml,
+    if (params->bVerbose)
+    {
+        HRESULT hr = S_OK;
+        __x_ABI_CWindows_CData_CXml_CDom_CIXmlDocument* inputXml = NULL;
+        hr = String2IXMLDocument(
+            buffer,
+            wcslen(buffer),
+            &inputXml,
 #ifdef DEBUG
-        stdout
+            stdout
 #else
-        NULL
+            NULL
 #endif
-    );
-    hr = ShowToastMessage(
-        inputXml,
-        APPID,
-        sizeof(APPID) / sizeof(TCHAR) - 1,
+        );
+        hr = ShowToastMessage(
+            inputXml,
+            APPID,
+            sizeof(APPID) / sizeof(TCHAR) - 1,
 #ifdef DEBUG
-        stdout
+            stdout
 #else
-        NULL
+            NULL
 #endif
+        );
+    }
+    wprintf(
+        L"[Symbols] "
+        L"Attempting to download symbols for unknown OS version %s.\n",
+        szReportedVersion
     );
 
 
@@ -141,7 +149,7 @@ DWORD DownloadSymbols(DownloadSymbolsParams* params)
         MAX_PATH,
         "\\"
     );
-    printf("Downloading to \"%s\".\n", szSettingsPath);
+    printf("[Symbols] Downloading to \"%s\".\n", szSettingsPath);
 
     symbols_addr symbols_PTRS;
     ZeroMemory(
@@ -189,13 +197,16 @@ DWORD DownloadSymbols(DownloadSymbolsParams* params)
     );
     if (!hKey || hKey == INVALID_HANDLE_VALUE)
     {
-        FreeLibraryAndExitThread(
-            hModule,
-            9
-        );
+        if (params->bVerbose)
+        {
+            FreeLibraryAndExitThread(
+                hModule,
+                9
+            );
+        }
         return 9;
     }
-    printf("Downloading symbols for \"%s\"...\n", twinui_pcshell_sb_dll);
+    printf("[Symbols] Downloading symbols for \"%s\"...\n", twinui_pcshell_sb_dll);
     if (VnDownloadSymbols(
         NULL,
         twinui_pcshell_sb_dll,
@@ -203,13 +214,18 @@ DWORD DownloadSymbols(DownloadSymbolsParams* params)
         MAX_PATH
     ))
     {
-        FreeLibraryAndExitThread(
-            hModule,
-            4
-        );
+        printf("[Symbols] Symbols for \"%s\" are not available - unable to download.\n", twinui_pcshell_sb_dll);
+        printf("[Symbols] Please refer to \"https://github.com/valinet/ExplorerPatcher/wiki/Symbols\" for more information.\n");
+        if (params->bVerbose)
+        {
+            FreeLibraryAndExitThread(
+                hModule,
+                4
+            );
+        }
         return 4;
     }
-    printf("Reading symbols...\n");
+    printf("[Symbols] Reading symbols...\n");
     if (VnGetSymbols(
         szSettingsPath,
         symbols_PTRS.twinui_pcshell_PTRS,
@@ -217,7 +233,7 @@ DWORD DownloadSymbols(DownloadSymbolsParams* params)
         TWINUI_PCSHELL_SB_CNT
     ))
     {
-        printf("Hooking Win+C is not available for this build.\n");
+        printf("[Symbols] Hooking Win+C is not available for this build.\n");
         DWORD dwZero = 0;
         RegSetValueExW(
             hKey,
@@ -234,10 +250,14 @@ DWORD DownloadSymbols(DownloadSymbolsParams* params)
             TWINUI_PCSHELL_SB_CNT - 1
         ))
         {
-            FreeLibraryAndExitThread(
-                hModule,
-                5
-            );
+            printf("[Symbols] Failure in reading symbols for \"%s\".\n", twinui_pcshell_sb_dll);
+            if (params->bVerbose)
+            {
+                FreeLibraryAndExitThread(
+                    hModule,
+                    5
+                );
+            }
             return 5;
         }
     }
@@ -333,7 +353,7 @@ DWORD DownloadSymbols(DownloadSymbolsParams* params)
         MAX_PATH,
         ".dll"
     );
-    printf("Downloading symbols for \"%s\"...\n", startdocked_sb_dll);
+    printf("[Symbols] Downloading symbols for \"%s\"...\n", startdocked_sb_dll);
     if (VnDownloadSymbols(
         NULL,
         startdocked_sb_dll,
@@ -341,13 +361,18 @@ DWORD DownloadSymbols(DownloadSymbolsParams* params)
         MAX_PATH
     ))
     {
-        FreeLibraryAndExitThread(
-            hModule,
-            6
-        );
+        printf("[Symbols] Symbols for \"%s\" are not available - unable to download.\n", startdocked_sb_dll);
+        printf("[Symbols] Please refer to \"https://github.com/valinet/ExplorerPatcher/wiki/Symbols\" for more information.\n");
+        if (params->bVerbose)
+        {
+            FreeLibraryAndExitThread(
+                hModule,
+                6
+            );
+        }
         return 6;
     }
-    printf("Reading symbols...\n");
+    printf("[Symbols] Reading symbols...\n");
     if (VnGetSymbols(
         szSettingsPath,
         symbols_PTRS.startdocked_PTRS,
@@ -355,11 +380,14 @@ DWORD DownloadSymbols(DownloadSymbolsParams* params)
         STARTDOCKED_SB_CNT
     ))
     {
-        printf("error...\n");
-        FreeLibraryAndExitThread(
-            hModule,
-            7
-        );
+        printf("[Symbols] Failure in reading symbols for \"%s\".\n", startdocked_sb_dll);
+        if (params->bVerbose)
+        {
+            FreeLibraryAndExitThread(
+                hModule,
+                7
+            );
+        }
         return 7;
     }
     RegCreateKeyExW(
@@ -375,10 +403,13 @@ DWORD DownloadSymbols(DownloadSymbolsParams* params)
     );
     if (!hKey || hKey == INVALID_HANDLE_VALUE)
     {
-        FreeLibraryAndExitThread(
-            hModule,
-            8
-        );
+        if (params->bVerbose)
+        {
+            FreeLibraryAndExitThread(
+                hModule,
+                8
+            );
+        }
         return 8;
     }
     RegSetValueExW(
@@ -441,10 +472,13 @@ DWORD DownloadSymbols(DownloadSymbolsParams* params)
     );
     if (!hKey || hKey == INVALID_HANDLE_VALUE)
     {
-        FreeLibraryAndExitThread(
-            hModule,
-            10
-        );
+        if (params->bVerbose)
+        {
+            FreeLibraryAndExitThread(
+                hModule,
+                10
+            );
+        }
         return 10;
     }
     RegSetValueExW(
@@ -458,7 +492,9 @@ DWORD DownloadSymbols(DownloadSymbolsParams* params)
     if (hKey) RegCloseKey(hKey);
 
 
-    if (symbols_PTRS.twinui_pcshell_PTRS[0])
+    printf("[Symbols] Finished gathering symbol data.\n");
+
+    if (params->bVerbose)
     {
         __x_ABI_CWindows_CData_CXml_CDom_CIXmlDocument* inputXml = NULL;
         HRESULT hr = String2IXMLDocument(
@@ -481,13 +517,20 @@ DWORD DownloadSymbols(DownloadSymbolsParams* params)
             NULL
 #endif
         );
+        Sleep(4000);
+        exit(0);
     }
     else
     {
-        __x_ABI_CWindows_CData_CXml_CDom_CIXmlDocument* inputXml2 = NULL;
-        hr = String2IXMLDocument(
+        wsprintf(
+            buffer,
             DownloadOKXML,
-            wcslen(DownloadOKXML),
+            szReportedVersion
+        );
+        __x_ABI_CWindows_CData_CXml_CDom_CIXmlDocument* inputXml2 = NULL;
+        HRESULT hr = String2IXMLDocument(
+            buffer,
+            wcslen(buffer),
             &inputXml2,
 #ifdef DEBUG
             stdout
@@ -507,9 +550,7 @@ DWORD DownloadSymbols(DownloadSymbolsParams* params)
         );
     }
 
-    Sleep(4000);
-
-    exit(0);
+    printf("[Symbols] Finished \"Download symbols\" thread.\n");
 }
 
 BOOL LoadSymbols(symbols_addr* symbols_PTRS, HMODULE hModule)

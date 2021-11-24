@@ -37,6 +37,7 @@ typedef struct symbols_addr
 typedef struct _DownloadSymbolsParams
 {
     HMODULE hModule;
+    BOOL bVerbose;
 } DownloadSymbolsParams;
 DWORD DownloadSymbols(DownloadSymbolsParams* params);
 

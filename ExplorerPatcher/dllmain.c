@@ -72,7 +72,7 @@ DWORD bShowUpdateToast = FALSE;
 DWORD bToolbarSeparators = FALSE;
 DWORD bTaskbarAutohideOnDoubleClick = FALSE;
 DWORD dwOrbStyle = 0;
-DWORD bEnableSymbolDownload = FALSE;
+DWORD bEnableSymbolDownload = TRUE;
 HMODULE hModule = NULL;
 HANDLE hDelayedInjectionThread = NULL;
 HANDLE hIsWinXShown = NULL;
@@ -5417,17 +5417,13 @@ DWORD Inject(BOOL bIsExplorer)
     );
     if (LoadSymbols(&symbols_PTRS, hModule))
     {
-        if (!bEnableSymbolDownload)
+        if (bEnableSymbolDownload)
         {
-            printf("Unable to load symbols; the program may have limited functionality.\n");
-        }
-        else
-        {
-            printf("Symbols have to be (re)downloaded...\n");
+            printf("Attempting to download symbol data; for now, the program may have limited functionality.\n");
             DownloadSymbolsParams* params = malloc(sizeof(DownloadSymbolsParams));
             params->hModule = hModule;
+            params->bVerbose = FALSE;
             CreateThread(0, 0, DownloadSymbols, params, 0, 0);
-            return 0;
         }
     }
     else
