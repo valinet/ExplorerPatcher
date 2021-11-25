@@ -1659,7 +1659,7 @@ __declspec(dllexport) int ZZGUI(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLin
     HWND hOther = NULL;
     if (hOther = FindWindowW(L"ExplorerPatcher_GUI_" _T(EP_CLSID), NULL))
     {
-        SetForegroundWindow(hOther);
+        SwitchToThisWindow(hOther, TRUE);
         return 0;
     }
 

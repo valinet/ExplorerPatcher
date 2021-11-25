@@ -25,6 +25,7 @@ Tested on build 22000.348.
 * Application starts with limited functionality on builds lacking hardcoded symbol information; symbol downloading is disabled for now, by default, but can be enabled in the "Advanced" settings section of "Properties"
 * Improvements to how hung windows are treated by the Windows 10 window switcher; fixed an issue that severely delayed the time it took the window switcher to display when a window hung on the screen (#449)
 * Clicking "Close" in the Windows 10 window switcher is now more tolerant to small mouse movements (#110) (.1)
+* The existing "Properties" window is properly displayed if opening it when another instance is already running and is minimized (.2)
 
 ## 22000.318.38
 
