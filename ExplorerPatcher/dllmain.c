@@ -577,6 +577,18 @@ void LaunchNetworkTargets(DWORD dwTarget)
             SW_SHOWNORMAL
         );
     }
+    else if (dwTarget == 6)
+    {
+        InvokeActionCenter();
+        // ShellExecuteW(
+        //     NULL,
+        //     L"open",
+        //     L"ms-actioncenter:controlcenter/&showFooter=true",
+        //     NULL,
+        //     NULL,
+        //     SW_SHOWNORMAL
+        // );
+    }
     else if (dwTarget == 1)
     {
         ShellExecuteW(
@@ -2667,7 +2679,7 @@ HRESULT pnidui_CoCreateInstanceHook(
     {
         if (dwVal)
         {
-            if (dwVal == 5)
+            if (dwVal == 5 || dwVal == 6)
             {
                 if (hCheckForegroundThread)
                 {

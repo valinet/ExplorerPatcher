@@ -87,7 +87,8 @@
 "ReplaceNetwork"=dword:00000000
 ;t When clicking a system icon in the tray, open:
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Control Panel\Settings\Network]
-;c 6 Network
+;c 7 Network
+;x 6 Control Center
 ;x 5 Windows 11 WiFi flyout
 ;x 0 Windows 10 flyout (default)
 ;x 2 Windows 8 flyout
