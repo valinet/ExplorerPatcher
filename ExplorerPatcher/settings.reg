@@ -197,12 +197,13 @@
 
 ;T Window switcher
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer]
-;z 3 Window switcher (Alt+Tab) style *
-;x 0 Windows 11
-;x 2 Windows 10
+;z 4 Window switcher (Alt+Tab) style *
+;x 0 Windows 11 (default)
+;x 3 Windows 10
 ;x 1 Windows NT
+;x 2 Simple Window Switcher
 "AltTabSettings"=dword:00000000
-;t The following settings only apply to the Windows 10 window switcher:
+;t The following settings only apply to the Simple Window Switcher:
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher\sws]
 ;b Include desktop
 "IncludeWallpaper"=dword:00000001

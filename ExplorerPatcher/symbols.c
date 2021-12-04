@@ -237,7 +237,7 @@ DWORD DownloadSymbols(DownloadSymbolsParams* params)
         DWORD dwZero = 0;
         RegSetValueExW(
             hKey,
-            TEXT(TWINUI_PCSHELL_SB_7),
+            TEXT(TWINUI_PCSHELL_SB_8),
             0,
             REG_DWORD,
             &dwZero,
@@ -323,6 +323,14 @@ DWORD DownloadSymbols(DownloadSymbolsParams* params)
         0,
         REG_DWORD,
         &(symbols_PTRS.twinui_pcshell_PTRS[7]),
+        sizeof(DWORD)
+    );
+    RegSetValueExW(
+        hKey,
+        TEXT(TWINUI_PCSHELL_SB_8),
+        0,
+        REG_DWORD,
+        &(symbols_PTRS.twinui_pcshell_PTRS[8]),
         sizeof(DWORD)
     );
     if (hKey) RegCloseKey(hKey);
@@ -598,7 +606,8 @@ BOOL LoadSymbols(symbols_addr* symbols_PTRS, HMODULE hModule)
         symbols_PTRS->twinui_pcshell_PTRS[4] = 0x5DAC08;
         symbols_PTRS->twinui_pcshell_PTRS[5] = 0x5DA8C4;
         symbols_PTRS->twinui_pcshell_PTRS[6] = 0x5CD9C0;
-        symbols_PTRS->twinui_pcshell_PTRS[7] = 0x52980;
+        symbols_PTRS->twinui_pcshell_PTRS[7] = 0x5f744c;
+        symbols_PTRS->twinui_pcshell_PTRS[8] = 0x52980;
         bIsTwinuiPcshellHardcoded = TRUE;
     }
     else if (!_stricmp(hash, "03487ccd5bc5a194fad61b616b0a2b28") || !_stricmp(hash, "3f6ef12a59a2f84a3296771ea7753e01")) // 346, 348
@@ -610,7 +619,8 @@ BOOL LoadSymbols(symbols_addr* symbols_PTRS, HMODULE hModule)
         symbols_PTRS->twinui_pcshell_PTRS[4] = 0x5DBDD8;
         symbols_PTRS->twinui_pcshell_PTRS[5] = 0x5DBA94;
         symbols_PTRS->twinui_pcshell_PTRS[6] = 0x5CEB90;
-        symbols_PTRS->twinui_pcshell_PTRS[7] = 0x4D780;
+        symbols_PTRS->twinui_pcshell_PTRS[7] = 0x5f861c;
+        symbols_PTRS->twinui_pcshell_PTRS[8] = 0x4D780;
         bIsTwinuiPcshellHardcoded = TRUE;
     }
     if (bIsTwinuiPcshellHardcoded)

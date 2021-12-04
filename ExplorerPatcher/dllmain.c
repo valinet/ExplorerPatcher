@@ -72,6 +72,7 @@ DWORD bToolbarSeparators = FALSE;
 DWORD bTaskbarAutohideOnDoubleClick = FALSE;
 DWORD dwOrbStyle = 0;
 DWORD bEnableSymbolDownload = TRUE;
+DWORD dwAltTabSettings = 0;
 HMODULE hModule = NULL;
 HANDLE hDelayedInjectionThread = NULL;
 HANDLE hIsWinXShown = NULL;
@@ -3847,6 +3848,36 @@ void WINAPI LoadSettings(BOOL bIsExplorer)
 
     RegCreateKeyExW(
         HKEY_CURRENT_USER,
+        L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer",
+        0,
+        NULL,
+        REG_OPTION_NON_VOLATILE,
+        KEY_READ | KEY_WOW64_64KEY,
+        NULL,
+        &hKey,
+        NULL
+    );
+    if (hKey == NULL || hKey == INVALID_HANDLE_VALUE)
+    {
+        hKey = NULL;
+    }
+    if (hKey)
+    {
+        dwSize = sizeof(DWORD);
+        RegQueryValueExW(
+            hKey,
+            TEXT("AltTabSettings"),
+            0,
+            NULL,
+            &dwAltTabSettings,
+            &dwSize
+        );
+        RegCloseKey(hKey);
+    }
+
+
+    RegCreateKeyExW(
+        HKEY_CURRENT_USER,
         L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartPage",
         0,
         NULL,
@@ -4920,14 +4951,14 @@ LSTATUS twinuipcshell_RegGetValueW(
 {
     LSTATUS lRes = RegGetValueW(hkey, lpSubKey, lpValue, dwFlags, pdwType, pvData, pcbData);
 
-    if (!bOldTaskbar && !lstrcmpW(lpValue, L"AltTabSettings"))
+    if (!lstrcmpW(lpValue, L"AltTabSettings"))
     {
-        if (*(DWORD*)pvData)
+        if (lRes == ERROR_SUCCESS && *(DWORD*)pvData)
         {
             *(DWORD*)pvData = 1;
         }
 
-        if (hWin11AltTabInitialized)
+        if (!bOldTaskbar && hWin11AltTabInitialized)
         {
             SetEvent(hWin11AltTabInitialized);
             CloseHandle(hWin11AltTabInitialized);
@@ -5243,6 +5274,24 @@ DWORD InjectBasicFunctions(BOOL bIsExplorer, BOOL bInstall)
     }
 }
 
+INT64(*twinui_pcshell_IsUndockedAssetAvailableFunc)(INT a1, INT64 a2, INT64 a3, const char* a4);
+INT64 twinui_pcshell_IsUndockedAssetAvailableHook(INT a1, INT64 a2, INT64 a3, const char* a4)
+{
+    if (dwAltTabSettings == 3)
+    {
+        return 0;
+    }
+    else
+    {
+        return twinui_pcshell_IsUndockedAssetAvailableFunc(a1, a2, a3, a4);
+    }
+}
+
+BOOL IsDebuggerPresentHook()
+{
+    return FALSE;
+}
+
 DWORD Inject(BOOL bIsExplorer)
 {
 #if defined(DEBUG) | defined(_DEBUG)
@@ -5274,7 +5323,7 @@ DWORD Inject(BOOL bIsExplorer)
         hSwsOpacityMaybeChanged = CreateEventW(NULL, FALSE, FALSE, NULL);
     }
 
-    unsigned int numSettings = bIsExplorer ? 11 : 2;
+    unsigned int numSettings = bIsExplorer ? 12 : 2;
     Setting* settings = calloc(numSettings, sizeof(Setting));
     if (settings)
     {
@@ -5397,6 +5446,17 @@ DWORD Inject(BOOL bIsExplorer)
             settings[cs].hEvent = NULL;
             settings[cs].hKey = NULL;
             wcscpy_s(settings[cs].name, MAX_PATH, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced");
+            settings[cs].origin = HKEY_CURRENT_USER;
+            cs++;
+        }
+
+        if (cs < numSettings)
+        {
+            settings[cs].callback = LoadSettings;
+            settings[cs].data = bIsExplorer;
+            settings[cs].hEvent = NULL;
+            settings[cs].hKey = NULL;
+            wcscpy_s(settings[cs].name, MAX_PATH, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer");
             settings[cs].origin = HKEY_CURRENT_USER;
             cs++;
         }
@@ -5641,6 +5701,22 @@ DWORD Inject(BOOL bIsExplorer)
         }
     }
 
+    if (symbols_PTRS.twinui_pcshell_PTRS[7] && symbols_PTRS.twinui_pcshell_PTRS[7] != 0xFFFFFFFF)
+    {
+        twinui_pcshell_IsUndockedAssetAvailableFunc = (INT64(*)(void*, POINT*))
+            ((uintptr_t)hTwinuiPcshell + symbols_PTRS.twinui_pcshell_PTRS[7]);
+        rv = funchook_prepare(
+            funchook,
+            (void**)&twinui_pcshell_IsUndockedAssetAvailableFunc,
+            twinui_pcshell_IsUndockedAssetAvailableHook
+        );
+        if (rv != 0)
+        {
+            FreeLibraryAndExitThread(hModule, rv);
+            return rv;
+        }
+    }
+
     if (symbols_PTRS.twinui_pcshell_PTRS[TWINUI_PCSHELL_SB_CNT - 1] && symbols_PTRS.twinui_pcshell_PTRS[TWINUI_PCSHELL_SB_CNT - 1] != 0xFFFFFFFF)
     {
         winrt_Windows_Internal_Shell_implementation_MeetAndChatManager_OnMessageFunc = (INT64(*)(void*, POINT*))
@@ -5657,6 +5733,7 @@ DWORD Inject(BOOL bIsExplorer)
         }
     }
     VnPatchIAT(hTwinuiPcshell, "API-MS-WIN-CORE-REGISTRY-L1-1-0.DLL", "RegGetValueW", twinuipcshell_RegGetValueW);
+    //VnPatchIAT(hTwinuiPcshell, "api-ms-win-core-debug-l1-1-0.dll", "IsDebuggerPresent", IsDebuggerPresentHook);
     printf("Setup twinui.pcshell functions done\n");
 
 
