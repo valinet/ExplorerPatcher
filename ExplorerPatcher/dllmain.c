@@ -65,7 +65,6 @@ DWORD bClassicThemeMitigations = FALSE;
 DWORD bHookStartMenu = TRUE;
 DWORD bPropertiesInWinX = FALSE;
 DWORD bNoMenuAccelerator = FALSE;
-DWORD bTaskbarMonitorOverride = 0;
 DWORD dwIMEStyle = 0;
 DWORD dwTaskbarAl = 1;
 DWORD bShowUpdateToast = FALSE;
@@ -3755,15 +3754,6 @@ void WINAPI LoadSettings(BOOL bIsExplorer)
         dwSize = sizeof(DWORD);
         RegQueryValueExW(
             hKey,
-            TEXT("TaskbarMonitorOverride"),
-            0,
-            NULL,
-            &bTaskbarMonitorOverride,
-            &dwSize
-        );
-        dwSize = sizeof(DWORD);
-        RegQueryValueExW(
-            hKey,
             TEXT("IMEStyle"),
             0,
             NULL,
@@ -4938,42 +4928,6 @@ LSTATUS twinuipcshell_RegGetValueW(
     return lRes;
 }
 
-BOOL CALLBACK GetMonitorByIndex(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, RECT* rc)
-{
-    //printf(">> %d %d %d %d\n", lprcMonitor->left, lprcMonitor->top, lprcMonitor->right, lprcMonitor->bottom);
-    if (--rc->left < 0)
-    {
-        *rc = *lprcMonitor;
-        return FALSE;
-    }
-    return TRUE;
-}
-
-HMONITOR explorer_MonitorFromRect(LPCRECT lprc, DWORD dwFlags)
-{
-    /*printf("%d %d %d %d\n", lprc->left, lprc->top, lprc->right, lprc->bottom);
-
-        return MonitorFromRect(lprc, dwFlags);
-    //}*/
-    if (bTaskbarMonitorOverride)
-    {
-        RECT rc;
-        ZeroMemory(&rc, sizeof(RECT));
-        rc.left = bTaskbarMonitorOverride - 1;
-        EnumDisplayMonitors(
-            NULL,
-            NULL,
-            GetMonitorByIndex,
-            &rc
-        );
-        if (rc.top != rc.bottom)
-        {
-            return MonitorFromRect(&rc, dwFlags);
-        }
-    }
-    return MonitorFromRect(lprc, dwFlags);
-}
-
 HRESULT (*explorer_SHCreateStreamOnModuleResourceWFunc)(
     HMODULE hModule,
     LPCWSTR pwszName,
@@ -5083,6 +5037,92 @@ HRESULT WINAPI explorer_SHCreateStreamOnModuleResourceWHook(
 }
 #pragma endregion
 
+
+#pragma region "Remember primary taskbar positioning"
+BOOL bTaskbarFirstTimePositioning = FALSE;
+BOOL bTaskbarSet = FALSE;
+
+BOOL explorer_SetRect(LPRECT lprc, int xLeft, int yTop, int xRight, int yBottom)
+{
+    BOOL bIgnore = FALSE;
+    if (bTaskbarFirstTimePositioning)
+    {
+        bIgnore = bTaskbarSet;
+    }
+    else
+    {
+        bTaskbarFirstTimePositioning = TRUE;
+        bIgnore = (GetSystemMetrics(SM_CMONITORS) == 1);
+        bTaskbarSet = bIgnore;
+    }
+
+    if (bIgnore)
+    {
+        return SetRect(lprc, xLeft, yTop, xRight, yBottom);
+    }
+    if (xLeft)
+    {
+        return SetRect(lprc, xLeft, yTop, xRight, yBottom);
+    }
+    if (yTop)
+    {
+        return SetRect(lprc, xLeft, yTop, xRight, yBottom);
+    }
+    if (xRight != GetSystemMetrics(SM_CXSCREEN))
+    {
+        return SetRect(lprc, xLeft, yTop, xRight, yBottom);
+    }
+    if (yBottom != GetSystemMetrics(SM_CYSCREEN))
+    {
+        return SetRect(lprc, xLeft, yTop, xRight, yBottom);
+    }
+
+    bTaskbarSet = TRUE;
+    
+    StuckRectsData srd;
+    DWORD pcbData = sizeof(StuckRectsData);
+    RegGetValueW(
+        HKEY_CURRENT_USER,
+        L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StuckRectsLegacy",
+        L"Settings",
+        REG_BINARY,
+        NULL,
+        &srd,
+        &pcbData);
+
+    if (pcbData != sizeof(StuckRectsData))
+    {
+        return SetRect(lprc, xLeft, yTop, xRight, yBottom);
+    }
+
+    if (srd.pvData[0] != sizeof(StuckRectsData))
+    {
+        return SetRect(lprc, xLeft, yTop, xRight, yBottom);
+    }
+
+    if (srd.pvData[1] != -2)
+    {
+        return SetRect(lprc, xLeft, yTop, xRight, yBottom);
+    }
+
+    HMONITOR hMonitor = MonitorFromRect(&(srd.rc), MONITOR_DEFAULTTOPRIMARY);
+    MONITORINFO mi;
+    ZeroMemory(&mi, sizeof(MONITORINFO));
+    mi.cbSize = sizeof(MONITORINFO);
+    if (!GetMonitorInfoW(hMonitor, &mi))
+    {
+        return SetRect(lprc, xLeft, yTop, xRight, yBottom);
+    }
+
+    if (lprc)
+    {
+        *lprc = mi.rcMonitor;
+        return TRUE;
+    }
+
+    return FALSE;
+}
+#pragma endregion
 
 DWORD InjectBasicFunctions(BOOL bIsExplorer, BOOL bInstall)
 {
@@ -5452,7 +5492,6 @@ DWORD Inject(BOOL bIsExplorer)
         VnPatchIAT(hExplorer, "API-MS-WIN-CORE-REGISTRY-L1-1-0.DLL", "RegSetValueExW", explorer_RegSetValueExW);
         VnPatchIAT(hExplorer, "API-MS-WIN-CORE-REGISTRY-L1-1-0.DLL", "RegCreateKeyExW", explorer_RegCreateKeyExW);
         VnPatchIAT(hExplorer, "API-MS-WIN-SHCORE-REGISTRY-L1-1-0.DLL", "SHGetValueW", explorer_SHGetValueW);
-        VnPatchIAT(hExplorer, "user32.dll", "MonitorFromRect", explorer_MonitorFromRect);
         VnPatchIAT(hExplorer, "user32.dll", "LoadMenuW", explorer_LoadMenuW);
     }
     VnPatchIAT(hExplorer, "API-MS-WIN-CORE-REGISTRY-L1-1-0.DLL", "RegOpenKeyExW", explorer_RegOpenKeyExW);
@@ -5484,6 +5523,10 @@ DWORD Inject(BOOL bIsExplorer)
     if (bOldTaskbar && dwIMEStyle)
     {
         VnPatchIAT(hExplorer, "api-ms-win-core-com-l1-1-0.dll", "CoCreateInstance", explorer_CoCreateInstanceHook);
+    }
+    if (bOldTaskbar)
+    {
+        VnPatchIAT(hExplorer, "API-MS-WIN-NTUSER-RECTANGLE-L1-1-0.DLL", "SetRect", explorer_SetRect);
     }
 
 

@@ -384,31 +384,6 @@
 ;x 8000 8 seconds
 ;x 10000 10 seconds
 "ExplorerReadyDelay"=dword:00000000
-[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
-;a Only change the following option if you have a single taskbar !!!
-;c 21 Always show main taskbar on this monitor * (not working)
-;x 0 Primary (default)
-;x 1 1
-;x 2 2
-;x 3 3
-;x 4 4
-;x 5 5
-;x 6 6
-;x 7 7
-;x 8 8
-;x 9 9
-;x 10 10
-;x 11 11
-;x 12 12
-;x 13 13
-;x 14 14
-;x 15 15
-;x 16 16
-;x 17 17
-;x 18 18
-;x 19 19
-;x 20 20
-"TaskbarMonitorOverride"=dword:00000000
 ;t ________________________
 ;e Only change these settings after reading the documentation about them.
 ;y Learn more 🡕
