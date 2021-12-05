@@ -34,6 +34,7 @@ Tested on build 22000.348.
 * Reversed UWP apps detection to checking whether the executable is called ApplicationFrameHost.exe
 * Added some more debug messages
 * Fixed some rendering problems when themes are disabled
+* Fixed regression of [#161](https://github.com/valinet/ExplorerPatcher/issues/161#issuecomment-986234002) (.1)
 
 ## 22000.348.39
 
