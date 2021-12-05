@@ -3425,8 +3425,19 @@ void sws_ReadSettings(sws_WindowSwitcher* sws)
                 &(sws->dwMaxAbsoluteHP),
                 &dwSize
             );
-            if (sws)
+            dwSize = sizeof(DWORD);
+            RegQueryValueExW(
+                hKey,
+                TEXT("NoPerApplicationList"),
+                0,
+                NULL,
+                &(sws->bNoPerApplicationList),
+                &dwSize
+            );
+            if (sws->bIsInitialized)
             {
+                sws_WindowSwitcher_UnregisterHotkeys(sws);
+                sws_WindowSwitcher_RegisterHotkeys(sws, NULL);
                 sws_WindowSwitcher_RefreshTheme(sws);
             }
         }
@@ -3449,9 +3460,13 @@ DWORD WindowSwitcher(DWORD unused)
         if (sws_IsEnabled)
         {
             sws_error_t err;
-            sws_WindowSwitcher* sws = NULL;
-            err = sws_error_Report(sws_error_GetFromInternalError(sws_WindowSwitcher_Initialize(&sws, FALSE)), NULL);
+            sws_WindowSwitcher* sws = calloc(1, sizeof(sws_WindowSwitcher));
+            if (!sws)
+            {
+                return 0;
+            }
             sws_ReadSettings(sws);
+            err = sws_error_Report(sws_error_GetFromInternalError(sws_WindowSwitcher_Initialize(&sws, FALSE)), NULL);
             if (err == SWS_ERROR_SUCCESS)
             {
                 sws_WindowSwitcher_RefreshTheme(sws);
@@ -3498,6 +3513,7 @@ DWORD WindowSwitcher(DWORD unused)
                     }
                 }
                 sws_WindowSwitcher_Clear(sws);
+                free(sws);
             }
             else
             {

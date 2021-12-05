@@ -1478,6 +1478,21 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                         {
                             dwMaxWidth = rcNew.right - rcNew.left + 50 * dx;
                         }
+                        if (!wcsncmp(text + 3, L"%PLACEHOLDER_0001%", 18))
+                        {
+                            WCHAR key = 0;
+                            BYTE kb[256];
+                            ZeroMemory(kb, 256);
+                            ToUnicode(
+                                MapVirtualKeyW(0x29, MAPVK_VSC_TO_VK_EX),
+                                0x29,
+                                kb,
+                                &key,
+                                1,
+                                0
+                            );
+                            swprintf(text + 3, MAX_LINE_LENGTH, L"Disable per-application window list ( Alt + %c )", key);
+                        }
                         if (IsThemeActive())
                         {
                             DrawThemeTextEx(
@@ -1840,6 +1855,11 @@ static LRESULT CALLBACK GUI_WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
         GUI_Build(hDC, hWnd, pt);
 
         EndPaint(hWnd, &ps);
+        return 0;
+    }
+    else if (uMsg == WM_INPUTLANGCHANGE)
+    {
+        InvalidateRect(hWnd, NULL, FALSE);
         return 0;
     }
     else if (uMsg == WM_MSG_GUI_SECTION && wParam == WM_MSG_GUI_SECTION_GET)
