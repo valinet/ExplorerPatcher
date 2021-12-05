@@ -78,6 +78,13 @@ DEFINE_GUID(CLSID_ImmersiveShell,
     0x15, 0x63, 0x62, 0xa2, 0xf2, 0x39
 );
 
+typedef struct _StuckRectsData
+{
+    int pvData[6];
+    RECT rc;
+    POINT pt;
+} StuckRectsData;
+
 #pragma region "Weird stuff"
 INT64 STDMETHODCALLTYPE nimpl4_1(INT64 a1, DWORD* a2);
 INT64 STDMETHODCALLTYPE nimpl4_0(INT64 a1, DWORD* a2);

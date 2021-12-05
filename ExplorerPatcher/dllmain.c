@@ -3444,6 +3444,7 @@ DWORD WindowSwitcher(DWORD unused)
 
     while (TRUE)
     {
+        Sleep(5000);
         sws_ReadSettings(NULL);
         if (sws_IsEnabled)
         {
@@ -3561,6 +3562,7 @@ void WINAPI LoadSettings(BOOL bIsExplorer)
         if (dwTemp)
         {
 #if defined(DEBUG) | defined(_DEBUG)
+            printf("[Memcheck] Dumping memory leaks...\n");
             _CrtSetReportMode(_CRT_WARN, _CRTDBG_MODE_FILE);
             _CrtSetReportFile(_CRT_WARN, _CRTDBG_FILE_STDOUT);
             _CrtSetReportMode(_CRT_ERROR, _CRTDBG_MODE_FILE);
@@ -3568,6 +3570,7 @@ void WINAPI LoadSettings(BOOL bIsExplorer)
             _CrtSetReportMode(_CRT_ASSERT, _CRTDBG_MODE_FILE);
             _CrtSetReportFile(_CRT_ASSERT, _CRTDBG_FILE_STDOUT);
             _CrtDumpMemoryLeaks();
+            printf("[Memcheck] Memory leak dump complete.\n");
 #endif
             dwTemp = 0;
             RegSetValueExW(

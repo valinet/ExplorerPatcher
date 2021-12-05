@@ -25,6 +25,195 @@ BOOL IsColorSchemeChangeMessage(LPARAM lParam)
     return is;
 }
 
+LSTATUS GUI_RegSetValueExW(
+    HKEY       hKey,
+    LPCWSTR    lpValueName,
+    DWORD      Reserved,
+    DWORD      dwType,
+    const BYTE* lpData,
+    DWORD      cbData
+)
+{
+    if (wcsncmp(lpValueName, L"Virtualized_" _T(EP_CLSID), 50))
+    {
+        return RegSetValueExW(hKey, lpValueName, 0, dwType, lpData, cbData);
+    }
+    if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_TaskbarPosition"))
+    {
+        StuckRectsData srd;
+        DWORD pcbData = sizeof(StuckRectsData);
+        RegGetValueW(
+            HKEY_CURRENT_USER,
+            L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StuckRectsLegacy",
+            L"Settings",
+            REG_BINARY,
+            NULL,
+            &srd,
+            &pcbData);
+        if (pcbData == sizeof(StuckRectsData) && srd.pvData[0] == sizeof(StuckRectsData) && srd.pvData[1] == -2)
+        {
+            srd.pvData[3] = *(DWORD*)lpData;
+            RegSetKeyValueW(
+                HKEY_CURRENT_USER,
+                L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StuckRectsLegacy",
+                L"Settings",
+                REG_BINARY,
+                &srd,
+                sizeof(StuckRectsData)
+            );
+            return ERROR_SUCCESS;
+        }
+        return ERROR_ACCESS_DENIED;
+    }
+    else if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_MMTaskbarPosition"))
+    {
+        HKEY hKey = NULL;
+        RegOpenKeyExW(
+            HKEY_CURRENT_USER,
+            L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\MMStuckRectsLegacy",
+            REG_OPTION_NON_VOLATILE,
+            KEY_READ | KEY_WRITE,
+            &hKey
+        );
+        if (hKey)
+        {
+            DWORD cValues = 0;
+            RegQueryInfoKeyW(
+                hKey,
+                NULL,
+                NULL,
+                NULL,
+                NULL,
+                NULL,
+                NULL,
+                &cValues,
+                NULL,
+                NULL,
+                NULL,
+                NULL
+            );
+            WCHAR name[60];
+            DWORD szName = 60;
+            StuckRectsData srd;
+            DWORD pcbData = sizeof(StuckRectsData);
+            for (int i = 0; i < cValues; ++i)
+            {
+                RegEnumValueW(
+                    hKey,
+                    i,
+                    name,
+                    &szName,
+                    0,
+                    NULL,
+                    &srd,
+                    &pcbData
+                );
+                szName = 60;
+                srd.pvData[3] = *(DWORD*)lpData;
+                pcbData = sizeof(StuckRectsData);
+                RegSetKeyValueW(
+                    HKEY_CURRENT_USER,
+                    L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\MMStuckRectsLegacy",
+                    name,
+                    REG_BINARY,
+                    &srd,
+                    sizeof(StuckRectsData)
+                );
+                wprintf(L"name: %s\n", name);
+            }
+            RegCloseKey(hKey);
+            SendNotifyMessageW(HWND_BROADCAST, WM_WININICHANGE, 0, (LPARAM)L"TraySettings");
+            return ERROR_SUCCESS;
+        }
+        return ERROR_ACCESS_DENIED;
+    }
+    else if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_AutoHideTaskbar"))
+    {
+        APPBARDATA abd;
+        abd.cbSize = sizeof(APPBARDATA);
+        abd.lParam = *(DWORD*)lpData;
+        SHAppBarMessage(ABM_SETSTATE, &abd);
+        return ERROR_SUCCESS;
+    }
+}
+
+LSTATUS GUI_RegQueryValueExW(
+    HKEY    hKey,
+    LPCWSTR lpValueName,
+    LPDWORD lpReserved,
+    LPDWORD lpType,
+    LPBYTE  lpData,
+    LPDWORD lpcbData
+)
+{
+    if (wcsncmp(lpValueName, L"Virtualized_" _T(EP_CLSID), 50))
+    {
+        return RegQueryValueExW(hKey, lpValueName, lpReserved, lpType, lpData, lpcbData);
+    }
+    if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_TaskbarPosition"))
+    {
+        StuckRectsData srd;
+        DWORD pcbData = sizeof(StuckRectsData);
+        RegGetValueW(
+            HKEY_CURRENT_USER,
+            L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StuckRectsLegacy",
+            L"Settings",
+            REG_BINARY,
+            NULL,
+            &srd,
+            &pcbData);
+        if (pcbData == sizeof(StuckRectsData) && srd.pvData[0] == sizeof(StuckRectsData) && srd.pvData[1] == -2)
+        {
+            *(DWORD*)lpData = srd.pvData[3];
+            return ERROR_SUCCESS;
+        }
+        return ERROR_ACCESS_DENIED;
+    }
+    else if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_MMTaskbarPosition"))
+    {
+        HKEY hKey = NULL;
+        RegOpenKeyExW(
+            HKEY_CURRENT_USER,
+            L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\MMStuckRectsLegacy",
+            REG_OPTION_NON_VOLATILE,
+            KEY_READ | KEY_WRITE,
+            &hKey
+        );
+        if (hKey)
+        {
+            WCHAR name[60];
+            DWORD szName = 60;
+            StuckRectsData srd;
+            DWORD pcbData = sizeof(StuckRectsData);
+            RegEnumValueW(
+                hKey,
+                0,
+                name,
+                &szName,
+                0,
+                NULL,
+                &srd,
+                &pcbData
+            );
+            if (pcbData == sizeof(StuckRectsData) && srd.pvData[0] == sizeof(StuckRectsData) && srd.pvData[1] == -2)
+            {
+                *(DWORD*)lpData = srd.pvData[3];
+                RegCloseKey(hKey);
+                return ERROR_SUCCESS;
+            }
+            RegCloseKey(hKey);
+        }
+        return ERROR_ACCESS_DENIED;
+    }
+    else if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_AutoHideTaskbar"))
+    {
+        APPBARDATA abd;
+        abd.cbSize = sizeof(APPBARDATA);
+        *(DWORD*)lpData = (SHAppBarMessage(ABM_GETSTATE, &abd) == ABS_AUTOHIDE);
+        return ERROR_SUCCESS;
+    }
+}
+
 static HRESULT GUI_AboutProc(
     HWND hwnd,
     UINT uNotification,
@@ -409,7 +598,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                 {
                     if (!strncmp(line, ";t ", 3) || !strncmp(line, ";e ", 3) || !strncmp(line, ";a ", 3))
                     {
-                        char* p = strstr(line, "%VERSIONINFO%");
+                        char* p = strstr(line, "%VERSIONINFORMATIONSTRING%");
                         if (p)
                         {
                             DWORD dwLeftMost = 0;
@@ -419,7 +608,13 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
 
                             QueryVersionInfo(hModule, VS_VERSION_INFO, &dwLeftMost, &dwSecondLeft, &dwSecondRight, &dwRightMost);
 
-                            sprintf_s(p, MAX_PATH, "%d.%d.%d.%d", dwLeftMost, dwSecondLeft, dwSecondRight, dwRightMost);
+                            sprintf_s(p, MAX_PATH, "%d.%d.%d.%d%s", dwLeftMost, dwSecondLeft, dwSecondRight, dwRightMost, 
+#if defined(DEBUG) | defined(_DEBUG)
+                                " (Debug)"
+#else
+                                ""
+#endif
+                                );
                         }
                     }
                     ZeroMemory(text, (MAX_LINE_LENGTH + 3) * sizeof(wchar_t));
@@ -882,7 +1077,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                             {
                                 hKey = NULL;
                             }
-                            RegQueryValueExW(
+                            GUI_RegQueryValueExW(
                                 hKey,
                                 name,
                                 0,
@@ -1080,7 +1275,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                         {
                                             wchar_t* p = wcschr(d + 2, L'"');
                                             if (p) *p = 0;
-                                            RegSetValueExW(
+                                            GUI_RegSetValueExW(
                                                 hKey,
                                                 !wcsncmp(name, L"@", 1) ? NULL : name,
                                                 0,
@@ -1135,7 +1330,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                 {
                                     value = _this->section + 1;
                                 }
-                                RegSetValueExW(
+                                GUI_RegSetValueExW(
                                     hKey,
                                     name,
                                     0,

@@ -34,6 +34,9 @@
     <ResourceCompile Include="ep_setup.rc">
       <Filter>Resource Files</Filter>
     </ResourceCompile>
+    <ResourceCompile Include="ep_setup_debug.rc">
+      <Filter>Resource Files</Filter>
+    </ResourceCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\build\Release\ExplorerPatcher.amd64.dll" />
@@ -41,5 +44,7 @@
     <None Include="applicat.bin">
       <Filter>Resource Files</Filter>
     </None>
+    <None Include="..\build\Debug\ExplorerPatcher.amd64.dll" />
+    <None Include="..\build\Debug\ExplorerPatcher.IA-32.dll" />
   </ItemGroup>
 </Project>

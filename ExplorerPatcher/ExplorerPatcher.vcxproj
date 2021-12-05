@@ -205,10 +205,15 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="..\libs\sws\SimpleWindowSwitcher\sws_IconPainter.c">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="..\libs\sws\SimpleWindowSwitcher\sws_RegistryMonitor.c">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="..\libs\sws\SimpleWindowSwitcher\sws_tshwnd.c" />
     <ClCompile Include="..\libs\sws\SimpleWindowSwitcher\sws_vector.c">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
@@ -217,6 +222,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
       </ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\libs\sws\SimpleWindowSwitcher\sws_WindowHelpers.c">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
@@ -282,7 +288,9 @@
   <ItemGroup>
     <ClInclude Include="..\libs\sws\SimpleWindowSwitcher\sws_def.h" />
     <ClInclude Include="..\libs\sws\SimpleWindowSwitcher\sws_error.h" />
+    <ClInclude Include="..\libs\sws\SimpleWindowSwitcher\sws_IconPainter.h" />
     <ClInclude Include="..\libs\sws\SimpleWindowSwitcher\sws_RegistryMonitor.h" />
+    <ClInclude Include="..\libs\sws\SimpleWindowSwitcher\sws_tshwnd.h" />
     <ClInclude Include="..\libs\sws\SimpleWindowSwitcher\sws_utility.h" />
     <ClInclude Include="..\libs\sws\SimpleWindowSwitcher\sws_vector.h" />
     <ClInclude Include="..\libs\sws\SimpleWindowSwitcher\sws_window.h" />

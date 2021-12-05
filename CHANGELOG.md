@@ -2,6 +2,39 @@
 
 This document includes the same release notes as in the [Releases](https://github.com/valinet/ExplorerPatcher/releases) section on GitHub.
 
+## 22000.348.40
+
+Tested on build 22000.348.
+
+#### Highlights
+
+* Primary taskbar remembers position when moved to a secondary monitor (multiple issues, like #504)
+* Ability to set Control Center as network icon action (merged #492)
+* Added possibility to use the original Windows 10 (Alt-Tab) window switcher; thus, the available options are now:
+  * Windows 11 switcher - full screeen, slow, tiny selection outline, slow opening times
+  * Windows 10 switcher - pretty good but lacks customization options
+  * Windows NT switcher - the classic simple icon-based interface hosted by `csrss`
+  * Simple Window Switcher - my own take on implementing this kind of functionality
+* Registry access in the "Properties" GUI is now virtualized; that means, the same lightweight infrastructure is maintained but more complex behaviors can be offered via the improved backend; as such, this version introduces the following new configuration options:
+  * Primary and secondary taskbar placement
+  * Automatically hide the taskbar
+* Proper activation of the "Properties" window when another instance is running and minimized
+* Symbols parsing success notification displays for longer
+* Debug builds are clearly indicated in the "About" page of "Properties"
+* Fixed solution to properly produce a debug setup program
+
+#### Simple Window Switcher
+
+* Dramatically improved performance, refactored application; switched to building the window lists faster, on demand, so that the proper windows are always displayed (as far as I remember, the latest `IsAltTabWindow` is based on a function called `IsTaskedWindow` ripped straight from AltTab.dll from Windows 7 6.1.7600.16385)
+* Proper history of window activations is maintained internally
+* Implemented support for layered windows, thus making transparency possible when using the default theme (Acrylic and Mica brushes are still available, but those have the disadvantage that the system can disable them in certain scenarios, like saving energy when working on battery power)
+* Improved reliability of startup delay and window dismiss when quickly Alt-Tabbing
+* Window icons are retrieved async now
+* Better icon drawing using GDI+ flat API
+* Reversed UWP apps detection to checking whether the executable is called ApplicationFrameHost.exe
+* Added some more debug messages
+* Fixed some rendering problems when themes are disabled
+
 ## 22000.348.39
 
 Tested on build 22000.348.

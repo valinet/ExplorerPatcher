@@ -117,6 +117,12 @@
     <ClInclude Include="ImmersiveFlyouts.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\libs\sws\SimpleWindowSwitcher\sws_tshwnd.h">
+      <Filter>Header Files\sws</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libs\sws\SimpleWindowSwitcher\sws_IconPainter.h">
+      <Filter>Header Files\sws</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="ExplorerPatcher.rc">
@@ -189,6 +195,12 @@
     </ClCompile>
     <ClCompile Include="ImmersiveFlyouts.c">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libs\sws\SimpleWindowSwitcher\sws_IconPainter.c">
+      <Filter>Source Files\sws</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libs\sws\SimpleWindowSwitcher\sws_tshwnd.c">
+      <Filter>Source Files\sws</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

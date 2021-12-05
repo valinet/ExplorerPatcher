@@ -69,7 +69,7 @@ BEGIN
         BLOCK "040904b0"
         BEGIN
             VALUE "CompanyName", "VALINET Solutions SRL"
-            VALUE "FileDescription", "ExplorerPatcher Setup Program"
+            VALUE "FileDescription", "ExplorerPatcher Setup Program (Debug Build)"
             VER_FILE_STRING
             VALUE "InternalName", "ep_setup.exe"
             VALUE "LegalCopyright", "Copyright (C) 2006-2022 VALINET Solutions SRL. All rights reserved."
@@ -90,9 +90,9 @@ END
 // RCDATA
 //
 
-IDR_EP_AMD64            RCDATA             "..\\build\\Release\\ExplorerPatcher.amd64.dll"
+IDR_EP_AMD64            RCDATA             "..\\build\\Debug\\ExplorerPatcher.amd64.dll"
 
-IDR_EP_IA32             RCDATA             "..\\build\\Release\\ExplorerPatcher.IA-32.dll"
+IDR_EP_IA32             RCDATA             "..\\build\\Debug\\ExplorerPatcher.IA-32.dll"
 
 #endif    // English (United States) resources
 /////////////////////////////////////////////////////////////////////////////

@@ -72,7 +72,7 @@ BEGIN
             VALUE "FileDescription", "ExplorerPatcher"
             VER_FILE_STRING
             VALUE "InternalName", "ExplorerPatcher.dll"
-            VALUE "LegalCopyright", "Copyright (C) 2006-2021 VALINET Solutions SRL. All rights reserved."
+            VALUE "LegalCopyright", "Copyright (C) 2006-2022 VALINET Solutions SRL. All rights reserved."
             VALUE "OriginalFilename", "ExplorerPatcher.dll"
             VALUE "ProductName", "ExplorerPatcher"
             VER_PRODUCT_STRING
