@@ -291,7 +291,7 @@ int WINAPI wWinMain(
     _In_ int nShowCmd
 )
 {
-    BOOL bOk = TRUE, bInstall = TRUE, bWasShellExt = FALSE, bIsUpdate = FALSE;
+    BOOL bOk = TRUE, bInstall = TRUE, bWasShellExt = FALSE, bIsUpdate = FALSE, bForcePromptForUninstall = FALSE;
 
     SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
 
@@ -336,9 +336,26 @@ int WINAPI wWinMain(
         return 0;
     }
 
+    WCHAR wszOwnPath[MAX_PATH];
+    ZeroMemory(wszOwnPath, ARRAYSIZE(wszOwnPath));
+    if (!GetModuleFileNameW(NULL, wszOwnPath, ARRAYSIZE(wszOwnPath)))
+    {
+        exit(0);
+    }
+
     bInstall = !(argc >= 1 && (!_wcsicmp(wargv[0], L"/uninstall") || !_wcsicmp(wargv[0], L"/uninstall_silent")));
+    PathStripPathW(wszOwnPath);
+    if (!_wcsicmp(wszOwnPath, L"ep_uninstall.exe"))
+    {
+        bInstall = FALSE;
+        bForcePromptForUninstall = _wcsicmp(wargv[0], L"/uninstall_silent");
+    }
+    if (!GetModuleFileNameW(NULL, wszOwnPath, ARRAYSIZE(wszOwnPath)))
+    {
+        exit(0);
+    }
     bIsUpdate = (argc >= 1 && !_wcsicmp(wargv[0], L"/update_silent"));
-    if (!bInstall && !_wcsicmp(wargv[0], L"/uninstall"))
+    if (!bInstall && (!_wcsicmp(wargv[0], L"/uninstall") || bForcePromptForUninstall))
     {
         if (MessageBoxW(
             NULL,
@@ -353,27 +370,22 @@ int WINAPI wWinMain(
 
     if (!IsAppRunningAsAdminMode())
     {
-        WCHAR wszPath[MAX_PATH];
-        ZeroMemory(wszPath, ARRAYSIZE(wszPath));
-        if (GetModuleFileNameW(NULL, wszPath, ARRAYSIZE(wszPath)))
+        SHELLEXECUTEINFOW sei;
+        ZeroMemory(&sei, sizeof(SHELLEXECUTEINFOW));
+        sei.cbSize = sizeof(sei);
+        sei.lpVerb = L"runas";
+        sei.lpFile = wszOwnPath;
+        sei.lpParameters = !bInstall ? L"/uninstall_silent" : lpCmdLine;
+        sei.hwnd = NULL;
+        sei.nShow = SW_NORMAL;
+        if (!ShellExecuteExW(&sei))
         {
-            SHELLEXECUTEINFOW sei;
-            ZeroMemory(&sei, sizeof(SHELLEXECUTEINFOW));
-            sei.cbSize = sizeof(sei);
-            sei.lpVerb = L"runas";
-            sei.lpFile = wszPath;
-            sei.lpParameters = !bInstall ? L"/uninstall_silent" : lpCmdLine;
-            sei.hwnd = NULL;
-            sei.nShow = SW_NORMAL;
-            if (!ShellExecuteExW(&sei))
+            DWORD dwError = GetLastError();
+            if (dwError == ERROR_CANCELLED)
             {
-                DWORD dwError = GetLastError();
-                if (dwError == ERROR_CANCELLED)
-                {
-                }
             }
-            exit(0);
         }
+        exit(0);
     }
 
     SHGetFolderPathW(NULL, SPECIAL_FOLDER, NULL, SHGFP_TYPE_CURRENT, wszPath);
