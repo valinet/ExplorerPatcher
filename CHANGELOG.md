@@ -38,6 +38,7 @@ Tested on build 22000.348.
 * Fixed regression of [#161](https://github.com/valinet/ExplorerPatcher/issues/161#issuecomment-986234002) (.1)
 * Possibility to disable per-application window lists (`Alt`+`) ([#283](https://github.com/valinet/ExplorerPatcher/issues/283#issuecomment-986261712)) (.2)
 * Fixed bug that prevented proper loading of default settings (.3)
+* Implemented a mitigation for #516: gestures for switching apps on Windows Precision Touchpad devices trigger the Windows 10 switcher instead of the Windows 11 switcher, which is much closer to how Simple Window Switcher looks and behaves; ideally, a full solution for this should be provided in the future, in the form of support for activation and navigation using Windows Precision Touchpad gestures in the Simple Window Switcher (.5)
 
 ## 22000.348.39
 

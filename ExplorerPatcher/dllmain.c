@@ -5297,7 +5297,7 @@ DWORD InjectBasicFunctions(BOOL bIsExplorer, BOOL bInstall)
 INT64(*twinui_pcshell_IsUndockedAssetAvailableFunc)(INT a1, INT64 a2, INT64 a3, const char* a4);
 INT64 twinui_pcshell_IsUndockedAssetAvailableHook(INT a1, INT64 a2, INT64 a3, const char* a4)
 {
-    if (dwAltTabSettings == 3)
+    if (dwAltTabSettings == 3 || dwAltTabSettings == 2)
     {
         return 0;
     }
