@@ -3465,6 +3465,7 @@ DWORD WindowSwitcher(DWORD unused)
             {
                 return 0;
             }
+            sws_WindowSwitcher_InitializeDefaultSettings(sws);
             sws_ReadSettings(sws);
             err = sws_error_Report(sws_error_GetFromInternalError(sws_WindowSwitcher_Initialize(&sws, FALSE)), NULL);
             if (err == SWS_ERROR_SUCCESS)

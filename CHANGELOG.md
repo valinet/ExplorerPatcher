@@ -36,6 +36,7 @@ Tested on build 22000.348.
 * Fixed some rendering problems when themes are disabled
 * Fixed regression of [#161](https://github.com/valinet/ExplorerPatcher/issues/161#issuecomment-986234002) (.1)
 * Possibility to disable per-application window lists (`Alt`+`) ([#283](https://github.com/valinet/ExplorerPatcher/issues/283#issuecomment-986261712)) (.2)
+* Fixed bug that prevented proper loading of default settings (.3)
 
 ## 22000.348.39
 
