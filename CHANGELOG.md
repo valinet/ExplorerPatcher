@@ -22,6 +22,7 @@ Tested on build 22000.348.
 * Symbols parsing success notification displays for longer
 * Debug builds are clearly indicated in the "About" page of "Properties"
 * Fixed solution to properly produce a debug setup program
+* Possibility to uninstall by renaming `ep_setup.exe` to `ep_uninstall.exe` and running that (.4)
 
 #### Simple Window Switcher
 
@@ -37,7 +38,6 @@ Tested on build 22000.348.
 * Fixed regression of [#161](https://github.com/valinet/ExplorerPatcher/issues/161#issuecomment-986234002) (.1)
 * Possibility to disable per-application window lists (`Alt`+`) ([#283](https://github.com/valinet/ExplorerPatcher/issues/283#issuecomment-986261712)) (.2)
 * Fixed bug that prevented proper loading of default settings (.3)
-* Possibility to uninstall by renaming `ep_setup.exe` to `ep_uninstall.exe` and running that (.4)
 
 ## 22000.348.39
 
