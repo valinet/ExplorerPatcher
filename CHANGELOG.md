@@ -23,6 +23,7 @@ Tested on build 22000.348.
 * Debug builds are clearly indicated in the "About" page of "Properties"
 * Fixed solution to properly produce a debug setup program
 * Possibility to uninstall by renaming `ep_setup.exe` to `ep_uninstall.exe` and running that (.4)
+* Fixed a bug that crashed the "Properties" GUI when toggling certain settings (#527) (.6)
 
 #### Simple Window Switcher
 

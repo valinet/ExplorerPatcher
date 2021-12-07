@@ -34,7 +34,7 @@ LSTATUS GUI_RegSetValueExW(
     DWORD      cbData
 )
 {
-    if (wcsncmp(lpValueName, L"Virtualized_" _T(EP_CLSID), 50))
+    if (!lpValueName || wcsncmp(lpValueName, L"Virtualized_" _T(EP_CLSID), 50))
     {
         return RegSetValueExW(hKey, lpValueName, 0, dwType, lpData, cbData);
     }
@@ -146,7 +146,7 @@ LSTATUS GUI_RegQueryValueExW(
     LPDWORD lpcbData
 )
 {
-    if (wcsncmp(lpValueName, L"Virtualized_" _T(EP_CLSID), 50))
+    if (!lpValueName || wcsncmp(lpValueName, L"Virtualized_" _T(EP_CLSID), 50))
     {
         return RegQueryValueExW(hKey, lpValueName, lpReserved, lpType, lpData, lpcbData);
     }
