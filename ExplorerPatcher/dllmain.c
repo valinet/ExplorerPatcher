@@ -1657,7 +1657,7 @@ DWORD ShouldShowLegacyClockExperience()
     }
     return 0;
 }
-BOOL ShowLegacyClockExpierience(HWND hWnd)
+BOOL ShowLegacyClockExperience(HWND hWnd)
 {
     if (!hWnd)
     {
@@ -1701,7 +1701,7 @@ INT64 ClockButtonSubclassProc(
         {
             if (!FindWindowW(L"ClockFlyoutWindow", NULL))
             {
-                return ShowLegacyClockExpierience(hWnd);
+                return ShowLegacyClockExperience(hWnd);
             }
             else
             {
@@ -2809,7 +2809,7 @@ INT64 winrt_Windows_Internal_Shell_implementation_MeetAndChatManager_OnMessageHo
             {
                 if (!FindWindowW(L"ClockFlyoutWindow", NULL))
                 {
-                    return ShowLegacyClockExpierience(FindWindowExW(FindWindowExW(hShellTray_Wnd, NULL, L"TrayNotifyWnd", NULL), NULL, L"TrayClockWClass", NULL));
+                    return ShowLegacyClockExperience(FindWindowExW(FindWindowExW(hShellTray_Wnd, NULL, L"TrayNotifyWnd", NULL), NULL, L"TrayClockWClass", NULL));
                 }
                 else
                 {
@@ -2843,7 +2843,7 @@ INT64 winrt_Windows_Internal_Shell_implementation_MeetAndChatManager_OnMessageHo
                 {
                     if (!FindWindowW(L"ClockFlyoutWindow", NULL))
                     {
-                        return ShowLegacyClockExpierience(hWnd);
+                        return ShowLegacyClockExperience(hWnd);
                     }
                     else
                     {
