@@ -399,6 +399,23 @@ inline BOOL ExitExplorer()
     return PostMessageW(hWndTray, 0x5B4, 0, 0);
 }
 
+inline void StartExplorerWithDelay(int delay)
+{
+    WCHAR wszPath[MAX_PATH];
+    ZeroMemory(wszPath, MAX_PATH * sizeof(WCHAR));
+    GetWindowsDirectoryW(wszPath, MAX_PATH);
+    wcscat_s(wszPath, MAX_PATH, L"\\explorer.exe");
+    Sleep(delay);
+    ShellExecuteW(
+        NULL,
+        L"open",
+        wszPath,
+        NULL,
+        NULL,
+        SW_SHOWNORMAL
+    );
+}
+
 inline void StartExplorer()
 {
 

@@ -304,6 +304,33 @@ int WINAPI wWinMain(
     WCHAR wszPath[MAX_PATH];
     ZeroMemory(wszPath, MAX_PATH * sizeof(WCHAR));
 
+    if (argc >= 1 && !_wcsicmp(wargv[0], _T(EP_SETUP_HELPER_SWITCH) L"_" _T(EP_CLSID)))
+    {
+        HANDLE hEvent0 = CreateEventW(NULL, FALSE, FALSE, _T(EP_SETUP_HELPER_SWITCH) L"_" _T(EP_CLSID));
+        HANDLE hEvent1 = CreateEventW(NULL, FALSE, FALSE, _T(EP_SETUP_HELPER_SWITCH) L"_" _T(EP_CLSID) L"_1");
+        if (hEvent0 && hEvent1)
+        {
+            SetEvent(hEvent1);
+            CloseHandle(hEvent1);
+            hEvent1 = NULL;
+            WaitForSingleObject(hEvent0, INFINITE);
+            CloseHandle(hEvent0);
+            hEvent0 = NULL;
+            StartExplorerWithDelay(1000);
+        }
+        if (hEvent1)
+        {
+            CloseHandle(hEvent1);
+            hEvent1 = NULL;
+        }
+        if (hEvent0)
+        {
+            CloseHandle(hEvent0);
+            hEvent0 = NULL;
+        }
+        return 0;
+    }
+
     if (argc >= 1 && !_wcsicmp(wargv[0], L"/extract"))
     {
         if (argc >= 2)
@@ -394,6 +421,22 @@ int WINAPI wWinMain(
     if (bOk || (!bOk && GetLastError() == ERROR_ALREADY_EXISTS))
     {
         bOk = TRUE;
+
+        HANDLE hEvent0 = CreateEventW(NULL, FALSE, FALSE, _T(EP_SETUP_HELPER_SWITCH) L"_" _T(EP_CLSID));
+        HANDLE hEvent1 = CreateEventW(NULL, FALSE, FALSE, _T(EP_SETUP_HELPER_SWITCH) L"_" _T(EP_CLSID) L"_1");
+        HRESULT hr = CoInitialize(NULL);
+        if (SUCCEEDED(hr))
+        {
+            if (hEvent0 && hEvent1)
+            {
+                hr = ShellExecuteFromExplorer(wszOwnPath, _T(EP_SETUP_HELPER_SWITCH) L"_" _T(EP_CLSID), NULL, NULL, SW_SHOWNORMAL);
+                if (SUCCEEDED(hr))
+                {
+                    WaitForSingleObject(hEvent1, INFINITE);
+                }
+            }
+            CoUninitialize();
+        }
 
         BeginExplorerRestart();
         Sleep(100);
@@ -657,17 +700,24 @@ int WINAPI wWinMain(
             );
         }
 
-        GetWindowsDirectoryW(wszPath, MAX_PATH);
-        wcscat_s(wszPath, MAX_PATH, L"\\explorer.exe");
-        Sleep(1000);
-        ShellExecuteW(
-            NULL,
-            L"open",
-            wszPath,
-            NULL,
-            NULL,
-            SW_SHOWNORMAL
-        );
+        if (!hEvent0 || !hEvent1 || FAILED(hr))
+        {
+            StartExplorerWithDelay(1000);
+        }
+        else
+        {
+            SetEvent(hEvent0);
+        }
+        if (hEvent1)
+        {
+            CloseHandle(hEvent1);
+            hEvent1 = NULL;
+        }
+        if (hEvent0)
+        {
+            CloseHandle(hEvent0);
+            hEvent0 = NULL;
+        }
     }
 
 	return GetLastError();
