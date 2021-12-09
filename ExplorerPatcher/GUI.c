@@ -769,7 +769,17 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                             {
                                 if (FindWindowW(L"Shell_TrayWnd", NULL))
                                 {
-                                    BeginExplorerRestart();
+                                    HANDLE hExplorerRestartThread = CreateThread(NULL, 0, BeginExplorerRestart, NULL, 0, NULL);
+                                    if (hExplorerRestartThread)
+                                    {
+                                        WaitForSingleObject(hExplorerRestartThread, 2000);
+                                        CloseHandle(hExplorerRestartThread);
+                                        hExplorerRestartThread = NULL;
+                                    }
+                                    else
+                                    {
+                                        BeginExplorerRestart();
+                                    }
                                     Sleep(100);
                                     //ZZRestartExplorer(0, 0, 0, 0);
                                     WCHAR wszPath[MAX_PATH];

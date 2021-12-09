@@ -438,7 +438,17 @@ int WINAPI wWinMain(
             CoUninitialize();
         }
 
-        BeginExplorerRestart();
+        HANDLE hExplorerRestartThread = CreateThread(NULL, 0, BeginExplorerRestart, NULL, 0, NULL);
+        if (hExplorerRestartThread)
+        {
+            WaitForSingleObject(hExplorerRestartThread, 2000);
+            CloseHandle(hExplorerRestartThread);
+            hExplorerRestartThread = NULL;
+        }
+        else
+        {
+            BeginExplorerRestart();
+        }
         Sleep(100);
 
         GetSystemDirectoryW(wszPath, MAX_PATH);
