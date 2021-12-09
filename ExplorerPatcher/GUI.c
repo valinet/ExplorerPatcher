@@ -6,6 +6,7 @@ DWORD GUI_FileSize = 0;
 BOOL g_darkModeEnabled = FALSE;
 static void(*RefreshImmersiveColorPolicyState)() = NULL;
 static BOOL(*ShouldAppsUseDarkMode)() = NULL;
+DWORD dwTaskbarPosition = 3;
 BOOL IsHighContrast()
 {
     HIGHCONTRASTW highContrast;
@@ -53,6 +54,7 @@ LSTATUS GUI_RegSetValueExW(
         if (pcbData == sizeof(StuckRectsData) && srd.pvData[0] == sizeof(StuckRectsData) && srd.pvData[1] == -2)
         {
             srd.pvData[3] = *(DWORD*)lpData;
+            dwTaskbarPosition = *(DWORD*)lpData;
             RegSetKeyValueW(
                 HKEY_CURRENT_USER,
                 L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StuckRectsLegacy",
@@ -119,7 +121,6 @@ LSTATUS GUI_RegSetValueExW(
                     &srd,
                     sizeof(StuckRectsData)
                 );
-                wprintf(L"name: %s\n", name);
             }
             RegCloseKey(hKey);
             SendNotifyMessageW(HWND_BROADCAST, WM_WININICHANGE, 0, (LPARAM)L"TraySettings");
@@ -165,6 +166,7 @@ LSTATUS GUI_RegQueryValueExW(
         if (pcbData == sizeof(StuckRectsData) && srd.pvData[0] == sizeof(StuckRectsData) && srd.pvData[1] == -2)
         {
             *(DWORD*)lpData = srd.pvData[3];
+            dwTaskbarPosition = srd.pvData[3];
             return ERROR_SUCCESS;
         }
         return ERROR_ACCESS_DENIED;
@@ -797,6 +799,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                     GetWindowsDirectoryW(wszPath, MAX_PATH);
                                     wcscat_s(wszPath, MAX_PATH, L"\\explorer.exe");
                                     Sleep(1000);
+                                    GUI_RegSetValueExW(NULL, L"Virtualized_" _T(EP_CLSID) L"_TaskbarPosition", NULL, NULL, &dwTaskbarPosition, NULL);
                                     ShellExecuteW(
                                         NULL,
                                         L"open",
@@ -2079,6 +2082,7 @@ __declspec(dllexport) int ZZGUI(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLin
             }
         }
     }
+    GUI_RegQueryValueExW(NULL, L"Virtualized_" _T(EP_CLSID) L"_TaskbarPosition", NULL, NULL, &dwTaskbarPosition, NULL);
     HWND hwnd = CreateWindowEx(
         NULL,
         L"ExplorerPatcher_GUI_" _T(EP_CLSID),
