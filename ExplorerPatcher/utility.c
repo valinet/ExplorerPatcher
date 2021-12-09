@@ -501,10 +501,11 @@ BOOL SystemShutdown(BOOL reboot)
     return TRUE;
 }
 
-void FindDesktopFolderView(REFIID riid, void** ppv)
+HRESULT FindDesktopFolderView(REFIID riid, void** ppv)
 {
+    HRESULT hr = E_FAIL;
     IShellWindows* spShellWindows = NULL;
-    CoCreateInstance(
+    hr = CoCreateInstance(
         &CLSID_ShellWindows,
         NULL,
         CLSCTX_ALL,
@@ -521,7 +522,7 @@ void FindDesktopFolderView(REFIID riid, void** ppv)
         vtLoc.intVal = CSIDL_DESKTOP;
         long lhwnd = 0;
         IDispatch* spdisp = NULL;
-        spShellWindows->lpVtbl->FindWindowSW(
+        hr = spShellWindows->lpVtbl->FindWindowSW(
             spShellWindows,
             &vtLoc,
             &vtEmpty,
@@ -533,18 +534,18 @@ void FindDesktopFolderView(REFIID riid, void** ppv)
         if (spdisp)
         {
             IServiceProvider* spdisp2 = NULL;
-            spdisp->lpVtbl->QueryInterface(spdisp, &IID_IServiceProvider, &spdisp2);
+            hr = spdisp->lpVtbl->QueryInterface(spdisp, &IID_IServiceProvider, &spdisp2);
             if (spdisp2)
             {
                 IShellBrowser* spBrowser = NULL;
-                spdisp2->lpVtbl->QueryService(spdisp2, &SID_STopLevelBrowser, &IID_IShellBrowser, &spBrowser);
+                hr = spdisp2->lpVtbl->QueryService(spdisp2, &SID_STopLevelBrowser, &IID_IShellBrowser, &spBrowser);
                 if (spBrowser)
                 {
                     IShellView* spView = NULL;
-                    spBrowser->lpVtbl->QueryActiveShellView(spBrowser, &spView);
+                    hr = spBrowser->lpVtbl->QueryActiveShellView(spBrowser, &spView);
                     if (spView)
                     {
-                        spView->lpVtbl->QueryInterface(spView, riid, ppv);
+                        hr = spView->lpVtbl->QueryInterface(spView, riid, ppv);
                         spView->lpVtbl->Release(spView);
                     }
                     spBrowser->lpVtbl->Release(spBrowser);
@@ -555,26 +556,29 @@ void FindDesktopFolderView(REFIID riid, void** ppv)
         }
         spShellWindows->lpVtbl->Release(spShellWindows);
     }
+    return hr;
 }
 
-void GetDesktopAutomationObject(REFIID riid, void** ppv)
+HRESULT GetDesktopAutomationObject(REFIID riid, void** ppv)
 {
+    HRESULT hr = E_FAIL;
     IShellView* spsv = NULL;
-    FindDesktopFolderView(&IID_IShellView, &spsv);
+    hr = FindDesktopFolderView(&IID_IShellView, &spsv);
     if (spsv)
     {
         IDispatch* spdispView = NULL;
-        spsv->lpVtbl->GetItemObject(spsv, SVGIO_BACKGROUND, &IID_IDispatch, &spdispView);
+        hr = spsv->lpVtbl->GetItemObject(spsv, SVGIO_BACKGROUND, &IID_IDispatch, &spdispView);
         if (spdispView)
         {
-            spdispView->lpVtbl->QueryInterface(spdispView, riid, ppv);
+            hr = spdispView->lpVtbl->QueryInterface(spdispView, riid, ppv);
             spdispView->lpVtbl->Release(spdispView);
         }
         spsv->lpVtbl->Release(spsv);
     }
+    return hr;
 }
 
-void ShellExecuteFromExplorer(
+HRESULT ShellExecuteFromExplorer(
     PCWSTR pszFile,
     PCWSTR pszParameters,
     PCWSTR pszDirectory,
@@ -582,16 +586,17 @@ void ShellExecuteFromExplorer(
     int nShowCmd
 )
 {
+    HRESULT hr = E_FAIL;
     IShellFolderViewDual* spFolderView = NULL;
-    GetDesktopAutomationObject(&IID_IShellFolderViewDual, &spFolderView);
+    hr = GetDesktopAutomationObject(&IID_IShellFolderViewDual, &spFolderView);
     if (spFolderView)
     {
         IDispatch* spdispShell = NULL;
-        spFolderView->lpVtbl->get_Application(spFolderView, &spdispShell);
+        hr = spFolderView->lpVtbl->get_Application(spFolderView, &spdispShell);
         if (spdispShell)
         {
             IShellDispatch2* spdispShell2 = NULL;
-            spdispShell->lpVtbl->QueryInterface(spdispShell, &IID_IShellDispatch2, &spdispShell2);
+            hr = spdispShell->lpVtbl->QueryInterface(spdispShell, &IID_IShellDispatch2, &spdispShell2);
             if (spdispShell2)
             {
                 BSTR a_pszFile = pszFile ? SysAllocString(pszFile): SysAllocString(L"");
@@ -608,7 +613,7 @@ void ShellExecuteFromExplorer(
                 a_pszOperation.bstrVal = pszOperation ? SysAllocString(pszOperation) : SysAllocString(L"");
                 a_nShowCmd.vt = VT_INT;
                 a_nShowCmd.intVal = nShowCmd;
-                spdispShell2->lpVtbl->ShellExecuteW(spdispShell2, a_pszFile, a_pszParameters, a_pszDirectory, a_pszOperation, a_nShowCmd);
+                hr = spdispShell2->lpVtbl->ShellExecuteW(spdispShell2, a_pszFile, a_pszParameters, a_pszDirectory, a_pszOperation, a_nShowCmd);
                 if (a_pszOperation.bstrVal)
                 {
                     SysFreeString(a_pszOperation.bstrVal);
@@ -631,4 +636,5 @@ void ShellExecuteFromExplorer(
         }
         spFolderView->lpVtbl->Release(spFolderView);
     }
+    return hr;
 }

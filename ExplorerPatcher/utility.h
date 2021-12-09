@@ -30,6 +30,7 @@
 #define SETUP_UTILITY_NAME "ep_setup.exe"
 #define TOAST_BUFSIZ 1024
 #define SEH_REGPATH "Control Panel\\Quick Actions\\Control Center\\QuickActionsStateCapture\\ExplorerPatcher"
+#define EP_SETUP_HELPER_SWITCH "/CreateExplorerShellUnelevatedAfterServicing"
 
 #define WM_MSG_GUI_SECTION WM_USER + 1
 #define WM_MSG_GUI_SECTION_GET 1
@@ -85,11 +86,11 @@ typedef struct _StuckRectsData
     POINT pt;
 } StuckRectsData;
 
-void FindDesktopFolderView(REFIID riid, void** ppv);
+HRESULT FindDesktopFolderView(REFIID riid, void** ppv);
 
-void GetDesktopAutomationObject(REFIID riid, void** ppv);
+HRESULT GetDesktopAutomationObject(REFIID riid, void** ppv);
 
-void ShellExecuteFromExplorer(
+HRESULT ShellExecuteFromExplorer(
     PCWSTR pszFile,
     PCWSTR pszParameters,
     PCWSTR pszDirectory,
