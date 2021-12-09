@@ -3434,6 +3434,15 @@ void sws_ReadSettings(sws_WindowSwitcher* sws)
                 &(sws->bNoPerApplicationList),
                 &dwSize
             );
+            dwSize = sizeof(DWORD);
+            RegQueryValueExW(
+                hKey,
+                TEXT("MasterPadding"),
+                0,
+                NULL,
+                &(sws->dwMasterPadding),
+                &dwSize
+            );
             if (sws->bIsInitialized)
             {
                 sws_WindowSwitcher_UnregisterHotkeys(sws);
