@@ -500,3 +500,135 @@ BOOL SystemShutdown(BOOL reboot)
     //shutdown was successful
     return TRUE;
 }
+
+void FindDesktopFolderView(REFIID riid, void** ppv)
+{
+    IShellWindows* spShellWindows = NULL;
+    CoCreateInstance(
+        &CLSID_ShellWindows,
+        NULL,
+        CLSCTX_ALL,
+        &IID_IShellWindows,
+        &spShellWindows
+    );
+    if (spShellWindows)
+    {
+        VARIANT vtEmpty;
+        ZeroMemory(&vtEmpty, sizeof(VARIANT));
+        VARIANT vtLoc;
+        ZeroMemory(&vtLoc, sizeof(VARIANT));
+        vtLoc.vt = VT_INT;
+        vtLoc.intVal = CSIDL_DESKTOP;
+        long lhwnd = 0;
+        IDispatch* spdisp = NULL;
+        spShellWindows->lpVtbl->FindWindowSW(
+            spShellWindows,
+            &vtLoc,
+            &vtEmpty,
+            SWC_DESKTOP,
+            &lhwnd,
+            SWFO_NEEDDISPATCH,
+            &spdisp
+        );
+        if (spdisp)
+        {
+            IServiceProvider* spdisp2 = NULL;
+            spdisp->lpVtbl->QueryInterface(spdisp, &IID_IServiceProvider, &spdisp2);
+            if (spdisp2)
+            {
+                IShellBrowser* spBrowser = NULL;
+                spdisp2->lpVtbl->QueryService(spdisp2, &SID_STopLevelBrowser, &IID_IShellBrowser, &spBrowser);
+                if (spBrowser)
+                {
+                    IShellView* spView = NULL;
+                    spBrowser->lpVtbl->QueryActiveShellView(spBrowser, &spView);
+                    if (spView)
+                    {
+                        spView->lpVtbl->QueryInterface(spView, riid, ppv);
+                        spView->lpVtbl->Release(spView);
+                    }
+                    spBrowser->lpVtbl->Release(spBrowser);
+                }
+                spdisp2->lpVtbl->Release(spdisp2);
+            }
+            spdisp->lpVtbl->Release(spdisp);
+        }
+        spShellWindows->lpVtbl->Release(spShellWindows);
+    }
+}
+
+void GetDesktopAutomationObject(REFIID riid, void** ppv)
+{
+    IShellView* spsv = NULL;
+    FindDesktopFolderView(&IID_IShellView, &spsv);
+    if (spsv)
+    {
+        IDispatch* spdispView = NULL;
+        spsv->lpVtbl->GetItemObject(spsv, SVGIO_BACKGROUND, &IID_IDispatch, &spdispView);
+        if (spdispView)
+        {
+            spdispView->lpVtbl->QueryInterface(spdispView, riid, ppv);
+            spdispView->lpVtbl->Release(spdispView);
+        }
+        spsv->lpVtbl->Release(spsv);
+    }
+}
+
+void ShellExecuteFromExplorer(
+    PCWSTR pszFile,
+    PCWSTR pszParameters,
+    PCWSTR pszDirectory,
+    PCWSTR pszOperation,
+    int nShowCmd
+)
+{
+    IShellFolderViewDual* spFolderView = NULL;
+    GetDesktopAutomationObject(&IID_IShellFolderViewDual, &spFolderView);
+    if (spFolderView)
+    {
+        IDispatch* spdispShell = NULL;
+        spFolderView->lpVtbl->get_Application(spFolderView, &spdispShell);
+        if (spdispShell)
+        {
+            IShellDispatch2* spdispShell2 = NULL;
+            spdispShell->lpVtbl->QueryInterface(spdispShell, &IID_IShellDispatch2, &spdispShell2);
+            if (spdispShell2)
+            {
+                BSTR a_pszFile = pszFile ? SysAllocString(pszFile): SysAllocString(L"");
+                VARIANT a_pszParameters, a_pszDirectory, a_pszOperation, a_nShowCmd;
+                ZeroMemory(&a_pszParameters, sizeof(VARIANT));
+                ZeroMemory(&a_pszDirectory, sizeof(VARIANT));
+                ZeroMemory(&a_pszOperation, sizeof(VARIANT));
+                ZeroMemory(&a_nShowCmd, sizeof(VARIANT));
+                a_pszParameters.vt = VT_BSTR;
+                a_pszParameters.bstrVal = pszParameters ? SysAllocString(pszParameters) : SysAllocString(L"");
+                a_pszDirectory.vt = VT_BSTR;
+                a_pszDirectory.bstrVal = pszDirectory ? SysAllocString(pszDirectory) : SysAllocString(L"");
+                a_pszOperation.vt = VT_BSTR;
+                a_pszOperation.bstrVal = pszOperation ? SysAllocString(pszOperation) : SysAllocString(L"");
+                a_nShowCmd.vt = VT_INT;
+                a_nShowCmd.intVal = nShowCmd;
+                spdispShell2->lpVtbl->ShellExecuteW(spdispShell2, a_pszFile, a_pszParameters, a_pszDirectory, a_pszOperation, a_nShowCmd);
+                if (a_pszOperation.bstrVal)
+                {
+                    SysFreeString(a_pszOperation.bstrVal);
+                }
+                if (a_pszDirectory.bstrVal)
+                {
+                    SysFreeString(a_pszDirectory.bstrVal);
+                }
+                if (a_pszParameters.bstrVal)
+                {
+                    SysFreeString(a_pszParameters.bstrVal);
+                }
+                if (a_pszFile)
+                {
+                    SysFreeString(a_pszFile);
+                }
+                spdispShell2->lpVtbl->Release(spdispShell2);
+            }
+            spdispShell->lpVtbl->Release(spdispShell);
+        }
+        spFolderView->lpVtbl->Release(spFolderView);
+    }
+}
