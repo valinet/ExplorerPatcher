@@ -7,8 +7,6 @@ BOOL g_darkModeEnabled = FALSE;
 static void(*RefreshImmersiveColorPolicyState)() = NULL;
 static BOOL(*ShouldAppsUseDarkMode)() = NULL;
 DWORD dwTaskbarPosition = 3;
-DWORD dwInitialTaskbarPosition = 3;
-
 BOOL IsHighContrast()
 {
     HIGHCONTRASTW highContrast;
@@ -813,10 +811,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                     GetWindowsDirectoryW(wszPath, MAX_PATH);
                                     wcscat_s(wszPath, MAX_PATH, L"\\explorer.exe");
                                     Sleep(1000);
-                                    if (dwTaskbarPosition != dwInitialTaskbarPosition)
-                                    {
-                                        GUI_RegSetValueExW(NULL, L"Virtualized_" _T(EP_CLSID) L"_TaskbarPosition", NULL, NULL, &dwTaskbarPosition, NULL);
-                                    }
+                                    GUI_RegSetValueExW(NULL, L"Virtualized_" _T(EP_CLSID) L"_TaskbarPosition", NULL, NULL, &dwTaskbarPosition, NULL);
                                     ShellExecuteW(
                                         NULL,
                                         L"open",
@@ -2100,7 +2095,6 @@ __declspec(dllexport) int ZZGUI(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLin
         }
     }
     GUI_RegQueryValueExW(NULL, L"Virtualized_" _T(EP_CLSID) L"_TaskbarPosition", NULL, NULL, &dwTaskbarPosition, NULL);
-    dwInitialTaskbarPosition = dwTaskbarPosition;
     HWND hwnd = CreateWindowEx(
         NULL,
         L"ExplorerPatcher_GUI_" _T(EP_CLSID),
