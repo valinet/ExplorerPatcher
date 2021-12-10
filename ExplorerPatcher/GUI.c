@@ -771,33 +771,38 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                             if (p) *p = 0;
                             if (!strncmp(line + 1, "restart", 7))
                             {
-                                if (FindWindowW(L"Shell_TrayWnd", NULL))
+                                HWND hShellTrayWnd = FindWindowW(L"Shell_TrayWnd", NULL);
+                                if (hShellTrayWnd)
                                 {
-                                    HANDLE hExplorerRestartThread = CreateThread(NULL, 0, BeginExplorerRestart, NULL, 0, NULL);
-                                    if (hExplorerRestartThread)
-                                    {
-                                        WaitForSingleObject(hExplorerRestartThread, 2000);
-                                        CloseHandle(hExplorerRestartThread);
-                                        hExplorerRestartThread = NULL;
-                                    }
-                                    else
-                                    {
-                                        BeginExplorerRestart();
-                                    }
-                                    Sleep(100);
-                                    //ZZRestartExplorer(0, 0, 0, 0);
                                     WCHAR wszPath[MAX_PATH];
                                     ZeroMemory(wszPath, MAX_PATH * sizeof(WCHAR));
-                                    GetSystemDirectoryW(wszPath, MAX_PATH);
-                                    wcscat_s(wszPath, MAX_PATH, L"\\taskkill.exe");
-                                    ShellExecuteW(
-                                        NULL,
-                                        L"open",
-                                        wszPath,
-                                        L"/f /im explorer.exe",
-                                        NULL,
-                                        SW_SHOWMINIMIZED
-                                    );
+                                    INT64 res = -1;
+                                    if (!SendMessageTimeoutW(hShellTrayWnd, 1460, 0, 0, SMTO_ABORTIFHUNG, 2000, &res) && res)
+                                    {
+                                        HANDLE hExplorerRestartThread = CreateThread(NULL, 0, BeginExplorerRestart, NULL, 0, NULL);
+                                        if (hExplorerRestartThread)
+                                        {
+                                            WaitForSingleObject(hExplorerRestartThread, 2000);
+                                            CloseHandle(hExplorerRestartThread);
+                                            hExplorerRestartThread = NULL;
+                                        }
+                                        else
+                                        {
+                                            BeginExplorerRestart();
+                                        }
+                                        Sleep(100);
+                                        //ZZRestartExplorer(0, 0, 0, 0);
+                                        GetSystemDirectoryW(wszPath, MAX_PATH);
+                                        wcscat_s(wszPath, MAX_PATH, L"\\taskkill.exe");
+                                        ShellExecuteW(
+                                            NULL,
+                                            L"open",
+                                            wszPath,
+                                            L"/f /im explorer.exe",
+                                            NULL,
+                                            SW_SHOWMINIMIZED
+                                        );
+                                    }
                                     GetWindowsDirectoryW(wszPath, MAX_PATH);
                                     wcscat_s(wszPath, MAX_PATH, L"\\explorer.exe");
                                     Sleep(1000);

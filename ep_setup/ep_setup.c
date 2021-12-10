@@ -438,36 +438,44 @@ int WINAPI wWinMain(
             CoUninitialize();
         }
 
-        HANDLE hExplorerRestartThread = CreateThread(NULL, 0, BeginExplorerRestart, NULL, 0, NULL);
-        if (hExplorerRestartThread)
+        HWND hShellTrayWnd = FindWindowW(L"Shell_TrayWnd", NULL);
+        if (hShellTrayWnd)
         {
-            WaitForSingleObject(hExplorerRestartThread, 2000);
-            CloseHandle(hExplorerRestartThread);
-            hExplorerRestartThread = NULL;
-        }
-        else
-        {
-            BeginExplorerRestart();
-        }
-        Sleep(100);
+            INT res = -1;
+            if (!SendMessageTimeoutW(hShellTrayWnd, 1460, 0, 0, SMTO_ABORTIFHUNG, 2000, &res) && res)
+            {
+                HANDLE hExplorerRestartThread = CreateThread(NULL, 0, BeginExplorerRestart, NULL, 0, NULL);
+                if (hExplorerRestartThread)
+                {
+                    WaitForSingleObject(hExplorerRestartThread, 2000);
+                    CloseHandle(hExplorerRestartThread);
+                    hExplorerRestartThread = NULL;
+                }
+                else
+                {
+                    BeginExplorerRestart();
+                }
+                Sleep(100);
 
-        GetSystemDirectoryW(wszPath, MAX_PATH);
-        wcscat_s(wszPath, MAX_PATH, L"\\taskkill.exe");
-        SHELLEXECUTEINFOW sei;
-        ZeroMemory(&sei, sizeof(SHELLEXECUTEINFOW));
-        sei.cbSize = sizeof(sei);
-        sei.fMask = SEE_MASK_NOCLOSEPROCESS;
-        sei.hwnd = NULL;
-        sei.hInstApp = NULL;
-        sei.lpVerb = NULL;
-        sei.lpFile = wszPath;
-        sei.lpParameters = L"/f /im explorer.exe";
-        sei.hwnd = NULL;
-        sei.nShow = SW_SHOWMINIMIZED;
-        if (ShellExecuteExW(&sei) && sei.hProcess)
-        {
-            WaitForSingleObject(sei.hProcess, INFINITE);
-            CloseHandle(sei.hProcess);
+                GetSystemDirectoryW(wszPath, MAX_PATH);
+                wcscat_s(wszPath, MAX_PATH, L"\\taskkill.exe");
+                SHELLEXECUTEINFOW sei;
+                ZeroMemory(&sei, sizeof(SHELLEXECUTEINFOW));
+                sei.cbSize = sizeof(sei);
+                sei.fMask = SEE_MASK_NOCLOSEPROCESS;
+                sei.hwnd = NULL;
+                sei.hInstApp = NULL;
+                sei.lpVerb = NULL;
+                sei.lpFile = wszPath;
+                sei.lpParameters = L"/f /im explorer.exe";
+                sei.hwnd = NULL;
+                sei.nShow = SW_SHOWMINIMIZED;
+                if (ShellExecuteExW(&sei) && sei.hProcess)
+                {
+                    WaitForSingleObject(sei.hProcess, INFINITE);
+                    CloseHandle(sei.hProcess);
+                }
+            }
         }
 
         HWND hWnd = FindWindowW(L"ExplorerPatcher_GUI_" _T(EP_CLSID), NULL);
