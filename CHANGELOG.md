@@ -27,6 +27,7 @@ Tested on build 22000.348.
 * File Explorer is restarted unelevated when servicing the application (#528) (.7)
 * Reliability improvements for File Explorer restarts (#529) (.7)
 * When changing the main taskbar position and restarting File Explorer, the new position is now correctly saved and applied when File Explorer restarts (#523) (.7)
+* Mitigation for the issue described in #416 (.7)
 
 #### Simple Window Switcher
 

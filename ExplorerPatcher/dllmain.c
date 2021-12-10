@@ -6847,6 +6847,14 @@ HRESULT EntryPoint(DWORD dwMethod)
     );
     CloseHandle(hProcess);
 
+    TCHAR wszSearchIndexerPath[MAX_PATH];
+    GetSystemDirectoryW(wszSearchIndexerPath, MAX_PATH);
+    wcscat_s(wszSearchIndexerPath, MAX_PATH, L"\\SearchIndexer.exe");
+    if (!_wcsicmp(exePath, wszSearchIndexerPath))
+    {
+        return E_NOINTERFACE;
+    }
+
     TCHAR wszExplorerExpectedPath[MAX_PATH];
     GetWindowsDirectoryW(wszExplorerExpectedPath, MAX_PATH);
     wcscat_s(wszExplorerExpectedPath, MAX_PATH, L"\\explorer.exe");
