@@ -588,15 +588,15 @@ HRESULT ShellExecuteFromExplorer(
 {
     HRESULT hr = E_FAIL;
     IShellFolderViewDual* spFolderView = NULL;
-    hr = GetDesktopAutomationObject(&IID_IShellFolderViewDual, &spFolderView);
+    GetDesktopAutomationObject(&IID_IShellFolderViewDual, &spFolderView);
     if (spFolderView)
     {
         IDispatch* spdispShell = NULL;
-        hr = spFolderView->lpVtbl->get_Application(spFolderView, &spdispShell);
+        spFolderView->lpVtbl->get_Application(spFolderView, &spdispShell);
         if (spdispShell)
         {
             IShellDispatch2* spdispShell2 = NULL;
-            hr = spdispShell->lpVtbl->QueryInterface(spdispShell, &IID_IShellDispatch2, &spdispShell2);
+            spdispShell->lpVtbl->QueryInterface(spdispShell, &IID_IShellDispatch2, &spdispShell2);
             if (spdispShell2)
             {
                 BSTR a_pszFile = pszFile ? SysAllocString(pszFile): SysAllocString(L"");

@@ -790,18 +790,25 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                         {
                                             BeginExplorerRestart();
                                         }
-                                        Sleep(100);
-                                        //ZZRestartExplorer(0, 0, 0, 0);
-                                        GetSystemDirectoryW(wszPath, MAX_PATH);
-                                        wcscat_s(wszPath, MAX_PATH, L"\\taskkill.exe");
-                                        ShellExecuteW(
-                                            NULL,
-                                            L"open",
-                                            wszPath,
-                                            L"/f /im explorer.exe",
-                                            NULL,
-                                            SW_SHOWMINIMIZED
-                                        );
+                                    }
+                                    Sleep(100);
+                                    GetSystemDirectoryW(wszPath, MAX_PATH);
+                                    wcscat_s(wszPath, MAX_PATH, L"\\taskkill.exe");
+                                    SHELLEXECUTEINFOW sei;
+                                    ZeroMemory(&sei, sizeof(SHELLEXECUTEINFOW));
+                                    sei.cbSize = sizeof(sei);
+                                    sei.fMask = SEE_MASK_NOCLOSEPROCESS;
+                                    sei.hwnd = NULL;
+                                    sei.hInstApp = NULL;
+                                    sei.lpVerb = NULL;
+                                    sei.lpFile = wszPath;
+                                    sei.lpParameters = L"/f /im explorer.exe";
+                                    sei.hwnd = NULL;
+                                    sei.nShow = SW_SHOWMINIMIZED;
+                                    if (ShellExecuteExW(&sei) && sei.hProcess)
+                                    {
+                                        WaitForSingleObject(sei.hProcess, INFINITE);
+                                        CloseHandle(sei.hProcess);
                                     }
                                     GetWindowsDirectoryW(wszPath, MAX_PATH);
                                     wcscat_s(wszPath, MAX_PATH, L"\\explorer.exe");
