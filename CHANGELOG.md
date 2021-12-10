@@ -24,6 +24,9 @@ Tested on build 22000.348.
 * Fixed solution to properly produce a debug setup program
 * Possibility to uninstall by renaming `ep_setup.exe` to `ep_uninstall.exe` and running that (.4)
 * Fixed a bug that crashed the "Properties" GUI when toggling certain settings (#527) (.6)
+* File Explorer is restarted unelevated when servicing the application (#528) (.7)
+* Reliability improvements for File Explorer restarts (#529) (.7)
+* When changing the main taskbar position and restarting File Explorer, the new position is now correctly saved and applied when File Explorer restarts (#523) (.7)
 
 #### Simple Window Switcher
 
@@ -40,6 +43,8 @@ Tested on build 22000.348.
 * Possibility to disable per-application window lists (`Alt`+`) ([#283](https://github.com/valinet/ExplorerPatcher/issues/283#issuecomment-986261712)) (.2)
 * Fixed bug that prevented proper loading of default settings (.3)
 * Implemented a mitigation for #516: gestures for switching apps on Windows Precision Touchpad devices trigger the Windows 10 switcher instead of the Windows 11 switcher, which is much closer to how Simple Window Switcher looks and behaves; ideally, a full solution for this should be provided in the future, in the form of support for activation and navigation using Windows Precision Touchpad gestures in the Simple Window Switcher (.5)
+* Fixed an issue that could hung the application and made window switchers unavailable (#525) (many thanks to @jdp1024) (.7)
+* Possibility to configure window padding (.7)
 
 ## 22000.348.39
 
