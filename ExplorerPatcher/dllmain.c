@@ -4985,7 +4985,14 @@ LSTATUS twinuipcshell_RegGetValueW(
     {
         if (lRes == ERROR_SUCCESS && *(DWORD*)pvData)
         {
-            *(DWORD*)pvData = 1;
+            if (*(DWORD*)pvData == 3)
+            {
+                *(DWORD*)pvData = 0;
+            }
+            else
+            {
+                *(DWORD*)pvData = 1;
+            }
         }
 
         if (!bOldTaskbar && hWin11AltTabInitialized)
