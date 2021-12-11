@@ -3464,7 +3464,7 @@ DWORD WindowSwitcher(DWORD unused)
 
     while (TRUE)
     {
-        Sleep(5000);
+        //Sleep(5000);
         sws_ReadSettings(NULL);
         if (sws_IsEnabled)
         {
@@ -3475,6 +3475,7 @@ DWORD WindowSwitcher(DWORD unused)
                 return 0;
             }
             sws_WindowSwitcher_InitializeDefaultSettings(sws);
+            sws->dwWallpaperSupport = SWS_WALLPAPERSUPPORT_EXPLORER;
             sws_ReadSettings(sws);
             err = sws_error_Report(sws_error_GetFromInternalError(sws_WindowSwitcher_Initialize(&sws, FALSE)), NULL);
             if (err == SWS_ERROR_SUCCESS)
