@@ -235,7 +235,7 @@
 ;x 2 Mica (always opaque)
 "Theme"=dword:00000000
 [HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\MultitaskingView\AltTabViewHost]
-;c 19 Transparency
+;c 19 Opacity
 ;x 100 Opaque
 ;x 98 98 %
 ;x 96 96 %
