@@ -3465,6 +3465,17 @@ DWORD WindowSwitcher(DWORD unused)
     while (TRUE)
     {
         //Sleep(5000);
+        while (!FindWindowExW(
+            NULL,
+            NULL,
+            L"Shell_TrayWnd",
+            NULL
+        ))
+        {
+            printf("[sws] Waiting for taskbar...\n");
+            Sleep(100);
+        }
+        Sleep(100);
         sws_ReadSettings(NULL);
         if (sws_IsEnabled)
         {
