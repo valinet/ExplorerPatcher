@@ -774,7 +774,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                 {
                                     WCHAR wszPath[MAX_PATH];
                                     ZeroMemory(wszPath, MAX_PATH * sizeof(WCHAR));
-                                    INT64 res = -1;
+                                    PDWORD_PTR res = -1;
                                     if (!SendMessageTimeoutW(hShellTrayWnd, 1460, 0, 0, SMTO_ABORTIFHUNG, 2000, &res) && res)
                                     {
                                         HANDLE hExplorerRestartThread = CreateThread(NULL, 0, BeginExplorerRestart, NULL, 0, NULL);

@@ -441,7 +441,7 @@ int WINAPI wWinMain(
         HWND hShellTrayWnd = FindWindowW(L"Shell_TrayWnd", NULL);
         if (hShellTrayWnd)
         {
-            INT res = -1;
+            PDWORD_PTR res = -1;
             if (!SendMessageTimeoutW(hShellTrayWnd, 1460, 0, 0, SMTO_ABORTIFHUNG, 2000, &res) && res)
             {
                 HANDLE hExplorerRestartThread = CreateThread(NULL, 0, BeginExplorerRestart, NULL, 0, NULL);
@@ -721,12 +721,15 @@ int WINAPI wWinMain(
         {
             if (!hShellTrayWnd)
             {
-                MessageBoxW(
-                    NULL,
-                    L"" _T(PRODUCT_NAME) L" has been installed successfully. Start Explorer to have it load up.",
-                    _T(PRODUCT_NAME),
-                    MB_ICONINFORMATION | MB_OK | MB_DEFBUTTON1
-                );
+                if (bOk)
+                {
+                    MessageBoxW(
+                        NULL,
+                        L"" _T(PRODUCT_NAME) L" has been installed successfully. Start File Explorer to have it load up.",
+                        _T(PRODUCT_NAME),
+                        MB_ICONINFORMATION | MB_OK | MB_DEFBUTTON1
+                    );
+                }
             }
             else
             {
