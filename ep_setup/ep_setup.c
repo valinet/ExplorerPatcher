@@ -106,8 +106,8 @@ BOOL SetupUninstallEntry(BOOL bInstall, WCHAR* wszPath)
 
                         QueryVersionInfo(hEP, VS_VERSION_INFO, &dwLeftMost, &dwSecondLeft, &dwSecondRight, &dwRightMost);
 
-                        WCHAR wszBuf[20];
-                        swprintf_s(wszBuf, 20, L"%d.%d.%d.%d", dwLeftMost, dwSecondLeft, dwSecondRight, dwRightMost);
+                        WCHAR wszBuf[30];
+                        swprintf_s(wszBuf, 30, L"%d.%d.%d.%d", dwLeftMost, dwSecondLeft, dwSecondRight, dwRightMost);
 
                         if (!dwLastError)
                         {
