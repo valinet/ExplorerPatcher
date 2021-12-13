@@ -96,7 +96,7 @@ BOOL SetupUninstallEntry(BOOL bInstall, WCHAR* wszPath)
                 {
                     PathRemoveFileSpecW(wszPath);
                     wcscat_s(wszPath, MAX_PATH, L"\\" _T(PRODUCT_NAME) L".amd64.dll");
-                    HMODULE hEP = LoadLibraryExW(wszPath, NULL, LOAD_LIBRARY_AS_DATAFILE);
+                    HMODULE hEP = LoadLibraryExW(wszPath + 1, NULL, LOAD_LIBRARY_AS_DATAFILE);
                     if (hEP)
                     {
                         DWORD dwLeftMost = 0;
