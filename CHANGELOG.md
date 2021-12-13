@@ -29,6 +29,7 @@ Tested on build 22000.348.
 * When changing the main taskbar position and restarting File Explorer, the new position is now correctly saved and applied when File Explorer restarts (#523) (.7)
 * Mitigation for the issue described in #416 (.7)
 * Fixed a bug that prevented the Windows 10 window switcher from displaying when it was enabled, instead falling back to the Windows NT window switcher (#548) (.8)
+* Fixed the "Show People in the taskbar" option and made it not require a restart to apply (#554) (.10)
 
 #### Simple Window Switcher
 

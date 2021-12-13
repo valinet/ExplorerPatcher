@@ -136,6 +136,11 @@ LSTATUS GUI_RegSetValueExW(
         SHAppBarMessage(ABM_SETSTATE, &abd);
         return ERROR_SUCCESS;
     }
+    else if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_PeopleBand"))
+    {
+        PostMessageW(FindWindowW(L"Shell_TrayWnd", NULL), WM_COMMAND, 435, 0);
+        return ERROR_SUCCESS;
+    }
 }
 
 LSTATUS GUI_RegQueryValueExW(
@@ -213,6 +218,10 @@ LSTATUS GUI_RegQueryValueExW(
         abd.cbSize = sizeof(APPBARDATA);
         *(DWORD*)lpData = (SHAppBarMessage(ABM_GETSTATE, &abd) == ABS_AUTOHIDE);
         return ERROR_SUCCESS;
+    }
+    else if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_PeopleBand"))
+    {
+        return RegQueryValueExW(hKey, L"PeopleBand", lpReserved, lpType, lpData, lpcbData);
     }
 }
 
