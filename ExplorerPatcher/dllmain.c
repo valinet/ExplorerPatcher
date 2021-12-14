@@ -2077,9 +2077,14 @@ BOOL explorer_TrackPopupMenuExHook(
         bContainsOwn = CheckIfMenuContainsOwnPropertiesItem(hMenu);
     }
     
-    if (elapsed > POPUPMENU_EX_ELAPSED || !bFlyoutMenus)
+    wchar_t wszClassNameOfWindowUnderCursor[200];
+    POINT p; p.x = x; p.y = y;
+    GetClassNameW(WindowFromPoint(p), wszClassNameOfWindowUnderCursor, 200);
+    BOOL bIsSecondaryTaskbar = (!wcscmp(wszClassName, L"Shell_SecondaryTrayWnd") && !wcscmp(wszClassNameOfWindowUnderCursor, L"Shell_SecondaryTrayWnd"));
+
+    if (elapsed > POPUPMENU_EX_ELAPSED || !bFlyoutMenus || bIsSecondaryTaskbar)
     {
-        if (bCenterMenus)
+        if (bCenterMenus && !bIsSecondaryTaskbar)
         {
             PopupMenuAdjustCoordinatesAndFlags(&x, &y, &uFlags);
         }
@@ -2120,7 +2125,10 @@ BOOL explorer_TrackPopupMenuExHook(
             LaunchPropertiesGUI(hModule);
             return FALSE;
         }
-        explorer_TrackPopupMenuExElapsed = milliseconds_now();
+        if (!bIsSecondaryTaskbar)
+        {
+            explorer_TrackPopupMenuExElapsed = milliseconds_now();
+        }
     }
     return b;
 }
