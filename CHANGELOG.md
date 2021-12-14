@@ -33,6 +33,7 @@ Tested on OS build 22000.376.
 * Fixed the "Show People in the taskbar" option and made it not require a restart to apply (#554) (.10)
 * Ability to choose look of Snap Assist (window list when snapping a window): Windows 11 or Windows 10 style (.11)
 * Fixed a bug that prevented the correct set up of "DisplayVersion" registry entry in the uninstall information registry key (.11)
+* Secondary taskbars' context menu is displayed similarly to the primary taskbar's context menu for Windows 10 style (.12)
 
 #### Simple Window Switcher
 
