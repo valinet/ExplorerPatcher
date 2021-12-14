@@ -2,12 +2,13 @@
 
 This document includes the same release notes as in the [Releases](https://github.com/valinet/ExplorerPatcher/releases) section on GitHub.
 
-## 22000.348.40
+## 22000.376.40
 
-Tested on build 22000.348.
+Tested on OS build 22000.376.
 
 #### Highlights
 
+* Built-in support for OS build 22000.376 (.12)
 * Primary taskbar remembers position when moved to a secondary monitor (multiple issues, like #504)
 * Ability to set Control Center as network icon action (merged #492)
 * Added possibility to use the original Windows 10 (Alt-Tab) window switcher; thus, the available options are now:
