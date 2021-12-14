@@ -531,6 +531,7 @@ DWORD CheckForegroundThread(DWORD dwMode)
     while (TRUE)
     {
         wchar_t text[200];
+        ZeroMemory(text, 200);
         GetClassNameW(GetForegroundWindow(), text, 200);
         if (!wcscmp(text, L"Windows.UI.Core.CoreWindow"))
         {
@@ -543,6 +544,7 @@ DWORD CheckForegroundThread(DWORD dwMode)
     while (TRUE)
     {
         wchar_t text[200];
+        ZeroMemory(text, 200);
         GetClassNameW(GetForegroundWindow(), text, 200);
         if (wcscmp(text, L"Windows.UI.Core.CoreWindow"))
         {
@@ -1095,6 +1097,7 @@ INT64 CLauncherTipContextMenu_ShowLauncherTipContextMenuHook(
             GetMonitorInfo(hMonitor, &mi);
             HWND hWndUnder = WindowFromPoint(*pt);
             TCHAR wszClassName[100];
+            ZeroMemory(wszClassName, 100);
             GetClassNameW(hWndUnder, wszClassName, 100);
             if (!wcscmp(wszClassName, L"Shell_TrayWnd") || !wcscmp(wszClassName, L"Shell_SecondaryTrayWnd"))
             {
@@ -1794,6 +1797,7 @@ BOOL TrackPopupMenuHookEx(
     IsImmersiveMenu = FALSE;
 
     wchar_t wszClassName[200];
+    ZeroMemory(wszClassName, 200);
     GetClassNameW(hWnd, wszClassName, 200);
 
     BOOL bIsTaskbar = (!wcscmp(wszClassName, L"Shell_TrayWnd") || !wcscmp(wszClassName, L"Shell_SecondaryTrayWnd")) ? !bSkinMenus : bDisableImmersiveContextMenu;
@@ -1881,6 +1885,7 @@ BOOL TrackPopupMenuHook(
     IsImmersiveMenu = FALSE;
 
     wchar_t wszClassName[200];
+    ZeroMemory(wszClassName, 200);
     GetClassNameW(hWnd, wszClassName, 200);
 
     BOOL bIsTaskbar = (!wcscmp(wszClassName, L"Shell_TrayWnd") || !wcscmp(wszClassName, L"Shell_SecondaryTrayWnd")) ? !bSkinMenus : bDisableImmersiveContextMenu;
@@ -2070,6 +2075,7 @@ BOOL explorer_TrackPopupMenuExHook(
     BOOL b = FALSE;
 
     wchar_t wszClassName[200];
+    ZeroMemory(wszClassName, 200);
     GetClassNameW(hWnd, wszClassName, 200);
     BOOL bContainsOwn = FALSE;
     if (bIsExplorerProcess && (!wcscmp(wszClassName, L"Shell_TrayWnd") || !wcscmp(wszClassName, L"Shell_SecondaryTrayWnd")))
@@ -2078,6 +2084,7 @@ BOOL explorer_TrackPopupMenuExHook(
     }
     
     wchar_t wszClassNameOfWindowUnderCursor[200];
+    ZeroMemory(wszClassNameOfWindowUnderCursor, 200);
     POINT p; p.x = x; p.y = y;
     GetClassNameW(WindowFromPoint(p), wszClassNameOfWindowUnderCursor, 200);
     BOOL bIsSecondaryTaskbar = (!wcscmp(wszClassName, L"Shell_SecondaryTrayWnd") && !wcscmp(wszClassNameOfWindowUnderCursor, L"Shell_SecondaryTrayWnd"));
@@ -3117,6 +3124,7 @@ static BOOL(*SetChildWindowNoActivateFunc)(HWND);
 BOOL explorer_SetChildWindowNoActivateHook(HWND hWnd)
 {
     TCHAR className[100];
+    ZeroMemory(className, 100);
     GetClassNameW(hWnd, className, 100);
     if (!wcscmp(className, L"ControlCenterButton"))
     {
@@ -4219,6 +4227,7 @@ HWND CreateWindowExWHook(
     if (bClassicThemeMitigations && (*((WORD*)&(lpClassName)+1)) && (!wcscmp(lpClassName, L"SysListView32") || !wcscmp(lpClassName, L"SysTreeView32"))) // !wcscmp(lpClassName, L"FolderView")
     {
         wchar_t wszClassName[200];
+        ZeroMemory(wszClassName, 200);
         GetClassNameW(GetAncestor(hWndParent, GA_ROOT), wszClassName, 200);
         if (!wcscmp(wszClassName, L"CabinetWClass"))
         {
@@ -4228,6 +4237,7 @@ HWND CreateWindowExWHook(
     if (bIsExplorerProcess && bToolbarSeparators && (*((WORD*)&(lpClassName)+1)) && !wcscmp(lpClassName, L"ReBarWindow32"))
     {
         wchar_t wszClassName[200];
+        ZeroMemory(wszClassName, 200);
         GetClassNameW(hWndParent, wszClassName, 200);
         if (!wcscmp(wszClassName, L"Shell_TrayWnd"))
         {
@@ -4289,6 +4299,7 @@ LONG_PTR SetWindowLongPtrWHook(
 )
 {
     WCHAR lpClassName[200];
+    ZeroMemory(lpClassName, 200);
     GetClassNameW(hWnd, lpClassName, 200);
     HWND hWndParent = GetParent(hWnd);
 
@@ -4309,6 +4320,7 @@ LONG_PTR SetWindowLongPtrWHook(
     if (bClassicThemeMitigations && (*((WORD*)&(lpClassName)+1)) && (!wcscmp(lpClassName, L"SysListView32") || !wcscmp(lpClassName, L"SysTreeView32"))) // !wcscmp(lpClassName, L"FolderView")
     {
         wchar_t wszClassName[200];
+        ZeroMemory(wszClassName, 200);
         GetClassNameW(GetAncestor(hWndParent, GA_ROOT), wszClassName, 200);
         if (!wcscmp(wszClassName, L"CabinetWClass"))
         {
@@ -4321,6 +4333,7 @@ LONG_PTR SetWindowLongPtrWHook(
     if (bIsExplorerProcess && bToolbarSeparators && (*((WORD*)&(lpClassName)+1)) && !wcscmp(lpClassName, L"ReBarWindow32"))
     {
         wchar_t wszClassName[200];
+        ZeroMemory(wszClassName, 200);
         GetClassNameW(hWndParent, wszClassName, 200);
         if (!wcscmp(wszClassName, L"Shell_TrayWnd"))
         {
