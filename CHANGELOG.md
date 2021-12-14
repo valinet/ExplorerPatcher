@@ -30,7 +30,7 @@ Tested on build 22000.348.
 * Mitigation for the issue described in #416 (.7)
 * Fixed a bug that prevented the Windows 10 window switcher from displaying when it was enabled, instead falling back to the Windows NT window switcher (#548) (.8)
 * Fixed the "Show People in the taskbar" option and made it not require a restart to apply (#554) (.10)
-* Ability to choose look of Snap Assist (window list when snapping a window): Windows 11 or Windows 11 style (.11)
+* Ability to choose look of Snap Assist (window list when snapping a window): Windows 11 or Windows 10 style (.11)
 * Fixed a bug that prevented the correct set up of "DisplayVersion" registry entry in the uninstall information registry key (.11)
 
 #### Simple Window Switcher
