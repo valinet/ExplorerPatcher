@@ -74,6 +74,10 @@ DWORD dwOrbStyle = 0;
 DWORD bEnableSymbolDownload = TRUE;
 DWORD dwAltTabSettings = 0;
 DWORD dwSnapAssistSettings = 0;
+BOOL bDoNotRedirectSystemToSettingsApp = FALSE;
+BOOL bDoNotRedirectProgramsAndFeaturesToSettingsApp = FALSE;
+BOOL bDoNotRedirectDateAndTimeToSettingsApp = FALSE;
+BOOL bDoNotRedirectNotificationIconsToSettingsApp = FALSE;
 HMODULE hModule = NULL;
 HANDLE hDelayedInjectionThread = NULL;
 HANDLE hIsWinXShown = NULL;
@@ -3691,6 +3695,15 @@ void WINAPI LoadSettings(BOOL bIsExplorer)
                 FreeConsole();
             }
         }
+        dwSize = sizeof(DWORD);
+        RegQueryValueExW(
+            hKey,
+            TEXT("DoNotRedirectSystemToSettingsApp"),
+            0,
+            NULL,
+            &bDoNotRedirectSystemToSettingsApp,
+            &dwSize
+        );
         if (!bIsExplorer)
         {
             RegCloseKey(hKey);
@@ -3908,6 +3921,33 @@ void WINAPI LoadSettings(BOOL bIsExplorer)
             0,
             NULL,
             &dwSnapAssistSettings,
+            &dwSize
+        );
+        dwSize = sizeof(DWORD);
+        RegQueryValueExW(
+            hKey,
+            TEXT("DoNotRedirectProgramsAndFeaturesToSettingsApp"),
+            0,
+            NULL,
+            &bDoNotRedirectProgramsAndFeaturesToSettingsApp,
+            &dwSize
+        );
+        dwSize = sizeof(DWORD);
+        RegQueryValueExW(
+            hKey,
+            TEXT("DoNotRedirectDateAndTimeToSettingsApp"),
+            0,
+            NULL,
+            &bDoNotRedirectDateAndTimeToSettingsApp,
+            &dwSize
+        );
+        dwSize = sizeof(DWORD);
+        RegQueryValueExW(
+            hKey,
+            TEXT("DoNotRedirectNotificationIconsToSettingsApp"),
+            0,
+            NULL,
+            &bDoNotRedirectNotificationIconsToSettingsApp,
             &dwSize
         );
         RegCloseKey(hKey);
@@ -4741,8 +4781,205 @@ HRESULT explorer_DrawThemeTextEx(
 #pragma endregion
 
 
-#pragma region "Change clock links"
+#pragma region "Change links"
 #ifdef _WIN64
+DEFINE_GUID(IID_EnumExplorerCommand,
+    0xA88826F8,
+    0x186F, 0x4987, 0xAA, 0xDE,
+    0xEA, 0x0C, 0xEF, 0x8F, 0xBF, 0xE8
+);
+
+typedef interface EnumExplorerCommand EnumExplorerCommand;
+
+typedef struct EnumExplorerCommandVtbl
+{
+    BEGIN_INTERFACE
+
+    HRESULT(STDMETHODCALLTYPE* QueryInterface)(
+        EnumExplorerCommand* This,
+        /* [in] */ REFIID riid,
+        /* [annotation][iid_is][out] */
+        _COM_Outptr_  void** ppvObject);
+
+    ULONG(STDMETHODCALLTYPE* AddRef)(
+        EnumExplorerCommand* This);
+
+    ULONG(STDMETHODCALLTYPE* Release)(
+        EnumExplorerCommand* This);
+
+    HRESULT(STDMETHODCALLTYPE* Next)(
+        EnumExplorerCommand* This,
+        unsigned int a2,
+        void** a3,
+        void* a4);
+
+    END_INTERFACE
+} EnumExplorerCommandVtbl;
+
+interface EnumExplorerCommand
+{
+    CONST_VTBL struct EnumExplorerCommandVtbl* lpVtbl;
+};
+
+typedef interface UICommand UICommand;
+
+typedef struct UICommandVtbl
+{
+    BEGIN_INTERFACE
+
+    HRESULT(STDMETHODCALLTYPE* QueryInterface)(
+        UICommand* This,
+        /* [in] */ REFIID riid,
+        /* [annotation][iid_is][out] */
+        _COM_Outptr_  void** ppvObject);
+
+    ULONG(STDMETHODCALLTYPE* AddRef)(
+        UICommand* This);
+
+    ULONG(STDMETHODCALLTYPE* Release)(
+        UICommand* This);
+
+    HRESULT(STDMETHODCALLTYPE* GetTitle)(
+        UICommand* This);
+
+    HRESULT(STDMETHODCALLTYPE* GetIcon)(
+        UICommand* This);
+
+    HRESULT(STDMETHODCALLTYPE* GetTooltip)(
+        UICommand* This);
+
+    HRESULT(STDMETHODCALLTYPE* GetCanonicalName)(
+        UICommand* This,
+        GUID* guid);
+
+    HRESULT(STDMETHODCALLTYPE* GetState)(
+        UICommand* This);
+
+    HRESULT(STDMETHODCALLTYPE* Invoke)(
+        UICommand* This,
+        void* a2,
+        void* a3);
+
+    HRESULT(STDMETHODCALLTYPE* GetFlags)(
+        UICommand* This);
+
+    HRESULT(STDMETHODCALLTYPE* EnumSubCommands)(
+        UICommand* This);
+
+    END_INTERFACE
+} UICommandVtbl;
+
+interface UICommand
+{
+    CONST_VTBL struct UICommandVtbl* lpVtbl;
+};
+
+DEFINE_GUID(GUID_UICommand_System,
+    0x4C202CF0,
+    0xC4DC, 0x4251, 0xA3, 0x71,
+    0xB6, 0x22, 0xB4, 0x3D, 0x59, 0x2B
+);
+DEFINE_GUID(GUID_UICommand_ProgramsAndFeatures,
+    0xA2E6D9CC,
+    0xF866, 0x40B6, 0xA4, 0xB2,
+    0xEE, 0x9E, 0x10, 0x04, 0xBD, 0xFC
+);
+HRESULT(*shell32_UICommand_InvokeFunc)(UICommand*, void*, void*);
+HRESULT shell32_UICommand_InvokeHook(UICommand* _this, void* a2, void* a3)
+{
+    // Guid = {A2E6D9CC-F866-40B6-A4B2-EE9E1004BDFC} Programs and Features
+    // Guid = {4C202CF0-C4DC-4251-A371-B622B43D592B} System
+    GUID guid;
+    ZeroMemory(&guid, sizeof(GUID));
+    _this->lpVtbl->GetCanonicalName(_this, &guid);
+    BOOL bIsSystem = bDoNotRedirectSystemToSettingsApp && IsEqualGUID(&guid, &GUID_UICommand_System);
+    BOOL bIsProgramsAndFeatures = bDoNotRedirectProgramsAndFeaturesToSettingsApp && IsEqualGUID(&guid, &GUID_UICommand_ProgramsAndFeatures);
+    if (bIsSystem || bIsProgramsAndFeatures)
+    {
+        IOpenControlPanel* pOpenControlPanel = NULL;
+        CoCreateInstance(
+            &CLSID_OpenControlPanel,
+            NULL,
+            CLSCTX_INPROC_SERVER | CLSCTX_INPROC_HANDLER,
+            &IID_OpenControlPanel,
+            &pOpenControlPanel
+        );
+        if (pOpenControlPanel)
+        {
+            WCHAR* pszWhat = L"";
+            if (bIsSystem)
+            {
+                pszWhat = L"Microsoft.System";
+            }
+            else if (bIsProgramsAndFeatures)
+            {
+                pszWhat = L"Microsoft.ProgramsAndFeatures";
+            }
+            pOpenControlPanel->lpVtbl->Open(pOpenControlPanel, pszWhat, NULL, NULL);
+            pOpenControlPanel->lpVtbl->Release(pOpenControlPanel);
+            return S_OK;
+        }
+    }
+    return shell32_UICommand_InvokeFunc(_this, a2, a3);
+}
+
+int ExplorerFrame_CompareStringOrdinal(const WCHAR* a1, int a2, const WCHAR* a3, int a4, BOOL bIgnoreCase)
+{
+    void* pRedirects[10] =
+    {
+        L"::{BB06C0E4-D293-4F75-8A90-CB05B6477EEE}", // System                     (default: redirected to Settings app)
+        NULL,
+        // The following are unused but available for the future
+        L"::{7B81BE6A-CE2B-4676-A29E-EB907A5126C5}", // Programs and Features      (default: not redirected)
+        L"::{D450A8A1-9568-45C7-9C0E-B4F9FB4537BD}", // Installed Updates          (default: not redirected)
+        L"::{17CD9488-1228-4B2F-88CE-4298E93E0966}", // Default Programs           (default: not redirected)
+        L"::{8E908FC9-BECC-40F6-915B-F4CA0E70D03D}", // Network and Sharing Center (default: not redirected)
+        L"::{7007ACC7-3202-11D1-AAD2-00805FC1270E}", // Network Connections        (default: not redirected)
+        L"Advanced",
+        L"::{A8A91A66-3A7D-4424-8D24-04E180695C7A}", // Devices and Printers       (default: not redirected)
+        NULL
+    };
+    int ret = CompareStringOrdinal(a1, a2, a3, a4, bIgnoreCase);
+    if (!bDoNotRedirectSystemToSettingsApp || ret != CSTR_EQUAL)
+    {
+        return ret;
+    }
+
+    int i = 0;
+    while (CompareStringOrdinal(a3, -1, pRedirects[i], -1, FALSE) != CSTR_EQUAL)
+    {
+        i++;
+        if (pRedirects[i] == NULL)
+        {
+            return ret;
+        }
+    }
+
+    return CSTR_GREATER_THAN;
+}
+
+BOOL explorer_ShellExecuteExW(SHELLEXECUTEINFOW* pExecInfo)
+{
+    if (bDoNotRedirectSystemToSettingsApp && pExecInfo && pExecInfo->lpFile && !wcscmp(pExecInfo->lpFile, L"ms-settings:about"))
+    {
+        IOpenControlPanel* pOpenControlPanel = NULL;
+        CoCreateInstance(
+            &CLSID_OpenControlPanel,
+            NULL,
+            CLSCTX_INPROC_SERVER | CLSCTX_INPROC_HANDLER,
+            &IID_OpenControlPanel,
+            &pOpenControlPanel
+        );
+        if (pOpenControlPanel)
+        {
+            pOpenControlPanel->lpVtbl->Open(pOpenControlPanel, L"Microsoft.System", NULL, NULL);
+            pOpenControlPanel->lpVtbl->Release(pOpenControlPanel);
+            return 1;
+        }
+    }
+    return ShellExecuteExW(pExecInfo);
+}
+
 HINSTANCE explorer_ShellExecuteW(
     HWND    hwnd,
     LPCWSTR lpOperation,
@@ -4752,7 +4989,7 @@ HINSTANCE explorer_ShellExecuteW(
     INT     nShowCmd
 )
 {
-    if (!wcscmp(lpFile, L"ms-settings:notifications"))
+    if (bDoNotRedirectNotificationIconsToSettingsApp && !wcscmp(lpFile, L"ms-settings:notifications"))
     {
         return ShellExecuteW(
             hwnd, lpOperation,
@@ -4760,7 +4997,7 @@ HINSTANCE explorer_ShellExecuteW(
             lpParameters, lpDirectory, nShowCmd
         );
     }
-    else if (!wcscmp(lpFile, L"ms-settings:dateandtime"))
+    else if (bDoNotRedirectDateAndTimeToSettingsApp && !wcscmp(lpFile, L"ms-settings:dateandtime"))
     {
         return ShellExecuteW(
             hwnd, lpOperation,
@@ -5367,6 +5604,7 @@ DWORD InjectBasicFunctions(BOOL bIsExplorer, BOOL bInstall)
             SetWindowLongPtrWFunc = SetWindowLongPtrW;
             VnPatchIAT(hExplorerFrame, "user32.dll", "SetWindowLongPtrW", SetWindowLongPtrWHook);
         }
+        VnPatchIAT(hExplorerFrame, "API-MS-WIN-CORE-STRING-L1-1-0.DLL", "CompareStringOrdinal", ExplorerFrame_CompareStringOrdinal);
     }
     else
     {
@@ -5378,6 +5616,7 @@ DWORD InjectBasicFunctions(BOOL bIsExplorer, BOOL bInstall)
             VnPatchIAT(hExplorerFrame, "user32.dll", "CreateWindowExW", CreateWindowExW);
             VnPatchIAT(hExplorerFrame, "user32.dll", "SetWindowLongPtrW", SetWindowLongPtrW);
         }
+        VnPatchIAT(hExplorerFrame, "API-MS-WIN-CORE-STRING-L1-1-0.DLL", "CompareStringOrdinal", CompareStringOrdinal);
         FreeLibrary(hExplorerFrame);
         FreeLibrary(hExplorerFrame);
     }
@@ -5702,6 +5941,7 @@ DWORD Inject(BOOL bIsExplorer)
         VnPatchDelayIAT(hExplorer, "ext-ms-win-rtcore-ntuser-window-ext-l1-1-0.dll", "SendMessageW", explorer_SendMessageW);
         VnPatchIAT(hExplorer, "api-ms-win-core-libraryloader-l1-2-0.dll", "GetProcAddress", explorer_GetProcAddressHook);
         VnPatchIAT(hExplorer, "shell32.dll", "ShellExecuteW", explorer_ShellExecuteW);
+        VnPatchIAT(hExplorer, "shell32.dll", "ShellExecuteExW", explorer_ShellExecuteExW);
         VnPatchIAT(hExplorer, "API-MS-WIN-CORE-REGISTRY-L1-1-0.DLL", "RegGetValueW", explorer_RegGetValueW);
         VnPatchIAT(hExplorer, "API-MS-WIN-CORE-REGISTRY-L1-1-0.DLL", "RegSetValueExW", explorer_RegSetValueExW);
         VnPatchIAT(hExplorer, "API-MS-WIN-CORE-REGISTRY-L1-1-0.DLL", "RegCreateKeyExW", explorer_RegCreateKeyExW);
@@ -5930,6 +6170,47 @@ DWORD Inject(BOOL bIsExplorer)
     }
 #endif
     printf("Setup sndvolsso functions done\n");
+
+
+
+
+
+    HANDLE hShell32 = GetModuleHandleW(L"shell32.dll");
+    if (hShell32)
+    {
+        HRESULT(*SHELL32_Create_IEnumUICommand)(IUnknown*, int*, int, IUnknown**) = GetProcAddress(hShell32, (LPCSTR)0x2E8);
+        if (SHELL32_Create_IEnumUICommand)
+        {
+            char WVTASKITEM[80];
+            ZeroMemory(WVTASKITEM, 80);
+            IUnknown* pEnumUICommand = NULL;
+            SHELL32_Create_IEnumUICommand(NULL, WVTASKITEM, 1, &pEnumUICommand);
+            if (pEnumUICommand)
+            {
+                EnumExplorerCommand* pEnumExplorerCommand = NULL;
+                pEnumUICommand->lpVtbl->QueryInterface(pEnumUICommand, &IID_EnumExplorerCommand, &pEnumExplorerCommand);
+                pEnumUICommand->lpVtbl->Release(pEnumUICommand);
+                if (pEnumExplorerCommand)
+                {
+                    UICommand* pUICommand = NULL;
+                    pEnumExplorerCommand->lpVtbl->Next(pEnumExplorerCommand, 1, &pUICommand, NULL);
+                    pEnumExplorerCommand->lpVtbl->Release(pEnumExplorerCommand);
+                    if (pUICommand)
+                    {
+                        DWORD flOldProtect = 0;
+                        if (VirtualProtect(pUICommand->lpVtbl, sizeof(UICommandVtbl), PAGE_EXECUTE_READWRITE, &flOldProtect))
+                        {
+                            shell32_UICommand_InvokeFunc = pUICommand->lpVtbl->Invoke;
+                            pUICommand->lpVtbl->Invoke = shell32_UICommand_InvokeHook;
+                            VirtualProtect(pUICommand->lpVtbl, sizeof(UICommandVtbl), flOldProtect, &flOldProtect);
+                        }
+                        pUICommand->lpVtbl->Release(pUICommand);
+                    }
+                }
+            }
+        }
+    }
+
 
 
 

@@ -35,6 +35,7 @@ Tested on OS build 22000.376.
 * Fixed a bug that prevented the correct set up of "DisplayVersion" registry entry in the uninstall information registry key (.11)
 * Secondary taskbars' context menu is displayed similarly to the primary taskbar's context menu for Windows 10 style (.12)
 * Safeguards to prevent malicious executions on update mechanism hijacks for systems where User Account Control is disabled (#567) (.13)
+* Option to prevent certain Control Panel links from being redirected to the Settings app (.14)
 
 #### Simple Window Switcher
 

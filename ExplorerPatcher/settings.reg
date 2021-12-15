@@ -375,6 +375,16 @@
 ;x 0 Windows 11 (default)
 ;x 3 Windows 10
 "SnapAssistSettings"=dword:00000000
+;t Prevent the following Control Panel links from being redirected to the Settings app:
+[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
+;b System / About page
+"DoNotRedirectSystemToSettingsApp"=dword:00000000
+;b Programs and Features
+"DoNotRedirectProgramsAndFeaturesToSettingsApp"=dword:00000000
+;b Adjust date/time
+"DoNotRedirectDateAndTimeToSettingsApp"=dword:00000000
+;b Customize notification icons
+"DoNotRedirectNotificationIconsToSettingsApp"=dword:00000000
 
 
 ;T Updates
