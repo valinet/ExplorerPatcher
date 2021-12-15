@@ -4792,8 +4792,8 @@ DEFINE_GUID(IID_InputSwitchControl,
     0x5D, 0xB1, 0x4e, 0x18, 0x4b, 0xae
 );
 
-#define LANGUAGEUI_STYLE_DESKTOP 0
-#define LANGUAGEUI_STYLE_TOUCHKEYBOARD 1
+#define LANGUAGEUI_STYLE_DESKTOP 0       // Windows 11 style
+#define LANGUAGEUI_STYLE_TOUCHKEYBOARD 1 // Windows 10 style
 #define LANGUAGEUI_STYLE_LOGONUI 2
 #define LANGUAGEUI_STYLE_UAC 3
 #define LANGUAGEUI_STYLE_SETTINGSPANE 4
@@ -4803,12 +4803,54 @@ DEFINE_GUID(IID_InputSwitchControl,
 char mov_edx_val[6] = { 0xBA, 0x00, 0x00, 0x00, 0x00, 0xC3 };
 char* ep_pf = NULL;
 
+typedef interface IInputSwitchControl IInputSwitchControl;
+
+typedef struct IInputSwitchControlVtbl
+{
+    BEGIN_INTERFACE
+
+    HRESULT(STDMETHODCALLTYPE* QueryInterface)(
+        IInputSwitchControl* This,
+        /* [in] */ REFIID riid,
+        /* [annotation][iid_is][out] */
+        _COM_Outptr_  void** ppvObject);
+
+    ULONG(STDMETHODCALLTYPE* AddRef)(
+        IInputSwitchControl* This);
+
+    ULONG(STDMETHODCALLTYPE* Release)(
+        IInputSwitchControl* This);
+
+    HRESULT(STDMETHODCALLTYPE* Init)(
+        IInputSwitchControl* This,
+        /* [in] */ unsigned int clientType);
+
+    HRESULT(STDMETHODCALLTYPE* SetCallback)(
+        IInputSwitchControl* This,
+        /* [in] */ void* pInputSwitchCallback);
+
+    // ...
+
+    END_INTERFACE
+} IInputSwitchControlVtbl;
+
+interface IInputSwitchControl
+{
+    CONST_VTBL struct IInputSwitchControlVtbl* lpVtbl;
+};
+
+HRESULT(*CInputSwitchControl_InitFunc)(IInputSwitchControl*, unsigned int, INT64);
+HRESULT CInputSwitchControl_InitHook(IInputSwitchControl* _this, unsigned int dwOriginalIMEStyle, INT64 a3)
+{
+    return CInputSwitchControl_InitFunc(_this, dwIMEStyle ? dwIMEStyle : dwOriginalIMEStyle, a3);
+}
+
 HRESULT explorer_CoCreateInstanceHook(
-    REFCLSID  rclsid,
-    LPUNKNOWN pUnkOuter,
-    DWORD     dwClsContext,
-    REFIID    riid,
-    LPVOID*   ppv
+    REFCLSID   rclsid,
+    LPUNKNOWN  pUnkOuter,
+    DWORD      dwClsContext,
+    REFIID     riid,
+    IUnknown** ppv
 )
 {
     if (IsEqualCLSID(rclsid, &CLSID_InputSwitchControl) && IsEqualIID(riid, &IID_InputSwitchControl))
@@ -4816,6 +4858,18 @@ HRESULT explorer_CoCreateInstanceHook(
         HRESULT hr = CoCreateInstance(rclsid, pUnkOuter, dwClsContext, riid, ppv);
         if (SUCCEEDED(hr))
         {
+            // The commented method below is no longer required as I have now came to patching
+            // the interface's vtable.
+            // Also, make sure to read the explanation below as well, it's useful for understanding
+            // how this worked.
+            IInputSwitchControl* pInputSwitchControl = *ppv;
+            DWORD flOldProtect = 0;
+            if (VirtualProtect(pInputSwitchControl->lpVtbl, sizeof(IInputSwitchControlVtbl), PAGE_EXECUTE_READWRITE, &flOldProtect))
+            {
+                CInputSwitchControl_InitFunc = pInputSwitchControl->lpVtbl->Init;
+                pInputSwitchControl->lpVtbl->Init = CInputSwitchControl_InitHook;
+                VirtualProtect(pInputSwitchControl->lpVtbl, sizeof(IInputSwitchControlVtbl), flOldProtect, &flOldProtect);
+            }
             // Pff... how this works:
             // 
             // * This `CoCreateInstance` call will get a pointer to an IInputSwitchControl interface
@@ -4828,12 +4882,12 @@ HRESULT explorer_CoCreateInstanceHook(
             // Windows 11 UI; if we replace that number with something else, some other UI will
             // be created
             // 
-            // * We cannot patch the vtable of the COM object because the executable is protected
+            // * ~~We cannot patch the vtable of the COM object because the executable is protected
             // by control flow guard and we would make a jump to an invalid site (maybe there is
             // some clever workaround fpr this as well, somehow telling the compiler to place a certain
             // canary before our trampoline, so it matches with what the runtime support for CFG expects,
             // but we'd have to keep that canary in sync with the one in explorer.exe, so not very
-            // future proof).
+            // future proof).~~ Edit: Not true after all.
             // 
             // * Taking advantage of the fact that the call to `IInputSwitchControl::Init` is the thing
             // that happens right after we return from here, and looking on the disassembly, we see nothing
@@ -4843,7 +4897,8 @@ HRESULT explorer_CoCreateInstanceHook(
             // edx will stick
             // 
             // * Needless to say this is **HIGHLY** amd64
-            char pattern[2] = { 0x33, 0xD2 };
+            /*
+            char pattern[2] = {0x33, 0xD2};
             DWORD dwOldProtect;
             char* p_mov_edx_val = mov_edx_val;
             if (!ep_pf)
@@ -4866,6 +4921,7 @@ HRESULT explorer_CoCreateInstanceHook(
                 void(*pf_mov_edx_val)() = p_mov_edx_val;
                 pf_mov_edx_val();
             }
+            */
         }
         return hr;
     }
