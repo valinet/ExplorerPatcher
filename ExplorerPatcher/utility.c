@@ -448,7 +448,7 @@ void LaunchPropertiesGUI(HMODULE hModule)
         wszPath,
         NULL,
         NULL,
-        TRUE,
+        FALSE,
         CREATE_UNICODE_ENVIRONMENT,
         NULL,
         NULL,
