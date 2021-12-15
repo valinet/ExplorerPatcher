@@ -314,7 +314,7 @@ BOOL IsUpdateAvailableHelper(
                             printf(
                                 "[Updates] In order to install this update for the product \""
                                 PRODUCT_NAME
-                                "\", please allow the elevation request.\n"
+                                "\", please allow the request.\n"
                             );
 #endif
 
@@ -323,6 +323,47 @@ BOOL IsUpdateAvailableHelper(
                                 notifier->lpVtbl->Hide(notifier, *toast);
                                 (*toast)->lpVtbl->Release((*toast));
                                 (*toast) = NULL;
+                            }
+
+                            BOOL bHasErrored = FALSE;
+                            BOOL bIsUACEnabled = FALSE;
+                            DWORD(*CheckElevationEnabled)(BOOL*) = GetProcAddress(GetModuleHandleW(L"kernel32.dll"), "CheckElevationEnabled");
+                            if (CheckElevationEnabled) CheckElevationEnabled(&bIsUACEnabled);
+                            DWORD dwData = FALSE, dwSize = sizeof(DWORD);
+                            RegGetValueW(
+                                HKEY_LOCAL_MACHINE,
+                                L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System",
+                                L"ConsentPromptBehaviorAdmin",
+                                RRF_RT_DWORD,
+                                NULL,
+                                &dwData,
+                                &dwSize
+                            );
+                            if (!bIsUACEnabled || !dwData)
+                            {
+                                WCHAR wszURL2[MAX_PATH];
+                                ZeroMemory(wszURL2, MAX_PATH * sizeof(WCHAR));
+                                MultiByteToWideChar(
+                                    CP_UTF8,
+                                    MB_PRECOMPOSED,
+                                    url,
+                                    -1,
+                                    wszURL2,
+                                    MAX_PATH
+                                );
+
+                                WCHAR wszMsg[500];
+                                swprintf_s(wszMsg, 500, L"Would you like to install an update for " _T(PRODUCT_NAME) L"?\n\nDownloaded from: \"%s\".\n", wszURL2);
+                                if (MessageBoxW(
+                                    FindWindowW(L"ExplorerPatcher_GUI_" _T(EP_CLSID), NULL),
+                                    wszMsg,
+                                    _T(PRODUCT_NAME),
+                                    MB_YESNO | MB_DEFBUTTON2 | MB_ICONQUESTION
+                                ) == IDNO)
+                                {
+                                    bHasErrored = TRUE;
+                                    SetLastError(ERROR_CANCELLED);
+                                }
                             }
 
                             SHELLEXECUTEINFO ShExecInfo = { 0 };
@@ -335,7 +376,7 @@ BOOL IsUpdateAvailableHelper(
                             ShExecInfo.lpDirectory = NULL;
                             ShExecInfo.nShow = SW_SHOW;
                             ShExecInfo.hInstApp = NULL;
-                            if (ShellExecuteExW(&ShExecInfo) && ShExecInfo.hProcess)
+                            if (!bHasErrored && ShellExecuteExW(&ShExecInfo) && ShExecInfo.hProcess)
                             {
                                 WaitForSingleObject(ShExecInfo.hProcess, INFINITE);
                                 DWORD dwExitCode = 0;
@@ -361,7 +402,7 @@ BOOL IsUpdateAvailableHelper(
                                 if (dwError == ERROR_CANCELLED)
                                 {
 #ifdef UPDATES_VERBOSE_OUTPUT
-                                    printf("[Updates] Update failed because the elevation request was denied.\n");
+                                    printf("[Updates] Update failed because the request was denied.\n");
 #endif
                                 }
                                 else
@@ -804,7 +845,7 @@ BOOL InstallUpdatesIfAvailable(
                         L"	<visual>\r\n"
                         L"		<binding template=\"ToastGeneric\">\r\n"
                         L"			<text><![CDATA[Update failed]]></text>\r\n"
-                        L"			<text><![CDATA[An error occured when attempting to install this update.]]></text>\r\n"
+                        L"			<text><![CDATA[The request was declined or an error has occured when attempting to install this update.]]></text>\r\n"
                         L"			<text placement=\"attribution\"><![CDATA[ExplorerPatcher]]></text>\r\n"
                         L"		</binding>\r\n"
                         L"	</visual>\r\n"
