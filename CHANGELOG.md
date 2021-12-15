@@ -25,7 +25,7 @@ Tested on OS build 22000.376.
 * Fixed solution to properly produce a debug setup program
 * Possibility to uninstall by renaming `ep_setup.exe` to `ep_uninstall.exe` and running that (.4)
 * Fixed a bug that crashed the "Properties" GUI when toggling certain settings (#527) (.6)
-* File Explorer is restarted unelevated when servicing the application (#528) (.7)
+* The "Properties" window is restarted unelevated if it was open when application servicing was performed (#528) (.7, .13)
 * Reliability improvements for File Explorer restarts (#529) (.7)
 * When changing the main taskbar position and restarting File Explorer, the new position is now correctly saved and applied when File Explorer restarts (#523) (.7)
 * Mitigation for the issue described in #416 (.7)
@@ -34,6 +34,7 @@ Tested on OS build 22000.376.
 * Ability to choose look of Snap Assist (window list when snapping a window): Windows 11 or Windows 10 style (.11)
 * Fixed a bug that prevented the correct set up of "DisplayVersion" registry entry in the uninstall information registry key (.11)
 * Secondary taskbars' context menu is displayed similarly to the primary taskbar's context menu for Windows 10 style (.12)
+* Safeguards to prevent malicious executions on update mechanism hijacks for systems where User Account Control is disabled (#567) (.13)
 
 #### Simple Window Switcher
 
