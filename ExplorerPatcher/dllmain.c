@@ -3895,7 +3895,7 @@ void WINAPI LoadSettings(BOOL bIsExplorer)
             &dwTemp,
             &dwSize
         );
-        if (dwTemp)
+        if (!IsAppRunningAsAdminMode() && dwTemp)
         {
 #ifdef _WIN64
             LaunchPropertiesGUI(hModule);
