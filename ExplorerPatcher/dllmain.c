@@ -4782,6 +4782,41 @@ HRESULT explorer_DrawThemeTextEx(
 
 
 #pragma region "Change links"
+int ExplorerFrame_CompareStringOrdinal(const WCHAR* a1, int a2, const WCHAR* a3, int a4, BOOL bIgnoreCase)
+{
+    void* pRedirects[10] =
+    {
+        L"::{BB06C0E4-D293-4F75-8A90-CB05B6477EEE}", // System                     (default: redirected to Settings app)
+        NULL,
+        // The following are unused but available for the future
+        L"::{7B81BE6A-CE2B-4676-A29E-EB907A5126C5}", // Programs and Features      (default: not redirected)
+        L"::{D450A8A1-9568-45C7-9C0E-B4F9FB4537BD}", // Installed Updates          (default: not redirected)
+        L"::{17CD9488-1228-4B2F-88CE-4298E93E0966}", // Default Programs           (default: not redirected)
+        L"::{8E908FC9-BECC-40F6-915B-F4CA0E70D03D}", // Network and Sharing Center (default: not redirected)
+        L"::{7007ACC7-3202-11D1-AAD2-00805FC1270E}", // Network Connections        (default: not redirected)
+        L"Advanced",
+        L"::{A8A91A66-3A7D-4424-8D24-04E180695C7A}", // Devices and Printers       (default: not redirected)
+        NULL
+    };
+    int ret = CompareStringOrdinal(a1, a2, a3, a4, bIgnoreCase);
+    if (!bDoNotRedirectSystemToSettingsApp || ret != CSTR_EQUAL)
+    {
+        return ret;
+    }
+
+    int i = 0;
+    while (CompareStringOrdinal(a3, -1, pRedirects[i], -1, FALSE) != CSTR_EQUAL)
+    {
+        i++;
+        if (pRedirects[i] == NULL)
+        {
+            return ret;
+        }
+    }
+
+    return CSTR_GREATER_THAN;
+}
+
 #ifdef _WIN64
 DEFINE_GUID(IID_EnumExplorerCommand,
     0xA88826F8,
@@ -4921,41 +4956,6 @@ HRESULT shell32_UICommand_InvokeHook(UICommand* _this, void* a2, void* a3)
         }
     }
     return shell32_UICommand_InvokeFunc(_this, a2, a3);
-}
-
-int ExplorerFrame_CompareStringOrdinal(const WCHAR* a1, int a2, const WCHAR* a3, int a4, BOOL bIgnoreCase)
-{
-    void* pRedirects[10] =
-    {
-        L"::{BB06C0E4-D293-4F75-8A90-CB05B6477EEE}", // System                     (default: redirected to Settings app)
-        NULL,
-        // The following are unused but available for the future
-        L"::{7B81BE6A-CE2B-4676-A29E-EB907A5126C5}", // Programs and Features      (default: not redirected)
-        L"::{D450A8A1-9568-45C7-9C0E-B4F9FB4537BD}", // Installed Updates          (default: not redirected)
-        L"::{17CD9488-1228-4B2F-88CE-4298E93E0966}", // Default Programs           (default: not redirected)
-        L"::{8E908FC9-BECC-40F6-915B-F4CA0E70D03D}", // Network and Sharing Center (default: not redirected)
-        L"::{7007ACC7-3202-11D1-AAD2-00805FC1270E}", // Network Connections        (default: not redirected)
-        L"Advanced",
-        L"::{A8A91A66-3A7D-4424-8D24-04E180695C7A}", // Devices and Printers       (default: not redirected)
-        NULL
-    };
-    int ret = CompareStringOrdinal(a1, a2, a3, a4, bIgnoreCase);
-    if (!bDoNotRedirectSystemToSettingsApp || ret != CSTR_EQUAL)
-    {
-        return ret;
-    }
-
-    int i = 0;
-    while (CompareStringOrdinal(a3, -1, pRedirects[i], -1, FALSE) != CSTR_EQUAL)
-    {
-        i++;
-        if (pRedirects[i] == NULL)
-        {
-            return ret;
-        }
-    }
-
-    return CSTR_GREATER_THAN;
 }
 
 BOOL explorer_ShellExecuteExW(SHELLEXECUTEINFOW* pExecInfo)
