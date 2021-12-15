@@ -353,7 +353,7 @@ BOOL IsUpdateAvailableHelper(
                                 );
 
                                 WCHAR wszMsg[500];
-                                swprintf_s(wszMsg, 500, L"Would you like to install an update for " _T(PRODUCT_NAME) L"?\n\nDownloaded from: \"%s\".\n", wszURL2);
+                                swprintf_s(wszMsg, 500, L"Would you like to install an update for " _T(PRODUCT_NAME) L"?\n\nDownloaded from:\n%s", wszURL2);
                                 if (MessageBoxW(
                                     FindWindowW(L"ExplorerPatcher_GUI_" _T(EP_CLSID), NULL),
                                     wszMsg,
