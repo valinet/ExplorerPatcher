@@ -10,6 +10,7 @@
 #include <accctrl.h>
 #include <aclapi.h>
 #include <sddl.h>
+#include <Shobjidl.h>
 #include <Shlobj_core.h>
 #include <restartmanager.h>
 #pragma comment(lib, "Rstrtmgr.lib")
@@ -55,12 +56,6 @@ DEFINE_GUID(CLSID_ImmersiveShell,
     0xc2f03a33,
     0x21f5, 0x47fa, 0xb4, 0xbb,
     0x15, 0x63, 0x62, 0xa2, 0xf2, 0x39
-);
-
-DEFINE_GUID(CLSID_OpenControlPanel,
-    0x6622D85,
-    0x6856, 0x4460, 0x8D, 0xE1,
-    0xA8, 0x19, 0x21, 0xB4, 0x1C, 0x4B
 );
 
 DEFINE_GUID(IID_OpenControlPanel,
