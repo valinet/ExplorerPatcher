@@ -35,7 +35,7 @@ Tested on OS build 22000.376.
 * Fixed a bug that prevented the correct set up of "DisplayVersion" registry entry in the uninstall information registry key (.11)
 * Secondary taskbars' context menu is displayed similarly to the primary taskbar's context menu for Windows 10 style (.12)
 * Safeguards to prevent malicious executions on update mechanism hijacks for systems where User Account Control is disabled (#567) (.13)
-* Option to prevent certain Control Panel links from being redirected to the Settings app (.14)
+* Option to prevent certain Control Panel links from being redirected to the Settings app (.14), including in build 22523 (.15)
 
 #### Simple Window Switcher
 
@@ -56,6 +56,7 @@ Tested on OS build 22000.376.
 * Possibility to configure window padding (.7)
 * Support for closing window with middle button ([#110](https://github.com/valinet/ExplorerPatcher/discussions/110#discussioncomment-1793318)) (.9)
 * Mitigated an issue that may have prevented Explorer from launching correctly when Simple Window Switcher is set as window switcher (.9)
+* Fixed a crash that could make Explorer restart repeatedly at startup or even hang indefinitely (#525) (.15)
 
 ## 22000.348.39
 
