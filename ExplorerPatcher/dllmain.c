@@ -3704,6 +3704,15 @@ void WINAPI LoadSettings(BOOL bIsExplorer)
             &bDoNotRedirectSystemToSettingsApp,
             &dwSize
         );
+        dwSize = sizeof(DWORD);
+        RegQueryValueExW(
+            hKey,
+            TEXT("DoNotRedirectProgramsAndFeaturesToSettingsApp"),
+            0,
+            NULL,
+            &bDoNotRedirectProgramsAndFeaturesToSettingsApp,
+            &dwSize
+        );
         if (!bIsExplorer)
         {
             RegCloseKey(hKey);
@@ -3921,15 +3930,6 @@ void WINAPI LoadSettings(BOOL bIsExplorer)
             0,
             NULL,
             &dwSnapAssistSettings,
-            &dwSize
-        );
-        dwSize = sizeof(DWORD);
-        RegQueryValueExW(
-            hKey,
-            TEXT("DoNotRedirectProgramsAndFeaturesToSettingsApp"),
-            0,
-            NULL,
-            &bDoNotRedirectProgramsAndFeaturesToSettingsApp,
             &dwSize
         );
         dwSize = sizeof(DWORD);
@@ -4787,9 +4787,9 @@ int ExplorerFrame_CompareStringOrdinal(const WCHAR* a1, int a2, const WCHAR* a3,
     void* pRedirects[10] =
     {
         L"::{BB06C0E4-D293-4F75-8A90-CB05B6477EEE}", // System                     (default: redirected to Settings app)
+        L"::{7B81BE6A-CE2B-4676-A29E-EB907A5126C5}", // Programs and Features      (default: not redirected)
         NULL,
         // The following are unused but available for the future
-        L"::{7B81BE6A-CE2B-4676-A29E-EB907A5126C5}", // Programs and Features      (default: not redirected)
         L"::{D450A8A1-9568-45C7-9C0E-B4F9FB4537BD}", // Installed Updates          (default: not redirected)
         L"::{17CD9488-1228-4B2F-88CE-4298E93E0966}", // Default Programs           (default: not redirected)
         L"::{8E908FC9-BECC-40F6-915B-F4CA0E70D03D}", // Network and Sharing Center (default: not redirected)
@@ -4799,7 +4799,7 @@ int ExplorerFrame_CompareStringOrdinal(const WCHAR* a1, int a2, const WCHAR* a3,
         NULL
     };
     int ret = CompareStringOrdinal(a1, a2, a3, a4, bIgnoreCase);
-    if (!bDoNotRedirectSystemToSettingsApp || ret != CSTR_EQUAL)
+    if ((!bDoNotRedirectSystemToSettingsApp && !bDoNotRedirectProgramsAndFeaturesToSettingsApp) || ret != CSTR_EQUAL)
     {
         return ret;
     }
