@@ -240,9 +240,44 @@ DWORD CheckForUpdatesThread(LPVOID unused)
     hEvents[1] = CreateEventW(NULL, FALSE, FALSE, L"EP_Ev_InstallUpdates_" _T(EP_CLSID));
     if (hEvents[0] && hEvents[1])
     {
+        if (bShowUpdateToast)
+        {
+            ShowUpdateSuccessNotification(hModule, notifier, notifFactory, &toast);
+
+            HKEY hKey = NULL;
+
+            RegCreateKeyExW(
+                HKEY_CURRENT_USER,
+                TEXT(REGPATH),
+                0,
+                NULL,
+                REG_OPTION_NON_VOLATILE,
+                KEY_READ | KEY_WOW64_64KEY | KEY_WRITE,
+                NULL,
+                &hKey,
+                NULL
+            );
+            if (hKey == NULL || hKey == INVALID_HANDLE_VALUE)
+            {
+                hKey = NULL;
+            }
+            if (hKey)
+            {
+                bShowUpdateToast = FALSE;
+                RegSetValueExW(
+                    hKey,
+                    TEXT("IsUpdatePending"),
+                    0,
+                    REG_DWORD,
+                    &bShowUpdateToast,
+                    sizeof(DWORD)
+                );
+                RegCloseKey(hKey);
+            }
+        }
         if (dwUpdatePolicy != UPDATE_POLICY_MANUAL)
         {
-            InstallUpdatesIfAvailable(hModule, bShowUpdateToast, notifier, notifFactory, &toast, UPDATES_OP_DEFAULT, bAllocConsole, dwUpdatePolicy);
+            InstallUpdatesIfAvailable(hModule, notifier, notifFactory, &toast, UPDATES_OP_DEFAULT, bAllocConsole, dwUpdatePolicy);
         }
         DWORD dwRet = 0;
         while (TRUE)
@@ -251,12 +286,12 @@ DWORD CheckForUpdatesThread(LPVOID unused)
             {
             case WAIT_OBJECT_0:
             {
-                InstallUpdatesIfAvailable(hModule, bShowUpdateToast, notifier, notifFactory, &toast, UPDATES_OP_CHECK, bAllocConsole, dwUpdatePolicy);
+                InstallUpdatesIfAvailable(hModule, notifier, notifFactory, &toast, UPDATES_OP_CHECK, bAllocConsole, dwUpdatePolicy);
                 break;
             }
             case WAIT_OBJECT_0 + 1:
             {
-                InstallUpdatesIfAvailable(hModule, bShowUpdateToast, notifier, notifFactory, &toast, UPDATES_OP_INSTALL, bAllocConsole, dwUpdatePolicy);
+                InstallUpdatesIfAvailable(hModule, notifier, notifFactory, &toast, UPDATES_OP_INSTALL, bAllocConsole, dwUpdatePolicy);
                 break;
             }
             default:

@@ -320,7 +320,10 @@ BOOL IsUpdateAvailableHelper(
 
                             if (*toast)
                             {
-                                notifier->lpVtbl->Hide(notifier, *toast);
+                                if (notifier)
+                                {
+                                    notifier->lpVtbl->Hide(notifier, *toast);
+                                }
                                 (*toast)->lpVtbl->Release((*toast));
                                 (*toast) = NULL;
                             }
@@ -636,9 +639,67 @@ BOOL UpdateProduct(
     );
 }
 
+BOOL ShowUpdateSuccessNotification(
+    HMODULE hModule,
+    __x_ABI_CWindows_CUI_CNotifications_CIToastNotifier* notifier,
+    __x_ABI_CWindows_CUI_CNotifications_CIToastNotificationFactory* notifFactory,
+    __x_ABI_CWindows_CUI_CNotifications_CIToastNotification** toast
+)
+{
+    wchar_t buf[TOAST_BUFSIZ];
+    DWORD dwLeftMost = 0;
+    DWORD dwSecondLeft = 0;
+    DWORD dwSecondRight = 0;
+    DWORD dwRightMost = 0;
+    QueryVersionInfo(hModule, VS_VERSION_INFO, &dwLeftMost, &dwSecondLeft, &dwSecondRight, &dwRightMost);
+
+    __x_ABI_CWindows_CData_CXml_CDom_CIXmlDocument* inputXml = NULL;
+    const wchar_t text[] =
+        L"<toast displayTimestamp=\"2021-08-29T00:00:00.000Z\" scenario=\"reminder\" "
+        L"activationType=\"protocol\" launch=\"" _T(UPDATES_RELEASE_INFO_URL) L"\" duration=\"short\">\r\n"
+        L"	<visual>\r\n"
+        L"		<binding template=\"ToastGeneric\">\r\n"
+        L"			<text><![CDATA[Update successful]]></text>\r\n"
+        L"			<text><![CDATA[Installed version: %d.%d.%d.%d]]></text>\r\n"
+        L"			<text placement=\"attribution\"><![CDATA[ExplorerPatcher]]></text>\r\n"
+        L"		</binding>\r\n"
+        L"	</visual>\r\n"
+        L"	<audio src=\"ms-winsoundevent:Notification.Default\" loop=\"false\" silent=\"false\"/>\r\n"
+        L"</toast>\r\n";
+    swprintf_s(buf, TOAST_BUFSIZ, text, dwLeftMost, dwSecondLeft, dwSecondRight, dwRightMost);
+    String2IXMLDocument(
+        buf,
+        wcslen(buf),
+        &inputXml,
+        NULL
+    );
+    if (*toast)
+    {
+        if (notifier)
+        {
+            notifier->lpVtbl->Hide(notifier, *toast);
+        }
+        (*toast)->lpVtbl->Release((*toast));
+        (*toast) = NULL;
+    }
+    if (notifFactory)
+    {
+        notifFactory->lpVtbl->CreateToastNotification(notifFactory, inputXml, toast);
+    }
+    if ((*toast) && notifier)
+    {
+        notifier->lpVtbl->Show(notifier, *toast);
+    }
+    if (inputXml)
+    {
+        inputXml->lpVtbl->Release(inputXml);
+    }
+
+    SwitchToThread();
+}
+
 BOOL InstallUpdatesIfAvailable(
     HMODULE hModule,
-    BOOL bIsPostUpdate,
     __x_ABI_CWindows_CUI_CNotifications_CIToastNotifier* notifier,
     __x_ABI_CWindows_CUI_CNotifications_CIToastNotificationFactory* notifFactory,
     __x_ABI_CWindows_CUI_CNotifications_CIToastNotification** toast,
@@ -656,79 +717,6 @@ BOOL InstallUpdatesIfAvailable(
     DWORD dwSecondRight = 0;
     DWORD dwRightMost = 0;
     QueryVersionInfo(hModule, VS_VERSION_INFO, &dwLeftMost, &dwSecondLeft, &dwSecondRight, &dwRightMost);
-
-    if (bIsPostUpdate)
-    {
-        __x_ABI_CWindows_CData_CXml_CDom_CIXmlDocument* inputXml = NULL;
-        const wchar_t text[] =
-            L"<toast displayTimestamp=\"2021-08-29T00:00:00.000Z\" scenario=\"reminder\" "
-            L"activationType=\"protocol\" launch=\"" _T(UPDATES_RELEASE_INFO_URL) L"\" duration=\"short\">\r\n"
-            L"	<visual>\r\n"
-            L"		<binding template=\"ToastGeneric\">\r\n"
-            L"			<text><![CDATA[Update successful]]></text>\r\n"
-            L"			<text><![CDATA[Installed version: %d.%d.%d.%d]]></text>\r\n"
-            L"			<text placement=\"attribution\"><![CDATA[ExplorerPatcher]]></text>\r\n"
-            L"		</binding>\r\n"
-            L"	</visual>\r\n"
-            L"	<audio src=\"ms-winsoundevent:Notification.Default\" loop=\"false\" silent=\"false\"/>\r\n"
-            L"</toast>\r\n";
-        swprintf_s(buf, TOAST_BUFSIZ, text, dwLeftMost, dwSecondLeft, dwSecondRight, dwRightMost);
-        String2IXMLDocument(
-            buf,
-            wcslen(buf),
-            &inputXml,
-            NULL
-        );
-        if (*toast)
-        {
-            notifier->lpVtbl->Hide(notifier, *toast);
-            (*toast)->lpVtbl->Release((*toast));
-            (*toast) = NULL;
-        }
-        notifFactory->lpVtbl->CreateToastNotification(notifFactory, inputXml, toast);
-        if (*toast)
-        {
-            notifier->lpVtbl->Show(notifier, *toast);
-        }
-        if (inputXml)
-        {
-            inputXml->lpVtbl->Release(inputXml);
-        }
-        
-        HKEY hKey = NULL;
-        DWORD dwSize = 0;
-
-        RegCreateKeyExW(
-            HKEY_CURRENT_USER,
-            TEXT(REGPATH),
-            0,
-            NULL,
-            REG_OPTION_NON_VOLATILE,
-            KEY_READ | KEY_WOW64_64KEY | KEY_WRITE,
-            NULL,
-            &hKey,
-            NULL
-        );
-        if (hKey == NULL || hKey == INVALID_HANDLE_VALUE)
-        {
-            hKey = NULL;
-        }
-        if (hKey)
-        {
-            dwSize = FALSE;
-            RegSetValueExW(
-                hKey,
-                TEXT("IsUpdatePending"),
-                0,
-                REG_DWORD,
-                &dwSize,
-                sizeof(DWORD)
-            );
-            RegCloseKey(hKey);
-        }
-
-        SwitchToThread();
-    }
 
     if (bAllocConsole)
     {
@@ -804,12 +792,18 @@ BOOL InstallUpdatesIfAvailable(
     {
         if (*toast)
         {
-            notifier->lpVtbl->Hide(notifier, *toast);
+            if (notifier)
+            {
+                notifier->lpVtbl->Hide(notifier, *toast);
+            }
             (*toast)->lpVtbl->Release((*toast));
             (*toast) = NULL;
         }
-        notifFactory->lpVtbl->CreateToastNotification(notifFactory, inputXml, toast);
-        if ((*toast))
+        if (notifFactory)
+        {
+            notifFactory->lpVtbl->CreateToastNotification(notifFactory, inputXml, toast);
+        }
+        if ((*toast) && notifier)
         {
             notifier->lpVtbl->Show(notifier, *toast);
         }
@@ -863,12 +857,18 @@ BOOL InstallUpdatesIfAvailable(
             {
                 if (*toast)
                 {
-                    notifier->lpVtbl->Hide(notifier, *toast);
+                    if (notifier)
+                    {
+                        notifier->lpVtbl->Hide(notifier, *toast);
+                    }
                     (*toast)->lpVtbl->Release((*toast));
                     (*toast) = NULL;
                 }
-                notifFactory->lpVtbl->CreateToastNotification(notifFactory, inputXml, toast);
-                if ((*toast))
+                if (notifFactory)
+                {
+                    notifFactory->lpVtbl->CreateToastNotification(notifFactory, inputXml, toast);
+                }
+                if ((*toast) && notifier)
                 {
                     notifier->lpVtbl->Show(notifier, *toast);
                 }
@@ -902,12 +902,18 @@ BOOL InstallUpdatesIfAvailable(
             );
             if (*toast)
             {
-                notifier->lpVtbl->Hide(notifier, *toast);
+                if (notifier)
+                {
+                    notifier->lpVtbl->Hide(notifier, *toast);
+                }
                 (*toast)->lpVtbl->Release((*toast));
                 (*toast) = NULL;
             }
-            notifFactory->lpVtbl->CreateToastNotification(notifFactory, inputXml, toast);
-            if ((*toast))
+            if (notifFactory)
+            {
+                notifFactory->lpVtbl->CreateToastNotification(notifFactory, inputXml, toast);
+            }
+            if ((*toast) && notifier)
             {
                 notifier->lpVtbl->Show(notifier, *toast);
             }
@@ -964,12 +970,18 @@ BOOL InstallUpdatesIfAvailable(
             );
             if (*toast)
             {
-                notifier->lpVtbl->Hide(notifier, *toast);
+                if (notifier)
+                {
+                    notifier->lpVtbl->Hide(notifier, *toast);
+                }
                 (*toast)->lpVtbl->Release((*toast));
                 (*toast) = NULL;
             }
-            notifFactory->lpVtbl->CreateToastNotification(notifFactory, inputXml, toast);
-            if ((*toast))
+            if (notifFactory)
+            {
+                notifFactory->lpVtbl->CreateToastNotification(notifFactory, inputXml, toast);
+            }
+            if ((*toast) && notifier)
             {
                 notifier->lpVtbl->Show(notifier, *toast);
             }
