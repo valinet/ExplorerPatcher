@@ -20,7 +20,9 @@
 #pragma comment(lib, "Psapi.lib")
 
 #define APPID L"Microsoft.Windows.Explorer"
-#define REGPATH "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\ExplorerPatcher"
+#define REGPATH "SOFTWARE\\ExplorerPatcher"
+#define REGPATH_OLD "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\ExplorerPatcher"
+#define REGPATH_STARTMENU REGPATH_OLD
 #define SPECIAL_FOLDER CSIDL_PROGRAM_FILES
 #define SPECIAL_FOLDER_LEGACY CSIDL_APPDATA
 #define PRODUCT_NAME "ExplorerPatcher"

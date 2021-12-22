@@ -401,7 +401,7 @@ DWORD DownloadSymbols(DownloadSymbolsParams* params)
     }
     RegCreateKeyExW(
         HKEY_CURRENT_USER,
-        TEXT(REGPATH) L"\\" TEXT(STARTDOCKED_SB_NAME),
+        TEXT(REGPATH_STARTMENU) L"\\" TEXT(STARTDOCKED_SB_NAME),
         0,
         NULL,
         REG_OPTION_NON_VOLATILE,
@@ -656,7 +656,7 @@ BOOL LoadSymbols(symbols_addr* symbols_PTRS, HMODULE hModule)
 
         RegCreateKeyExW(
             HKEY_CURRENT_USER,
-            TEXT(REGPATH) L"\\" TEXT(STARTDOCKED_SB_NAME),
+            TEXT(REGPATH_STARTMENU) L"\\" TEXT(STARTDOCKED_SB_NAME),
             0,
             NULL,
             REG_OPTION_NON_VOLATILE,
@@ -800,7 +800,7 @@ BOOL LoadSymbols(symbols_addr* symbols_PTRS, HMODULE hModule)
 
         RegCreateKeyExW(
             HKEY_CURRENT_USER,
-            TEXT(REGPATH) L"\\" TEXT(STARTDOCKED_SB_NAME),
+            TEXT(REGPATH_STARTMENU) L"\\" TEXT(STARTDOCKED_SB_NAME),
             0,
             NULL,
             REG_OPTION_NON_VOLATILE,

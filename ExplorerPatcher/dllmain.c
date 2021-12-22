@@ -3588,7 +3588,7 @@ void WINAPI LoadSettings(BOOL bIsExplorer)
         0,
         NULL,
         REG_OPTION_NON_VOLATILE,
-        KEY_READ | KEY_WOW64_64KEY | KEY_WRITE,
+        KEY_ALL_ACCESS | KEY_WOW64_64KEY,
         NULL,
         &hKey,
         NULL
@@ -3599,6 +3599,49 @@ void WINAPI LoadSettings(BOOL bIsExplorer)
     }
     if (hKey)
     {
+#ifdef _WIN64
+        dwSize = sizeof(DWORD);
+        dwTemp = 0;
+        RegQueryValueExW(
+            hKey,
+            TEXT("MigratedFromOldSettings"),
+            0,
+            NULL,
+            &dwTemp,
+            &dwSize
+        );
+        if (!dwTemp)
+        {
+            HKEY hOldKey = NULL;
+            RegOpenKeyExW(
+                HKEY_CURRENT_USER,
+                TEXT(REGPATH_OLD),
+                REG_OPTION_NON_VOLATILE,
+                KEY_ALL_ACCESS | KEY_WOW64_64KEY,
+                &hOldKey
+            );
+            if (hOldKey == NULL || hOldKey == INVALID_HANDLE_VALUE)
+            {
+                hOldKey = NULL;
+            }
+            if (hOldKey)
+            {
+                if (RegCopyTreeW(hOldKey, NULL, hKey) == ERROR_SUCCESS)
+                {
+                    RegDeleteKeyExW(hKey, TEXT(STARTDOCKED_SB_NAME), KEY_WOW64_64KEY, 0);
+                }
+            }
+            dwTemp = TRUE;
+            RegSetValueExW(
+                hKey,
+                TEXT("MigratedFromOldSettings"),
+                0,
+                REG_DWORD,
+                &dwTemp,
+                sizeof(DWORD)
+            );
+        }
+#endif
         dwSize = sizeof(DWORD);
         RegQueryValueExW(
             hKey,
@@ -6438,7 +6481,7 @@ void StartMenu_LoadSettings(BOOL bRestartIfChanged)
     }
     RegCreateKeyExW(
         HKEY_CURRENT_USER,
-        TEXT(REGPATH),
+        TEXT(REGPATH_STARTMENU),
         0,
         NULL,
         REG_OPTION_NON_VOLATILE,
@@ -6963,7 +7006,7 @@ void InjectStartMenu()
     settings[2].data = TRUE;
     settings[2].hEvent = NULL;
     settings[2].hKey = NULL;
-    wcscpy_s(settings[2].name, MAX_PATH, TEXT(REGPATH));
+    wcscpy_s(settings[2].name, MAX_PATH, TEXT(REGPATH_STARTMENU));
     settings[2].origin = HKEY_CURRENT_USER;
 
     SettingsChangeParameters* params = calloc(1, sizeof(SettingsChangeParameters));
@@ -6993,7 +7036,7 @@ void InjectStartMenu()
 
             dwSize = sizeof(DWORD);
             SHRegGetValueFromHKCUHKLMFunc(
-                TEXT(REGPATH) TEXT("\\") TEXT(STARTDOCKED_SB_NAME),
+                TEXT(REGPATH_STARTMENU) TEXT("\\") TEXT(STARTDOCKED_SB_NAME),
                 TEXT(STARTDOCKED_SB_0),
                 SRRF_RT_REG_DWORD,
                 NULL,
@@ -7001,7 +7044,7 @@ void InjectStartMenu()
                 (LPDWORD)(&dwSize)
             );
             SHRegGetValueFromHKCUHKLMFunc(
-                TEXT(REGPATH) TEXT("\\") TEXT(STARTDOCKED_SB_NAME),
+                TEXT(REGPATH_STARTMENU) TEXT("\\") TEXT(STARTDOCKED_SB_NAME),
                 TEXT(STARTDOCKED_SB_1),
                 SRRF_RT_REG_DWORD,
                 NULL,
@@ -7009,7 +7052,7 @@ void InjectStartMenu()
                 (LPDWORD)(&dwSize)
             );
             SHRegGetValueFromHKCUHKLMFunc(
-                TEXT(REGPATH) TEXT("\\") TEXT(STARTDOCKED_SB_NAME),
+                TEXT(REGPATH_STARTMENU) TEXT("\\") TEXT(STARTDOCKED_SB_NAME),
                 TEXT(STARTDOCKED_SB_2),
                 SRRF_RT_REG_DWORD,
                 NULL,
@@ -7017,7 +7060,7 @@ void InjectStartMenu()
                 (LPDWORD)(&dwSize)
             );
             SHRegGetValueFromHKCUHKLMFunc(
-                TEXT(REGPATH) TEXT("\\") TEXT(STARTDOCKED_SB_NAME),
+                TEXT(REGPATH_STARTMENU) TEXT("\\") TEXT(STARTDOCKED_SB_NAME),
                 TEXT(STARTDOCKED_SB_3),
                 SRRF_RT_REG_DWORD,
                 NULL,
@@ -7025,7 +7068,7 @@ void InjectStartMenu()
                 (LPDWORD)(&dwSize)
             );
             SHRegGetValueFromHKCUHKLMFunc(
-                TEXT(REGPATH) TEXT("\\") TEXT(STARTDOCKED_SB_NAME),
+                TEXT(REGPATH_STARTMENU) TEXT("\\") TEXT(STARTDOCKED_SB_NAME),
                 TEXT(STARTDOCKED_SB_4),
                 SRRF_RT_REG_DWORD,
                 NULL,

@@ -141,6 +141,18 @@ LSTATUS GUI_RegSetValueExW(
         PostMessageW(FindWindowW(L"Shell_TrayWnd", NULL), WM_COMMAND, 435, 0);
         return ERROR_SUCCESS;
     }
+    else if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_Start_MaximumFrequentApps"))
+    {
+        RegSetKeyValueW(
+            HKEY_CURRENT_USER,
+            TEXT(REGPATH),
+            L"Start_MaximumFrequentApps",
+            dwType,
+            lpData,
+            cbData
+        );
+        return RegSetValueExW(hKey, L"Start_MaximumFrequentApps", 0, dwType, lpData, cbData);
+    }
 }
 
 LSTATUS GUI_RegQueryValueExW(
@@ -222,6 +234,10 @@ LSTATUS GUI_RegQueryValueExW(
     else if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_PeopleBand"))
     {
         return RegQueryValueExW(hKey, L"PeopleBand", lpReserved, lpType, lpData, lpcbData);
+    }
+    else if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_Start_MaximumFrequentApps"))
+    {
+        return RegQueryValueExW(hKey, L"Start_MaximumFrequentApps", lpReserved, lpType, lpData, lpcbData);
     }
 }
 

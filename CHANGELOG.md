@@ -36,6 +36,7 @@ Tested on OS build 22000.376.
 * Secondary taskbars' context menu is displayed similarly to the primary taskbar's context menu for Windows 10 style (.12)
 * Safeguards to prevent malicious executions on update mechanism hijacks for systems where User Account Control is disabled (#567) (.13)
 * Option to prevent certain Control Panel links from being redirected to the Settings app (.14), including in build 22523 (.15)
+* Settings are now stored in `HKEY_CURRENT_USER\Software\ExplorerPatcher` so that Windows does not reset them anymore across major OS updates (#576) (.16)
 
 #### Simple Window Switcher
 

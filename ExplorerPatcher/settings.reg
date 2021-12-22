@@ -5,7 +5,7 @@
 
 
 ;T Taskbar
-[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
+[HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;z 2 Taskbar style *
 ;x 0 Windows 11 (default)
 ;x 1 Windows 10
@@ -17,7 +17,7 @@
 ;y Customize system icons in the notification area 🡕
 ;shell:::{05d7b0f4-2121-4eff-bf6b-ed3f69b894d9}\SystemIcons
 ;t The following settings only apply to the Windows 10 taskbar:                          
-;;[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
+;;[HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;;c 2 Start button style *
 ;;x 0 Windows 10 (default)
 ;;x 1 Windows 11
@@ -33,7 +33,7 @@
 ;x 1 Combine when taskbar is full
 ;x 2 Never combine
 "MMTaskbarGlomLevel"=dword:00000002
-[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
+[HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;c 4 Primary taskbar location on screen *
 ;x 3 Bottom (default)
 ;x 1 Top
@@ -68,10 +68,10 @@
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
 ;b Show Desktop button
 "TaskbarSD"=dword:00000001
-[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
+[HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;b Show separators between toolbars *
 "ToolbarSeparators"=dword:00000000
-[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
+[HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;b Automatically hide the taskbar
 "Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_AutoHideTaskbar"=dword:00000000
 
@@ -79,7 +79,7 @@
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
 ;b Show seconds in the clock
 "ShowSecondsInSystemClock"=dword:00000000
-[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
+[HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;b Skin taskbar and tray pop-up menus
 "SkinMenus"=dword:00000001
 ;b Center tray icon pop-up menus
@@ -94,7 +94,7 @@
 [HKEY_CURRENT_USER\Software\Microsoft\TabletTip\1.7]
 ;b Show touch keyboard button *
 "TipbandDesiredVisibility"=dword:00000000
-[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
+[HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;a Choosing 'Open Network && Internet settings' when right clicking the
 ;c 3 network icon should open:
 ;x 0 Network section in the Settings app (default)
@@ -128,7 +128,7 @@
 ;x 0 Windows 10 flyout (default)
 ;x 1 Windows 7
 "UseWin32BatteryFlyout"=dword:00000000
-[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
+[HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;c 6 Language switcher *
 ;x 0 Windows 11 (default)
 ;x 1 Windows 10
@@ -146,7 +146,7 @@
 [-HKEY_CURRENT_USER\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32]
 ;d Disable the Windows 11 context menu *
 @=""
-[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
+[HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;i Use immersive menus when displaying Windows 10 context menus **
 "DisableImmersiveContextMenu"=dword:00000000
 [-HKEY_CURRENT_USER\Software\Classes\CLSID\{056440FD-8568-48e7-A632-72157243B55B}\InprocServer32]
@@ -155,7 +155,7 @@
 [-HKEY_CURRENT_USER\Software\Classes\CLSID\{1d64637d-31e9-4b06-9124-e83fb178ac6e}\TreatAs]
 ;d Disable modern search bar
 @="{64bc32b5-4eec-4de7-972d-bd8bd0324537}"
-[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
+[HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;b Hide search bar completely **
 "HideExplorerSearchBar"=dword:00000000
 ;p 2
@@ -203,7 +203,7 @@
 ;x 19 19
 ;x 20 20
 ;x 99999 Unlimited
-"Start_MaximumFrequentApps"=dword:00000006
+"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_Start_MaximumFrequentApps"=dword:00000006
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
 ;c 2 Position on screen
 ;x 0 Left
@@ -220,7 +220,7 @@
 ;x 2 Simple Window Switcher
 "AltTabSettings"=dword:00000000
 ;t The following settings only apply to the Simple Window Switcher:
-[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher\sws]
+[HKEY_CURRENT_USER\Software\ExplorerPatcher\sws]
 ;b Include desktop
 "IncludeWallpaper"=dword:00000001
 ;b Always show on primary monitor
@@ -256,19 +256,19 @@
 ;x 35 35 %
 ;x 30 30 %
 "Grid_backgroundPercent"=dword:0000005F
-[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher\sws]
+[HKEY_CURRENT_USER\Software\ExplorerPatcher\sws]
 ;c 3 Color scheme
 ;x 0 Follow system setting (default)
 ;x 1 Light
 ;x 2 Dark
 "ColorScheme"=dword:00000000
-[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher\sws]
+[HKEY_CURRENT_USER\Software\ExplorerPatcher\sws]
 ;c 3 Corner preference
 ;x 2 Rounded (default)
 ;x 3 Small rounded
 ;x 1 Not rounded
 "CornerPreference"=dword:00000002
-[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher\sws]
+[HKEY_CURRENT_USER\Software\ExplorerPatcher\sws]
 ;c 20 Row height
 ;x 330 330 pt
 ;x 320 320 pt
@@ -346,7 +346,7 @@
 ;https://github.com/valinet/ExplorerPatcher/wiki/Simple-Window-Switcher
 
 ;T Other
-[HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
+[HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;b Remember last used section in this window
 "LastSectionInProperties"=dword:00000000
 ;b Open clock flyout when pressing Win+C instead of Microsoft Teams
@@ -356,7 +356,7 @@
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
 ;b Show Command Prompt instead of PowerShell in Win+X menu *
 "DontUsePowerShellOnWinX"=dword:00000000
-[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
+[HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;b Add shortcut to program settings in Win+X menu
 "PropertiesInWinX"=dword:00000000
 ;b Remove shortcut key from program settings item in Win+X menu
@@ -370,13 +370,13 @@
 ;x 2 Shut down (default)
 ;x 4 Restart
 "Start_PowerButtonAction"=dword:00000002
-[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
+[HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;c 2 Snap Assist style
 ;x 0 Windows 11 (default)
 ;x 3 Windows 10
 "SnapAssistSettings"=dword:00000000
 ;t Prevent the following Control Panel links from being redirected to the Settings app:
-[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
+[HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;b System / About page
 "DoNotRedirectSystemToSettingsApp"=dword:00000000
 ;b Programs and Features
@@ -388,7 +388,7 @@
 
 
 ;T Updates
-[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
+[HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;z 3 When File Explorer starts
 ;x 1 Notify about available updates (default)
 ;x 0 Prompt to install available updates
@@ -408,7 +408,7 @@
 
 
 ;T Advanced
-[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
+[HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;b Enable console
 "AllocConsole"=dword:00000000
 ;b Dump memory leaks
@@ -416,13 +416,13 @@
 [HKEY_CURRENT_USER\Control Panel\Desktop]
 ;b Show Windows build info on the desktop *
 "PaintDesktopversion"=dword:00000000
-[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
+[HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;b Enable advanced mitigations for correct rendering using classic theme *
 "ClassicThemeMitigations"=dword:00000000
 [-HKEY_CURRENT_USER\Software\Classes\CLSID\{1eeb5b5a-06fb-4732-96b3-975c0194eb39}\InprocServer32]
 ;d Enable SysListView32 for Explorer views *
 @=""
-[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
+[HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;b Enable symbols download *
 "EnableSymbolDownload"=dword:00000001
 ;i Do not hook Start menu from main Explorer process (permanently disabled) *
