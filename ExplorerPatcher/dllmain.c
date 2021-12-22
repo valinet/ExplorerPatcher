@@ -3626,8 +3626,44 @@ void WINAPI LoadSettings(BOOL bIsExplorer)
             }
             if (hOldKey)
             {
+                dwSize = sizeof(DWORD);
+                DWORD dw1 = 0;
+                RegQueryValueExW(
+                    hKey,
+                    TEXT("OpenPropertiesAtNextStart"),
+                    0,
+                    NULL,
+                    &dw1,
+                    &dwSize
+                );
+                dwSize = sizeof(DWORD);
+                DWORD dw2 = 0;
+                RegQueryValueExW(
+                    hKey,
+                    TEXT("IsUpdatePending"),
+                    0,
+                    NULL,
+                    &dw2,
+                    &dwSize
+                );
                 if (RegCopyTreeW(hOldKey, NULL, hKey) == ERROR_SUCCESS)
                 {
+                    RegSetValueExW(
+                        hKey,
+                        TEXT("OpenPropertiesAtNextStart"),
+                        0,
+                        REG_DWORD,
+                        &dw1,
+                        sizeof(DWORD)
+                    );
+                    RegSetValueExW(
+                        hKey,
+                        TEXT("IsUpdatePending"),
+                        0,
+                        REG_DWORD,
+                        &dw2,
+                        sizeof(DWORD)
+                    );
                     RegDeleteKeyExW(hKey, TEXT(STARTDOCKED_SB_NAME), KEY_WOW64_64KEY, 0);
                 }
             }
