@@ -8,7 +8,8 @@ const char* twinui_pcshell_SN[TWINUI_PCSHELL_SB_CNT] = {
     TWINUI_PCSHELL_SB_4,
     TWINUI_PCSHELL_SB_5,
     TWINUI_PCSHELL_SB_6,
-    TWINUI_PCSHELL_SB_7
+    TWINUI_PCSHELL_SB_7,
+    TWINUI_PCSHELL_SB_8
 };
 const char* startdocked_SN[STARTDOCKED_SB_CNT] = {
     STARTDOCKED_SB_0,
