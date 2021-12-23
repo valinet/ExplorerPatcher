@@ -1298,6 +1298,90 @@ void UpdateStartMenuPositioning(LPARAM loIsShouldInitializeArray_hiIsShouldRoIni
 #pragma endregion
 
 
+#pragma region "Fix Windows 11 taskbar not showing tray when auto hide is on"
+#ifdef _WIN64
+#define FIXTASKBARAUTOHIDE_CLASS_NAME L"FixTaskbarAutohide_" _T(EP_CLSID)
+LRESULT CALLBACK FixTaskbarAutohide_WndProc(
+    HWND hWnd,
+    UINT uMessage,
+    WPARAM wParam,
+    LPARAM lParam)
+{
+    static UINT s_uTaskbarRestart;
+
+    switch (uMessage)
+    {
+    case WM_CREATE:
+        s_uTaskbarRestart = RegisterWindowMessageW(TEXT("TaskbarCreated"));
+        break;
+
+    default:
+        if (uMessage == s_uTaskbarRestart)
+            PostQuitMessage(0);
+        break;
+    }
+
+    return DefWindowProcW(hWnd, uMessage, wParam, lParam);
+}
+DWORD FixTaskbarAutohide(DWORD unused)
+{
+    WNDCLASS wc = { 0 };
+    wc.style = CS_DBLCLKS;
+    wc.lpfnWndProc = FixTaskbarAutohide_WndProc;
+    wc.hbrBackground = (HBRUSH)GetStockObject(WHITE_BRUSH);
+    wc.hInstance = GetModuleHandle(NULL);
+    wc.lpszClassName = FIXTASKBARAUTOHIDE_CLASS_NAME;
+    wc.hCursor = LoadCursorW(NULL, IDC_ARROW);
+    RegisterClassW(&wc);
+
+    HWND hWnd = CreateWindowExW(
+        0,
+        FIXTASKBARAUTOHIDE_CLASS_NAME,
+        0,
+        WS_POPUP,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        GetModuleHandle(NULL),
+        NULL
+    );
+    if (hWnd)
+    {
+        MSG msg;
+        BOOL bRet;
+        while ((bRet = GetMessageW(&msg, NULL, 0, 0)) != 0)
+        {
+            if (bRet == -1)
+            {
+                break;
+            }
+            else
+            {
+                TranslateMessage(&msg);
+                DispatchMessageW(&msg);
+            }
+        }
+        DestroyWindow(hWnd);
+
+        APPBARDATA abd;
+        abd.cbSize = sizeof(APPBARDATA);
+        if (SHAppBarMessage(ABM_GETSTATE, &abd) == ABS_AUTOHIDE)
+        {
+            abd.lParam = 0;
+            SHAppBarMessage(ABM_SETSTATE, &abd);
+            Sleep(1000);
+            abd.lParam = ABS_AUTOHIDE;
+            SHAppBarMessage(ABM_SETSTATE, &abd);
+        }
+    }
+}
+#endif
+#pragma endregion
+
+
 #pragma region "Shell_TrayWnd subclass"
 #ifdef _WIN64
 HMENU explorer_LoadMenuW(HINSTANCE hInstance, LPCWSTR lpMenuName)
@@ -6385,6 +6469,17 @@ DWORD Inject(BOOL bIsExplorer)
             0
         );
         printf("Signal shell ready...\n");
+    }
+    else
+    {
+        CreateThread(
+            0,
+            0,
+            FixTaskbarAutohide,
+            0,
+            0,
+            0
+        );
     }
 
 
