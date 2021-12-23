@@ -90,6 +90,7 @@ HMONITOR hMonitorList[30];
 DWORD dwMonitorCount = 0;
 int Code = 0;
 HRESULT InjectStartFromExplorer();
+void InvokeClockFlyout();
 
 #define ORB_STYLE_WINDOWS10 0
 #define ORB_STYLE_WINDOWS11 1
@@ -390,7 +391,7 @@ HWND GetMonitorInfoFromPointForTaskbarFlyoutActivation(POINT ptCursor, DWORD dwF
     return hWnd;
 }
 
-POINT GetDefaultWinXPosition(BOOL bUseRcWork, BOOL* lpBottom, BOOL* lpRight, BOOL bAdjust)
+POINT GetDefaultWinXPosition(BOOL bUseRcWork, BOOL* lpBottom, BOOL* lpRight, BOOL bAdjust, BOOL bToRight)
 {
     if (lpBottom) *lpBottom = FALSE;
     if (lpRight) *lpRight = FALSE;
@@ -419,6 +420,10 @@ POINT GetDefaultWinXPosition(BOOL bUseRcWork, BOOL* lpBottom, BOOL* lpRight, BOO
             else
             {
                 point.x = mi.rcMonitor.left;
+            }
+            if (bToRight)
+            {
+                point.x = mi.rcMonitor.right;
             }
             if (bAdjust)
             {
@@ -1119,7 +1124,7 @@ INT64 CLauncherTipContextMenu_ShowLauncherTipContextMenuHook(
     {
         point = *pt;
         BOOL bBottom, bRight;
-        POINT dPt = GetDefaultWinXPosition(FALSE, &bBottom, &bRight, FALSE);
+        POINT dPt = GetDefaultWinXPosition(FALSE, &bBottom, &bRight, FALSE, FALSE);
         POINT posCursor;
         GetCursorPos(&posCursor);
         RECT rcHitZone;
@@ -1198,7 +1203,7 @@ INT64 CLauncherTipContextMenu_ShowLauncherTipContextMenuHook(
     }
     else
     {
-        point = GetDefaultWinXPosition(FALSE, NULL, NULL, TRUE);
+        point = GetDefaultWinXPosition(FALSE, NULL, NULL, TRUE, FALSE);
     }
 
     IUnknown* iunk = NULL;
@@ -2973,7 +2978,7 @@ HRESULT pnidui_CoCreateInstanceHook(
 #pragma endregion
 
 
-#pragma region "Show Clock flyout on Win+C"
+#pragma region "Show Clock flyout on Win+C and Win+Alt+D"
 #ifdef _WIN64
 typedef struct _ClockButton_ToggleFlyoutCallback_Params
 {
@@ -2991,39 +2996,94 @@ void ClockButton_ToggleFlyoutCallback(
     *((INT64*)params->TrayUIInstance + params->CLOCKBUTTON_OFFSET_IN_TRAYUI) = params->oldClockButtonInstance;
     free(params);
 }
-INT64 winrt_Windows_Internal_Shell_implementation_MeetAndChatManager_OnMessageHook(
-    void* _this,
-    INT64 a2,
-    INT a3
-)
+void InvokeClockFlyout()
 {
-    if (!bClockFlyoutOnWinC)
+    POINT ptCursor;
+    GetCursorPos(&ptCursor);
+    HWND hWnd = GetMonitorInfoFromPointForTaskbarFlyoutActivation(
+        ptCursor,
+        MONITOR_DEFAULTTOPRIMARY,
+        NULL
+    );
+    HWND prev_hWnd = hWnd;
+    HWND hShellTray_Wnd = FindWindowExW(NULL, NULL, L"Shell_TrayWnd", NULL);
+    const unsigned int WM_TOGGLE_CLOCK_FLYOUT = 1486;
+    if (hWnd == hShellTray_Wnd)
     {
-        if (winrt_Windows_Internal_Shell_implementation_MeetAndChatManager_OnMessageFunc)
+        if (ShouldShowLegacyClockExperience() == 1)
         {
-            return winrt_Windows_Internal_Shell_implementation_MeetAndChatManager_OnMessageFunc(_this, a2, a3);
+            if (!FindWindowW(L"ClockFlyoutWindow", NULL))
+            {
+                if (bOldTaskbar)
+                {
+                    return ShowLegacyClockExperience(FindWindowExW(FindWindowExW(hShellTray_Wnd, NULL, L"TrayNotifyWnd", NULL), NULL, L"TrayClockWClass", NULL));
+                }
+                else
+                {
+                    POINT pt;
+                    pt.x = 0;
+                    pt.y = 0;
+                    GetCursorPos(&pt);
+                    BOOL bBottom, bRight;
+                    POINT dPt = GetDefaultWinXPosition(FALSE, NULL, NULL, FALSE, TRUE);
+                    SetCursorPos(dPt.x - 1, dPt.y);
+                    BOOL bRet = ShowLegacyClockExperience(hShellTray_Wnd);
+                    SetCursorPos(pt.x, pt.y);
+                    return bRet;
+                }
+            }
+            else
+            {
+                return PostMessageW(FindWindowW(L"ClockFlyoutWindow", NULL), WM_CLOSE, 0, 0);
+            }
         }
-        return 0;
+        else if (ShouldShowLegacyClockExperience() == 2)
+        {
+            ToggleNotificationsFlyout();
+            return 0;
+        }
+        // On the main monitor, the TrayUI component of CTray handles this
+        // message and basically does a `ClockButton::ToggleFlyout`; that's
+        // the only place in code where that is used, otherwise, clicking and
+        // dismissing the clock flyout probably involves 2 separate methods
+        PostMessageW(hShellTray_Wnd, WM_TOGGLE_CLOCK_FLYOUT, 0, 0);
     }
-    if (a2 == 786 && a3 == 107)
+    else
     {
-        POINT ptCursor;
-        GetCursorPos(&ptCursor);
-        HWND hWnd = GetMonitorInfoFromPointForTaskbarFlyoutActivation(
-            ptCursor,
-            MONITOR_DEFAULTTOPRIMARY,
-            NULL
-        );
-        HWND prev_hWnd = hWnd;
-        HWND hShellTray_Wnd = FindWindowExW(NULL, NULL, L"Shell_TrayWnd", NULL);
-        const unsigned int WM_TOGGLE_CLOCK_FLYOUT = 1486;
-        if (hWnd == hShellTray_Wnd)
+        // Of course, on secondary monitors, the situation is much more
+        // complicated; there is no simple way to do this, afaik; the way I do it
+        // is to obtain a pointer to TrayUI from CTray (pointers to the classes
+        // that created the windows are always available at location 0 in the hWnd)
+        // and from there issue a "show clock flyout" message manually, taking care to temporarly
+        // change the internal clock button pointer of the class to point
+        // to the clock button on the secondary monitor.
+        if (bOldTaskbar)
+        {
+            hWnd = FindWindowExW(hWnd, NULL, L"ClockButton", NULL);
+        }
+        if (hWnd)
         {
             if (ShouldShowLegacyClockExperience() == 1)
             {
                 if (!FindWindowW(L"ClockFlyoutWindow", NULL))
                 {
-                    return ShowLegacyClockExperience(FindWindowExW(FindWindowExW(hShellTray_Wnd, NULL, L"TrayNotifyWnd", NULL), NULL, L"TrayClockWClass", NULL));
+                    if (bOldTaskbar)
+                    {
+                        return ShowLegacyClockExperience(hWnd);
+                    }
+                    else
+                    {
+                        POINT pt;
+                        pt.x = 0;
+                        pt.y = 0;
+                        GetCursorPos(&pt);
+                        BOOL bBottom, bRight;
+                        POINT dPt = GetDefaultWinXPosition(FALSE, NULL, NULL, FALSE, TRUE);
+                        SetCursorPos(dPt.x, dPt.y);
+                        BOOL bRet = ShowLegacyClockExperience(hWnd);
+                        SetCursorPos(pt.x, pt.y);
+                        return bRet;
+                    }
                 }
                 else
                 {
@@ -3035,40 +3095,8 @@ INT64 winrt_Windows_Internal_Shell_implementation_MeetAndChatManager_OnMessageHo
                 ToggleNotificationsFlyout();
                 return 0;
             }
-            // On the main monitor, the TrayUI component of CTray handles this
-            // message and basically does a `ClockButton::ToggleFlyout`; that's
-            // the only place in code where that is used, otherwise, clicking and
-            // dismissing the clock flyout probably involves 2 separate methods
-            PostMessageW(hShellTray_Wnd, WM_TOGGLE_CLOCK_FLYOUT, 0, 0);
-        }
-        else
-        {
-            // Of course, on secondary monitors, the situation is much more
-            // complicated; there is no simple way to do this, afaik; the way I do it
-            // is to obtain a pointer to TrayUI from CTray (pointers to the classes
-            // that created the windows are always available at location 0 in the hWnd)
-            // and from there issue a "show clock flyout" message manually, taking care to temporarly
-            // change the internal clock button pointer of the class to point
-            // to the clock button on the secondary monitor.
-            hWnd = FindWindowExW(hWnd, NULL, L"ClockButton", NULL);
-            if (hWnd)
+            if (bOldTaskbar)
             {
-                if (ShouldShowLegacyClockExperience() == 1)
-                {
-                    if (!FindWindowW(L"ClockFlyoutWindow", NULL))
-                    {
-                        return ShowLegacyClockExperience(hWnd);
-                    }
-                    else
-                    {
-                        return PostMessageW(FindWindowW(L"ClockFlyoutWindow", NULL), WM_CLOSE, 0, 0);
-                    }
-                }
-                else if (ShouldShowLegacyClockExperience() == 2)
-                {
-                    ToggleNotificationsFlyout();
-                    return 0;
-                }
                 INT64* CTrayInstance = (BYTE*)(GetWindowLongPtrW(hShellTray_Wnd, 0)); // -> CTray
                 void* ClockButtonInstance = (BYTE*)(GetWindowLongPtrW(hWnd, 0)); // -> ClockButton
 
@@ -3099,7 +3127,30 @@ INT64 winrt_Windows_Internal_Shell_implementation_MeetAndChatManager_OnMessageHo
                     SendMessageCallbackW(hShellTray_Wnd, WM_TOGGLE_CLOCK_FLYOUT, 0, 0, ClockButton_ToggleFlyoutCallback, params);
                 }
             }
+            else
+            {
+                PostMessageW(hShellTray_Wnd, WM_TOGGLE_CLOCK_FLYOUT, 0, 0);
+            }
         }
+    }
+}
+INT64 winrt_Windows_Internal_Shell_implementation_MeetAndChatManager_OnMessageHook(
+    void* _this,
+    INT64 a2,
+    INT a3
+)
+{
+    if (!bClockFlyoutOnWinC)
+    {
+        if (winrt_Windows_Internal_Shell_implementation_MeetAndChatManager_OnMessageFunc)
+        {
+            return winrt_Windows_Internal_Shell_implementation_MeetAndChatManager_OnMessageFunc(_this, a2, a3);
+        }
+        return 0;
+    }
+    if (a2 == 786 && a3 == 107)
+    {
+        InvokeClockFlyout();
     }
     return 0;
 }
@@ -3194,7 +3245,7 @@ LRESULT explorer_SendMessageW(HWND hWndx, UINT uMsg, WPARAM wParam, LPARAM lPara
                             );
                             if (hWnd)
                             {
-                                POINT pt = GetDefaultWinXPosition(FALSE, NULL, NULL, TRUE);
+                                POINT pt = GetDefaultWinXPosition(FALSE, NULL, NULL, TRUE, FALSE);
                                 // Finally implemented a variation of
                                 // https://github.com/valinet/ExplorerPatcher/issues/3
                                 // inspired by how the real Start button activates this menu
