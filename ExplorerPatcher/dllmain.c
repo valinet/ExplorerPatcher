@@ -1456,18 +1456,80 @@ BOOL Shell_TrayWnd_IsTaskbarRightClick(POINT pt)
     }
     if (SUCCEEDED(hr))
     {
+        WCHAR wszClassName[200];
+        GetClassNameW(hWnd, wszClassName, 200);
         if (IsWindow(hWnd))
         {
-            HWND hAncestor = GetAncestor(hWnd, GA_ROOT);
-            HWND hWindow = FindWindowExW(hAncestor, NULL, L"Windows.UI.Composition.DesktopWindowContentBridge", NULL);
-            if (IsWindow(hWindow))
+            if (!wcscmp(wszClassName, L"Windows.UI.Input.InputSite.WindowClass"))
             {
-                hWindow = FindWindowExW(hWindow, NULL, L"Windows.UI.Input.InputSite.WindowClass", NULL);
+                HWND hAncestor = GetAncestor(hWnd, GA_ROOT);
+                HWND hWindow = FindWindowExW(hAncestor, NULL, L"Windows.UI.Composition.DesktopWindowContentBridge", NULL);
                 if (IsWindow(hWindow))
                 {
-                    if (hWindow == hWnd)
+                    hWindow = FindWindowExW(hWindow, NULL, L"Windows.UI.Input.InputSite.WindowClass", NULL);
+                    if (IsWindow(hWindow))
                     {
-                        bRet = TRUE;
+                        if (hWindow == hWnd)
+                        {
+                            bRet = TRUE;
+                        }
+                    }
+                }
+            }
+            else if (!wcscmp(wszClassName, L"MSTaskListWClass"))
+            {
+                IUIAutomationTreeWalker* pControlWalker = NULL;
+                IUIAutomationElement* pTaskbarButton = NULL;
+                IUIAutomationElement* pNextTaskbarButton = NULL;
+                RECT rc;
+                if (SUCCEEDED(hr))
+                {
+                    hr = pIUIAutomation2->lpVtbl->get_RawViewWalker(pIUIAutomation2, &pControlWalker);
+                }
+                if (SUCCEEDED(hr) && pControlWalker)
+                {
+                    hr = pControlWalker->lpVtbl->GetFirstChildElement(pControlWalker, pIUIAutomationElement, &pTaskbarButton);
+                }
+                BOOL bValid = TRUE, bFirst = TRUE;
+                while (SUCCEEDED(hr) && pTaskbarButton)
+                {
+                    pControlWalker->lpVtbl->GetNextSiblingElement(pControlWalker, pTaskbarButton, &pNextTaskbarButton);
+                    SetRect(&rc, 0, 0, 0, 0);
+                    pTaskbarButton->lpVtbl->get_CurrentBoundingRectangle(pTaskbarButton, &rc);
+                    if (bFirst)
+                    {
+                        // Account for Start button as well
+                        rc.left -= (rc.right - rc.left);
+                        bFirst = FALSE;
+                    }
+                    //printf("PT %d %d RECT %d %d %d %d\n", pt.x, pt.y, rc.left, rc.top, rc.right, rc.bottom);
+                    if (pNextTaskbarButton && PtInRect(&rc, pt))
+                    {
+                        bValid = FALSE;
+                    }
+                    pTaskbarButton->lpVtbl->Release(pTaskbarButton);
+                    pTaskbarButton = pNextTaskbarButton;
+                }
+                //printf("IS VALID %d\n", bValid);
+                //printf("\n");
+                if (pControlWalker)
+                {
+                    pControlWalker->lpVtbl->Release(pControlWalker);
+                }
+                if (bValid)
+                {
+                    HWND hAncestor = GetAncestor(hWnd, GA_ROOT);
+                    HWND hWindow = FindWindowExW(hAncestor, NULL, L"WorkerW", NULL);
+                    if (IsWindow(hWindow))
+                    {
+                        hWindow = FindWindowExW(hWindow, NULL, L"MSTaskListWClass", NULL);
+                        if (IsWindow(hWindow))
+                        {
+                            if (hWindow == hWnd)
+                            {
+                                bRet = TRUE;
+                            }
+                        }
                     }
                 }
             }
@@ -1516,6 +1578,14 @@ INT64 Shell_TrayWndSubclassProc(
     {
         RemoveWindowSubclass(hWnd, Shell_TrayWndSubclassProc, Shell_TrayWndSubclassProc);
     }
+    else if (!bIsPrimaryTaskbar && uMsg == WM_CONTEXTMENU)
+    {
+        // Received some times when right clicking a secondary taskbar button, and it would
+        // show the classic taskbar context menu but containing only "Show desktop" instead
+        // of ours or a button's jump list, so we cancel it and that seems to properly invoke
+        // the right menu
+        return 0;
+    }
     else if (!bIsPrimaryTaskbar && uMsg == WM_SETCURSOR)
     {
         // Received when mouse is over taskbar edge and autohide is on
@@ -1551,7 +1621,7 @@ INT64 Shell_TrayWndSubclassProc(
         }
         return lRes;*/
     }
-    else if (uMsg == WM_DISPLAYCHANGE)
+    else if (bIsPrimaryTaskbar && uMsg == WM_DISPLAYCHANGE)
     {
         UpdateStartMenuPositioning(MAKELPARAM(TRUE, FALSE));
     }
