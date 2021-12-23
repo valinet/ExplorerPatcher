@@ -22,16 +22,16 @@
 ;;x 0 Windows 10 (default)
 ;;x 1 Windows 11
 ;;"OrbStyle"=dword:00000000
-[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
+[HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;c 3 Combine taskbar icons on primary taskbar
 ;x 0 Always combine
 ;x 1 Combine when taskbar is full
-;x 2 Never combine
+;x 2 Never combine (default)
 "TaskbarGlomLevel"=dword:00000002
 ;c 3 Combine taskbar icons on secondary taskbar(s)
 ;x 0 Always combine
 ;x 1 Combine when taskbar is full
-;x 2 Never combine
+;x 2 Never combine (default)
 "MMTaskbarGlomLevel"=dword:00000002
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;c 4 Primary taskbar location on screen *

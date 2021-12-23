@@ -78,6 +78,10 @@ BOOL bDoNotRedirectSystemToSettingsApp = FALSE;
 BOOL bDoNotRedirectProgramsAndFeaturesToSettingsApp = FALSE;
 BOOL bDoNotRedirectDateAndTimeToSettingsApp = FALSE;
 BOOL bDoNotRedirectNotificationIconsToSettingsApp = FALSE;
+#define TASKBARGLOMLEVEL_DEFAULT 2
+#define MMTASKBARGLOMLEVEL_DEFAULT 2
+DWORD dwTaskbarGlomLevel = TASKBARGLOMLEVEL_DEFAULT;
+DWORD dwMMTaskbarGlomLevel = MMTASKBARGLOMLEVEL_DEFAULT;
 HMODULE hModule = NULL;
 HANDLE hDelayedInjectionThread = NULL;
 HANDLE hIsWinXShown = NULL;
@@ -91,6 +95,7 @@ DWORD dwMonitorCount = 0;
 int Code = 0;
 HRESULT InjectStartFromExplorer();
 void InvokeClockFlyout();
+void WINAPI Explorer_RefreshUI(int unused);
 
 #define ORB_STYLE_WINDOWS10 0
 #define ORB_STYLE_WINDOWS11 1
@@ -3828,8 +3833,12 @@ DWORD WindowSwitcher(DWORD unused)
 
 
 #pragma region "Load Settings from registry"
-void WINAPI LoadSettings(BOOL bIsExplorer)
+void WINAPI LoadSettings(LPARAM lParam)
 {
+    BOOL bIsExplorer = LOWORD(lParam);
+    BOOL bIsRefreshAllowed = HIWORD(lParam);
+    BOOL bShouldRefreshUI = FALSE;
+
     HKEY hKey = NULL;
     DWORD dwSize = 0, dwTemp = 0;
 
@@ -4280,6 +4289,36 @@ void WINAPI LoadSettings(BOOL bIsExplorer)
             &bDoNotRedirectNotificationIconsToSettingsApp,
             &dwSize
         );
+        dwTemp = TASKBARGLOMLEVEL_DEFAULT;
+        dwSize = sizeof(DWORD);
+        RegQueryValueExW(
+            hKey,
+            TEXT("TaskbarGlomLevel"),
+            0,
+            NULL,
+            &dwTemp,
+            &dwSize
+        );
+        if (dwTemp != dwTaskbarGlomLevel)
+        {
+            bShouldRefreshUI = TRUE;
+        }
+        dwTaskbarGlomLevel = dwTemp;
+        dwTemp = MMTASKBARGLOMLEVEL_DEFAULT;
+        dwSize = sizeof(DWORD);
+        RegQueryValueExW(
+            hKey,
+            TEXT("MMTaskbarGlomLevel"),
+            0,
+            NULL,
+            &dwTemp,
+            &dwSize
+        );
+        if (dwTemp != dwMMTaskbarGlomLevel)
+        {
+            bShouldRefreshUI = TRUE;
+        }
+        dwMMTaskbarGlomLevel = dwTemp;
         RegCloseKey(hKey);
     }
 
@@ -4469,6 +4508,11 @@ void WINAPI LoadSettings(BOOL bIsExplorer)
     if (hKey)
     {
         RegCloseKey(hKey);
+    }
+
+    if (bIsRefreshAllowed && bShouldRefreshUI)
+    {
+        Explorer_RefreshUI(0);
     }
 }
 
@@ -5617,6 +5661,16 @@ LSTATUS explorer_RegGetValueW(
             *(DWORD*)pvData = 1;
         }
     }
+    else if (!lstrcmpW(lpValue, L"TaskbarGlomLevel") || !lstrcmpW(lpValue, L"MMTaskbarGlomLevel"))
+    {
+        lRes = RegGetValueW(HKEY_CURRENT_USER, _T(REGPATH), lpValue, dwFlags, pdwType, pvData, pcbData);
+        if (lRes != ERROR_SUCCESS)
+        {
+            *(DWORD*)pvData = (lpValue[0] == L'T' ? TASKBARGLOMLEVEL_DEFAULT : MMTASKBARGLOMLEVEL_DEFAULT);
+            *(DWORD*)pcbData = sizeof(DWORD32);
+            lRes = ERROR_SUCCESS;
+        }
+    }
     /*else if (!lstrcmpW(lpValue, L"PeopleBand"))
     {
         lRes = RegGetValueW(hkey, lpSubKey, L"TaskbarMn", dwFlags, pdwType, pvData, pcbData);
@@ -6023,7 +6077,7 @@ DWORD Inject(BOOL bIsExplorer)
 
     int rv;
 
-    LoadSettings(bIsExplorer);
+    LoadSettings(MAKELPARAM(bIsExplorer, FALSE));
 
 #ifdef _WIN64
     if (bIsExplorer)
@@ -6059,7 +6113,7 @@ DWORD Inject(BOOL bIsExplorer)
         if (cs < numSettings)
         {
             settings[cs].callback = LoadSettings;
-            settings[cs].data = bIsExplorer;
+            settings[cs].data = MAKELPARAM(bIsExplorer, TRUE);
             settings[cs].hEvent = NULL;
             settings[cs].hKey = NULL;
             wcscpy_s(settings[cs].name, MAX_PATH, TEXT(REGPATH));
@@ -6070,7 +6124,7 @@ DWORD Inject(BOOL bIsExplorer)
         if (cs < numSettings)
         {
             settings[cs].callback = LoadSettings;
-            settings[cs].data = bIsExplorer;
+            settings[cs].data = MAKELPARAM(bIsExplorer, FALSE);
             settings[cs].hEvent = NULL;
             settings[cs].hKey = NULL;
             wcscpy_s(settings[cs].name, MAX_PATH, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartPage");
@@ -6169,7 +6223,7 @@ DWORD Inject(BOOL bIsExplorer)
         if (cs < numSettings)
         {
             settings[cs].callback = LoadSettings;
-            settings[cs].data = bIsExplorer;
+            settings[cs].data = MAKELPARAM(bIsExplorer, FALSE);
             settings[cs].hEvent = NULL;
             settings[cs].hKey = NULL;
             wcscpy_s(settings[cs].name, MAX_PATH, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer");
@@ -6608,6 +6662,8 @@ DWORD Inject(BOOL bIsExplorer)
             0,
             0
         );
+        RegDeleteKeyValueW(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", L"TaskbarGlomLevel");
+        RegDeleteKeyValueW(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", L"MMTaskbarGlomLevel");
     }
 
 
