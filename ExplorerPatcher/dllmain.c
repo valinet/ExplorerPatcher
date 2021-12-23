@@ -1581,6 +1581,7 @@ INT64 Shell_TrayWndSubclassProc(
 {
     if (uMsg == WM_NCDESTROY)
     {
+        UnregisterHotKey(hWnd, 'VNEP');
         RemoveWindowSubclass(hWnd, Shell_TrayWndSubclassProc, Shell_TrayWndSubclassProc);
     }
     else if (!bIsPrimaryTaskbar && uMsg == WM_CONTEXTMENU)
@@ -1610,6 +1611,11 @@ INT64 Shell_TrayWndSubclassProc(
             abd.lParam = ABS_AUTOHIDE;
             SHAppBarMessage(ABM_SETSTATE, &abd);
         }
+    }
+    else if (uMsg == WM_HOTKEY && lParam == MAKELPARAM(MOD_WIN | MOD_ALT, 0x44))
+    {
+        InvokeClockFlyout();
+        return 0;
     }
     else if (uMsg == WM_HOTKEY && wParam == 500 && lParam == MAKELPARAM(MOD_WIN, 0x41))
     {
@@ -4634,6 +4640,7 @@ HWND CreateWindowExWHook(
     else if (bIsExplorerProcess && (*((WORD*)&(lpClassName)+1)) && !wcscmp(lpClassName, L"Shell_TrayWnd"))
     {
         SetWindowSubclass(hWnd, Shell_TrayWndSubclassProc, Shell_TrayWndSubclassProc, TRUE);
+        RegisterHotKey(hWnd, 'VNEP', MOD_WIN | MOD_ALT, 0x44);
     }
     else if (bIsExplorerProcess && (*((WORD*)&(lpClassName)+1)) && !wcscmp(lpClassName, L"Shell_SecondaryTrayWnd"))
     {
