@@ -1425,12 +1425,17 @@ INT64 Shell_TrayWndSubclassProc(
     _In_ WPARAM wParam,
     _In_ LPARAM lParam,
     UINT_PTR    uIdSubclass,
-    DWORD_PTR   dwRefData
+    DWORD_PTR   bIsPrimaryTaskbar
 )
 {
     if (uMsg == WM_NCDESTROY)
     {
         RemoveWindowSubclass(hWnd, Shell_TrayWndSubclassProc, Shell_TrayWndSubclassProc);
+    }
+    else if (!bIsPrimaryTaskbar && uMsg == WM_SETCURSOR)
+    {
+        // Received when mouse is over taskbar edge and autohide is on
+        PostMessageW(hWnd, WM_ACTIVATE, WA_ACTIVE, NULL);
     }
     else if (uMsg == WM_LBUTTONDBLCLK && bTaskbarAutohideOnDoubleClick)
     {
@@ -4423,7 +4428,11 @@ HWND CreateWindowExWHook(
     }
     else if (bIsExplorerProcess && (*((WORD*)&(lpClassName)+1)) && !wcscmp(lpClassName, L"Shell_TrayWnd"))
     {
-        SetWindowSubclass(hWnd, Shell_TrayWndSubclassProc, Shell_TrayWndSubclassProc, 0);
+        SetWindowSubclass(hWnd, Shell_TrayWndSubclassProc, Shell_TrayWndSubclassProc, TRUE);
+    }
+    else if (bIsExplorerProcess && (*((WORD*)&(lpClassName)+1)) && !wcscmp(lpClassName, L"Shell_SecondaryTrayWnd"))
+    {
+        SetWindowSubclass(hWnd, Shell_TrayWndSubclassProc, Shell_TrayWndSubclassProc, FALSE);
     }
 #endif
     /*
