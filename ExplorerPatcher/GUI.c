@@ -7,6 +7,7 @@ BOOL g_darkModeEnabled = FALSE;
 static void(*RefreshImmersiveColorPolicyState)() = NULL;
 static BOOL(*ShouldAppsUseDarkMode)() = NULL;
 DWORD dwTaskbarPosition = 3;
+BOOL gui_bOldTaskbar = TRUE;
 BOOL IsHighContrast()
 {
     HIGHCONTRASTW highContrast;
@@ -63,9 +64,33 @@ LSTATUS GUI_RegSetValueExW(
                 &srd,
                 sizeof(StuckRectsData)
             );
-            return ERROR_SUCCESS;
         }
-        return ERROR_ACCESS_DENIED;
+        pcbData = sizeof(StuckRectsData);
+        RegGetValueW(
+            HKEY_CURRENT_USER,
+            L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StuckRects3",
+            L"Settings",
+            REG_BINARY,
+            NULL,
+            &srd,
+            &pcbData);
+        if (pcbData == sizeof(StuckRectsData) && srd.pvData[0] == sizeof(StuckRectsData) && srd.pvData[1] == -2)
+        {
+            srd.pvData[3] = *(DWORD*)lpData;
+            if (srd.pvData[3] != 1 && srd.pvData[3] != 3) // Disallow left/right settings for Windows 11 taskbar, as this breaks it
+            {
+                srd.pvData[3] = 3;
+            }
+            RegSetKeyValueW(
+                HKEY_CURRENT_USER,
+                L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StuckRects3",
+                L"Settings",
+                REG_BINARY,
+                &srd,
+                sizeof(StuckRectsData)
+            );
+        }
+        return ERROR_SUCCESS;
     }
     else if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_MMTaskbarPosition"))
     {
@@ -124,9 +149,66 @@ LSTATUS GUI_RegSetValueExW(
             }
             RegCloseKey(hKey);
             SendNotifyMessageW(HWND_BROADCAST, WM_WININICHANGE, 0, (LPARAM)L"TraySettings");
-            return ERROR_SUCCESS;
         }
-        return ERROR_ACCESS_DENIED;
+        RegOpenKeyExW(
+            HKEY_CURRENT_USER,
+            L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\MMStuckRects3",
+            REG_OPTION_NON_VOLATILE,
+            KEY_READ | KEY_WRITE,
+            &hKey
+        );
+        if (hKey)
+        {
+            DWORD cValues = 0;
+            RegQueryInfoKeyW(
+                hKey,
+                NULL,
+                NULL,
+                NULL,
+                NULL,
+                NULL,
+                NULL,
+                &cValues,
+                NULL,
+                NULL,
+                NULL,
+                NULL
+            );
+            WCHAR name[60];
+            DWORD szName = 60;
+            StuckRectsData srd;
+            DWORD pcbData = sizeof(StuckRectsData);
+            for (int i = 0; i < cValues; ++i)
+            {
+                RegEnumValueW(
+                    hKey,
+                    i,
+                    name,
+                    &szName,
+                    0,
+                    NULL,
+                    &srd,
+                    &pcbData
+                );
+                szName = 60;
+                srd.pvData[3] = *(DWORD*)lpData;
+                if (srd.pvData[3] != 1 && srd.pvData[3] != 3) // Disallow left/right settings for Windows 11 taskbar, as this breaks it
+                {
+                    srd.pvData[3] = 3;
+                }
+                pcbData = sizeof(StuckRectsData);
+                RegSetKeyValueW(
+                    HKEY_CURRENT_USER,
+                    L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\MMStuckRects3",
+                    name,
+                    REG_BINARY,
+                    &srd,
+                    sizeof(StuckRectsData)
+                );
+            }
+            RegCloseKey(hKey);
+        }
+        return ERROR_SUCCESS;
     }
     else if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_AutoHideTaskbar"))
     {
@@ -182,8 +264,15 @@ LSTATUS GUI_RegQueryValueExW(
             &pcbData);
         if (pcbData == sizeof(StuckRectsData) && srd.pvData[0] == sizeof(StuckRectsData) && srd.pvData[1] == -2)
         {
-            *(DWORD*)lpData = srd.pvData[3];
             dwTaskbarPosition = srd.pvData[3];
+            if (!gui_bOldTaskbar)
+            {
+                if (srd.pvData[3] != 1 && srd.pvData[3] != 3) // Disallow left/right settings for Windows 11 taskbar, as this breaks it
+                {
+                    srd.pvData[3] = 3;
+                }
+            }
+            *(DWORD*)lpData = srd.pvData[3];
             return ERROR_SUCCESS;
         }
         return ERROR_ACCESS_DENIED;
@@ -216,6 +305,13 @@ LSTATUS GUI_RegQueryValueExW(
             );
             if (pcbData == sizeof(StuckRectsData) && srd.pvData[0] == sizeof(StuckRectsData) && srd.pvData[1] == -2)
             {
+                if (!gui_bOldTaskbar)
+                {
+                    if (srd.pvData[3] != 1 && srd.pvData[3] != 3) // Disallow left/right settings for Windows 11 taskbar, as this breaks it
+                    {
+                        srd.pvData[3] = 3;
+                    }
+                }
                 *(DWORD*)lpData = srd.pvData[3];
                 RegCloseKey(hKey);
                 return ERROR_SUCCESS;
@@ -1063,6 +1159,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                 numChRd = getline(&l, &bufsiz, f);
                                 if (strncmp(l, ";x ", 3))
                                 {
+                                    free(l);
                                     i--;
                                     continue;
                                 }
@@ -1117,6 +1214,31 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                         if (d) *d = 0;
                         wchar_t* p = wcschr(name, L'"');
                         if (p) *p = 0;
+                        if (!wcscmp(name, L"Virtualized_" _T(EP_CLSID) L"_TaskbarPosition") || !wcscmp(name, L"Virtualized_" _T(EP_CLSID) L"_MMTaskbarPosition"))
+                        {
+                            if (!gui_bOldTaskbar)
+                            {
+                                MENUITEMINFOA menuInfo;
+                                ZeroMemory(&menuInfo, sizeof(MENUITEMINFOA));
+                                menuInfo.cbSize = sizeof(MENUITEMINFOA);
+                                menuInfo.fMask = MIIM_DATA;
+                                GetMenuItemInfoA(hMenu, 1, FALSE, &menuInfo);
+                                if (menuInfo.dwItemData)
+                                {
+                                    free(menuInfo.dwItemData);
+                                }
+                                RemoveMenu(hMenu, 1, MF_BYCOMMAND);
+                                ZeroMemory(&menuInfo, sizeof(MENUITEMINFOA));
+                                menuInfo.cbSize = sizeof(MENUITEMINFOA);
+                                menuInfo.fMask = MIIM_DATA;
+                                GetMenuItemInfoA(hMenu, 3, FALSE, &menuInfo);
+                                if (menuInfo.dwItemData)
+                                {
+                                    free(menuInfo.dwItemData);
+                                }
+                                RemoveMenu(hMenu, 3, MF_BYCOMMAND);
+                            }
+                        }
                         HKEY hKey = NULL;
                         wchar_t* bIsHKLM = wcsstr(section, L"HKEY_LOCAL_MACHINE");
                         bIsHKLM = !bIsHKLM ? NULL : ((bIsHKLM - section) < 3);
@@ -1157,6 +1279,10 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                 &value,
                                 &dwSize
                             );
+                            if (!wcscmp(name, L"OldTaskbar"))
+                            {
+                                gui_bOldTaskbar = value;
+                            }
                             if (hDC && bInvert)
                             {
                                 value = !value;
