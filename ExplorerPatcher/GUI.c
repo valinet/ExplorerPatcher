@@ -1361,6 +1361,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                             }
                             else
                             {
+                                DWORD val = 0;
                                 if (bChoice || bChoiceLefted)
                                 {
                                     RECT rcTemp;
@@ -1379,7 +1380,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                         hwnd,
                                         &p
                                     );
-                                    DWORD val = TrackPopupMenu(
+                                    val = TrackPopupMenu(
                                         hMenu, 
                                         TPM_RETURNCMD | TPM_RIGHTBUTTON,
                                         p.x,
@@ -1402,14 +1403,17 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                 {
                                     value = _this->section + 1;
                                 }
-                                GUI_RegSetValueExW(
-                                    hKey,
-                                    name,
-                                    0,
-                                    REG_DWORD,
-                                    &value,
-                                    sizeof(DWORD)
-                                );
+                                if (!(bChoice || bChoiceLefted) || ((bChoice || bChoiceLefted) && val))
+                                {
+                                    GUI_RegSetValueExW(
+                                        hKey,
+                                        name,
+                                        0,
+                                        REG_DWORD,
+                                        &value,
+                                        sizeof(DWORD)
+                                    );
+                                }
                             }
                             InvalidateRect(hwnd, NULL, FALSE);
                         }
