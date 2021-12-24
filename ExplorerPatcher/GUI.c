@@ -411,10 +411,10 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
     );
     logFont = ncm.lfCaptionFont;
     logFont.lfHeight = GUI_CAPTION_FONT_SIZE * dy;
-    logFont.lfWeight = FW_BOLD;
+    //logFont.lfWeight = FW_BOLD;
     HFONT hFontCaption = CreateFontIndirect(&logFont);
     logFont = ncm.lfMenuFont;
-    if (IsThemeActive()) logFont.lfHeight = GUI_TITLE_FONT_SIZE * dy;
+    logFont.lfHeight = GUI_TITLE_FONT_SIZE * dy;
     HFONT hFontTitle = CreateFontIndirect(&logFont);
     logFont.lfWeight = FW_REGULAR;
     logFont.lfUnderline = 1;
@@ -423,7 +423,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
     logFont.lfUnderline = 0;
     HFONT hFontRegular = CreateFontIndirect(&logFont);
     logFont.lfWeight = FW_DEMIBOLD;
-    if (IsThemeActive()) logFont.lfHeight = GUI_SECTION_FONT_SIZE * dy;
+    logFont.lfHeight = GUI_SECTION_FONT_SIZE * dy;
     HFONT hFontSection = CreateFontIndirect(&logFont);
     logFont.lfUnderline = 1;
     HFONT hFontSectionSel = CreateFontIndirect(&logFont);
@@ -475,7 +475,11 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
             {
                 bWasSpecifiedSectionValid = TRUE;
             }
-            if (strcmp(line, "Windows Registry Editor Version 5.00\r\n") && strcmp(line, "\r\n") && (currentSection == -1 || currentSection == _this->section || !strncmp(line, ";T ", 3) || !strncmp(line, ";f", 2)))
+            if (strcmp(line, "Windows Registry Editor Version 5.00\r\n") && 
+                strcmp(line, "\r\n") && 
+                (currentSection == -1 || currentSection == _this->section || !strncmp(line, ";T ", 3) || !strncmp(line, ";f", 2)) &&
+                !(!IsThemeActive() && !strncmp(line, ";M ", 3))
+                )
             {
 #ifndef USE_PRIVATE_INTERFACES
                 if (!strncmp(line, ";p ", 3))
@@ -495,7 +499,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                     //}
                     if (_this->dwStatusbarY == 0)
                     {
-                        dwMaxHeight += GUI_STATUS_PADDING * dy;
+                        //dwMaxHeight += GUI_STATUS_PADDING * dy;
                         _this->dwStatusbarY = dwMaxHeight / dy;
                     }
                     else
@@ -521,7 +525,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                     //wprintf(L"%s\n", section);
                 }
 
-                DWORD dwLineHeight = GUI_LINE_HEIGHT;
+                DWORD dwLineHeight = !strncmp(line, ";M ", 3) ? _this->GUI_CAPTION_LINE_HEIGHT : GUI_LINE_HEIGHT;
                 DWORD dwBottom = _this->padding.bottom;
                 DWORD dwTop = _this->padding.top;
                 if (!strncmp(line, ";a ", 3) || !strncmp(line, ";e ", 3))
@@ -531,9 +535,9 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                 }
 
                 rcText.left = dwLeftPad + _this->padding.left;
-                rcText.top = dwTop + dwMaxHeight;
+                rcText.top = !strncmp(line, ";M ", 3) ? 0 : (dwTop + dwMaxHeight);
                 rcText.right = (rc.right - rc.left) - _this->padding.right;
-                rcText.bottom = dwMaxHeight + dwLineHeight * dy - dwBottom;
+                rcText.bottom = !strncmp(line, ";M ", 3) ? _this->GUI_CAPTION_LINE_HEIGHT * dy : (dwMaxHeight + dwLineHeight * dy - dwBottom);
 
                 if (!strncmp(line, ";T ", 3))
                 {
@@ -608,8 +612,9 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                 }
                 else if (!strncmp(line, ";M ", 3))
                 {
-                    rcText.left = _this->padding.left;
-                    topAdj = dwMaxHeight + GUI_CAPTION_LINE_HEIGHT * dy;
+                    UINT diff = (((_this->GUI_CAPTION_LINE_HEIGHT - 16) * dx) / 2.0);
+                    rcText.left = diff + (int)(16.0 * dx) + diff / 2;
+                    topAdj = dwMaxHeight + _this->GUI_CAPTION_LINE_HEIGHT * dy;
                     hOldFont = SelectObject(hdcPaint, hFontCaption);
                 }
                 else if (!strncmp(line, ";u ", 3) || (!strncmp(line, ";y ", 3) && !strstr(line, "\xF0\x9F")))
@@ -669,6 +674,23 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                     }
                     if (!strncmp(line, ";M ", 3))
                     {
+                        if (hDC)
+                        {
+                            UINT diff = (int)(((_this->GUI_CAPTION_LINE_HEIGHT - 16) * dx) / 2.0);
+                            //printf("!!! %d %d\n", (int)(16.0 * dx), diff);
+                            DrawIconEx(
+                                hdcPaint,
+                                diff,
+                                diff,
+                                _this->hIcon,
+                                (int)(16.0 * dx),
+                                (int)(16.0 * dy),
+                                0,
+                                NULL,
+                                DI_NORMAL
+                            );
+                        }
+
                         TCHAR exeName[MAX_PATH + 1];
                         GetProcessImageFileNameW(
                             OpenProcess(
@@ -704,8 +726,8 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                 }
                             }
                         //}
-                        rcText.bottom += GUI_CAPTION_LINE_HEIGHT - dwLineHeight;
-                        dwLineHeight = GUI_CAPTION_LINE_HEIGHT;
+                        //rcText.bottom += _this->GUI_CAPTION_LINE_HEIGHT - dwLineHeight;
+                        dwLineHeight = _this->GUI_CAPTION_LINE_HEIGHT;
                         _this->extent.cyTopHeight = rcText.bottom;
                     }
                     if (hDC)
@@ -1626,7 +1648,14 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
         printf("%d %d - %d %d\n", rcWin.right - rcWin.left, rcWin.bottom - rcWin.top, dwMaxWidth, dwMaxHeight);
 
         dwMaxWidth += dwInitialLeftPad + _this->padding.left + _this->padding.right;
-        dwMaxHeight += GUI_LINE_HEIGHT * dy + 20 * dy;
+        if (!IsThemeActive())
+        {
+            dwMaxHeight += GUI_LINE_HEIGHT * dy + 20 * dy;
+        }
+        else
+        {
+            dwMaxHeight += GUI_PADDING * 2 * dy;
+        }
 
         HMONITOR hMonitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTOPRIMARY);
         MONITORINFO mi;
@@ -1743,6 +1772,17 @@ static LRESULT CALLBACK GUI_WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
         double dx = dpiX / 96.0, dy = dpiY / 96.0, dxp = dpiXP / 96.0, dyp = dpiYP / 96.0;
         _this->dpi.x = dpiX;
         _this->dpi.y = dpiY;
+        SetRect(&_this->border_thickness, 2, 2, 2, 2);
+        if (IsThemeActive())
+        {
+            BOOL bIsCompositionEnabled = TRUE;
+            DwmIsCompositionEnabled(&bIsCompositionEnabled);
+            if (bIsCompositionEnabled)
+            {
+                MARGINS marGlassInset = { -1, -1, -1, -1 }; // -1 means the whole window
+                DwmExtendFrameIntoClientArea(hWnd, &marGlassInset);
+            }
+        }
         SetWindowPos(
             hWnd, 
             hWnd, 
@@ -1750,8 +1790,18 @@ static LRESULT CALLBACK GUI_WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
             mi.rcWork.top + ((mi.rcWork.bottom - mi.rcWork.top) / 2 - (_this->size.cy * dy) / 2),
             _this->size.cx * dxp, 
             _this->size.cy * dyp,
-            SWP_NOZORDER | SWP_NOACTIVATE
+            SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED
         );
+        if (IsThemeActive())
+        {
+            RECT rcTitle;
+            DwmGetWindowAttribute(hWnd, DWMWA_CAPTION_BUTTON_BOUNDS, &rcTitle, sizeof(RECT));
+            _this->GUI_CAPTION_LINE_HEIGHT = rcTitle.bottom - rcTitle.top;
+        }
+        else
+        {
+            _this->GUI_CAPTION_LINE_HEIGHT = GUI_CAPTION_LINE_HEIGHT_DEFAULT;
+        }
         if (IsThemeActive() && ShouldAppsUseDarkMode)
         {
             AllowDarkModeForWindow(hWnd, g_darkModeEnabled);
@@ -1844,16 +1894,108 @@ static LRESULT CALLBACK GUI_WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
             return 0;
         }
     }
-    else if (uMsg == WM_NCHITTEST && IsThemeActive())
+    else if (uMsg == WM_NCMOUSELEAVE && IsThemeActive())
+    {
+        LRESULT lRes = 0;
+        if (DwmDefWindowProc(hWnd, uMsg, wParam, lParam, &lRes))
+        {
+            return lRes;
+        }
+    }
+    else if (uMsg == WM_NCRBUTTONUP && IsThemeActive())
+    {
+        HMENU pSysMenu = GetSystemMenu(hWnd, FALSE);
+        if (pSysMenu != NULL)
+        {
+            int xPos = GET_X_LPARAM(lParam);
+            int yPos = GET_Y_LPARAM(lParam);
+            TrackPopupMenu(pSysMenu, TPM_LEFTALIGN | TPM_LEFTBUTTON | TPM_RIGHTBUTTON, xPos, yPos, NULL, hWnd, 0);
+        }
+        return 0;
+    }
+    else if ((uMsg == WM_LBUTTONUP || uMsg == WM_RBUTTONUP) && IsThemeActive())
     {
         POINT pt;
         pt.x = GET_X_LPARAM(lParam);
         pt.y = GET_Y_LPARAM(lParam);
+
+        double dx = _this->dpi.x / 96.0, dy = _this->dpi.y / 96.0;
+        UINT diff = (int)(((_this->GUI_CAPTION_LINE_HEIGHT - 16) * dx) / 2.0);
+        RECT rc;
+        SetRect(&rc, diff, diff, diff + (int)(16.0 * dx), diff + (int)(16.0 * dy));
+        if (PtInRect(&rc, pt))
+        {
+            if (uMsg == WM_LBUTTONUP && _this->LeftClickTime != 0)
+            {
+                _this->LeftClickTime = milliseconds_now() - _this->LeftClickTime;
+            }
+            if (uMsg == WM_LBUTTONUP && _this->LeftClickTime != 0 && _this->LeftClickTime < GetDoubleClickTime())
+            {
+                _this->LeftClickTime = 0;
+                PostQuitMessage(0);
+            }
+            else
+            {
+                if (uMsg == WM_LBUTTONUP)
+                {
+                    _this->LeftClickTime = milliseconds_now();
+                }
+                if (uMsg == WM_RBUTTONUP || !_this->LastClickTime || milliseconds_now() - _this->LastClickTime > 500)
+                {
+                    HMENU pSysMenu = GetSystemMenu(hWnd, FALSE);
+                    if (pSysMenu != NULL)
+                    {
+                        if (uMsg == WM_LBUTTONUP)
+                        {
+                            pt.x = 0;
+                            pt.y = _this->GUI_CAPTION_LINE_HEIGHT * dy;
+                        }
+                        ClientToScreen(hWnd, &pt);
+                        TrackPopupMenu(pSysMenu, TPM_LEFTALIGN | TPM_LEFTBUTTON | TPM_RIGHTBUTTON, pt.x, pt.y, NULL, hWnd, 0);
+                        if (uMsg == WM_LBUTTONUP)
+                        {
+                            _this->LastClickTime = milliseconds_now();
+                        }
+                    }
+                }
+            }
+            return 0;
+        }
+    }
+    else if (uMsg == WM_NCHITTEST && IsThemeActive())
+    {
+        LRESULT lRes = 0;
+        if (DwmDefWindowProc(hWnd, uMsg, wParam, lParam, &lRes))
+        {
+            return lRes;
+        }
+
+        POINT pt;
+        pt.x = GET_X_LPARAM(lParam);
+        pt.y = GET_Y_LPARAM(lParam);
         ScreenToClient(hWnd, &pt);
+
+        double dx = _this->dpi.x / 96.0, dy = _this->dpi.y / 96.0;
+        UINT diff = (int)(((_this->GUI_CAPTION_LINE_HEIGHT - 16) * dx) / 2.0);
+        RECT rc;
+        SetRect(&rc, diff, diff, diff + (int)(16.0 * dx), diff + (int)(16.0 * dy));
+        if (PtInRect(&rc, pt))
+        {
+            return HTCLIENT;
+        }
+
         if (pt.y < _this->extent.cyTopHeight)
         {
             return HTCAPTION;
         }
+    }
+    else if (uMsg == WM_NCCALCSIZE && wParam == TRUE && IsThemeActive())
+    {
+        NCCALCSIZE_PARAMS* sz = (NCCALCSIZE_PARAMS*)(lParam);
+        sz->rgrc[0].left += _this->border_thickness.left;
+        sz->rgrc[0].right -= _this->border_thickness.right;
+        sz->rgrc[0].bottom -= _this->border_thickness.bottom;
+        return 0;
     }
     else if (uMsg == WM_LBUTTONDOWN)
     {
@@ -1878,6 +2020,9 @@ static LRESULT CALLBACK GUI_WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
             rc->bottom - rc->top,
             SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOCOPYBITS
         );
+        RECT rcTitle;
+        DwmGetWindowAttribute(hWnd, DWMWA_CAPTION_BUTTON_BOUNDS, &rcTitle, sizeof(RECT));
+        _this->GUI_CAPTION_LINE_HEIGHT = (rcTitle.bottom - rcTitle.top) * (96.0 / _this->dpi.y);
         return 0;
     }
     else if (uMsg == WM_PAINT)
@@ -2057,7 +2202,7 @@ __declspec(dllexport) int ZZGUI(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLin
 
     WNDCLASS wc = { 0 };
     ZeroMemory(&wc, sizeof(WNDCLASSW));
-    wc.style = CS_DBLCLKS;
+    wc.style = 0;// CS_DBLCLKS;
     wc.lpfnWndProc = GUI_WindowProc;
     wc.hbrBackground = _this.hBackgroundBrush;
     wc.hInstance = hModule;
@@ -2066,7 +2211,7 @@ __declspec(dllexport) int ZZGUI(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLin
     HMODULE hShell32 = LoadLibraryExW(wszPath, NULL, LOAD_LIBRARY_AS_DATAFILE);
     if (hShell32)
     {
-        _this.hIcon = LoadIconW(hShell32, MAKEINTRESOURCEW(40));
+        _this.hIcon = LoadIconW(hShell32, MAKEINTRESOURCEW(40)); //40
         wc.hIcon = _this.hIcon;
     }
     RegisterClassW(&wc);
@@ -2142,7 +2287,7 @@ __declspec(dllexport) int ZZGUI(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLin
         {
             BOOL value = 1;
             DwmSetWindowAttribute(hwnd, DWMWA_MICA_EFFFECT, &value, sizeof(BOOL));
-            WTA_OPTIONS ops;
+            /*WTA_OPTIONS ops;
             ops.dwFlags = WTNCA_NODRAWCAPTION | WTNCA_NODRAWICON;
             ops.dwMask = WTNCA_NODRAWCAPTION | WTNCA_NODRAWICON;
             SetWindowThemeAttribute(
@@ -2150,7 +2295,7 @@ __declspec(dllexport) int ZZGUI(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLin
                 WTA_NONCLIENT,
                 &ops,
                 sizeof(WTA_OPTIONS)
-            );
+            );*/
         }
     }
     ShowWindow(hwnd, SW_SHOW);

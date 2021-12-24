@@ -33,12 +33,12 @@ extern HMODULE hModule;
 #define GUI_POSITION_WIDTH 367
 #define GUI_POSITION_HEIGHT 316
 #define GUI_WINDOWSWITCHER_THEME_CLASS "ControlPanelStyle"
-#define GUI_CAPTION_FONT_SIZE -22
+#define GUI_CAPTION_FONT_SIZE -12
 #define GUI_SECTION_FONT_SIZE -12
 #define GUI_SECTION_HEIGHT 32
 #define GUI_TITLE_FONT_SIZE -12
 #define GUI_LINE_HEIGHT 26
-#define GUI_CAPTION_LINE_HEIGHT 42
+#define GUI_CAPTION_LINE_HEIGHT_DEFAULT 42
 #define GUI_TEXTCOLOR RGB(0, 0, 0)
 #define GUI_TEXTCOLOR_SELECTED RGB(255, 0, 0)
 #define GUI_TEXTCOLOR_DARK RGB(240, 240, 240)
@@ -66,6 +66,10 @@ typedef struct _GUI
 	SIZE_T section;
 	DWORD dwStatusbarY;
 	HICON hIcon;
+	RECT border_thickness;
+	UINT GUI_CAPTION_LINE_HEIGHT;
+	long long LeftClickTime;
+	long long LastClickTime;
 } GUI;
 
 static HRESULT GUI_AboutProc(

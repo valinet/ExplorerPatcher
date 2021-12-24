@@ -464,13 +464,14 @@
 ;https://www.paypal.com/donate?business=valentingabrielradu%40gmail.com&no_recurring=0&item_name=ExplorerPatcher&currency_code=EUR
 ;y Frequently Asked Questions 🡕
 ;https://github.com/valinet/ExplorerPatcher/wiki/Frequently-asked-questions
+;u Restore default settings
+;reset
 
 
 ;f
-;t For settings marked with * to take effect, restart File Explorer. 
-;u Restart File Explorer
+;u Restart File Explorer (*)
 ;restart
-;u Restore default settings
-;reset
+;;u Restore default settings
+;;reset
 ;;u About ExplorerPatcher
 ;;about
