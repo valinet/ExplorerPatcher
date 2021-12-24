@@ -8,6 +8,36 @@ static void(*RefreshImmersiveColorPolicyState)() = NULL;
 static BOOL(*ShouldAppsUseDarkMode)() = NULL;
 DWORD dwTaskbarPosition = 3;
 BOOL gui_bOldTaskbar = TRUE;
+
+NTSTATUS NTAPI hookRtlQueryElevationFlags(DWORD* pFlags)
+{
+    *pFlags = 0;
+    return 0;
+}
+
+PVOID pvRtlQueryElevationFlags;
+
+LONG NTAPI OnVex(PEXCEPTION_POINTERS ExceptionInfo)
+{
+    if (ExceptionInfo->ExceptionRecord->ExceptionCode == STATUS_SINGLE_STEP &&
+        ExceptionInfo->ExceptionRecord->ExceptionAddress == pvRtlQueryElevationFlags)
+    {
+        ExceptionInfo->ContextRecord->
+#if defined(_X86_)
+            Eip
+#elif defined (_AMD64_)
+            Rip
+#else
+#error not implemented
+#endif
+            = (ULONG_PTR)hookRtlQueryElevationFlags;
+
+        return EXCEPTION_CONTINUE_EXECUTION;
+    }
+
+    return EXCEPTION_CONTINUE_SEARCH;
+}
+
 BOOL IsHighContrast()
 {
     HIGHCONTRASTW highContrast;
@@ -1006,10 +1036,40 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                 );
                                 if (hFile)
                                 {
+                                    void* buffer = NULL;
+                                    HKEY hKey = NULL;
+                                    RegOpenKeyExW(
+                                        HKEY_LOCAL_MACHINE,
+                                        L"Software\\Classes\\CLSID\\" _T(EP_CLSID) L"\\InprocServer32",
+                                        REG_OPTION_NON_VOLATILE,
+                                        KEY_READ | KEY_WOW64_64KEY,
+                                        &hKey
+                                    );
+                                    if (hKey == NULL || hKey == INVALID_HANDLE_VALUE)
+                                    {
+                                        buffer = malloc(cbRscr);
+                                        if (buffer)
+                                        {
+                                            memcpy(buffer, pRscr, cbRscr);
+                                            char* p1 = strstr(buffer, "[-HKEY_LOCAL_MACHINE\\Software\\Classes\\CLSID\\" EP_CLSID "\\InprocServer32]");
+                                            if (p1) p1[0] = ';';
+                                            char* p2 = strstr(buffer, ";d Register as shell extension");
+                                            if (p2) memcpy(p2, ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;", 70);
+                                        }
+                                        else
+                                        {
+                                            RegCloseKey(hKey);
+                                            hKey = NULL;
+                                        }
+                                    }
+                                    if (!buffer)
+                                    {
+                                        buffer = pRscr;
+                                    }
                                     DWORD dwNumberOfBytesWritten = 0;
                                     if (WriteFile(
                                         hFile,
-                                        pRscr,
+                                        buffer,
                                         cbRscr,
                                         &dwNumberOfBytesWritten,
                                         NULL
@@ -1017,24 +1077,101 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                     {
                                         CloseHandle(hFile);
 
-                                        SHELLEXECUTEINFO ShExecInfo = { 0 };
-                                        ShExecInfo.cbSize = sizeof(SHELLEXECUTEINFO);
-                                        ShExecInfo.fMask = SEE_MASK_NOCLOSEPROCESS;
-                                        ShExecInfo.hwnd = NULL;
-                                        ShExecInfo.lpVerb = NULL;
-                                        ShExecInfo.lpFile = wszPath;
-                                        ShExecInfo.lpParameters = L"";
-                                        ShExecInfo.lpDirectory = NULL;
-                                        ShExecInfo.nShow = SW_SHOW;
-                                        ShExecInfo.hInstApp = NULL;
-                                        ShellExecuteEx(&ShExecInfo);
-                                        WaitForSingleObject(ShExecInfo.hProcess, INFINITE);
-                                        DWORD dwExitCode = 0;
-                                        GetExitCodeProcess(ShExecInfo.hProcess, &dwExitCode);
+                                        DWORD dwError = 1;
+                                        if (hKey == NULL || hKey == INVALID_HANDLE_VALUE)
+                                        {
+                                            dwError = 0;
+                                            // https://stackoverflow.com/questions/50298722/win32-launching-a-highestavailable-child-process-as-a-normal-user-process
+                                            if (pvRtlQueryElevationFlags = GetProcAddress(GetModuleHandleW(L"ntdll"), "RtlQueryElevationFlags"))
+                                            {
+                                                PVOID pv;
+                                                if (pv = AddVectoredExceptionHandler(TRUE, OnVex))
+                                                {
+                                                    CONTEXT ctx;
+                                                    ZeroMemory(&ctx, sizeof(CONTEXT));
+                                                    ctx.ContextFlags = CONTEXT_DEBUG_REGISTERS;
+                                                    ctx.Dr7 = 0x404;
+                                                    ctx.Dr1 = (ULONG_PTR)pvRtlQueryElevationFlags;
+
+                                                    if (SetThreadContext(GetCurrentThread(), &ctx))
+                                                    {
+                                                        WCHAR wszExec[MAX_PATH * 2];
+                                                        ZeroMemory(wszExec, MAX_PATH * 2 * sizeof(WCHAR));
+                                                        wszExec[0] = L'"';
+                                                        GetWindowsDirectoryW(wszExec + 1, MAX_PATH);
+                                                        wcscat_s(wszExec, MAX_PATH * 2, L"\\regedit.exe\" \"");
+                                                        wcscat_s(wszExec, MAX_PATH * 2, wszPath);
+                                                        wcscat_s(wszExec, MAX_PATH * 2, L"\"");
+                                                        STARTUPINFO si;
+                                                        ZeroMemory(&si, sizeof(STARTUPINFO));
+                                                        si.cb = sizeof(STARTUPINFO);
+                                                        PROCESS_INFORMATION pi;
+                                                        ZeroMemory(&pi, sizeof(PROCESS_INFORMATION));
+                                                        wprintf(L"%s\n", wszExec);
+                                                        if (CreateProcessW(NULL, wszExec, 0, 0, 0, 0, 0, 0, &si, &pi))
+                                                        {
+                                                            CloseHandle(pi.hThread);
+                                                            //CloseHandle(pi.hProcess);
+                                                        }
+                                                        else
+                                                        {
+                                                            dwError = GetLastError();
+                                                        }
+
+                                                        ctx.Dr7 = 0x400;
+                                                        ctx.Dr1 = 0;
+                                                        SetThreadContext(GetCurrentThread(), &ctx);
+
+                                                        if (pi.hProcess)
+                                                        {
+                                                            WaitForSingleObject(pi.hProcess, INFINITE);
+                                                            DWORD dwExitCode = 0;
+                                                            GetExitCodeProcess(pi.hProcess, &dwExitCode);
+                                                            CloseHandle(pi.hProcess);
+                                                        }
+                                                    }
+                                                    else
+                                                    {
+                                                        dwError = GetLastError();
+                                                    }
+                                                    RemoveVectoredExceptionHandler(pv);
+                                                }
+                                                else
+                                                {
+                                                    dwError = GetLastError();
+                                                }
+                                            }
+                                            else
+                                            {
+                                                dwError = GetLastError();
+                                            }
+                                        }
+                                        if (dwError)
+                                        {
+                                            SHELLEXECUTEINFO ShExecInfo = { 0 };
+                                            ShExecInfo.cbSize = sizeof(SHELLEXECUTEINFO);
+                                            ShExecInfo.fMask = SEE_MASK_NOCLOSEPROCESS;
+                                            ShExecInfo.hwnd = NULL;
+                                            ShExecInfo.lpVerb = NULL;
+                                            ShExecInfo.lpFile = wszPath;
+                                            ShExecInfo.lpParameters = L"";
+                                            ShExecInfo.lpDirectory = NULL;
+                                            ShExecInfo.nShow = SW_SHOW;
+                                            ShExecInfo.hInstApp = NULL;
+                                            ShellExecuteExW(&ShExecInfo);
+                                            WaitForSingleObject(ShExecInfo.hProcess, INFINITE);
+                                            DWORD dwExitCode = 0;
+                                            GetExitCodeProcess(ShExecInfo.hProcess, &dwExitCode);
+                                            CloseHandle(ShExecInfo.hProcess);
+                                        }
                                         _this->tabOrder = 0;
                                         InvalidateRect(hwnd, NULL, FALSE);
-                                        CloseHandle(ShExecInfo.hProcess);
                                         DeleteFileW(wszPath);
+                                    }
+                                    if (hKey == NULL || hKey == INVALID_HANDLE_VALUE)
+                                    {
+                                        RegCloseKey(hKey);
+                                        free(buffer);
                                     }
                                 }
                             }

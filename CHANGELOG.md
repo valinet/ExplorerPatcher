@@ -46,6 +46,7 @@ Tested on OS build 22000.376.
   * The clock flyouts now display correctly when using this taskbar
   * Fixed a bug that displayed wrong window previews when the combine taskbar buttons option was set to never combine (#564) (.17)
   * Possibility to set position on screen (top/bottom) from the Properties UI
+* Restoring default settings only asks for elevation if required (for the moment, only if you have registered the application as shell extension) (.18)
 
 
 #### Simple Window Switcher
