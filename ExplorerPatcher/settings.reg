@@ -93,6 +93,7 @@
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
 ;b Show seconds in the clock
 "ShowSecondsInSystemClock"=dword:00000000
+[HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;b Hide Control Center button *
 "HideControlCenterButton"=dword:00000000
 ;a Choosing 'Open Network && Internet settings' when right clicking the
