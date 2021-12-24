@@ -33,7 +33,7 @@ That's it. It's that simple.
 * Learn how to manage updates and what to expect from new versions and new Windows builds [here](https://github.com/valinet/ExplorerPatcher/wiki/Configure-updates)
 * Have a question? Consult the [FAQ](https://github.com/valinet/ExplorerPatcher/wiki/Frequently-asked-questions)
 * Even more questions? Open a thread in [Discussions](https://github.com/valinet/ExplorerPatcher/discussions)
-* Found a bug or have an issue with the application? Carefully look through previous threads for something similar, or open a new topic in [Issues](https://github.com/valinet/ExplorerPatcher/issues)
+* Found a bug or have an issue with the application? Carefully look through previous threads for something similar, or open a new topic in [Discussions](https://github.com/valinet/ExplorerPatcher/discussions)
 * I highly encourage you to check out the source code and tinker with it. I am open to merging new features, enhancements and fixes; also, I think it provides a good insight on topics of interests in this area.
 
 ## Known issues
