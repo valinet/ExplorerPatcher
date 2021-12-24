@@ -16,23 +16,11 @@
 ;shell:::{05d7b0f4-2121-4eff-bf6b-ed3f69b894d9}
 ;y Customize system icons in the notification area 🡕
 ;shell:::{05d7b0f4-2121-4eff-bf6b-ed3f69b894d9}\SystemIcons
-;t The following settings only apply to the Windows 10 taskbar:                          
 ;;[HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;;c 2 Start button style *
 ;;x 0 Windows 10 (default)
 ;;x 1 Windows 11
 ;;"OrbStyle"=dword:00000000
-[HKEY_CURRENT_USER\Software\ExplorerPatcher]
-;c 3 Combine taskbar icons on primary taskbar
-;x 0 Always combine
-;x 1 Combine when taskbar is full
-;x 2 Never combine (default)
-"TaskbarGlomLevel"=dword:00000002
-;c 3 Combine taskbar icons on secondary taskbar(s)
-;x 0 Always combine
-;x 1 Combine when taskbar is full
-;x 2 Never combine (default)
-"MMTaskbarGlomLevel"=dword:00000002
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;c 4 Primary taskbar location on screen *
 ;x 3 Bottom (default)
@@ -47,11 +35,7 @@
 ;x 2 Right
 "Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_MMTaskbarPosition"=dword:00000003
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
-;c 2 Taskbar icon size
-;x 1 Small
-;x 0 Large (default)
-"TaskbarSmallIcons"=dword:00000000
-;c 3 Cortana button should be
+;c 3 Extra button should be
 ;x 0 Hidden (default)
 ;x 2 Shown and open Cortana
 ;x 1 Shown and open Widgets
@@ -62,23 +46,35 @@
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
 ;b Show Task view button
 "ShowTaskViewButton"=dword:00000001
-[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\People]
-;b Show People on the taskbar
-"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_PeopleBand"=dword:00000000
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
 ;b Show Desktop button
 "TaskbarSD"=dword:00000001
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
-;b Show separators between toolbars *
-"ToolbarSeparators"=dword:00000000
-[HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;b Automatically hide the taskbar
 "Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_AutoHideTaskbar"=dword:00000000
+;t The following settings only apply to the Windows 10 taskbar:                          
+[HKEY_CURRENT_USER\Software\ExplorerPatcher]
+;c 3 Combine taskbar icons on primary taskbar
+;x 0 Always combine
+;x 1 Combine when taskbar is full
+;x 2 Never combine (default)
+"TaskbarGlomLevel"=dword:00000002
+;c 3 Combine taskbar icons on secondary taskbar(s)
+;x 0 Always combine
+;x 1 Combine when taskbar is full
+;x 2 Never combine (default)
+"MMTaskbarGlomLevel"=dword:00000002
+[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
+;c 2 Taskbar icon size
+;x 1 Small
+;x 0 Large (default)
+"TaskbarSmallIcons"=dword:00000000
+[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\People]
+;b Show People on the taskbar
+"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_PeopleBand"=dword:00000000
+
 
 ;T System tray
-[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
-;b Show seconds in the clock
-"ShowSecondsInSystemClock"=dword:00000000
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;b Skin taskbar and tray pop-up menus
 "SkinMenus"=dword:00000001
@@ -86,22 +82,26 @@
 "CenterMenus"=dword:00000001
 ;b Flyout behavior for tray icon pop-up menus
 "FlyoutMenus"=dword:00000001
-;b Hide Control Center button *
-"HideControlCenterButton"=dword:00000000
-;p 2
-;b Apply Windows 11 style to system tray icons *
-"SkinIcons"=dword:00000001
 [HKEY_CURRENT_USER\Software\Microsoft\TabletTip\1.7]
 ;b Show touch keyboard button *
 "TipbandDesiredVisibility"=dword:00000000
+;t The following settings only apply to the Windows 10 taskbar:
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
+;p 2
+;b Apply Windows 11 style to system tray icons *
+"SkinIcons"=dword:00000001
+[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
+;b Show seconds in the clock
+"ShowSecondsInSystemClock"=dword:00000000
+;b Hide Control Center button *
+"HideControlCenterButton"=dword:00000000
 ;a Choosing 'Open Network && Internet settings' when right clicking the
 ;c 3 network icon should open:
 ;x 0 Network section in the Settings app (default)
 ;x 1 Network and Sharing Center in Control Panel
 ;x 2 Network Connections in Control Panel
 "ReplaceNetwork"=dword:00000000
-;t When clicking a system icon in the tray, open:
+;t When clicking a system icon in the Windows 10 taskbar system tray, open:
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Control Panel\Settings\Network]
 ;c 7 Network
 ;x 6 Control Center
@@ -164,7 +164,6 @@
 [-HKEY_LOCAL_MACHINE\Software\Classes\CLSID\{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}\InprocServer32]
 ;d Register as shell extension
 @="{64bc32b5-4eec-4de7-972d-bd8bd0324537}"
-;t ________________________
 ;e For the settings marked with (**) to work in Open/Save file dialogs as well, register
 ;e this utility as shell extension using the option above.
 ;y Learn more 🡕
@@ -341,7 +340,6 @@
 ;x 400 400 ms
 ;x 500 500 ms
 "ShowDelay"=dword:00000064
-;t ________________________
 ;y Learn more about Simple Window Switcher 🡕
 ;https://github.com/valinet/ExplorerPatcher/wiki/Simple-Window-Switcher
 
@@ -353,6 +351,8 @@
 "ClockFlyoutOnWinC"=dword:00000000
 ;b Toggle Windows 10 taskbar auto-hide by double clicking on the main taskbar
 "TaskbarAutohideOnDoubleClick"=dword:00000000
+;b Show separators between taskbar toolbars *
+"ToolbarSeparators"=dword:00000000
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
 ;b Show Command Prompt instead of PowerShell in Win+X menu *
 "DontUsePowerShellOnWinX"=dword:00000000
@@ -396,7 +396,6 @@
 "UpdatePolicy"=dword:00000001
 ;b Receive pre-release versions, if available (not recommended)
 "UpdatePreferStaging"=dword:00000000
-;t ________________________
 ;y Check for updates
 ;;;EP_CHECK_FOR_UPDATES
 ;y Update program and restart File Explorer
@@ -441,7 +440,6 @@
 ;x 8000 8 seconds
 ;x 10000 10 seconds
 "ExplorerReadyDelay"=dword:00000000
-;t ________________________
 ;e Only change these settings after reading the documentation about them.
 ;y Learn more 🡕
 ;https://github.com/valinet/ExplorerPatcher/wiki/About-advanced-settings
