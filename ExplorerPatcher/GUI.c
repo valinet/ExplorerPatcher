@@ -1214,6 +1214,24 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                         if (d) *d = 0;
                         wchar_t* p = wcschr(name, L'"');
                         if (p) *p = 0;
+                        BOOL bShouldAlterTaskbarDa = FALSE;
+                        if (!wcscmp(name, L"TaskbarDa"))
+                        {
+                            if (!gui_bOldTaskbar)
+                            {
+                                MENUITEMINFOA menuInfo;
+                                ZeroMemory(&menuInfo, sizeof(MENUITEMINFOA));
+                                menuInfo.cbSize = sizeof(MENUITEMINFOA);
+                                menuInfo.fMask = MIIM_DATA;
+                                GetMenuItemInfoA(hMenu, 3, FALSE, &menuInfo);
+                                if (menuInfo.dwItemData)
+                                {
+                                    free(menuInfo.dwItemData);
+                                }
+                                RemoveMenu(hMenu, 3, MF_BYCOMMAND);
+                                bShouldAlterTaskbarDa = TRUE;
+                            }
+                        }
                         if (!wcscmp(name, L"Virtualized_" _T(EP_CLSID) L"_TaskbarPosition") || !wcscmp(name, L"Virtualized_" _T(EP_CLSID) L"_MMTaskbarPosition"))
                         {
                             if (!gui_bOldTaskbar)
@@ -1342,15 +1360,17 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                             ZeroMemory(&menuInfo, sizeof(MENUITEMINFOW));
                             menuInfo.cbSize = sizeof(MENUITEMINFOW);
                             menuInfo.fMask = MIIM_STRING;
-                            GetMenuItemInfoW(hMenu, value + 1, FALSE, &menuInfo);
+                            int vvv = value + 1;
+                            if (bShouldAlterTaskbarDa && vvv == 3) vvv = 2;
+                            GetMenuItemInfoW(hMenu, vvv, FALSE, &menuInfo);
                             menuInfo.cch += 1;
                             menuInfo.dwTypeData = text + wcslen(text);
-                            GetMenuItemInfoW(hMenu, value + 1, FALSE, &menuInfo);
+                            GetMenuItemInfoW(hMenu, vvv, FALSE, &menuInfo);
                             ZeroMemory(&menuInfo, sizeof(MENUITEMINFOW));
                             menuInfo.cbSize = sizeof(MENUITEMINFOW);
                             menuInfo.fMask = MIIM_STATE;
                             menuInfo.fState = MFS_CHECKED;
-                            SetMenuItemInfo(hMenu, value + 1, FALSE, &menuInfo);
+                            SetMenuItemInfo(hMenu, vvv, FALSE, &menuInfo);
                         }
                         if (hDC && !bInvert && !bBool && !bJustCheck)
                         {
