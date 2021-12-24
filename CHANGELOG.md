@@ -37,6 +37,16 @@ Tested on OS build 22000.376.
 * Safeguards to prevent malicious executions on update mechanism hijacks for systems where User Account Control is disabled (#567) (.13)
 * Option to prevent certain Control Panel links from being redirected to the Settings app (.14), including in build 22523 (.15)
 * Settings are now stored in `HKEY_CURRENT_USER\Software\ExplorerPatcher` so that Windows does not reset them anymore across major OS updates (#576) (.16)
+* Improved Properties UI layout by reducing wasted space and eliminating redundant elements (#590) (.17)
+* Support for the `Win`+`Alt`+`D` shortcut to activate the clock flyout, as in Windows 10 (#591) (.17)
+* Fixes for Windows 11 taskbar:
+  * As shipped by Microsoft, a taskbar displayed on a secondary monitor does not react when the mouse is over it and auto hide is on; fixed this (#589) (.17)
+  * As shipped by Microsoft, under certain circumstances, the main taskbar does not show its system tray when `explorer` starts up and auto hide is on; fixed this (.17)
+  * As shipped by Microsoft, a taskbar displayed on a secondary monitor might display a wrong contextual menu when auto hide is on; fixed this (.17)
+  * The clock flyouts now display correctly when using this taskbar
+  * Fixed a bug that displayed wrong window previews when the combine taskbar buttons option was set to never combine (#564) (.17)
+  * Possibility to set position on screen (top/bottom) from the Properties UI
+
 
 #### Simple Window Switcher
 
