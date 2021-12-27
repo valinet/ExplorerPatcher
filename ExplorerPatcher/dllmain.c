@@ -40,6 +40,7 @@
 #define POPUPMENU_BLUETOOTH_TIMEOUT 700
 #define POPUPMENU_PNIDUI_TIMEOUT 300
 #define POPUPMENU_SNDVOLSSO_TIMEOUT 300
+#define POPUPMENU_INPUTSWITCH_TIMEOUT 700
 #define POPUPMENU_EX_ELAPSED 300
 
 BOOL bIsExplorerProcess = FALSE;
@@ -2693,6 +2694,60 @@ BOOL bthprops_TrackPopupMenuExHook(
     }
     return b;
 }
+long long inputswitch_TrackPopupMenuExElapsed = 0;
+BOOL inputswitch_TrackPopupMenuExHook(
+    HMENU       hMenu,
+    UINT        uFlags,
+    int         x,
+    int         y,
+    HWND        hWnd,
+    LPTPMPARAMS lptpm
+)
+{
+    long long elapsed = milliseconds_now() - inputswitch_TrackPopupMenuExElapsed;
+    BOOL b = FALSE;
+    if (elapsed > POPUPMENU_INPUTSWITCH_TIMEOUT || !bFlyoutMenus)
+    {
+        if (bCenterMenus)
+        {
+            PopupMenuAdjustCoordinatesAndFlags(&x, &y, &uFlags);
+        }
+        IsImmersiveMenu = FALSE;
+        if (!bSkinMenus)
+        {
+            EnumPropsA(hWnd, CheckIfImmersiveContextMenu);
+            if (IsImmersiveMenu)
+            {
+                if (ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc)
+                {
+                    POINT pt;
+                    pt.x = x;
+                    pt.y = y;
+                    ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc(
+                        hMenu,
+                        hWnd,
+                        &(pt)
+                    );
+                }
+                else
+                {
+                    RemoveOwnerDrawFromMenu(0, hMenu);
+                }
+            }
+            IsImmersiveMenu = FALSE;
+        }
+        b = TrackPopupMenuEx(
+            hMenu,
+            uFlags | TPM_RIGHTBUTTON,
+            x,
+            y,
+            hWnd,
+            lptpm
+        );
+        inputswitch_TrackPopupMenuExElapsed = milliseconds_now();
+    }
+    return b;
+}
 #endif
 #pragma endregion
 
@@ -2883,7 +2938,6 @@ HRESULT stobject_CoCreateInstanceHook(
 }
 #endif
 #pragma endregion
-
 
 
 #pragma region "Show WiFi networks on network icon click"
@@ -5928,6 +5982,7 @@ BOOL explorer_SetRect(LPRECT lprc, int xLeft, int yTop, int xRight, int yBottom)
 }
 #pragma endregion
 
+
 DWORD InjectBasicFunctions(BOOL bIsExplorer, BOOL bInstall)
 {
     //Sleep(150);
@@ -6508,6 +6563,7 @@ DWORD Inject(BOOL bIsExplorer)
     printf("Setup twinui.pcshell functions done\n");
 
 
+
     HANDLE hStobject = LoadLibraryW(L"stobject.dll");
     VnPatchIAT(hStobject, "api-ms-win-core-registry-l1-1-0.dll", "RegGetValueW", stobject_RegGetValueW);
     VnPatchIAT(hStobject, "api-ms-win-core-com-l1-1-0.dll", "CoCreateInstance", stobject_CoCreateInstanceHook);
@@ -6548,7 +6604,6 @@ DWORD Inject(BOOL bIsExplorer)
 
 
 
-
     HANDLE hSndvolsso = LoadLibraryW(L"sndvolsso.dll");
     VnPatchIAT(hSndvolsso, "user32.dll", "TrackPopupMenuEx", sndvolsso_TrackPopupMenuExHook);
     VnPatchIAT(hSndvolsso, "api-ms-win-core-registry-l1-1-0.dll", "RegGetValueW", sndvolsso_RegGetValueW);
@@ -6559,8 +6614,6 @@ DWORD Inject(BOOL bIsExplorer)
     }
 #endif
     printf("Setup sndvolsso functions done\n");
-
-
 
 
 
@@ -6599,8 +6652,17 @@ DWORD Inject(BOOL bIsExplorer)
             }
         }
     }
+    printf("Setup shell32 functions done\n");
 
 
+
+    HANDLE hInputSwitch = LoadLibraryW(L"InputSwitch.dll");
+    printf("[IME] Context menu patch status: %d\n", PatchContextMenuOfNewMicrosoftIME(NULL));
+    if (hInputSwitch)
+    {
+        VnPatchIAT(hInputSwitch, "user32.dll", "TrackPopupMenuEx", inputswitch_TrackPopupMenuExHook);
+        printf("Setup inputswitch functions done\n");
+    }
 
 
 
@@ -6611,6 +6673,7 @@ DWORD Inject(BOOL bIsExplorer)
         return rv;
     }
     printf("Installed hooks.\n");
+
 
 
 

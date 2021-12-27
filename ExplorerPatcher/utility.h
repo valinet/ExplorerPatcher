@@ -475,4 +475,50 @@ inline BOOL IncrementDLLReferenceCount(HINSTANCE hinst)
         hinst,
         &hMod);
 }
+
+inline BOOL WINAPI PatchContextMenuOfNewMicrosoftIME(BOOL* bFound)
+{
+    // huge thanks to @Simplestas: https://github.com/valinet/ExplorerPatcher/issues/598
+    if (bFound) *bFound = FALSE;
+    const DWORD patch_from = 0x50653844, patch_to = 0x54653844; // cmp byte ptr [rbp+50h], r12b
+    HMODULE hInputSwitch = NULL;
+    if (!GetModuleHandleExW(0, L"InputSwitch.dll", &hInputSwitch))
+    {
+        return FALSE;
+    }
+    PIMAGE_DOS_HEADER dosHeader = (PIMAGE_DOS_HEADER)hInputSwitch;
+    PIMAGE_NT_HEADERS pNTHeader = (PIMAGE_NT_HEADERS)((DWORD_PTR)dosHeader + dosHeader->e_lfanew);
+    PIMAGE_SECTION_HEADER pSectionHeader = (PIMAGE_SECTION_HEADER)(pNTHeader + 1);
+    char* mod = 0;
+    int i;
+    for (i = 0; i < pNTHeader->FileHeader.NumberOfSections; i++)
+    {
+        //if (strcmp((char*)pSectionHeader[i].Name, ".text") == 0)
+        if ((pSectionHeader[i].Characteristics & IMAGE_SCN_CNT_CODE) && pSectionHeader[i].SizeOfRawData)
+        {
+            mod = (char*)dosHeader + pSectionHeader[i].VirtualAddress;
+            break;
+        }
+    }
+    if (!mod)
+    {
+        return FALSE;
+    }
+    for (size_t off = 0; off < pSectionHeader[i].Misc.VirtualSize - sizeof(DWORD); ++off)
+    {
+        DWORD* ptr = (DWORD*)(mod + off);
+        if (*ptr == patch_from)
+        {
+            if (bFound) *bFound = TRUE;
+            DWORD prot;
+            if (VirtualProtect(ptr, sizeof(DWORD), PAGE_EXECUTE_READWRITE, &prot))
+            {
+                *ptr = patch_to;
+                VirtualProtect(ptr, sizeof(DWORD), prot, &prot);
+            }
+            break;
+        }
+    }
+    return TRUE;
+}
 #endif
