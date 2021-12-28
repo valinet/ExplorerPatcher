@@ -70,6 +70,7 @@ typedef struct _GUI
 	UINT GUI_CAPTION_LINE_HEIGHT;
 	long long LeftClickTime;
 	long long LastClickTime;
+	HMODULE hExplorerFrame;
 } GUI;
 
 static HRESULT GUI_AboutProc(

@@ -834,9 +834,9 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                         //}
                         //else
                         //{
-                            HMODULE hExplorerFrame = LoadLibraryExW(L"ExplorerFrame.dll", NULL, LOAD_LIBRARY_AS_DATAFILE);
-                            LoadStringW(hExplorerFrame, 50222, text, 260);
-                            FreeLibrary(hExplorerFrame);
+                            //HMODULE hExplorerFrame = LoadLibraryExW(L"ExplorerFrame.dll", NULL, LOAD_LIBRARY_AS_DATAFILE);
+                            LoadStringW(_this->hExplorerFrame, 50222, text, 260);
+                            //FreeLibrary(hExplorerFrame);
                             wchar_t* p = wcschr(text, L'(');
                             if (p)
                             {
@@ -2472,6 +2472,7 @@ __declspec(dllexport) int ZZGUI(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLin
     _this.section = 0;
     _this.dwStatusbarY = 0;
     _this.hIcon = NULL;
+    _this.hExplorerFrame = NULL;
 
     ZeroMemory(
         wszPath,
@@ -2504,24 +2505,30 @@ __declspec(dllexport) int ZZGUI(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLin
     RegisterClassW(&wc);
 
     TCHAR title[260];
-    HMODULE hExplorerFrame = LoadLibraryExW(L"ExplorerFrame.dll", NULL, LOAD_LIBRARY_AS_DATAFILE);
-    LoadStringW(hExplorerFrame, 50222, title, 260); // 726 = File Explorer
-    FreeLibrary(hExplorerFrame);
-    wchar_t* p = wcschr(title, L'(');
-    if (p)
+    _this.hExplorerFrame = LoadLibraryExW(L"ExplorerFrame.dll", NULL, LOAD_LIBRARY_AS_DATAFILE);
+    if (_this.hExplorerFrame)
     {
-        p--;
-        if (p == L' ')
+        LoadStringW(_this.hExplorerFrame, 50222, title, 260); // 726 = File Explorer
+        wchar_t* p = wcschr(title, L'(');
+        if (p)
         {
-            *p = 0;
+            p--;
+            if (p == L' ')
+            {
+                *p = 0;
+            }
+            else
+            {
+                p++;
+                *p = 0;
+            }
         }
-        else
+        if (title[0] == 0)
         {
-            p++;
-            *p = 0;
+            LoadStringW(hModule, IDS_PRODUCTNAME, title, 260);
         }
     }
-    if (title[0] == 0)
+    else
     {
         LoadStringW(hModule, IDS_PRODUCTNAME, title, 260);
     }
@@ -2596,6 +2603,11 @@ __declspec(dllexport) int ZZGUI(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLin
     {
         TranslateMessage(&msg);
         DispatchMessage(&msg);
+    }
+
+    if (_this.hExplorerFrame)
+    {
+        FreeLibrary(_this.hExplorerFrame);
     }
 
     if (hShell32)

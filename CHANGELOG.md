@@ -48,6 +48,7 @@ Tested on OS build 22000.376.
   * Possibility to set position on screen (top/bottom) from the Properties UI
 * Restoring default settings only asks for elevation if required (for the moment, only if you have registered the application as shell extension) (.18)
 * Fixed the context menu not working (and a potential associated crash) of the new Microsoft IME (#598, #588) (.19) (huge thanks to @Simplestas)
+* GUI: Lock `ExplorerFrame` into memory (.20)
 
 
 #### Simple Window Switcher
