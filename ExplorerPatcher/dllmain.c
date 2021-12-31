@@ -3983,6 +3983,43 @@ void WINAPI LoadSettings(LPARAM lParam)
                         sizeof(DWORD)
                     );
                     RegDeleteKeyExW(hKey, TEXT(STARTDOCKED_SB_NAME), KEY_WOW64_64KEY, 0);
+                    DWORD dwTaskbarGlomLevel = 0, dwMMTaskbarGlomLevel = 0;
+                    dwSize = sizeof(DWORD);
+                    RegGetValueW(
+                        HKEY_CURRENT_USER,
+                        L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
+                        L"TaskbarGlomLevel",
+                        REG_DWORD,
+                        NULL,
+                        &dwTaskbarGlomLevel,
+                        &dwSize
+                    );
+                    RegSetValueExW(
+                        hKey,
+                        TEXT("TaskbarGlomLevel"),
+                        0,
+                        REG_DWORD,
+                        &dwTaskbarGlomLevel,
+                        sizeof(DWORD)
+                    );
+                    dwSize = sizeof(DWORD);
+                    RegGetValueW(
+                        HKEY_CURRENT_USER,
+                        L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
+                        L"MMTaskbarGlomLevel",
+                        REG_DWORD,
+                        NULL,
+                        &dwMMTaskbarGlomLevel,
+                        &dwSize
+                    );
+                    RegSetValueExW(
+                        hKey,
+                        TEXT("MMTaskbarGlomLevel"),
+                        0,
+                        REG_DWORD,
+                        &dwMMTaskbarGlomLevel,
+                        sizeof(DWORD)
+                    );
                 }
             }
             dwTemp = TRUE;

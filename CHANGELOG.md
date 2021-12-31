@@ -9,6 +9,7 @@ Tested on OS build 22000.376.
 #### Highlights
 
 * Built-in support for OS build 22000.376 (.12)
+* Hotfix: Windows 10 taskbar "always combine"/"show labels" setting is properly preserved when upgrading from an older release (multiple reports, #612, #614) (.21)
 * Primary taskbar remembers position when moved to a secondary monitor (multiple issues, like #504)
 * Ability to set Control Center as network icon action (merged #492)
 * Added possibility to use the original Windows 10 (Alt-Tab) window switcher; thus, the available options are now:
@@ -59,7 +60,6 @@ Tested on OS build 22000.376.
 * Improved reliability of startup delay and window dismiss when quickly Alt-Tabbing
 * Window icons are retrieved async now
 * Better icon drawing using GDI+ flat API
-* Reversed UWP apps detection to checking whether the executable is called ApplicationFrameHost.exe
 * Added some more debug messages
 * Fixed some rendering problems when themes are disabled
 * Fixed regression of [#161](https://github.com/valinet/ExplorerPatcher/issues/161#issuecomment-986234002) (.1)
