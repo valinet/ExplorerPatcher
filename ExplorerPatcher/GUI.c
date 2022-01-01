@@ -2196,7 +2196,14 @@ static LRESULT CALLBACK GUI_WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
         {
             int xPos = GET_X_LPARAM(lParam);
             int yPos = GET_Y_LPARAM(lParam);
-            TrackPopupMenu(pSysMenu, TPM_LEFTALIGN | TPM_LEFTBUTTON | TPM_RIGHTBUTTON, xPos, yPos, NULL, hWnd, 0);
+            EnableMenuItem(pSysMenu, SC_RESTORE, MF_GRAYED);
+            EnableMenuItem(pSysMenu, SC_SIZE, MF_GRAYED);
+            EnableMenuItem(pSysMenu, SC_MAXIMIZE, MF_GRAYED);
+            BOOL cmd = TrackPopupMenu(pSysMenu, TPM_LEFTALIGN | TPM_LEFTBUTTON | TPM_RIGHTBUTTON | TPM_RETURNCMD, xPos, yPos, NULL, hWnd, 0);
+            if (cmd)
+            {
+                PostMessageW(hWnd, WM_SYSCOMMAND, cmd, 0);
+            }
         }
         return 0;
     }
@@ -2238,7 +2245,14 @@ static LRESULT CALLBACK GUI_WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
                             pt.y = _this->GUI_CAPTION_LINE_HEIGHT * dy;
                         }
                         ClientToScreen(hWnd, &pt);
-                        TrackPopupMenu(pSysMenu, TPM_LEFTALIGN | TPM_LEFTBUTTON | TPM_RIGHTBUTTON, pt.x, pt.y, NULL, hWnd, 0);
+                        EnableMenuItem(pSysMenu, SC_RESTORE, MF_GRAYED);
+                        EnableMenuItem(pSysMenu, SC_SIZE, MF_GRAYED);
+                        EnableMenuItem(pSysMenu, SC_MAXIMIZE, MF_GRAYED);
+                        BOOL cmd = TrackPopupMenu(pSysMenu, TPM_LEFTALIGN | TPM_LEFTBUTTON | TPM_RIGHTBUTTON | TPM_RETURNCMD, pt.x, pt.y, NULL, hWnd, 0);
+                        if (cmd)
+                        {
+                            PostMessageW(hWnd, WM_SYSCOMMAND, cmd, 0);
+                        }
                         if (uMsg == WM_LBUTTONUP)
                         {
                             _this->LastClickTime = milliseconds_now();
