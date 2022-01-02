@@ -175,7 +175,7 @@ __declspec(dllexport) CALLBACK ZZTestBalloon(HWND hWnd, HINSTANCE hInstance, LPS
 }
 
 const wchar_t TestToastXML[] =
-L"<toast displayTimestamp=\"2021-08-29T00:00:00.000Z\" scenario=\"reminder\" "
+L"<toast scenario=\"reminder\" "
 L"activationType=\"protocol\" launch=\"https://github.com/valinet/ExplorerPatcher\" duration=\"%s\">\r\n"
 L"	<visual>\r\n"
 L"		<binding template=\"ToastGeneric\">\r\n"

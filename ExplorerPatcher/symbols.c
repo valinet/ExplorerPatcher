@@ -20,7 +20,7 @@ const char* startdocked_SN[STARTDOCKED_SB_CNT] = {
 };
 
 const wchar_t DownloadSymbolsXML[] =
-L"<toast displayTimestamp=\"2021-08-29T00:00:00.000Z\" scenario=\"reminder\" "
+L"<toast scenario=\"reminder\" "
 L"activationType=\"protocol\" launch=\"https://github.com/valinet/ExplorerPatcher\" duration=\"short\">\r\n"
 L"	<visual>\r\n"
 L"		<binding template=\"ToastGeneric\">\r\n"
@@ -33,7 +33,7 @@ L"	<audio src=\"ms-winsoundevent:Notification.Default\" loop=\"false\" silent=\"
 L"</toast>\r\n";
 
 const wchar_t DownloadOKXML[] =
-L"<toast displayTimestamp=\"2021-08-29T01:00:00.000Z\" scenario=\"reminder\" "
+L"<toast scenario=\"reminder\" "
 L"activationType=\"protocol\" launch=\"https://github.com/valinet/ExplorerPatcher\" duration=\"long\">\r\n"
 L"	<visual>\r\n"
 L"		<binding template=\"ToastGeneric\">\r\n"
@@ -46,7 +46,7 @@ L"	<audio src=\"ms-winsoundevent:Notification.Default\" loop=\"false\" silent=\"
 L"</toast>\r\n";
 
 const wchar_t InstallOK[] =
-L"<toast displayTimestamp=\"2021-08-29T01:00:00.000Z\" scenario=\"reminder\" "
+L"<toast scenario=\"reminder\" "
 L"activationType=\"protocol\" launch=\"https://github.com/valinet/ExplorerPatcher\" duration=\"long\">\r\n"
 L"	<visual>\r\n"
 L"		<binding template=\"ToastGeneric\">\r\n"

@@ -655,7 +655,7 @@ BOOL ShowUpdateSuccessNotification(
 
     __x_ABI_CWindows_CData_CXml_CDom_CIXmlDocument* inputXml = NULL;
     const wchar_t text[] =
-        L"<toast displayTimestamp=\"2021-08-29T00:00:00.000Z\" scenario=\"reminder\" "
+        L"<toast scenario=\"reminder\" "
         L"activationType=\"protocol\" launch=\"" _T(UPDATES_RELEASE_INFO_URL) L"\" duration=\"short\">\r\n"
         L"	<visual>\r\n"
         L"		<binding template=\"ToastGeneric\">\r\n"
@@ -746,7 +746,7 @@ BOOL InstallUpdatesIfAvailable(
     if (dwOperation == UPDATES_OP_INSTALL)
     {
         const wchar_t text[] =
-            L"<toast displayTimestamp=\"2021-08-29T00:00:00.000Z\" scenario=\"reminder\" "
+            L"<toast scenario=\"reminder\" "
             L"activationType=\"protocol\" launch=\"" _T(UPDATES_RELEASE_INFO_URL) L"\" duration=\"long\">\r\n"
             L"	<visual>\r\n"
             L"		<binding template=\"ToastGeneric\">\r\n"
@@ -768,7 +768,7 @@ BOOL InstallUpdatesIfAvailable(
     else if (dwOperation == UPDATES_OP_CHECK)
     {
         const wchar_t text[] =
-            L"<toast displayTimestamp=\"2021-08-29T00:00:00.000Z\" scenario=\"reminder\" "
+            L"<toast scenario=\"reminder\" "
             L"activationType=\"protocol\" launch=\"" _T(UPDATES_RELEASE_INFO_URL) L"\" duration=\"long\">\r\n"
             L"	<visual>\r\n"
             L"		<binding template=\"ToastGeneric\">\r\n"
@@ -834,7 +834,7 @@ BOOL InstallUpdatesIfAvailable(
                 if (dwOperation == UPDATES_OP_INSTALL)
                 {
                     const wchar_t text[] =
-                        L"<toast displayTimestamp=\"2021-08-29T00:00:00.000Z\" scenario=\"reminder\" "
+                        L"<toast scenario=\"reminder\" "
                         L"activationType=\"protocol\" launch=\"" _T(UPDATES_RELEASE_INFO_URL) L"\" duration=\"short\">\r\n"
                         L"	<visual>\r\n"
                         L"		<binding template=\"ToastGeneric\">\r\n"
@@ -881,7 +881,7 @@ BOOL InstallUpdatesIfAvailable(
         else if ((dwOperation == UPDATES_OP_DEFAULT && dwUpdatePolicy == UPDATE_POLICY_NOTIFY) || (dwOperation == UPDATES_OP_CHECK))
         {
             const wchar_t text[] =
-                L"<toast displayTimestamp=\"2021-08-29T00:00:00.000Z\" scenario=\"reminder\" "
+                L"<toast scenario=\"reminder\" "
                 L"activationType=\"protocol\" launch=\"%s\" duration=\"long\">\r\n"
                 L"	<visual>\r\n"
                 L"		<binding template=\"ToastGeneric\">\r\n"
@@ -938,7 +938,7 @@ BOOL InstallUpdatesIfAvailable(
         if (dwOperation == UPDATES_OP_CHECK || dwOperation == UPDATES_OP_INSTALL)
         {
             const wchar_t text[] =
-                L"<toast displayTimestamp=\"2021-08-29T00:00:00.000Z\" scenario=\"reminder\" "
+                L"<toast scenario=\"reminder\" "
                 L"activationType=\"protocol\" launch=\"" _T(UPDATES_RELEASE_INFO_URL) L"\" duration=\"short\">\r\n"
                 L"	<visual>\r\n"
                 L"		<binding template=\"ToastGeneric\">\r\n"
@@ -950,7 +950,7 @@ BOOL InstallUpdatesIfAvailable(
                 L"	<audio src=\"ms-winsoundevent:Notification.Default\" loop=\"false\" silent=\"false\"/>\r\n"
                 L"</toast>\r\n";
             const wchar_t text2[] =
-                L"<toast displayTimestamp=\"2021-08-29T00:00:00.000Z\" scenario=\"reminder\" "
+                L"<toast scenario=\"reminder\" "
                 L"activationType=\"protocol\" launch=\"" _T(UPDATES_RELEASE_INFO_URL) L"\" duration=\"short\">\r\n"
                 L"	<visual>\r\n"
                 L"		<binding template=\"ToastGeneric\">\r\n"
