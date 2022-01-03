@@ -47,6 +47,7 @@ BOOL bIsExplorerProcess = FALSE;
 BOOL bInstanced = FALSE;
 HWND archivehWnd;
 DWORD bOldTaskbar = TRUE;
+DWORD bWasOldTaskbarSet = FALSE;
 DWORD bAllocConsole = FALSE;
 DWORD bHideExplorerSearchBar = FALSE;
 DWORD bMicaEffectOnTitlebar = FALSE;
@@ -4152,15 +4153,21 @@ void WINAPI LoadSettings(LPARAM lParam)
             RegCloseKey(hKey);
             return;
         }
+        dwTemp = TRUE;
         dwSize = sizeof(DWORD);
         RegQueryValueExW(
             hKey,
             TEXT("OldTaskbar"),
             0,
             NULL,
-            &bOldTaskbar,
+            &dwTemp,
             &dwSize
         );
+        if (!bWasOldTaskbarSet)
+        {
+            bOldTaskbar = dwTemp;
+            bWasOldTaskbarSet = TRUE;
+        }
         dwSize = sizeof(DWORD);
         RegQueryValueExW(
             hKey,
