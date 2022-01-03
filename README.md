@@ -29,12 +29,12 @@ That's it. It's that simple.
 ## What next?
 
 * Consult the [wiki](https://github.com/valinet/ExplorerPatcher/wiki) - this is highly recommended. There you will find information about more advanced tasks, modes of operation and features offered by this patcher.
-* Get familiar with most of the features offered by this patcher in the wiki [here](https://github.com/valinet/ExplorerPatcher/wiki/All-features)
-* Learn how to manage updates and what to expect from new versions and new Windows builds [here](https://github.com/valinet/ExplorerPatcher/wiki/Configure-updates)
-* Have a question? Consult the [FAQ](https://github.com/valinet/ExplorerPatcher/wiki/Frequently-asked-questions)
-* Even more questions? Open a thread in [Discussions](https://github.com/valinet/ExplorerPatcher/discussions)
-* Found a bug or have an issue with the application? Carefully look through previous threads for something similar, or open a new topic in [Discussions](https://github.com/valinet/ExplorerPatcher/discussions)
-* I highly encourage you to check out the source code and tinker with it. I am open to merging new features, enhancements and fixes; also, I think it provides a good insight on topics of interests in this area.
+* Get familiar with most of the features offered by this patcher [here](https://github.com/valinet/ExplorerPatcher/wiki/All-features).
+* Learn how to manage updates and what to expect from new versions and new Windows builds [here](https://github.com/valinet/ExplorerPatcher/wiki/Configure-updates).
+* Have a question? Consult the [Frequently Asked Questions](https://github.com/valinet/ExplorerPatcher/wiki/Frequently-asked-questions).
+* Some other question? Open a thread in [Discussions](https://github.com/valinet/ExplorerPatcher/discussions).
+* Found a bug, have an issue or a problem with the application? Read [here](https://github.com/valinet/ExplorerPatcher/wiki/Reporting-problems) what to do next.
+* I highly encourage you to check out the [source code](https://github.com/valinet/ExplorerPatcher/tree/master) and tinker with it. I am open to merging new features, enhancements and fixes; also, I think it provides good insights on topics of interests in this area.
 
 ## Known issues
 
@@ -42,13 +42,14 @@ Items marked with "bug" that are still "Open" represent known issues. Active wor
 
 ## Uninstalling
 
-* Use "Programs and Features" in Control Panel, or "Apps and features" in the Settings app.
-* Run `ep_setup.exe /uninstall`.
+* Use "Programs and Features" in Control Panel, or "Apps and features" in the Settings app or
+* Run `ep_setup.exe /uninstall` or
+* Rename `ep_setup.exe` to `ep_uninstall.exe` and run that.
 
 ## Updating
 
-* The program features built-in updates: go to "Properties" - "Updates" to configure, check for and install the latest updates.
-* Download the latest version's setup file and simply run it
+* The program features built-in updates: go to "Properties" - "Updates" to configure, check for and install the latest updates. Learn more [here](https://github.com/valinet/ExplorerPatcher/wiki/Configure-updates).
+* Download the latest version's setup file and simply run it.
 
 ## More information
 
