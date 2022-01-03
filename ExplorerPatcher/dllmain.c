@@ -5550,10 +5550,10 @@ interface IInputSwitchControl
     CONST_VTBL struct IInputSwitchControlVtbl* lpVtbl;
 };
 
-HRESULT(*CInputSwitchControl_InitFunc)(IInputSwitchControl*, unsigned int, INT64);
-HRESULT CInputSwitchControl_InitHook(IInputSwitchControl* _this, unsigned int dwOriginalIMEStyle, INT64 a3)
+HRESULT(*CInputSwitchControl_InitFunc)(IInputSwitchControl*, unsigned int);
+HRESULT CInputSwitchControl_InitHook(IInputSwitchControl* _this, unsigned int dwOriginalIMEStyle)
 {
-    return CInputSwitchControl_InitFunc(_this, dwIMEStyle ? dwIMEStyle : dwOriginalIMEStyle, a3);
+    return CInputSwitchControl_InitFunc(_this, dwIMEStyle ? dwIMEStyle : dwOriginalIMEStyle);
 }
 
 HRESULT explorer_CoCreateInstanceHook(
