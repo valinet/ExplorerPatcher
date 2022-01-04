@@ -2147,9 +2147,9 @@ static LRESULT CALLBACK GUI_WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
             PostMessage(hWnd, WM_CLOSE, 0, 0);
             return 0;
         }
-        else if (wParam == VK_TAB)
+        else if (wParam == VK_TAB || wParam == VK_DOWN || wParam == VK_UP)
         {
-            if (GetKeyState(VK_SHIFT) & 0x8000)
+            if ((GetKeyState(VK_SHIFT) & 0x8000) || wParam == VK_UP)
             {
                 _this->tabOrder--;
                 if (_this->tabOrder == 0)
