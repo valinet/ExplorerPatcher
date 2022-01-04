@@ -16,11 +16,6 @@
 ;shell:::{05d7b0f4-2121-4eff-bf6b-ed3f69b894d9}
 ;y Customize system icons in the notification area 🡕
 ;shell:::{05d7b0f4-2121-4eff-bf6b-ed3f69b894d9}\SystemIcons
-;;[HKEY_CURRENT_USER\Software\ExplorerPatcher]
-;;c 2 Start button style *
-;;x 0 Windows 10 (default)
-;;x 1 Windows 11
-;;"OrbStyle"=dword:00000000
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;c 4 Primary taskbar location on screen *
 ;x 3 Bottom (default)
@@ -54,6 +49,10 @@
 "Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_AutoHideTaskbar"=dword:00000000
 ;t The following settings only apply to the Windows 10 taskbar:                          
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
+;c 2 Start button style
+;x 0 Windows 10 (default)
+;x 1 Windows 11
+"OrbStyle"=dword:00000000
 ;c 3 Combine taskbar icons on primary taskbar
 ;x 0 Always combine
 ;x 1 Combine when taskbar is full

@@ -104,7 +104,12 @@ void WINAPI Explorer_RefreshUI(int unused);
 
 #define ORB_STYLE_WINDOWS10 0
 #define ORB_STYLE_WINDOWS11 1
-#define ORB_WINDOWS11_SEPARATOR 1
+#define ORB_STYLE_TRANSPARENT 2
+typedef struct _OrbInfo
+{
+    HTHEME hTheme;
+    UINT dpi;
+} OrbInfo;
 
 void* P_Icon_Light_Search = NULL;
 DWORD S_Icon_Light_Search = 0;
@@ -3934,11 +3939,14 @@ DWORD WindowSwitcher(DWORD unused)
 
 
 #pragma region "Load Settings from registry"
+#define REFRESHUI_NONE 0b00
+#define REFRESHUI_GLOM 0b01
+#define REFRESHUI_ORB 0b10
 void WINAPI LoadSettings(LPARAM lParam)
 {
     BOOL bIsExplorer = LOWORD(lParam);
     BOOL bIsRefreshAllowed = HIWORD(lParam);
-    BOOL bShouldRefreshUI = FALSE;
+    DWORD dwRefreshUIMask = REFRESHUI_NONE;
 
     HKEY hKey = NULL;
     DWORD dwSize = 0, dwTemp = 0;
@@ -4385,15 +4393,21 @@ void WINAPI LoadSettings(LPARAM lParam)
             &bTaskbarAutohideOnDoubleClick,
             &dwSize
         );
+        dwTemp = ORB_STYLE_WINDOWS10;
         dwSize = sizeof(DWORD);
         RegQueryValueExW(
             hKey,
             TEXT("OrbStyle"),
             0,
             NULL,
-            &dwOrbStyle,
+            &dwTemp,
             &dwSize
         );
+        if (bOldTaskbar && (dwTemp != dwOrbStyle))
+        {
+            dwOrbStyle = dwTemp;
+            dwRefreshUIMask |= REFRESHUI_ORB;
+        }
         dwSize = sizeof(DWORD);
         RegQueryValueExW(
             hKey,
@@ -4456,9 +4470,9 @@ void WINAPI LoadSettings(LPARAM lParam)
             &dwTemp,
             &dwSize
         );
-        if (dwTemp != dwTaskbarGlomLevel)
+        if (bOldTaskbar && (dwTemp != dwTaskbarGlomLevel))
         {
-            bShouldRefreshUI = TRUE;
+            dwRefreshUIMask = REFRESHUI_GLOM;
         }
         dwTaskbarGlomLevel = dwTemp;
         dwTemp = MMTASKBARGLOMLEVEL_DEFAULT;
@@ -4471,9 +4485,9 @@ void WINAPI LoadSettings(LPARAM lParam)
             &dwTemp,
             &dwSize
         );
-        if (dwTemp != dwMMTaskbarGlomLevel)
+        if (bOldTaskbar && (dwTemp != dwMMTaskbarGlomLevel))
         {
-            bShouldRefreshUI = TRUE;
+            dwRefreshUIMask = REFRESHUI_GLOM;
         }
         dwMMTaskbarGlomLevel = dwTemp;
         RegCloseKey(hKey);
@@ -4667,9 +4681,20 @@ void WINAPI LoadSettings(LPARAM lParam)
         RegCloseKey(hKey);
     }
 
-    if (bIsRefreshAllowed && bShouldRefreshUI)
+    if (bIsRefreshAllowed && dwRefreshUIMask)
     {
-        Explorer_RefreshUI(0);
+        if (dwRefreshUIMask & REFRESHUI_GLOM)
+        {
+            Explorer_RefreshUI(0);
+        }
+        if (dwRefreshUIMask & REFRESHUI_ORB)
+        {
+#ifdef _WIN64
+            ToggleTaskbarAutohide();
+            ToggleTaskbarAutohide();
+#endif
+            InvalidateRect(FindWindowW(L"ExplorerPatcher_GUI_" _T(EP_CLSID), NULL), NULL, FALSE);
+        }
     }
 }
 
@@ -4943,7 +4968,16 @@ HRESULT explorer_SetWindowThemeHook(
     return explorer_SetWindowThemeFunc(hwnd, pszSubAppName, pszSubIdList);
 }
 
-HTHEME hStartOrbTheme = NULL;
+INT64 explorer_SetWindowCompositionAttribute(HWND hWnd, WINCOMPATTRDATA* data)
+{
+    if (bClassicThemeMitigations)
+    {
+        return TRUE;
+    }
+    return SetWindowCompositionAttribute(hWnd, data);
+}
+
+HDPA hOrbCollection = NULL;
 HRESULT explorer_DrawThemeBackground(
     HTHEME  hTheme,
     HDC     hdc,
@@ -4953,42 +4987,67 @@ HRESULT explorer_DrawThemeBackground(
     LPCRECT pClipRect
 )
 {
-    if (dwOrbStyle == ORB_STYLE_WINDOWS11 && hStartOrbTheme == hTheme)
+    if (dwOrbStyle && hOrbCollection)
     {
-        BITMAPINFO bi;
-        ZeroMemory(&bi, sizeof(BITMAPINFO));
-        bi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-        bi.bmiHeader.biWidth = 1;
-        bi.bmiHeader.biHeight = 1;
-        bi.bmiHeader.biPlanes = 1;
-        bi.bmiHeader.biBitCount = 32;
-        bi.bmiHeader.biCompression = BI_RGB;
-        RGBQUAD transparent = { 0, 0, 0, 0 };
-        RGBQUAD color = { 0xFF, 0xFF, 0xFF, 0xFF };
+        for (unsigned int i = 0; i < DPA_GetPtrCount(hOrbCollection); ++i)
+        {
+            OrbInfo* oi = DPA_FastGetPtr(hOrbCollection, i);
+            if (oi->hTheme == hTheme)
+            {
+                BITMAPINFO bi;
+                ZeroMemory(&bi, sizeof(BITMAPINFO));
+                bi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+                bi.bmiHeader.biWidth = 1;
+                bi.bmiHeader.biHeight = 1;
+                bi.bmiHeader.biPlanes = 1;
+                bi.bmiHeader.biBitCount = 32;
+                bi.bmiHeader.biCompression = BI_RGB;
+                RGBQUAD transparent = { 0, 0, 0, 0 };
+                RGBQUAD color = { 0xFF, 0xFF, 0xFF, 0xFF };
 
-        StretchDIBits(hdc,
-            pRect->left,
-            pRect->top,
-            pRect->right - pRect->left,
-            pRect->bottom - pRect->top,
-            0, 0, 1, 1, &color, &bi,
-            DIB_RGB_COLORS, SRCCOPY);
-        StretchDIBits(hdc, 
-            pRect->left + ((pRect->right - pRect->left) / 2) - ORB_WINDOWS11_SEPARATOR / 2, 
-            pRect->top,
-            ORB_WINDOWS11_SEPARATOR,
-            pRect->bottom - pRect->top,
-            0, 0, 1, 1, &transparent, &bi,
-            DIB_RGB_COLORS, SRCCOPY);
-        StretchDIBits(hdc,
-            pRect->left,
-            pRect->top + ((pRect->bottom - pRect->top) / 2) - ORB_WINDOWS11_SEPARATOR / 2,
-            pRect->right - pRect->left,
-            ORB_WINDOWS11_SEPARATOR,
-            0, 0, 1, 1, &transparent, &bi,
-            DIB_RGB_COLORS, SRCCOPY);
+                if (dwOrbStyle == ORB_STYLE_WINDOWS11)
+                {
+                    UINT separator = oi->dpi / 96;
+                    //printf(">>> SEPARATOR %p %d %d\n", oi->hTheme, oi->dpi, separator);
 
-        return S_OK;
+                    // Background
+                    StretchDIBits(hdc,
+                        pRect->left + (separator % 2),
+                        pRect->top + (separator % 2),
+                        pRect->right - pRect->left - (separator % 2),
+                        pRect->bottom - pRect->top - (separator % 2),
+                        0, 0, 1, 1, &color, &bi,
+                        DIB_RGB_COLORS, SRCCOPY);
+                    // Middle vertical line
+                    StretchDIBits(hdc,
+                        pRect->left + ((pRect->right - pRect->left) / 2) - (separator / 2),
+                        pRect->top,
+                        separator,
+                        pRect->bottom - pRect->top,
+                        0, 0, 1, 1, &transparent, &bi,
+                        DIB_RGB_COLORS, SRCCOPY);
+                    // Middle horizontal line
+                    StretchDIBits(hdc,
+                        pRect->left,
+                        pRect->top + ((pRect->bottom - pRect->top) / 2) - (separator / 2),
+                        pRect->right - pRect->left,
+                        separator,
+                        0, 0, 1, 1, &transparent, &bi,
+                        DIB_RGB_COLORS, SRCCOPY);
+                }
+                else if (dwOrbStyle == ORB_STYLE_TRANSPARENT)
+                {
+                    StretchDIBits(hdc,
+                        pRect->left,
+                        pRect->top,
+                        pRect->right - pRect->left,
+                        pRect->bottom - pRect->top,
+                        0, 0, 1, 1, &transparent, &bi,
+                        DIB_RGB_COLORS, SRCCOPY);
+                }
+                return S_OK;
+            }
+        }
     }
     if (bClassicThemeMitigations)
     {
@@ -5037,13 +5096,24 @@ HRESULT explorer_DrawThemeBackground(
     return DrawThemeBackground(hTheme, hdc, iPartId, iStateId, pRect, pClipRect);
 }
 
-INT64 explorer_SetWindowCompositionAttribute(HWND hWnd, WINCOMPATTRDATA* data)
+HRESULT explorer_CloseThemeData(HTHEME hTheme)
 {
-    if (bClassicThemeMitigations)
+    HRESULT hr = CloseThemeData(hTheme);
+    if (SUCCEEDED(hr) && hOrbCollection)
     {
-        return TRUE;
+        for (unsigned int i = 0; i < DPA_GetPtrCount(hOrbCollection); ++i)
+        {
+            OrbInfo* oi = DPA_FastGetPtr(hOrbCollection, i);
+            if (oi->hTheme == hTheme)
+            {
+                //printf(">>> DELETE DPA %p %d\n", oi->hTheme, oi->dpi);
+                DPA_DeletePtr(hOrbCollection, i);
+                free(oi);
+                break;
+            }
+        }
     }
-    return SetWindowCompositionAttribute(hWnd, data);
+    return hr;
 }
 
 HTHEME explorer_OpenThemeDataForDpi(
@@ -5052,12 +5122,24 @@ HTHEME explorer_OpenThemeDataForDpi(
     UINT    dpi
 )
 {
-    if (dwOrbStyle == ORB_STYLE_WINDOWS11 && (*((WORD*)&(pszClassList)+1)) && !wcscmp(pszClassList, L"TaskbarPearl"))
+    if ((*((WORD*)&(pszClassList)+1)) && !wcscmp(pszClassList, L"TaskbarPearl"))
     {
-        HTHEME hTheme = OpenThemeDataForDpi(hwnd, pszClassList, dpi);
-        if (hTheme)
+        if (!hOrbCollection)
         {
-            hStartOrbTheme = hTheme;
+            hOrbCollection = DPA_Create(MAX_NUM_MONITORS);
+        }
+
+        HTHEME hTheme = OpenThemeDataForDpi(hwnd, pszClassList, dpi);
+        if (hTheme && hOrbCollection)
+        {
+            OrbInfo* oi = malloc(sizeof(OrbInfo));
+            if (oi)
+            {
+                oi->hTheme = hTheme;
+                oi->dpi = dpi;
+                //printf(">>> APPEND DPA %p %d\n", oi->hTheme, oi->dpi);
+                DPA_AppendPtr(hOrbCollection, oi);
+            }
         }
         return hTheme;
     }
@@ -6499,6 +6581,7 @@ DWORD Inject(BOOL bIsExplorer)
     VnPatchIAT(hExplorer, "user32.dll", "TrackPopupMenuEx", explorer_TrackPopupMenuExHook);
     VnPatchIAT(hExplorer, "uxtheme.dll", "OpenThemeDataForDpi", explorer_OpenThemeDataForDpi);
     VnPatchIAT(hExplorer, "uxtheme.dll", "DrawThemeBackground", explorer_DrawThemeBackground);
+    VnPatchIAT(hExplorer, "uxtheme.dll", "CloseThemeData", explorer_CloseThemeData);
     if (bClassicThemeMitigations)
     {
         /*explorer_SetWindowThemeFunc = SetWindowTheme;
