@@ -4066,6 +4066,13 @@ void WINAPI LoadSettings(LPARAM lParam)
             _CrtSetReportFile(_CRT_ASSERT, _CRTDBG_FILE_STDOUT);
             _CrtDumpMemoryLeaks();
             printf("[Memcheck] Memory leak dump complete.\n");
+            printf(
+                "[Memcheck] Objects in use:\nGDI\tGDIp\tUSER\tUSERp\n%d\t%d\t%d\t%d\n",
+                GetGuiResources(GetCurrentProcess(), GR_GDIOBJECTS),
+                GetGuiResources(GetCurrentProcess(), GR_GDIOBJECTS_PEAK),
+                GetGuiResources(GetCurrentProcess(), GR_USEROBJECTS),
+                GetGuiResources(GetCurrentProcess(), GR_USEROBJECTS_PEAK)
+            );
 #endif
             dwTemp = 0;
             RegSetValueExW(
