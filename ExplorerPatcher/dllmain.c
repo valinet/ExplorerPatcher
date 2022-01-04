@@ -1591,7 +1591,10 @@ INT64 Shell_TrayWndSubclassProc(
 {
     if (uMsg == WM_NCDESTROY)
     {
-        UnregisterHotKey(hWnd, 'VNEP');
+        if (bIsPrimaryTaskbar)
+        {
+            UnregisterHotKey(hWnd, 'VNEP');
+        }
         RemoveWindowSubclass(hWnd, Shell_TrayWndSubclassProc, Shell_TrayWndSubclassProc);
     }
     else if (!bIsPrimaryTaskbar && uMsg == WM_CONTEXTMENU)
