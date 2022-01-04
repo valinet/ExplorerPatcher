@@ -1605,7 +1605,7 @@ INT64 Shell_TrayWndSubclassProc(
         // the right menu
         return 0;
     }
-    else if (!bIsPrimaryTaskbar && uMsg == WM_SETCURSOR)
+    else if (!bOldTaskbar && !bIsPrimaryTaskbar && uMsg == WM_SETCURSOR)
     {
         // Received when mouse is over taskbar edge and autohide is on
         PostMessageW(hWnd, WM_ACTIVATE, WA_ACTIVE, NULL);
