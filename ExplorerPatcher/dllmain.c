@@ -64,6 +64,7 @@ DWORD bOpenAtLogon = FALSE;
 DWORD bClockFlyoutOnWinC = FALSE;
 DWORD bDisableImmersiveContextMenu = FALSE;
 DWORD bClassicThemeMitigations = FALSE;
+DWORD bWasClassicThemeMitigationsSet = FALSE;
 DWORD bHookStartMenu = TRUE;
 DWORD bPropertiesInWinX = FALSE;
 DWORD bNoMenuAccelerator = FALSE;
@@ -4094,15 +4095,21 @@ void WINAPI LoadSettings(LPARAM lParam)
             &bDisableImmersiveContextMenu,
             &dwSize
         );
+        dwTemp = FALSE;
         dwSize = sizeof(DWORD);
         RegQueryValueExW(
             hKey,
             TEXT("ClassicThemeMitigations"),
             0,
             NULL,
-            &bClassicThemeMitigations,
+            &dwTemp,
             &dwSize
         );
+        if (!bWasClassicThemeMitigationsSet)
+        {
+            bClassicThemeMitigations = dwTemp;
+            bWasClassicThemeMitigationsSet = TRUE;
+        }
         dwSize = sizeof(DWORD);
         RegQueryValueExW(
             hKey,
