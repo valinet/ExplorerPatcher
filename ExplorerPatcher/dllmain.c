@@ -1449,7 +1449,7 @@ HMENU explorer_LoadMenuW(HINSTANCE hInstance, LPCWSTR lpMenuName)
 
 HHOOK Shell_TrayWndMouseHook = NULL;
 
-BOOL Shell_TrayWnd_IsTaskbarRightClick(POINT pt)
+BOOL IsPointOnEmptyAreaOfNewTaskbar(POINT pt)
 {
     HRESULT hr = S_OK;
     IUIAutomation2* pIUIAutomation2 = NULL;
@@ -1561,13 +1561,19 @@ BOOL Shell_TrayWnd_IsTaskbarRightClick(POINT pt)
     return bRet;
 }
 
+long long TaskbarLeftClickTime = 0;
+BOOL bTaskbarLeftClickEven = FALSE;
 LRESULT CALLBACK Shell_TrayWndMouseProc(
     _In_ int    nCode,
     _In_ WPARAM wParam,
     _In_ LPARAM lParam
 )
 {
-    if (nCode == HC_ACTION && wParam == WM_RBUTTONUP && Shell_TrayWnd_IsTaskbarRightClick(((MOUSEHOOKSTRUCT*)lParam)->pt))
+    if (!bOldTaskbar && 
+        nCode == HC_ACTION && 
+        wParam == WM_RBUTTONUP && 
+        IsPointOnEmptyAreaOfNewTaskbar(((MOUSEHOOKSTRUCT*)lParam)->pt)
+        )
     {
         PostMessageW(
             FindWindowW(L"Shell_TrayWnd", NULL),
@@ -1576,6 +1582,46 @@ LRESULT CALLBACK Shell_TrayWndMouseProc(
             MAKELPARAM(((MOUSEHOOKSTRUCT*)lParam)->pt.x, ((MOUSEHOOKSTRUCT*)lParam)->pt.y)
         );
         return 1;
+    }
+    if (!bOldTaskbar &&
+        bTaskbarAutohideOnDoubleClick && 
+        nCode == HC_ACTION && 
+        wParam == WM_LBUTTONUP &&
+        IsPointOnEmptyAreaOfNewTaskbar(((MOUSEHOOKSTRUCT*)lParam)->pt)
+        )
+    {
+        /*BOOL bShouldCheck = FALSE;
+        if (bOldTaskbar)
+        {
+            WCHAR cn[200];
+            GetClassNameW(((MOUSEHOOKSTRUCT*)lParam)->hwnd, cn, 200);
+            wprintf(L"%s\n", cn);
+            bShouldCheck = !wcscmp(cn, L"Shell_SecondaryTrayWnd"); // !wcscmp(cn, L"Shell_TrayWnd")
+        }
+        else
+        {
+            bShouldCheck = IsPointOnEmptyAreaOfNewTaskbar(((MOUSEHOOKSTRUCT*)lParam)->pt);
+        }
+        if (bShouldCheck)
+        {*/
+            if (bTaskbarLeftClickEven)
+            {
+                if (TaskbarLeftClickTime != 0)
+                {
+                    TaskbarLeftClickTime = milliseconds_now() - TaskbarLeftClickTime;
+                }
+                if (TaskbarLeftClickTime != 0 && TaskbarLeftClickTime < GetDoubleClickTime())
+                {
+                    TaskbarLeftClickTime = 0;
+                    ToggleTaskbarAutohide();
+                }
+                else
+                {
+                    TaskbarLeftClickTime = milliseconds_now();
+                }
+            }
+            bTaskbarLeftClickEven = !bTaskbarLeftClickEven;
+        //}
     }
     return CallNextHookEx(Shell_TrayWndMouseHook, nCode, wParam, lParam);
 }
@@ -1593,6 +1639,7 @@ INT64 Shell_TrayWndSubclassProc(
     {
         if (bIsPrimaryTaskbar)
         {
+            UnhookWindowsHookEx(Shell_TrayWndMouseHook);
             UnregisterHotKey(hWnd, 'VNEP');
         }
         RemoveWindowSubclass(hWnd, Shell_TrayWndSubclassProc, Shell_TrayWndSubclassProc);
@@ -1610,20 +1657,10 @@ INT64 Shell_TrayWndSubclassProc(
         // Received when mouse is over taskbar edge and autohide is on
         PostMessageW(hWnd, WM_ACTIVATE, WA_ACTIVE, NULL);
     }
-    else if (uMsg == WM_LBUTTONDBLCLK && bTaskbarAutohideOnDoubleClick)
+    else if (bOldTaskbar && uMsg == WM_LBUTTONDBLCLK && bTaskbarAutohideOnDoubleClick)
     {
-        APPBARDATA abd;
-        abd.cbSize = sizeof(APPBARDATA);
-        if (SHAppBarMessage(ABM_GETSTATE, &abd) == ABS_AUTOHIDE)
-        {
-            abd.lParam = 0;
-            SHAppBarMessage(ABM_SETSTATE, &abd);
-        }
-        else
-        {
-            abd.lParam = ABS_AUTOHIDE;
-            SHAppBarMessage(ABM_SETSTATE, &abd);
-        }
+        ToggleTaskbarAutohide();
+        return 0;
     }
     else if (uMsg == WM_HOTKEY && lParam == MAKELPARAM(MOD_WIN | MOD_ALT, 0x44))
     {
@@ -1649,11 +1686,11 @@ INT64 Shell_TrayWndSubclassProc(
     {
         UpdateStartMenuPositioning(MAKELPARAM(TRUE, FALSE));
     }
-    else if (!bOldTaskbar && uMsg == WM_PARENTNOTIFY && wParam == WM_RBUTTONDOWN && !Shell_TrayWndMouseHook) // && !IsUndockingDisabled
-    {
-        DWORD dwThreadId = GetCurrentThreadId();
-        Shell_TrayWndMouseHook = SetWindowsHookExW(WH_MOUSE, Shell_TrayWndMouseProc, NULL, dwThreadId);
-    }
+    //else if (!bOldTaskbar && uMsg == WM_PARENTNOTIFY && wParam == WM_RBUTTONDOWN && !Shell_TrayWndMouseHook) // && !IsUndockingDisabled
+    //{
+    //    DWORD dwThreadId = GetCurrentThreadId();
+    //    Shell_TrayWndMouseHook = SetWindowsHookExW(WH_MOUSE, Shell_TrayWndMouseProc, NULL, dwThreadId);
+    //}
     else if (uMsg == RegisterWindowMessageW(L"Windows11ContextMenu_" _T(EP_CLSID)))
     {
         POINT pt;
@@ -4804,6 +4841,7 @@ HWND CreateWindowExWHook(
     {
         SetWindowSubclass(hWnd, Shell_TrayWndSubclassProc, Shell_TrayWndSubclassProc, TRUE);
         RegisterHotKey(hWnd, 'VNEP', MOD_WIN | MOD_ALT, 0x44);
+        Shell_TrayWndMouseHook = SetWindowsHookExW(WH_MOUSE, Shell_TrayWndMouseProc, NULL, GetCurrentThreadId());
     }
     else if (bIsExplorerProcess && (*((WORD*)&(lpClassName)+1)) && !wcscmp(lpClassName, L"Shell_SecondaryTrayWnd"))
     {

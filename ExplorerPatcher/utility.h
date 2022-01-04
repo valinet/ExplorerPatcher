@@ -85,6 +85,8 @@ HRESULT ShellExecuteFromExplorer(
     int nShowCmd
 );
 
+void ToggleTaskbarAutohide();
+
 #pragma region "Weird stuff"
 INT64 STDMETHODCALLTYPE nimpl4_1(INT64 a1, DWORD* a2);
 INT64 STDMETHODCALLTYPE nimpl4_0(INT64 a1, DWORD* a2);

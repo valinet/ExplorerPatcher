@@ -638,3 +638,19 @@ HRESULT ShellExecuteFromExplorer(
     }
     return hr;
 }
+
+void ToggleTaskbarAutohide()
+{
+    APPBARDATA abd;
+    abd.cbSize = sizeof(APPBARDATA);
+    if (SHAppBarMessage(ABM_GETSTATE, &abd) == ABS_AUTOHIDE)
+    {
+        abd.lParam = 0;
+        SHAppBarMessage(ABM_SETSTATE, &abd);
+    }
+    else
+    {
+        abd.lParam = ABS_AUTOHIDE;
+        SHAppBarMessage(ABM_SETSTATE, &abd);
+    }
+}
