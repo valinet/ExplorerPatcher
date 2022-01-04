@@ -93,7 +93,8 @@ HANDLE hSwsSettingsChanged = NULL;
 HANDLE hSwsOpacityMaybeChanged = NULL;
 HANDLE hWin11AltTabInitialized = NULL;
 BYTE* lpShouldDisplayCCButton = NULL;
-HMONITOR hMonitorList[30];
+#define MAX_NUM_MONITORS 30
+HMONITOR hMonitorList[MAX_NUM_MONITORS];
 DWORD dwMonitorCount = 0;
 HANDLE hCanStartSws = NULL;
 int Code = 0;
