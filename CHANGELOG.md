@@ -9,6 +9,7 @@ Tested on OS build 22000.376.
 #### New features
 
 * Ability to choose a Windows 10 or Windows 11 Start button style for the Windows 10 taskbar (#436, thanks @krlvm)
+* Support for screen readers in the Properties window (#627) (.1)
 
 #### Feature enhancements
 

@@ -51,6 +51,11 @@ extern HMODULE hModule;
 #define GUI_PADDING_TOP GUI_PADDING
 #define GUI_PADDING_BOTTOM GUI_PADDING
 #define GUI_STATUS_PADDING 10
+
+#define GUI_TIMER_READ_HELP 1
+#define GUI_TIMER_READ_HELP_TIMEOUT 1000
+#define GUI_TIMER_READ_REPEAT_SELECTION 2
+#define GUI_TIMER_READ_REPEAT_SELECTION_TIMEOUT 1000
 typedef struct _GUI
 {
 	POINT location;
@@ -71,6 +76,12 @@ typedef struct _GUI
 	long long LeftClickTime;
 	long long LastClickTime;
 	HMODULE hExplorerFrame;
+	void* pAccPropServices;
+	HWND hAccLabel;
+	BOOL bShouldAnnounceSelected;
+	WCHAR sectionNames[20][20];
+	BOOL bRebuildIfTabOrderIsEmpty;
+	int dwPageLocation;
 } GUI;
 
 static HRESULT GUI_AboutProc(

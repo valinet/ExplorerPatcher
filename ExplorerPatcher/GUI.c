@@ -1,3 +1,6 @@
+#include <initguid.h>
+DEFINE_GUID(LiveSetting_Property_GUID, 0xc12bcd8e, 0x2a8e, 0x4950, 0x8a, 0xe7, 0x36, 0x25, 0x11, 0x1d, 0x58, 0xeb);
+#include <oleacc.h>
 #include "GUI.h"
 
 LANGID locale;
@@ -8,6 +11,55 @@ static void(*RefreshImmersiveColorPolicyState)() = NULL;
 static BOOL(*ShouldAppsUseDarkMode)() = NULL;
 DWORD dwTaskbarPosition = 3;
 BOOL gui_bOldTaskbar = TRUE;
+
+void PlayHelpMessage(GUI* _this)
+{
+    unsigned int max_section = 0;
+    for (unsigned int i = 0; i < 100; ++i)
+    {
+        if (_this->sectionNames[i][0] == 0)
+        {
+            max_section = i - 1;
+            break;
+        }
+    }
+
+    WCHAR wszAccText[1000];
+    swprintf_s(
+        wszAccText,
+        1000,
+        L"Welcome to ExplorerPatcher. "
+        L"Selected page is: %s: %d out of %d. "
+        L"To switch pages, press the Left or Right arrow keys or press a number (%d to %d). "
+        L"To select an item, press the Up or Down arrow keys or Shift+Tab and Tab. "
+        L"To interact with the selected item, press Space or Return. "
+        L"To close this window, press Escape. "
+        L"Press a number to switch to the corresponding page: ",
+        _this->sectionNames[_this->section],
+        _this->section + 1,
+        max_section + 1,
+        1,
+        max_section + 1
+    );
+    for (unsigned int i = 0; i < 100; ++i)
+    {
+        if (_this->sectionNames[i][0] == 0)
+        {
+            break;
+        }
+        WCHAR wszAdd[100];
+        swprintf_s(wszAdd, 100, L"%d: %s, ", i + 1, _this->sectionNames[i]);
+        wcscat_s(wszAccText, 1000, wszAdd);
+    }
+    wcscat_s(wszAccText, 1000, L"\nTo listen to this message again, press the F1 key at any time.\n");
+    SetWindowTextW(_this->hAccLabel, wszAccText);
+    NotifyWinEvent(
+        EVENT_OBJECT_LIVEREGIONCHANGED,
+        _this->hAccLabel,
+        OBJID_CLIENT,
+        CHILDID_SELF
+    );
+}
 
 NTSTATUS NTAPI hookRtlQueryElevationFlags(DWORD* pFlags)
 {
@@ -588,6 +640,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
             SetBkMode(hdcPaint, TRANSPARENT);
         }
 
+        BOOL bResetLastHeading = TRUE;
         BOOL bWasSpecifiedSectionValid = FALSE;
         FILE* f = fmemopen(pRscr, cbRscr, "r");
         char* line = malloc(MAX_LINE_LENGTH * sizeof(char));
@@ -595,11 +648,18 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
         wchar_t* name = malloc(MAX_LINE_LENGTH * sizeof(wchar_t));
         wchar_t* section = malloc(MAX_LINE_LENGTH * sizeof(wchar_t));
         size_t bufsiz = MAX_LINE_LENGTH, numChRd = 0, tabOrder = 1, currentSection = -1, topAdj = 0;
+        wchar_t* lastHeading = calloc(MAX_LINE_LENGTH, sizeof(wchar_t));
         while ((numChRd = getline(&line, &bufsiz, f)) != -1)
         {
             if (currentSection == _this->section)
             {
                 bWasSpecifiedSectionValid = TRUE;
+            }
+            if (!strncmp(line, ";q", 2))
+            {
+                bResetLastHeading = TRUE;
+                lastHeading[0] = 0;
+                continue;
             }
             if (strcmp(line, "Windows Registry Editor Version 5.00\r\n") && 
                 strcmp(line, "\r\n") && 
@@ -688,6 +748,10 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                         text,
                         MAX_LINE_LENGTH
                     );
+                    if (_this->sectionNames[currentSection + 1][0] == 0)
+                    {
+                        wcscpy_s(_this->sectionNames[currentSection + 1], 20, text);
+                    }
                     if (hDC)
                     {
                         if (IsThemeActive())
@@ -729,6 +793,9 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                         rcTemp.bottom = rcText.bottom;
                         if (PtInRect(&rcTemp, pt))
                         {
+                            _this->bShouldAnnounceSelected = TRUE;
+                            _this->bRebuildIfTabOrderIsEmpty = FALSE;
+                            _this->tabOrder = 0;
                             GUI_SetSection(_this, TRUE, currentSection + 1);
                             InvalidateRect(hwnd, NULL, FALSE);
                         }
@@ -784,6 +851,16 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                         text,
                         MAX_LINE_LENGTH
                     );
+                    if (bResetLastHeading)
+                    {
+                        wcscpy_s(lastHeading, MAX_LINE_LENGTH, text);
+                        bResetLastHeading = FALSE;
+                    }
+                    else
+                    {
+                        wcscat_s(lastHeading, MAX_LINE_LENGTH, L" ");
+                        wcscat_s(lastHeading, MAX_LINE_LENGTH, text);
+                    }
                     if (!strncmp(line, ";a ", 3))
                     {
                         RECT rcTemp;
@@ -870,6 +947,37 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                             {
                                 DttOpts.crText = g_darkModeEnabled ? GUI_TEXTCOLOR_SELECTED_DARK : GUI_TEXTCOLOR_SELECTED;
                                 //DttOpts.crText = GetSysColor(COLOR_HIGHLIGHT);
+                            }
+                            if (_this->bShouldAnnounceSelected)
+                            {
+                                WCHAR accText[1000];
+                                swprintf_s(
+                                    accText, 
+                                    1000, 
+                                    L"%s %s - Button.",
+                                    (_this->dwPageLocation < 0 ?
+                                    L"Reached end of the page." :
+                                    (_this->dwPageLocation > 0 ?
+                                    L"Reached beginning of the page." : L"")),
+                                    text
+                                );
+                                _this->dwPageLocation = 0;
+                                for (unsigned int i = 0; i < wcslen(accText) - 2; ++i)
+                                {
+                                    if (accText[i] == L'(' && accText[i + 1] == L'*' && accText[i + 2] == L')')
+                                    {
+                                        accText[i] = L' ';
+                                        accText[i + 1] = L' ';
+                                        accText[i + 2] = L' ';
+                                    }
+                                }
+                                SetWindowTextW(_this->hAccLabel, accText);
+                                NotifyWinEvent(
+                                    EVENT_OBJECT_LIVEREGIONCHANGED,
+                                    _this->hAccLabel,
+                                    OBJID_CLIENT,
+                                    CHILDID_SELF);
+                                _this->bShouldAnnounceSelected = FALSE;
                             }
                         }
                         RECT rcNew = rcText;
@@ -1673,6 +1781,9 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                         0
                                     );
                                     if (val > 0) value = val - 1;
+                                    KillTimer(hwnd, GUI_TIMER_READ_REPEAT_SELECTION);
+                                    SetTimer(hwnd, GUI_TIMER_READ_REPEAT_SELECTION, GUI_TIMER_READ_REPEAT_SELECTION_TIMEOUT, NULL);
+
                                 }
                                 else if (bValue)
                                 {
@@ -1852,6 +1963,91 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                             );
                             swprintf(text + 3, MAX_LINE_LENGTH, L"Disable per-application window list ( Alt + %c )", key);
                         }
+                        if (tabOrder == _this->tabOrder)
+                        {
+                            if (_this->bShouldAnnounceSelected)
+                            {
+                                unsigned int accLen = wcslen(text);
+                                DWORD dwType = 0;
+                                if (!strncmp(line, ";y ", 3))
+                                {
+                                    dwType = 4;
+                                }
+                                if (text[0] == L'\u2714') dwType = 1;
+                                else if (text[0] == L'\u274C') dwType = 2;
+                                else if (text[accLen - 1] == 56405) dwType = 3;
+                                WCHAR accText[1000], accText2[1000];
+                                ZeroMemory(accText, 1000 * sizeof(wchar_t));
+                                ZeroMemory(accText2, 1000 * sizeof(wchar_t));
+                                swprintf_s(
+                                    accText,
+                                    1000,
+                                    L"%s %s %s: %s",
+                                    (_this->dwPageLocation < 0 ?
+                                        L"Reached end of the page." :
+                                        (_this->dwPageLocation > 0 ?
+                                            L"Reached beginning of the page." : L"")),
+                                    (lastHeading[0] == 0) ? L"" : lastHeading,
+                                    (dwType == 1 || dwType == 2) ? text + 1 : text,
+                                    dwType == 1 ? L"Enabled" :
+                                    (dwType == 2 ? L"Disabled" :
+                                        (dwType == 3 ? L"Link" :
+                                            (dwType == 4 ? L"Button" :
+                                                L"List")))
+                                );
+                                accLen = wcslen(accText);
+                                unsigned int j = 0;
+                                for (unsigned int i = 0; i < accLen; ++i)
+                                {
+                                    if (accText[i] == L'%')
+                                    {
+                                        accText2[j] = L'%';
+                                        accText2[j + 1] = L'%';
+                                        j++;
+                                    }
+                                    else
+                                    {
+                                        accText2[j] = accText[i];
+                                    }
+                                    ++j;
+                                }
+                                _this->dwPageLocation = 0;
+                                BOOL dwTypeRepl = 0;
+                                accLen = wcslen(accText2);
+                                for (unsigned int i = 0; i < accLen; ++i)
+                                {
+                                    if (accText2[i] == L'*')
+                                    {
+                                        if (accText2[i + 1] == L'*')
+                                        {
+                                            dwTypeRepl = 1;
+                                        }
+                                        accText2[i] = L'%';
+                                        if (i + 1 >= accLen)
+                                        {
+                                            accText2[i + 2] = 0;
+                                        }
+                                        accText2[i + 1] = L's';
+                                    }
+                                }
+                                if (dwTypeRepl == 1)
+                                {
+                                    swprintf_s(accText, 1000, accText2, L" - Requires registration as shell extension to work in Open or Save file dialogs - ");
+                                }
+                                else
+                                {
+                                    swprintf_s(accText, 1000, accText2, L" - Requires File Explorer restart to apply - ");
+                                }
+                                //wprintf(L">>> %s\n", accText);
+                                SetWindowTextW(_this->hAccLabel, accText);
+                                NotifyWinEvent(
+                                    EVENT_OBJECT_LIVEREGIONCHANGED,
+                                    _this->hAccLabel,
+                                    OBJID_CLIENT,
+                                    CHILDID_SELF);
+                                _this->bShouldAnnounceSelected = FALSE;
+                            }
+                        }
                         if (IsThemeActive())
                         {
                             DrawThemeTextEx(
@@ -1899,8 +2095,11 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
         free(name);
         free(text);
         free(line);
+        free(lastHeading);
         if (!bWasSpecifiedSectionValid)
         {
+            _this->bRebuildIfTabOrderIsEmpty = FALSE;
+            _this->tabOrder = 0;
             GUI_SetSection(_this, FALSE, 0);
             InvalidateRect(hwnd, NULL, FALSE);
         }
@@ -1916,16 +2115,66 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
         DeleteObject(hFontTitle);
         DeleteObject(hFontUnderline);
         DeleteObject(hFontCaption);
+
+        if (_this->bShouldAnnounceSelected)
+        {
+            int max_section = 100;
+            for (unsigned int i = 0; i < 100; ++i)
+            {
+                if (_this->sectionNames[i][0] == 0)
+                {
+                    max_section = i - 1;
+                    break;
+                }
+            }
+            WCHAR wszAccText[100];
+            swprintf_s(
+                wszAccText,
+                100,
+                L"Selected page: %s: %d out of %d.",
+                _this->sectionNames[_this->section],
+                _this->section + 1,
+                max_section + 1
+            );
+            SetWindowTextW(_this->hAccLabel, wszAccText);
+            if (!_this->bRebuildIfTabOrderIsEmpty)
+            {
+                NotifyWinEvent(
+                    EVENT_OBJECT_LIVEREGIONCHANGED,
+                    _this->hAccLabel,
+                    OBJID_CLIENT,
+                    CHILDID_SELF
+                );
+            }
+        }
+
         if (hDC)
         {
             if (_this->tabOrder == GUI_MAX_TABORDER)
             {
-                _this->tabOrder = tabOrder;
+                _this->tabOrder = tabOrder - 1;
+                _this->dwPageLocation = -1;
+                InvalidateRect(hwnd, NULL, FALSE);
             }
             else if (!bTabOrderHit)
             {
-                _this->tabOrder = 0;
+                if (_this->bRebuildIfTabOrderIsEmpty)
+                {
+                    _this->dwPageLocation = 1;
+                    _this->bRebuildIfTabOrderIsEmpty = FALSE;
+                    _this->tabOrder = 1;
+                    InvalidateRect(hwnd, NULL, FALSE);
+                }
+                else
+                {
+                    _this->tabOrder = 0;
+                }
             }
+        }
+
+        if (_this->bRebuildIfTabOrderIsEmpty)
+        {
+            _this->bRebuildIfTabOrderIsEmpty = FALSE;
         }
     }
     if (_this->bCalcExtent)
@@ -2079,6 +2328,7 @@ static LRESULT CALLBACK GUI_WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
             _this->size.cy * dyp,
             SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED
         );
+        SetTimer(hWnd, GUI_TIMER_READ_HELP, GUI_TIMER_READ_HELP_TIMEOUT, NULL);
         if (IsThemeActive())
         {
             RECT rcTitle;
@@ -2142,6 +2392,7 @@ static LRESULT CALLBACK GUI_WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
     }
     else if (uMsg == WM_KEYDOWN)
     {
+        _this->bRebuildIfTabOrderIsEmpty = FALSE;
         if (wParam == VK_ESCAPE)
         {
             PostMessage(hWnd, WM_CLOSE, 0, 0);
@@ -2151,24 +2402,34 @@ static LRESULT CALLBACK GUI_WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
         {
             if ((GetKeyState(VK_SHIFT) & 0x8000) || wParam == VK_UP)
             {
-                _this->tabOrder--;
                 if (_this->tabOrder == 0)
                 {
                     _this->tabOrder = GUI_MAX_TABORDER;
+                }
+                else
+                {
+                    _this->tabOrder--;
+                    if (_this->tabOrder == 0)
+                    {
+                        _this->tabOrder = GUI_MAX_TABORDER;
+                    }
                 }
             }
             else
             {
                 _this->tabOrder++;
             }
+            _this->bRebuildIfTabOrderIsEmpty = TRUE;
+            _this->bShouldAnnounceSelected = TRUE;
             InvalidateRect(hWnd, NULL, FALSE);
             return 0;
         }
-        else if (wParam == VK_SPACE)
+        else if (wParam == VK_SPACE || wParam == VK_RETURN)
         {
             POINT pt;
             pt.x = 0;
             pt.y = 0;
+            _this->bShouldAnnounceSelected = TRUE;
             GUI_Build(0, hWnd, pt);
             return 0;
         }
@@ -2177,7 +2438,48 @@ static LRESULT CALLBACK GUI_WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
         {
             _this->tabOrder = 0;
             GUI_SetSection(_this, TRUE, wParam - '1');
+            _this->bShouldAnnounceSelected = TRUE;
             InvalidateRect(hWnd, NULL, FALSE);
+            return 0;
+        }
+        else if (wParam == VK_LEFT || wParam == VK_RIGHT)
+        {
+            int min_section = 0;
+            int max_section = 100;
+            int new_section = _this->section;
+            for (unsigned int i = 0; i < 100; ++i)
+            {
+                if (_this->sectionNames[i][0] == 0)
+                {
+                    max_section = i - 1;
+                    break;
+                }
+            }
+            if (wParam == VK_LEFT)
+            {
+                new_section--;
+            }
+            else
+            {
+                new_section++;
+            }
+            if (new_section < min_section)
+            {
+                new_section = max_section;
+            }
+            if (new_section > max_section)
+            {
+                new_section = min_section;
+            }
+            _this->tabOrder = 0;
+            GUI_SetSection(_this, TRUE, new_section);
+            _this->bShouldAnnounceSelected = TRUE;
+            InvalidateRect(hWnd, NULL, FALSE);
+            return 0; 
+        }
+        else if (wParam == 'H' || wParam == VK_F1)
+        {
+            SetTimer(hWnd, GUI_TIMER_READ_HELP, 200, NULL);
             return 0;
         }
     }
@@ -2304,8 +2606,7 @@ static LRESULT CALLBACK GUI_WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
         pt.x = GET_X_LPARAM(lParam);
         pt.y = GET_Y_LPARAM(lParam);
         GUI_Build(0, hWnd, pt);
-        _this->tabOrder = 0;
-        InvalidateRect(hWnd, NULL, FALSE);
+        //InvalidateRect(hWnd, NULL, FALSE);
     }
     else if (uMsg == WM_DPICHANGED)
     {
@@ -2362,6 +2663,17 @@ static LRESULT CALLBACK GUI_WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
     {
         return _this->section + 1;
     }
+    else if (uMsg == WM_TIMER && wParam == GUI_TIMER_READ_HELP)
+    {
+        PlayHelpMessage(_this);
+        KillTimer(hWnd, GUI_TIMER_READ_HELP);
+    }
+    else if (uMsg == WM_TIMER && wParam == GUI_TIMER_READ_REPEAT_SELECTION)
+    {
+        _this->bShouldAnnounceSelected = TRUE;
+        InvalidateRect(hWnd, NULL, FALSE);
+        KillTimer(hWnd, GUI_TIMER_READ_REPEAT_SELECTION);
+    }
     return DefWindowProc(hWnd, uMsg, wParam, lParam);
 }
 
@@ -2373,6 +2685,8 @@ __declspec(dllexport) int ZZGUI(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLin
         SwitchToThisWindow(hOther, TRUE);
         return 0;
     }
+
+    HRESULT hr = CoInitialize(0);
 
     HKEY hKey = NULL;
     DWORD dwSize = sizeof(DWORD);
@@ -2589,6 +2903,43 @@ __declspec(dllexport) int ZZGUI(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLin
         return 1;
     }
 
+    _this.hAccLabel = CreateWindowExW(
+        0,
+        L"Static",
+        L"",
+        WS_CHILD,
+        10,   
+        10,   
+        100, 
+        100, 
+        hwnd,
+        NULL,
+        (HINSTANCE)GetWindowLongPtrW(hwnd, GWLP_HINSTANCE),
+        NULL
+    );
+
+    hr = CoCreateInstance(
+        &CLSID_AccPropServices,
+        NULL,
+        CLSCTX_INPROC,
+        &IID_IAccPropServices,
+        &_this.pAccPropServices);
+    if (SUCCEEDED(hr))
+    {
+        VARIANT var;
+        var.vt = VT_I4;
+        var.lVal = 2; // Assertive;
+
+        hr = ((IAccPropServices*)(_this.pAccPropServices))->lpVtbl->SetHwndProp(
+            _this.pAccPropServices,
+            _this.hAccLabel,
+            OBJID_CLIENT,
+            CHILDID_SELF,
+            LiveSetting_Property_GUID,
+            var
+        );
+    }
+
     if (IsThemeActive())
     {
         if (bIsCompositionEnabled)
@@ -2618,6 +2969,23 @@ __declspec(dllexport) int ZZGUI(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLin
         TranslateMessage(&msg);
         DispatchMessage(&msg);
     }
+
+    if (_this.pAccPropServices != NULL)
+    {
+        MSAAPROPID props[] = { LiveSetting_Property_GUID };
+        ((IAccPropServices*)(_this.pAccPropServices))->lpVtbl->ClearHwndProps(
+            _this.pAccPropServices,
+            _this.hAccLabel,
+            OBJID_CLIENT,
+            CHILDID_SELF,
+            props,
+            ARRAYSIZE(props));
+
+        ((IAccPropServices*)(_this.pAccPropServices))->lpVtbl->Release(_this.pAccPropServices);
+        _this.pAccPropServices = NULL;
+    }
+
+    DestroyWindow(_this.hAccLabel);
 
     if (_this.hExplorerFrame)
     {
