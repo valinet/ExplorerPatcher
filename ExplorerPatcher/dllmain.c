@@ -5736,6 +5736,44 @@ HRESULT CInputSwitchControl_ShowInputSwitchHook(IInputSwitchControl* _this, RECT
     double dpiy = dpiY / 96.0;
 
     //printf("RECT %d %d %d %d - %d %d\n", lpRect->left, lpRect->right, lpRect->top, lpRect->bottom, dwNumberOfProfiles, a3);
+
+    RECT rc;
+    GetWindowRect(hWndTaskbar, &rc);
+    POINT pt;
+    pt.x = rc.left;
+    pt.y = rc.top;
+    UINT tbPos = GetTaskbarLocationAndSize(pt, &rc);
+    if (tbPos == TB_POS_BOTTOM)
+    {
+    }
+    else if (tbPos == TB_POS_TOP)
+    {
+        if (dwIMEStyle == 1) // Windows 10 (with Language preferences link)
+        {
+            lpRect->top = rc.top + (rc.bottom - rc.top) + (UINT)(((double)dwNumberOfProfiles * (60.0 * dpiy)) + (5.0 * dpiy * 4.0) + (dpiy) + (48.0 * dpiy));
+        }
+        else if (dwIMEStyle == 2 || dwIMEStyle == 3 || dwIMEStyle == 4 || dwIMEStyle == 5) // LOGONUI, UAC, Windows 10, OOBE
+        {
+            lpRect->top = rc.top + (rc.bottom - rc.top) + (UINT)(((double)dwNumberOfProfiles * (60.0 * dpiy)) + (5.0 * dpiy * 2.0));
+        }
+    }
+    else if (tbPos == TB_POS_LEFT)
+    {
+        if (dwIMEStyle == 1 || dwIMEStyle == 2 || dwIMEStyle == 3 || dwIMEStyle == 4 || dwIMEStyle == 5)
+        {
+            lpRect->right = rc.left + (rc.right - rc.left) + (UINT)((double)(300.0 * dpix));
+            lpRect->top += (lpRect->bottom - lpRect->top);
+        }
+    }
+    if (tbPos == TB_POS_RIGHT)
+    {
+        if (dwIMEStyle == 1 || dwIMEStyle == 2 || dwIMEStyle == 3 || dwIMEStyle == 4 || dwIMEStyle == 5)
+        {
+            lpRect->right = lpRect->right - (rc.right - rc.left);
+            lpRect->top += (lpRect->bottom - lpRect->top);
+        }
+    }
+
     if (dwIMEStyle == 4)
     {
         lpRect->right -= (UINT)((double)(300.0 * dpix)) - (lpRect->right - lpRect->left);

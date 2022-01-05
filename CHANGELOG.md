@@ -15,6 +15,11 @@ Tested on OS build 22000.376.
 
 * The option to toggle taskbar auto hide when double clicking the taskbar now works with the Windows 11 taskbar as well
 * Performing a memory leak dump now displays GDI, peak GDI, USER and peak USER object counts as well
+* The language switcher list displays only the options that work (previously, it showed some cryptic internal implementations, like "LOGONUI", "UAC", "SETTINGPAGE" and "OOBE"). Thus, the list of language switchers offers the following choices:
+  * Windows 11 (default)
+  * Windows 10 (with link to "Language Preferences")
+  * Windows 10
+
 
 #### Fixes
 
@@ -23,6 +28,7 @@ Tested on OS build 22000.376.
 * Fixed a wrong function prototype (5b4bd07#r62018175, thanks @Simplestas)
 * Protected some state variables from changing internally if modified in the registry until `explorer` is restarted
 * Fixed a bug that could unexpectedly prevent the [Win]+[Alt]+[D] shortcut from working properly
+* Windows 10 language switcher displays correctly when the taskbar is placed in some location other than the bottom of the screen (#629) (.2).
 
 ## 22000.376.40
 
