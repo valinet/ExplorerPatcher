@@ -5636,6 +5636,7 @@ HINSTANCE explorer_ShellExecuteW(
 
 
 #pragma region "Change language UI style"
+#ifdef _WIN64
 DEFINE_GUID(CLSID_InputSwitchControl,
     0xB9BC2A50,
     0x43C3, 0x41AA, 0xa0, 0x86,
@@ -5685,6 +5686,15 @@ typedef struct IInputSwitchControlVtbl
         IInputSwitchControl* This,
         /* [in] */ void* pInputSwitchCallback);
 
+    HRESULT(STDMETHODCALLTYPE* ShowInputSwitch)(
+        IInputSwitchControl* This,
+        /* [in] */ RECT* lpRect);
+
+    HRESULT(STDMETHODCALLTYPE* GetProfileCount)(
+        IInputSwitchControl* This,
+        /* [in] */ unsigned int* pOutNumberOfProfiles,
+        /* [in] */ int* a3);
+
     // ...
 
     END_INTERFACE
@@ -5699,6 +5709,39 @@ HRESULT(*CInputSwitchControl_InitFunc)(IInputSwitchControl*, unsigned int);
 HRESULT CInputSwitchControl_InitHook(IInputSwitchControl* _this, unsigned int dwOriginalIMEStyle)
 {
     return CInputSwitchControl_InitFunc(_this, dwIMEStyle ? dwIMEStyle : dwOriginalIMEStyle);
+}
+
+HRESULT (*CInputSwitchControl_ShowInputSwitchFunc)(IInputSwitchControl*, RECT*);
+HRESULT CInputSwitchControl_ShowInputSwitchHook(IInputSwitchControl* _this, RECT* lpRect)
+{
+    if (!dwIMEStyle) // impossible case (this is not called for the Windows 11 language switcher), but just in case
+    {
+        return CInputSwitchControl_ShowInputSwitchFunc(_this, lpRect);
+    }
+
+    unsigned int dwNumberOfProfiles = 0;
+    int a3 = 0;
+    _this->lpVtbl->GetProfileCount(_this, &dwNumberOfProfiles, &a3);
+
+    HWND hWndTaskbar = FindWindowW(L"Shell_TrayWnd", NULL);
+
+    UINT dpiX = 96, dpiY = 96;
+    HRESULT hr = GetDpiForMonitor(
+        MonitorFromWindow(hWndTaskbar, MONITOR_DEFAULTTOPRIMARY),
+        MDT_DEFAULT,
+        &dpiX,
+        &dpiY
+    );
+    double dpix = dpiX / 96.0;
+    double dpiy = dpiY / 96.0;
+
+    //printf("RECT %d %d %d %d - %d %d\n", lpRect->left, lpRect->right, lpRect->top, lpRect->bottom, dwNumberOfProfiles, a3);
+    if (dwIMEStyle == 4)
+    {
+        lpRect->right -= (UINT)((double)(300.0 * dpix)) - (lpRect->right - lpRect->left);
+    }
+
+    return CInputSwitchControl_ShowInputSwitchFunc(_this, lpRect);
 }
 
 HRESULT explorer_CoCreateInstanceHook(
@@ -5722,6 +5765,8 @@ HRESULT explorer_CoCreateInstanceHook(
             DWORD flOldProtect = 0;
             if (VirtualProtect(pInputSwitchControl->lpVtbl, sizeof(IInputSwitchControlVtbl), PAGE_EXECUTE_READWRITE, &flOldProtect))
             {
+                CInputSwitchControl_ShowInputSwitchFunc = pInputSwitchControl->lpVtbl->ShowInputSwitch;
+                pInputSwitchControl->lpVtbl->ShowInputSwitch = CInputSwitchControl_ShowInputSwitchHook;
                 CInputSwitchControl_InitFunc = pInputSwitchControl->lpVtbl->Init;
                 pInputSwitchControl->lpVtbl->Init = CInputSwitchControl_InitHook;
                 VirtualProtect(pInputSwitchControl->lpVtbl, sizeof(IInputSwitchControlVtbl), flOldProtect, &flOldProtect);
@@ -5783,6 +5828,7 @@ HRESULT explorer_CoCreateInstanceHook(
     }
     return CoCreateInstance(rclsid, pUnkOuter, dwClsContext, riid, ppv);
 }
+#endif
 #pragma endregion
 
 

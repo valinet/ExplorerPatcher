@@ -130,13 +130,10 @@
 ;x 1 Windows 7
 "UseWin32BatteryFlyout"=dword:00000000
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
-;c 6 Language switcher *
+;c 3 Language switcher *
 ;x 0 Windows 11 (default)
-;x 1 Windows 10
-;x 2 "LOGONUI"
-;x 3 "UAC"
-;x 4 "SETTINGSPANE"
-;x 5 "OOBE"
+;x 1 Windows 10 (with link to "Language Preferences")
+;x 4 Windows 10
 "IMEStyle"=dword:00000000
 
 
