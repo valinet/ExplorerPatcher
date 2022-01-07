@@ -28,7 +28,8 @@ Tested on OS build 22000.376.
 * Fixed a wrong function prototype (5b4bd07#r62018175, thanks @Simplestas)
 * Protected some state variables from changing internally if modified in the registry until `explorer` is restarted
 * Fixed a bug that could unexpectedly prevent the [Win]+[Alt]+[D] shortcut from working properly
-* Windows 10 language switcher displays correctly when the taskbar is placed in some location other than the bottom of the screen (#629) (.2).
+* Windows 10 language switcher displays correctly when the taskbar is placed in some location other than the bottom of the screen (#629) (.2)
+* Available symbols download properly on Insider builds (tested on 22526.1000) (.3)
 
 ## 22000.376.40
 

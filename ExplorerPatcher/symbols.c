@@ -234,7 +234,7 @@ DWORD DownloadSymbols(DownloadSymbolsParams* params)
         TWINUI_PCSHELL_SB_CNT
     ))
     {
-        printf("[Symbols] Hooking Win+C is not available for this build.\n");
+        printf("[Symbols] Hooking Win+C is not available in this build.\n");
         DWORD dwZero = 0;
         RegSetValueExW(
             hKey,
@@ -251,15 +251,33 @@ DWORD DownloadSymbols(DownloadSymbolsParams* params)
             TWINUI_PCSHELL_SB_CNT - 1
         ))
         {
-            printf("[Symbols] Failure in reading symbols for \"%s\".\n", twinui_pcshell_sb_dll);
-            if (params->bVerbose)
+            printf("[Symbols] Windows 10 window switcher style is not available in this build.\n");
+            DWORD dwZero = 0;
+            RegSetValueExW(
+                hKey,
+                TEXT(TWINUI_PCSHELL_SB_7),
+                0,
+                REG_DWORD,
+                &dwZero,
+                sizeof(DWORD)
+            );
+            if (VnGetSymbols(
+                szSettingsPath,
+                symbols_PTRS.twinui_pcshell_PTRS,
+                twinui_pcshell_SN,
+                TWINUI_PCSHELL_SB_CNT - 2
+            ))
             {
-                FreeLibraryAndExitThread(
-                    hModule,
-                    5
-                );
+                printf("[Symbols] Failure in reading symbols for \"%s\".\n", twinui_pcshell_sb_dll);
+                if (params->bVerbose)
+                {
+                    FreeLibraryAndExitThread(
+                        hModule,
+                        5
+                    );
+                }
+                return 5;
             }
-            return 5;
         }
     }
     RegSetValueExW(
@@ -856,7 +874,8 @@ BOOL LoadSymbols(symbols_addr* symbols_PTRS, HMODULE hModule)
     for (UINT i = 0; i < sizeof(symbols_addr) / sizeof(DWORD); ++i)
     {
         if (!((DWORD*)symbols_PTRS)[i] &&
-            (((DWORD*)symbols_PTRS) + i) != symbols_PTRS->twinui_pcshell_PTRS + TWINUI_PCSHELL_SB_CNT - 1
+            (((DWORD*)symbols_PTRS) + i) != symbols_PTRS->twinui_pcshell_PTRS + TWINUI_PCSHELL_SB_CNT - 1 &&
+            (((DWORD*)symbols_PTRS) + i) != symbols_PTRS->twinui_pcshell_PTRS + TWINUI_PCSHELL_SB_CNT - 2
             )
         {
             bNeedToDownload = TRUE;
