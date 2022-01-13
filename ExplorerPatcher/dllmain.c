@@ -81,6 +81,7 @@ BOOL bDoNotRedirectSystemToSettingsApp = FALSE;
 BOOL bDoNotRedirectProgramsAndFeaturesToSettingsApp = FALSE;
 BOOL bDoNotRedirectDateAndTimeToSettingsApp = FALSE;
 BOOL bDoNotRedirectNotificationIconsToSettingsApp = FALSE;
+BOOL bDisableOfficeHotkeys = FALSE;
 #define TASKBARGLOMLEVEL_DEFAULT 2
 #define MMTASKBARGLOMLEVEL_DEFAULT 2
 DWORD dwTaskbarGlomLevel = TASKBARGLOMLEVEL_DEFAULT;
@@ -4460,6 +4461,15 @@ void WINAPI LoadSettings(LPARAM lParam)
             &bDoNotRedirectNotificationIconsToSettingsApp,
             &dwSize
         );
+        dwSize = sizeof(DWORD);
+        RegQueryValueExW(
+            hKey,
+            TEXT("DisableOfficeHotkeys"),
+            0,
+            NULL,
+            &bDisableOfficeHotkeys,
+            &dwSize
+        );
         dwTemp = TASKBARGLOMLEVEL_DEFAULT;
         dwSize = sizeof(DWORD);
         RegQueryValueExW(
@@ -6253,6 +6263,30 @@ BOOL explorer_SetRect(LPRECT lprc, int xLeft, int yTop, int xRight, int yBottom)
 #pragma endregion
 
 
+#pragma region "Disable Office Hotkeys"
+const UINT office_hotkeys[10] = { 0x57, 0x54, 0x59, 0x4F, 0x50, 0x44, 0x4C, 0x58, 0x4E, 0x20 };
+BOOL explorer_RegisterHotkeyHook(HWND hWnd, int id, UINT fsModifiers, UINT vk)
+{
+    if (fsModifiers == (MOD_ALT | MOD_CONTROL | MOD_SHIFT | MOD_WIN | MOD_NOREPEAT) && (
+        vk == office_hotkeys[0] ||
+        vk == office_hotkeys[1] ||
+        vk == office_hotkeys[2] ||
+        vk == office_hotkeys[3] ||
+        vk == office_hotkeys[4] ||
+        vk == office_hotkeys[5] ||
+        vk == office_hotkeys[6] ||
+        vk == office_hotkeys[7] ||
+        vk == office_hotkeys[8] ||
+        vk == office_hotkeys[9]))
+    {
+        SetLastError(ERROR_HOTKEY_ALREADY_REGISTERED);
+        return FALSE;
+    }
+    return RegisterHotKey(hWnd, id, fsModifiers, vk);
+}
+#pragma endregion
+
+
 DWORD InjectBasicFunctions(BOOL bIsExplorer, BOOL bInstall)
 {
     //Sleep(150);
@@ -7008,6 +7042,12 @@ DWORD Inject(BOOL bIsExplorer)
         0
     );
     printf("Open Start on monitor thread\n");
+
+
+    if (bDisableOfficeHotkeys)
+    {
+        VnPatchIAT(hExplorer, "user32.dll", "RegisterHotKey", explorer_RegisterHotkeyHook);
+    }
 
 
     if (bEnableArchivePlugin)

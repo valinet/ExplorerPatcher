@@ -10,6 +10,7 @@ Tested on OS build 22000.376.
 
 * Ability to choose a Windows 10 or Windows 11 Start button style for the Windows 10 taskbar (#436, thanks @krlvm)
 * Support for screen readers in the Properties window (#627) (.1)
+* Option to disable `Office` hotkeys (`Ctrl`+`Alt`+`Shift`+`Windows` key combinations) (#661) (.4)
 
 #### Feature enhancements
 

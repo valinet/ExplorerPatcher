@@ -360,6 +360,8 @@
 "PropertiesInWinX"=dword:00000000
 ;b Remove shortcut key from program settings item in Win+X menu
 "NoMenuAccelerator"=dword:00000000
+;b Disable Office hotkeys (Ctrl+Alt+Shift+Windows key combinations) *
+"DisableOfficeHotkeys"=dword:00000000
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
 ;c 6 Default action in the Alt+F4 dialog on the desktop
 ;x 256 Switch user
