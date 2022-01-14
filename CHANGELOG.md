@@ -33,6 +33,7 @@ Tested on OS build 22000.434.
 * Fixed a bug that could unexpectedly prevent the [Win]+[Alt]+[D] shortcut from working properly
 * Windows 10 language switcher displays correctly when the taskbar is placed in some location other than the bottom of the screen (#629) (.2)
 * Available symbols download properly on Insider builds (tested on 22526.1000) (.3)
+* Mitigated an `explorer.exe` bug where Windows 10 taskbar buttons were becoming too large under certain circumstances when the setting to show labels/never combine is used and the screen resolution/DPI changes (#664) (.6)
 
 ## 22000.376.40
 

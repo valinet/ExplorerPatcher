@@ -7051,6 +7051,27 @@ DWORD Inject(BOOL bIsExplorer)
     }
 
 
+    DWORD dwSize = 0;
+    if (SHRegGetValueFromHKCUHKLMFunc && SHRegGetValueFromHKCUHKLMFunc(
+        L"Control Panel\\Desktop\\WindowMetrics",
+        L"MinWidth",
+        SRRF_RT_REG_SZ,
+        NULL,
+        NULL,
+        (LPDWORD)(&dwSize)
+    ) != ERROR_SUCCESS)
+    {
+        RegSetKeyValueW(
+            HKEY_CURRENT_USER, 
+            L"Control Panel\\Desktop\\WindowMetrics",
+            L"MinWidth",
+            REG_SZ,
+            L"38",
+            sizeof(L"38")
+        );
+    }
+
+
     CreateThread(
         0,
         0,
