@@ -3826,6 +3826,24 @@ void sws_ReadSettings(sws_WindowSwitcher* sws)
                 &(sws->dwMasterPadding),
                 &dwSize
             );
+            dwSize = sizeof(DWORD);
+            RegQueryValueExW(
+                hKey,
+                TEXT("SwitcherIsPerApplication"),
+                0,
+                NULL,
+                &(sws->bSwitcherIsPerApplication),
+                &dwSize
+            );
+            dwSize = sizeof(DWORD);
+            RegQueryValueExW(
+                hKey,
+                TEXT("AlwaysUseWindowTitleAndIcon"),
+                0,
+                NULL,
+                &(sws->bAlwaysUseWindowTitleAndIcon),
+                &dwSize
+            );
             if (sws->bIsInitialized)
             {
                 sws_WindowSwitcher_UnregisterHotkeys(sws);

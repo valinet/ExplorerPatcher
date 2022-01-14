@@ -225,6 +225,8 @@
 "PrimaryOnly"=dword:00000000
 ;b Show windows only from current monitor
 "PerMonitor"=dword:00000000
+;b Display only the most recent window (per application switcher)
+"SwitcherIsPerApplication"=dword:00000000
 ;b %PLACEHOLDER_0001%
 "NoPerApplicationList"=dword:00000000
 ;c 3 Theme
