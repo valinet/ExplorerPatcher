@@ -6295,7 +6295,8 @@ BOOL explorer_RegisterHotkeyHook(HWND hWnd, int id, UINT fsModifiers, UINT vk)
         vk == office_hotkeys[6] ||
         vk == office_hotkeys[7] ||
         vk == office_hotkeys[8] ||
-        vk == office_hotkeys[9]))
+        vk == office_hotkeys[9] ||
+        !vk))
     {
         SetLastError(ERROR_HOTKEY_ALREADY_REGISTERED);
         return FALSE;
