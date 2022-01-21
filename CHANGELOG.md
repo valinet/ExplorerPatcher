@@ -14,6 +14,7 @@ Tested on OS build 22000.434.
 * Option to disable `Office` hotkeys (`Ctrl`+`Alt`+`Shift`+`Windows` key combinations) (#661) (.4)
 * Simple Window Switcher can switch applications instead of windows (#665) (.5, .6)
 * Option to disable rounded corners for windows (.7)
+* Ability to hide the "Properties" item from the taskbar context menu (.9)
 
 #### Feature enhancements
 

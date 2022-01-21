@@ -82,6 +82,7 @@ BOOL bDoNotRedirectProgramsAndFeaturesToSettingsApp = FALSE;
 BOOL bDoNotRedirectDateAndTimeToSettingsApp = FALSE;
 BOOL bDoNotRedirectNotificationIconsToSettingsApp = FALSE;
 BOOL bDisableOfficeHotkeys = FALSE;
+DWORD bNoPropertiesInContextMenu = FALSE;
 #define TASKBARGLOMLEVEL_DEFAULT 2
 #define MMTASKBARGLOMLEVEL_DEFAULT 2
 DWORD dwTaskbarGlomLevel = TASKBARGLOMLEVEL_DEFAULT;
@@ -1447,12 +1448,15 @@ HMENU explorer_LoadMenuW(HINSTANCE hInstance, LPCWSTR lpMenuName)
             menuInfo.fType = MFT_STRING;
             menuInfo.dwTypeData = buffer;
             menuInfo.cch = wcslen(buffer);
-            InsertMenuItemW(
-                hSubMenu,
-                GetMenuItemCount(hSubMenu) - 4,
-                TRUE,
-                &menuInfo
-            );
+            if (!bNoPropertiesInContextMenu)
+            {
+                InsertMenuItemW(
+                    hSubMenu,
+                    GetMenuItemCount(hSubMenu) - 4,
+                    TRUE,
+                    &menuInfo
+                );
+            }
         }
     }
     return hMenu;
@@ -1764,12 +1768,15 @@ INT64 Shell_TrayWndSubclassProc(
                 menuInfo.fType = MFT_STRING;
                 menuInfo.dwTypeData = buffer;
                 menuInfo.cch = wcslen(buffer);
-                InsertMenuItemW(
-                    hSubMenu,
-                    GetMenuItemCount(hSubMenu) - 1,
-                    TRUE,
-                    &menuInfo
-                );
+                if (!bNoPropertiesInContextMenu)
+                {
+                    InsertMenuItemW(
+                        hSubMenu,
+                        GetMenuItemCount(hSubMenu) - 1,
+                        TRUE,
+                        &menuInfo
+                    );
+                }
 
                 INT64* unknown_array = NULL;
                 if (bSkinMenus)
@@ -4360,6 +4367,15 @@ void WINAPI LoadSettings(LPARAM lParam)
             0,
             NULL,
             &bPropertiesInWinX,
+            &dwSize
+        );
+        dwSize = sizeof(DWORD);
+        RegQueryValueExW(
+            hKey,
+            TEXT("NoPropertiesInContextMenu"),
+            0,
+            NULL,
+            &bNoPropertiesInContextMenu,
             &dwSize
         );
         dwSize = sizeof(DWORD);
