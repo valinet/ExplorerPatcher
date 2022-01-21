@@ -25,6 +25,7 @@ Tested on OS build 22000.434.
   * Windows 10 (with link to "Language Preferences")
   * Windows 10
 * Simple Window Switcher now highlights windows that require user attention (windows that have their taskbar button flash and colored in orange) (.8)
+* Reliability improvements for the option that maps the `Win`+`C` shortcut to open the clock flyout instead of Microsoft Teams (eliminated dependency on symbol data) (.10)
 
 
 #### Fixes

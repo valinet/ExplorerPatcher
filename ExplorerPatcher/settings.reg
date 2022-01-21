@@ -350,7 +350,7 @@
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;b Remember last used section in this window
 "LastSectionInProperties"=dword:00000000
-;b Open clock flyout when pressing Win+C instead of Microsoft Teams
+;b Open clock flyout when pressing Win+C instead of Microsoft Teams *
 "ClockFlyoutOnWinC"=dword:00000000
 ;b Show separators between taskbar toolbars *
 "ToolbarSeparators"=dword:00000000
@@ -433,7 +433,7 @@
 ;d Enable SysListView32 for Explorer views *
 @=""
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
-;b Do not show the program settings item ("Properties") in the taskbar context menu
+;b Hide the program settings item ("Properties") from the taskbar context menu
 "NoPropertiesInContextMenu"=dword:00000000
 ;b Enable symbols download *
 "EnableSymbolDownload"=dword:00000001

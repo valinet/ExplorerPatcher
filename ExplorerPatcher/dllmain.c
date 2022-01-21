@@ -162,11 +162,13 @@ HRESULT WINAPI _DllGetClassObject(
     REFIID   riid,
     LPVOID* ppv
 );
+#ifdef _WIN64
 BOOL ep_dwm_StartService(LPWSTR wszServiceName, LPWSTR wszEventName);
 __declspec(dllexport) int ZZDWM(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLine, int nCmdShow)
 {
     ep_dwm_StartService(L"ep_dwm_Service_" _T(EP_CLSID), L"Global\\ep_dwm_" _T(EP_CLSID));
 }
+#endif
 
 #pragma region "Updates"
 #ifdef _WIN64
@@ -704,6 +706,77 @@ void LaunchNetworkTargets(DWORD dwTarget)
             SW_SHOWNORMAL
         );
     }
+}
+#endif
+#pragma endregion
+
+
+#pragma region "Service Window"
+#ifdef _WIN64
+#define EP_SERVICE_WINDOW_CLASS_NAME L"EP_Service_Window_" _T(EP_CLSID)
+LRESULT CALLBACK EP_Service_Window_WndProc(
+    HWND hWnd,
+    UINT uMsg,
+    WPARAM wParam,
+    LPARAM lParam)
+{
+    if (uMsg == WM_HOTKEY && (wParam == 1 || wParam == 2))
+    {
+        InvokeClockFlyout();
+        return 0;
+    }
+
+    return DefWindowProcW(hWnd, uMsg, wParam, lParam);
+}
+DWORD EP_ServiceWindowThread(DWORD unused)
+{
+    WNDCLASS wc = { 0 };
+    wc.style = CS_DBLCLKS;
+    wc.lpfnWndProc = EP_Service_Window_WndProc;
+    wc.hbrBackground = (HBRUSH)GetStockObject(WHITE_BRUSH);
+    wc.hInstance = GetModuleHandle(NULL);
+    wc.lpszClassName = EP_SERVICE_WINDOW_CLASS_NAME;
+    wc.hCursor = LoadCursorW(NULL, IDC_ARROW);
+    RegisterClassW(&wc);
+
+    HWND hWnd = CreateWindowExW(
+        0,
+        EP_SERVICE_WINDOW_CLASS_NAME,
+        0,
+        WS_POPUP,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        GetModuleHandle(NULL),
+        NULL
+    );
+    if (hWnd)
+    {
+        if (bClockFlyoutOnWinC)
+        {
+            RegisterHotKey(hWnd, 1, MOD_WIN | MOD_NOREPEAT, 'C');
+        }
+        RegisterHotKey(hWnd, 2, MOD_WIN | MOD_ALT, 'D');
+        MSG msg;
+        BOOL bRet;
+        while ((bRet = GetMessageW(&msg, NULL, 0, 0)) != 0)
+        {
+            if (bRet == -1)
+            {
+                break;
+            }
+            else
+            {
+                TranslateMessage(&msg);
+                DispatchMessageW(&msg);
+            }
+        }
+        DestroyWindow(hWnd);
+    }
+    SetEvent(hCanStartSws);
 }
 #endif
 #pragma endregion
@@ -1655,7 +1728,6 @@ INT64 Shell_TrayWndSubclassProc(
         if (bIsPrimaryTaskbar)
         {
             UnhookWindowsHookEx(Shell_TrayWndMouseHook);
-            UnregisterHotKey(hWnd, 'VNEP');
         }
         RemoveWindowSubclass(hWnd, Shell_TrayWndSubclassProc, Shell_TrayWndSubclassProc);
     }
@@ -1675,11 +1747,6 @@ INT64 Shell_TrayWndSubclassProc(
     else if (bOldTaskbar && uMsg == WM_LBUTTONDBLCLK && bTaskbarAutohideOnDoubleClick)
     {
         ToggleTaskbarAutohide();
-        return 0;
-    }
-    else if (uMsg == WM_HOTKEY && lParam == MAKELPARAM(MOD_WIN | MOD_ALT, 0x44))
-    {
-        InvokeClockFlyout();
         return 0;
     }
     else if (uMsg == WM_HOTKEY && wParam == 500 && lParam == MAKELPARAM(MOD_WIN, 0x41))
@@ -3105,7 +3172,7 @@ HRESULT pnidui_CoCreateInstanceHook(
 #pragma endregion
 
 
-#pragma region "Show Clock flyout on Win+C and Win+Alt+D"
+#pragma region "Clock flyout helper"
 #ifdef _WIN64
 typedef struct _ClockButton_ToggleFlyoutCallback_Params
 {
@@ -4914,7 +4981,6 @@ HWND CreateWindowExWHook(
     else if (bIsExplorerProcess && (*((WORD*)&(lpClassName)+1)) && !wcscmp(lpClassName, L"Shell_TrayWnd"))
     {
         SetWindowSubclass(hWnd, Shell_TrayWndSubclassProc, Shell_TrayWndSubclassProc, TRUE);
-        RegisterHotKey(hWnd, 'VNEP', MOD_WIN | MOD_ALT, 0x44);
         Shell_TrayWndMouseHook = SetWindowsHookExW(WH_MOUSE, Shell_TrayWndMouseProc, NULL, GetCurrentThreadId());
     }
     else if (bIsExplorerProcess && (*((WORD*)&(lpClassName)+1)) && !wcscmp(lpClassName, L"Shell_SecondaryTrayWnd"))
@@ -6885,7 +6951,7 @@ DWORD Inject(BOOL bIsExplorer)
         }
     }
 
-    if (symbols_PTRS.twinui_pcshell_PTRS[TWINUI_PCSHELL_SB_CNT - 1] && symbols_PTRS.twinui_pcshell_PTRS[TWINUI_PCSHELL_SB_CNT - 1] != 0xFFFFFFFF)
+    /*if (symbols_PTRS.twinui_pcshell_PTRS[TWINUI_PCSHELL_SB_CNT - 1] && symbols_PTRS.twinui_pcshell_PTRS[TWINUI_PCSHELL_SB_CNT - 1] != 0xFFFFFFFF)
     {
         winrt_Windows_Internal_Shell_implementation_MeetAndChatManager_OnMessageFunc = (INT64(*)(void*, POINT*))
             ((uintptr_t)hTwinuiPcshell + symbols_PTRS.twinui_pcshell_PTRS[TWINUI_PCSHELL_SB_CNT - 1]);
@@ -6899,7 +6965,7 @@ DWORD Inject(BOOL bIsExplorer)
             FreeLibraryAndExitThread(hModule, rv);
             return rv;
         }
-    }
+    }*/
     VnPatchIAT(hTwinuiPcshell, "API-MS-WIN-CORE-REGISTRY-L1-1-0.DLL", "RegGetValueW", twinuipcshell_RegGetValueW);
     //VnPatchIAT(hTwinuiPcshell, "api-ms-win-core-debug-l1-1-0.dll", "IsDebuggerPresent", IsDebuggerPresentHook);
     printf("Setup twinui.pcshell functions done\n");
@@ -7093,6 +7159,7 @@ DWORD Inject(BOOL bIsExplorer)
     }
 
 
+
     CreateThread(
         0,
         0,
@@ -7102,6 +7169,19 @@ DWORD Inject(BOOL bIsExplorer)
         0
     );
     printf("Open Start on monitor thread\n");
+
+
+
+    CreateThread(
+        0,
+        0,
+        EP_ServiceWindowThread,
+        0,
+        0,
+        0
+    );
+    printf("EP Service Window thread\n");
+
 
 
     if (bDisableOfficeHotkeys)
