@@ -3,6 +3,8 @@ DEFINE_GUID(LiveSetting_Property_GUID, 0xc12bcd8e, 0x2a8e, 0x4950, 0x8a, 0xe7, 0
 #include <oleacc.h>
 #include "GUI.h"
 
+TCHAR GUI_title[260];
+FILE* AuditFile = NULL;
 LANGID locale;
 void* GUI_FileMapping = NULL;
 DWORD GUI_FileSize = 0;
@@ -109,7 +111,7 @@ BOOL IsColorSchemeChangeMessage(LPARAM lParam)
     return is;
 }
 
-LSTATUS GUI_RegSetValueExW(
+LSTATUS GUI_Internal_RegSetValueExW(
     HKEY       hKey,
     LPCWSTR    lpValueName,
     DWORD      Reserved,
@@ -302,6 +304,12 @@ LSTATUS GUI_RegSetValueExW(
     }
     else if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_PeopleBand"))
     {
+        DWORD dwData = 0, dwSize = sizeof(DWORD);
+        RegGetValueW(HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced\\People", L"PeopleBand", RRF_RT_DWORD, NULL, &dwData, &dwSize);
+        if ((dwData && *(DWORD*)lpData) || (!dwData && !*(DWORD*)lpData))
+        {
+            return ERROR_SUCCESS;
+        }
         PostMessageW(FindWindowW(L"Shell_TrayWnd", NULL), WM_COMMAND, 435, 0);
         return ERROR_SUCCESS;
     }
@@ -309,7 +317,7 @@ LSTATUS GUI_RegSetValueExW(
     {
         RegSetKeyValueW(
             HKEY_CURRENT_USER,
-            TEXT(REGPATH),
+            TEXT(REGPATH_OLD),
             L"Start_MaximumFrequentApps",
             dwType,
             lpData,
@@ -392,6 +400,10 @@ LSTATUS GUI_RegSetValueExW(
                 bAreRoundedCornersDisabled = FALSE;
             }
         }
+        if ((bAreRoundedCornersDisabled && *(DWORD*)lpData) || (!bAreRoundedCornersDisabled && !*(DWORD*)lpData))
+        {
+            return ERROR_SUCCESS;
+        }
         SHELLEXECUTEINFO ShExecInfo = { 0 };
         ShExecInfo.cbSize = sizeof(SHELLEXECUTEINFO);
         ShExecInfo.fMask = SEE_MASK_NOCLOSEPROCESS;
@@ -411,9 +423,96 @@ LSTATUS GUI_RegSetValueExW(
         }
         return ERROR_SUCCESS;
     }
+    else if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_RegisterAsShellExtension"))
+    {
+        HKEY hKey2 = NULL;
+        RegOpenKeyExW(
+            HKEY_LOCAL_MACHINE,
+            L"Software\\Classes\\CLSID\\" _T(EP_CLSID) L"\\InprocServer32",
+            REG_OPTION_NON_VOLATILE,
+            KEY_READ | KEY_WOW64_64KEY,
+            &hKey2
+        );
+        WCHAR wszArgs[MAX_PATH];
+        if (((hKey2 == NULL || hKey2 == INVALID_HANDLE_VALUE) && !*(DWORD*)lpData) || !(hKey2 == NULL || hKey2 == INVALID_HANDLE_VALUE) && (*(DWORD*)lpData))
+        {
+            RegCloseKey(hKey2);
+            return ERROR_SUCCESS;
+        }
+        if (!(hKey2 == NULL || hKey2 == INVALID_HANDLE_VALUE))
+        {
+            RegCloseKey(hKey2);
+        }
+        if (*(DWORD*)lpData)
+        {
+            wszArgs[0] = L'\"';
+            SHGetFolderPathW(NULL, SPECIAL_FOLDER, NULL, SHGFP_TYPE_CURRENT, wszArgs + 1);
+            wcscat_s(wszArgs, MAX_PATH, _T(APP_RELATIVE_PATH) L"\\" _T(PRODUCT_NAME) L".amd64.dll\"");
+        }
+        else
+        {
+            wszArgs[0] = L'/';
+            wszArgs[1] = L'u';
+            wszArgs[2] = L' ';
+            wszArgs[3] = L'"';
+            SHGetFolderPathW(NULL, SPECIAL_FOLDER, NULL, SHGFP_TYPE_CURRENT, wszArgs + 4);
+            wcscat_s(wszArgs, MAX_PATH, _T(APP_RELATIVE_PATH) L"\\" _T(PRODUCT_NAME) L".amd64.dll\"");
+        }
+        wprintf(L"%s\n", wszArgs);
+        WCHAR wszApp[MAX_PATH * 2];
+        GetSystemDirectoryW(wszApp, MAX_PATH * 2);
+        wcscat_s(wszApp, MAX_PATH * 2, L"\\regsvr32.exe");
+        wprintf(L"%s\n", wszApp);
+        SHELLEXECUTEINFOW sei;
+        ZeroMemory(&sei, sizeof(SHELLEXECUTEINFOW));
+        sei.cbSize = sizeof(sei);
+        sei.fMask = SEE_MASK_NOCLOSEPROCESS;
+        sei.hwnd = NULL;
+        sei.hInstApp = NULL;
+        sei.lpVerb = L"runas";
+        sei.lpFile = wszApp;
+        sei.lpParameters = wszArgs;
+        sei.hwnd = NULL;
+        sei.nShow = SW_NORMAL;
+        if (ShellExecuteExW(&sei) && sei.hProcess)
+        {
+            WaitForSingleObject(sei.hProcess, INFINITE);
+            DWORD dwExitCode = 0;
+            if (GetExitCodeProcess(sei.hProcess, &dwExitCode) && !dwExitCode)
+            {
+
+            }
+            else
+            {
+
+            }
+            CloseHandle(sei.hProcess);
+        }
+        else
+        {
+            DWORD dwError = GetLastError();
+            if (dwError == ERROR_CANCELLED)
+            {
+            }
+        }
+        return ERROR_SUCCESS;
+     }
 }
 
-LSTATUS GUI_RegQueryValueExW(
+LSTATUS GUI_RegSetValueExW(
+    HKEY       hKey,
+    LPCWSTR    lpValueName,
+    DWORD      Reserved,
+    DWORD      dwType,
+    const BYTE* lpData,
+    DWORD      cbData
+)
+{
+    LSTATUS lRes = GUI_Internal_RegSetValueExW(hKey, lpValueName, Reserved, dwType, lpData, cbData);
+    return lRes;
+}
+
+LSTATUS GUI_Internal_RegQueryValueExW(
     HKEY    hKey,
     LPCWSTR lpValueName,
     LPDWORD lpReserved,
@@ -505,7 +604,7 @@ LSTATUS GUI_RegQueryValueExW(
     }
     else if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_PeopleBand"))
     {
-        return RegQueryValueExW(hKey, L"PeopleBand", lpReserved, lpType, lpData, lpcbData);
+        return RegGetValueW(HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced\\People", L"PeopleBand", RRF_RT_DWORD, NULL, lpData, lpcbData);
     }
     else if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_Start_MaximumFrequentApps"))
     {
@@ -539,7 +638,93 @@ LSTATUS GUI_RegQueryValueExW(
         }
         return ERROR_SUCCESS;
     }
+    else if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_RegisterAsShellExtension"))
+    {
+        HKEY hKey2 = NULL;
+        RegOpenKeyExW(
+            HKEY_LOCAL_MACHINE,
+            L"Software\\Classes\\CLSID\\" _T(EP_CLSID) L"\\InprocServer32",
+            REG_OPTION_NON_VOLATILE,
+            KEY_READ | KEY_WOW64_64KEY,
+            &hKey2
+        );
+        if (hKey2 == NULL || hKey2 == INVALID_HANDLE_VALUE)
+        {
+            *(DWORD*)lpData = 0;
+        }
+        else
+        {
+            *(DWORD*)lpData = 1;
+            RegCloseKey(hKey2);
+        }
+    }
 }
+
+LSTATUS GUI_RegCreateKeyExW(
+    HKEY                        hKey,
+    LPCWSTR                     lpSubKey,
+    DWORD                       Reserved,
+    LPWSTR                      lpClass,
+    DWORD                       dwOptions,
+    REGSAM                      samDesired,
+    const LPSECURITY_ATTRIBUTES lpSecurityAttributes,
+    PHKEY                       phkResult,
+    LPDWORD                     lpdwDisposition
+)
+{
+    LSTATUS lRes = RegCreateKeyExW(hKey, lpSubKey, Reserved, lpClass, dwOptions, samDesired, lpSecurityAttributes, phkResult, lpdwDisposition);
+    if (AuditFile)
+    {
+        fwprintf(AuditFile, L"[%s\\%s]\n", hKey == HKEY_CURRENT_USER ? L"HKEY_CURRENT_USER" : L"HKEY_LOCAL_MACHINE", lpSubKey);
+    }
+    return lRes;
+}
+
+LSTATUS GUI_RegOpenKeyExW(
+    HKEY    hKey,
+    LPCWSTR lpSubKey,
+    DWORD   ulOptions,
+    REGSAM  samDesired,
+    PHKEY   phkResult
+)
+{
+    LSTATUS lRes = RegOpenKeyExW(hKey, lpSubKey, ulOptions, samDesired, phkResult);
+    if (AuditFile)
+    {
+        fwprintf(AuditFile, L"[%s%s\\%s]\n", (*phkResult == NULL || *phkResult == INVALID_HANDLE_VALUE) ? L"-" : L"", hKey == HKEY_CURRENT_USER ? L"HKEY_CURRENT_USER" : L"HKEY_LOCAL_MACHINE", lpSubKey);
+        WCHAR wszDefVal[MAX_PATH];
+        ZeroMemory(wszDefVal, MAX_PATH);
+        DWORD dwLen = MAX_PATH;
+        RegGetValueW(hKey, lpSubKey, NULL, RRF_RT_REG_SZ, NULL, wszDefVal, &dwLen);
+        if (wszDefVal[0])
+        {
+            fwprintf(AuditFile, L"@=\"%s\"\n", wszDefVal);
+        }
+        else
+        {
+            fwprintf(AuditFile, L"@=\"\"\n");
+        }
+    }
+    return lRes;
+}
+
+LSTATUS GUI_RegQueryValueExW(
+    HKEY    hKey,
+    LPCWSTR lpValueName,
+    LPDWORD lpReserved,
+    LPDWORD lpType,
+    LPBYTE  lpData,
+    LPDWORD lpcbData
+)
+{
+    LSTATUS lRes = GUI_Internal_RegQueryValueExW(hKey, lpValueName, lpReserved, lpType, lpData, lpcbData);
+    if (AuditFile)
+    {
+        fwprintf(AuditFile, L"%s\"%s\"=dword:%08x\n", (lpValueName && wcsncmp(lpValueName, L"Virtualized_" _T(EP_CLSID), 50)) ? L"" : L";", lpValueName, *(DWORD*)lpData);
+    }
+    return lRes;
+}
+
 
 static HRESULT GUI_AboutProc(
     HWND hwnd,
@@ -785,7 +970,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
             }
             if (strcmp(line, "Windows Registry Editor Version 5.00\r\n") && 
                 strcmp(line, "\r\n") && 
-                (currentSection == -1 || currentSection == _this->section || !strncmp(line, ";T ", 3) || !strncmp(line, ";f", 2)) &&
+                (currentSection == -1 || currentSection == _this->section || !strncmp(line, ";T ", 3) || !strncmp(line, ";f", 2) || AuditFile) &&
                 !(!IsThemeActive() && !strncmp(line, ";M ", 3))
                 )
             {
@@ -1275,27 +1460,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                         KEY_READ | KEY_WOW64_64KEY,
                                         &hKey
                                     );
-                                    if (hKey == NULL || hKey == INVALID_HANDLE_VALUE)
-                                    {
-                                        buffer = malloc(cbRscr);
-                                        if (buffer)
-                                        {
-                                            memcpy(buffer, pRscr, cbRscr);
-                                            char* p1 = strstr(buffer, "[-HKEY_LOCAL_MACHINE\\Software\\Classes\\CLSID\\" EP_CLSID "\\InprocServer32]");
-                                            if (p1) p1[0] = ';';
-                                            char* p2 = strstr(buffer, ";d Register as shell extension");
-                                            if (p2) memcpy(p2, ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;", 70);
-                                        }
-                                        else
-                                        {
-                                            RegCloseKey(hKey);
-                                            hKey = NULL;
-                                        }
-                                    }
-                                    if (!buffer)
-                                    {
-                                        buffer = pRscr;
-                                    }
+                                    buffer = pRscr;
                                     DWORD dwNumberOfBytesWritten = 0;
                                     if (WriteFile(
                                         hFile,
@@ -1306,160 +1471,131 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                     ))
                                     {
                                         CloseHandle(hFile);
+                                        DWORD dwOldTaskbarOld = 0, dwOldTaskbar = 0, dwSize = sizeof(DWORD);
+                                        RegGetValueW(HKEY_CURRENT_USER, _T(REGPATH), L"OldTaskbar", RRF_RT_DWORD, NULL, &dwOldTaskbarOld, &dwSize);
+                                        RegSetKeyValueW(HKEY_CURRENT_USER, _T(REGPATH), L"OldTaskbar", REG_DWORD, &dwOldTaskbar, sizeof(DWORD));
 
-                                        BOOL bAreRoundedCornersDisabled = FALSE;
-                                        HANDLE h_exists = CreateEventW(NULL, FALSE, FALSE, L"Global\\ep_dwm_" _T(EP_CLSID));
-                                        if (h_exists)
+                                        DWORD dwError = 0;
+                                        // https://stackoverflow.com/questions/50298722/win32-launching-a-highestavailable-child-process-as-a-normal-user-process
+                                        if (pvRtlQueryElevationFlags = GetProcAddress(GetModuleHandleW(L"ntdll"), "RtlQueryElevationFlags"))
                                         {
-                                            if (GetLastError() == ERROR_ALREADY_EXISTS)
+                                            PVOID pv;
+                                            if (pv = AddVectoredExceptionHandler(TRUE, OnVex))
                                             {
-                                                bAreRoundedCornersDisabled = TRUE;
-                                            }
-                                            else
-                                            {
-                                                bAreRoundedCornersDisabled = FALSE;
-                                            }
-                                            CloseHandle(h_exists);
-                                        }
-                                        else
-                                        {
-                                            if (GetLastError() == ERROR_ACCESS_DENIED)
-                                            {
-                                                bAreRoundedCornersDisabled = TRUE;
-                                            }
-                                            else
-                                            {
-                                                bAreRoundedCornersDisabled = FALSE;
-                                            }
-                                        }
+                                                CONTEXT ctx;
+                                                ZeroMemory(&ctx, sizeof(CONTEXT));
+                                                ctx.ContextFlags = CONTEXT_DEBUG_REGISTERS;
+                                                ctx.Dr7 = 0x404;
+                                                ctx.Dr1 = (ULONG_PTR)pvRtlQueryElevationFlags;
 
-                                        DWORD dwError = 1;
-                                        if ((hKey == NULL || hKey == INVALID_HANDLE_VALUE) && !bAreRoundedCornersDisabled)
-                                        {
-                                            dwError = 0;
-                                            // https://stackoverflow.com/questions/50298722/win32-launching-a-highestavailable-child-process-as-a-normal-user-process
-                                            if (pvRtlQueryElevationFlags = GetProcAddress(GetModuleHandleW(L"ntdll"), "RtlQueryElevationFlags"))
-                                            {
-                                                PVOID pv;
-                                                if (pv = AddVectoredExceptionHandler(TRUE, OnVex))
+                                                if (SetThreadContext(GetCurrentThread(), &ctx))
                                                 {
-                                                    CONTEXT ctx;
-                                                    ZeroMemory(&ctx, sizeof(CONTEXT));
-                                                    ctx.ContextFlags = CONTEXT_DEBUG_REGISTERS;
-                                                    ctx.Dr7 = 0x404;
-                                                    ctx.Dr1 = (ULONG_PTR)pvRtlQueryElevationFlags;
-
-                                                    if (SetThreadContext(GetCurrentThread(), &ctx))
+                                                    WCHAR wszExec[MAX_PATH * 2];
+                                                    ZeroMemory(wszExec, MAX_PATH * 2 * sizeof(WCHAR));
+                                                    wszExec[0] = L'"';
+                                                    GetWindowsDirectoryW(wszExec + 1, MAX_PATH);
+                                                    wcscat_s(wszExec, MAX_PATH * 2, L"\\regedit.exe\" \"");
+                                                    wcscat_s(wszExec, MAX_PATH * 2, wszPath);
+                                                    wcscat_s(wszExec, MAX_PATH * 2, L"\"");
+                                                    STARTUPINFO si;
+                                                    ZeroMemory(&si, sizeof(STARTUPINFO));
+                                                    si.cb = sizeof(STARTUPINFO);
+                                                    PROCESS_INFORMATION pi;
+                                                    ZeroMemory(&pi, sizeof(PROCESS_INFORMATION));
+                                                    wprintf(L"%s\n", wszExec);
+                                                    if (CreateProcessW(NULL, wszExec, 0, 0, 0, 0, 0, 0, &si, &pi))
                                                     {
-                                                        WCHAR wszExec[MAX_PATH * 2];
-                                                        ZeroMemory(wszExec, MAX_PATH * 2 * sizeof(WCHAR));
-                                                        wszExec[0] = L'"';
-                                                        GetWindowsDirectoryW(wszExec + 1, MAX_PATH);
-                                                        wcscat_s(wszExec, MAX_PATH * 2, L"\\regedit.exe\" \"");
-                                                        wcscat_s(wszExec, MAX_PATH * 2, wszPath);
-                                                        wcscat_s(wszExec, MAX_PATH * 2, L"\"");
-                                                        STARTUPINFO si;
-                                                        ZeroMemory(&si, sizeof(STARTUPINFO));
-                                                        si.cb = sizeof(STARTUPINFO);
-                                                        PROCESS_INFORMATION pi;
-                                                        ZeroMemory(&pi, sizeof(PROCESS_INFORMATION));
-                                                        wprintf(L"%s\n", wszExec);
-                                                        if (CreateProcessW(NULL, wszExec, 0, 0, 0, 0, 0, 0, &si, &pi))
-                                                        {
-                                                            CloseHandle(pi.hThread);
-                                                            //CloseHandle(pi.hProcess);
-                                                        }
-                                                        else
-                                                        {
-                                                            dwError = GetLastError();
-                                                        }
-
-                                                        ctx.Dr7 = 0x400;
-                                                        ctx.Dr1 = 0;
-                                                        SetThreadContext(GetCurrentThread(), &ctx);
-
-                                                        if (pi.hProcess)
-                                                        {
-                                                            WaitForSingleObject(pi.hProcess, INFINITE);
-                                                            DWORD dwExitCode = 0;
-                                                            GetExitCodeProcess(pi.hProcess, &dwExitCode);
-                                                            CloseHandle(pi.hProcess);
-                                                        }
+                                                        CloseHandle(pi.hThread);
+                                                        //CloseHandle(pi.hProcess);
                                                     }
                                                     else
                                                     {
                                                         dwError = GetLastError();
                                                     }
-                                                    RemoveVectoredExceptionHandler(pv);
+
+                                                    ctx.Dr7 = 0x400;
+                                                    ctx.Dr1 = 0;
+                                                    SetThreadContext(GetCurrentThread(), &ctx);
+
+                                                    if (pi.hProcess)
+                                                    {
+                                                        WaitForSingleObject(pi.hProcess, INFINITE);
+                                                        DWORD dwExitCode = 0;
+                                                        GetExitCodeProcess(pi.hProcess, &dwExitCode);
+                                                        CloseHandle(pi.hProcess);
+                                                    }
                                                 }
                                                 else
                                                 {
                                                     dwError = GetLastError();
                                                 }
+                                                RemoveVectoredExceptionHandler(pv);
                                             }
                                             else
                                             {
                                                 dwError = GetLastError();
                                             }
                                         }
-                                        if (dwError)
+                                        else
                                         {
-                                            WCHAR wszCMD[MAX_PATH];
-                                            GetSystemDirectoryW(wszCMD, MAX_PATH);
-                                            wcscat_s(wszCMD, MAX_PATH, L"\\cmd.exe");
-
-                                            WCHAR wszRegedit[MAX_PATH];
-                                            GetWindowsDirectoryW(wszRegedit, MAX_PATH);
-                                            wcscat_s(wszRegedit, MAX_PATH, L"\\regedit.exe");
-
-                                            WCHAR wszSCPath[MAX_PATH];
-                                            GetSystemDirectoryW(wszSCPath, MAX_PATH);
-                                            wcscat_s(wszSCPath, MAX_PATH, L"\\sc.exe");
-
-                                            WCHAR wszTaskkill[MAX_PATH];
-                                            GetSystemDirectoryW(wszTaskkill, MAX_PATH);
-                                            wcscat_s(wszTaskkill, MAX_PATH, L"\\taskkill.exe");
-
-                                            WCHAR wszArguments[MAX_PATH * 10];
-                                            swprintf_s(
-                                                wszArguments,
-                                                MAX_PATH * 10,
-                                                L"/c \""
-                                                L"\"%s\" \"%s\" & "
-                                                L"\"%s\" stop ep_dwm_" _T(EP_CLSID_LITE) L" & "
-                                                L"\"%s\" delete ep_dwm_" _T(EP_CLSID_LITE)
-                                                L"\"",
-                                                wszRegedit,
-                                                wszPath,
-                                                wszSCPath,
-                                                wszSCPath
-                                            );
-                                            wprintf(L"%s\n", wszArguments);
-
-                                            SHELLEXECUTEINFO ShExecInfo = { 0 };
-                                            ShExecInfo.cbSize = sizeof(SHELLEXECUTEINFO);
-                                            ShExecInfo.fMask = SEE_MASK_NOCLOSEPROCESS;
-                                            ShExecInfo.hwnd = NULL;
-                                            ShExecInfo.lpVerb = L"runas";
-                                            ShExecInfo.lpFile = wszCMD;
-                                            ShExecInfo.lpParameters = wszArguments;
-                                            ShExecInfo.lpDirectory = NULL;
-                                            ShExecInfo.nShow = SW_SHOW;
-                                            ShExecInfo.hInstApp = NULL;
-                                            ShellExecuteExW(&ShExecInfo);
-                                            WaitForSingleObject(ShExecInfo.hProcess, INFINITE);
-                                            DWORD dwExitCode = 0;
-                                            GetExitCodeProcess(ShExecInfo.hProcess, &dwExitCode);
-                                            CloseHandle(ShExecInfo.hProcess);
+                                            dwError = GetLastError();
                                         }
+
+                                        dwSize = sizeof(DWORD);
+                                        RegGetValueW(HKEY_CURRENT_USER, _T(REGPATH), L"OldTaskbar", RRF_RT_DWORD, NULL, &dwOldTaskbar, &dwSize);
+                                        if (dwOldTaskbar == 1)
+                                        {
+                                            FILE* vf = NULL;
+                                            _wfopen_s(&vf, wszPath, L"r");
+                                            if (vf)
+                                            {
+                                                char* line2 = malloc(MAX_LINE_LENGTH * sizeof(char));
+                                                if (line2)
+                                                {
+                                                    int numChRd2 = 0;
+                                                    size_t bufsiz2 = MAX_LINE_LENGTH;
+                                                    while ((numChRd2 = getline(&line2, &bufsiz2, vf)) != -1)
+                                                    {
+                                                        if (!strncmp(line2, ";\"Virtualized_" EP_CLSID, 52))
+                                                        {
+                                                            DWORD dwVal = 0;
+                                                            WCHAR wszName[MAX_PATH];
+                                                            ZeroMemory(wszName, MAX_PATH * sizeof(wchar_t));
+                                                            MultiByteToWideChar(
+                                                                CP_UTF8,
+                                                                MB_PRECOMPOSED,
+                                                                line2 + 2,
+                                                                numChRd2 - 2,
+                                                                wszName,
+                                                                MAX_PATH
+                                                            );
+                                                            wchar_t* ddd = wcschr(wszName, L'=');
+                                                            if (ddd) *ddd = 0;
+                                                            wchar_t* ppp = wcschr(wszName, L'"');
+                                                            if (ppp) *ppp = 0;
+                                                            if (!wcsncmp(ddd + 1, L"dword:", 6))
+                                                            {
+                                                                wchar_t* xxx = wcschr(ddd + 1, L':');
+                                                                xxx++;
+                                                                dwVal = wcstol(xxx, NULL, 16);
+                                                                wprintf(L"%s %d\n", wszName, dwVal);
+                                                                GUI_RegSetValueExW(NULL, wszName, 0, RRF_RT_DWORD, &dwVal, sizeof(DWORD));
+                                                            }
+                                                        }
+                                                    }
+                                                    free(line2);
+                                                }
+                                                fclose(vf);
+                                            }
+                                        }
+                                        else
+                                        {
+                                            RegSetKeyValueW(HKEY_CURRENT_USER, _T(REGPATH), L"OldTaskbar", REG_DWORD, &dwOldTaskbarOld, sizeof(DWORD));
+                                        }
+
                                         _this->tabOrder = 0;
                                         InvalidateRect(hwnd, NULL, FALSE);
                                         DeleteFileW(wszPath);
-                                    }
-                                    if (hKey == NULL || hKey == INVALID_HANDLE_VALUE)
-                                    {
-                                        RegCloseKey(hKey);
-                                        free(buffer);
                                     }
                                 }
                             }
@@ -1534,6 +1670,257 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                     NULL,
                                     NULL
                                 );
+                            }
+                            else if (!strncmp(line + 1, "export", 6))
+                            {
+                                WCHAR title[MAX_PATH];
+                                WCHAR filter[MAX_PATH];
+                                WCHAR wszRegedit[MAX_PATH];
+                                GetWindowsDirectoryW(wszRegedit, MAX_PATH);
+                                wcscat_s(wszRegedit, MAX_PATH, L"\\regedit.exe");
+                                HMODULE hRegedit = LoadLibraryExW(wszRegedit, NULL, LOAD_LIBRARY_AS_DATAFILE);
+                                if (hRegedit)
+                                {
+                                    LoadStringW(hRegedit, 301, title, MAX_PATH);
+                                    LoadStringW(hRegedit, 302, filter, MAX_PATH);
+                                    unsigned int j = 0;
+                                    for (unsigned int i = 0; i < MAX_PATH; ++i)
+                                    {
+                                        if (filter[i] == L'#')
+                                        {
+                                            filter[i] = L'\0';
+                                            j++;
+                                            if (j == 2)
+                                            {
+                                                filter[i + 1] = L'\0';
+                                                break;
+                                            }
+                                        }
+                                    }
+                                    FreeLibrary(hRegedit);
+                                }
+                                else
+                                {
+                                    wcscpy_s(title, MAX_PATH, L"Export settings");
+                                    wcscpy_s(filter, MAX_PATH, L"Registration Files (*.reg)\0*.reg\0\0");
+                                }
+                                WCHAR wszPath[MAX_PATH];
+                                ZeroMemory(wszPath, MAX_PATH * sizeof(WCHAR));
+                                OPENFILENAMEW ofn;
+                                ZeroMemory(&ofn, sizeof(OPENFILENAMEW));
+                                ofn.lStructSize = sizeof(OPENFILENAMEW);
+                                ofn.hwndOwner = hwnd;
+                                ofn.hInstance = GetModuleHandleW(NULL);
+                                ofn.lpstrFilter = filter;
+                                ofn.lpstrCustomFilter = NULL;
+                                ofn.nMaxCustFilter = 0;
+                                ofn.nFilterIndex = 1;
+                                ofn.lpstrFile = wszPath;
+                                ofn.nMaxFile = MAX_PATH;
+                                ofn.lpstrFileTitle = NULL;
+                                ofn.nMaxFileTitle = 0;
+                                ofn.lpstrInitialDir = NULL;
+                                ofn.lpstrTitle = title;
+                                ofn.Flags = OFN_DONTADDTORECENT | OFN_CREATEPROMPT | OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT;
+                                ofn.nFileOffset = 0;
+                                ofn.nFileExtension = 0;
+                                ofn.lpstrDefExt = L"reg";
+                                ofn.lCustData = NULL;
+                                ofn.lpfnHook = NULL;
+                                ofn.lpTemplateName = NULL;
+                                if (GetSaveFileNameW(&ofn))
+                                {
+                                    _wfopen_s(&AuditFile, wszPath, L"w");
+                                    if (AuditFile)
+                                    {
+                                        fwprintf(AuditFile, L"Windows Registry Editor Version 5.00\n\n[HKEY_CURRENT_USER\\Software\\ExplorerPatcher]\n\"ImportOK\"=dword:00000001\n");
+                                        POINT pt;
+                                        pt.x = 0;
+                                        pt.y = 0;
+                                        GUI_Build(0, hwnd, pt);
+                                        fclose(AuditFile);
+                                        AuditFile = NULL;
+                                        MessageBoxW(hwnd, L"Settings have been exported successfully.", GUI_title, MB_ICONINFORMATION);
+                                    }
+                                }
+                            }
+                            else if (!strncmp(line + 1, "import", 6))
+                            {
+                                WCHAR title[MAX_PATH];
+                                WCHAR filter[MAX_PATH];
+                                WCHAR wszRegedit[MAX_PATH];
+                                GetWindowsDirectoryW(wszRegedit, MAX_PATH);
+                                wcscat_s(wszRegedit, MAX_PATH, L"\\regedit.exe");
+                                HMODULE hRegedit = LoadLibraryExW(wszRegedit, NULL, LOAD_LIBRARY_AS_DATAFILE);
+                                if (hRegedit)
+                                {
+                                    LoadStringW(hRegedit, 300, title, MAX_PATH);
+                                    LoadStringW(hRegedit, 302, filter, MAX_PATH);
+                                    unsigned j = 0;
+                                    for (unsigned int i = 0; i < MAX_PATH; ++i)
+                                    {
+                                        if (filter[i] == L'#')
+                                        {
+                                            filter[i] = L'\0';
+                                            j++;
+                                            if (j == 2)
+                                            {
+                                                filter[i + 1] = L'\0';
+                                                break;
+                                            }
+                                        }
+                                    }
+                                    FreeLibrary(hRegedit);
+                                }
+                                else
+                                {
+                                    wcscpy_s(title, MAX_PATH, L"Import settings");
+                                    wcscpy_s(filter, MAX_PATH, L"Registration Files (*.reg)\0*.reg\0\0");
+                                }
+                                WCHAR wszPath[MAX_PATH];
+                                ZeroMemory(wszPath, MAX_PATH * sizeof(WCHAR));
+                                OPENFILENAMEW ofn;
+                                ZeroMemory(&ofn, sizeof(OPENFILENAMEW));
+                                ofn.lStructSize = sizeof(OPENFILENAMEW);
+                                ofn.hwndOwner = hwnd;
+                                ofn.hInstance = GetModuleHandleW(NULL);
+                                ofn.lpstrFilter = filter;
+                                ofn.lpstrCustomFilter = NULL;
+                                ofn.nMaxCustFilter = 0;
+                                ofn.nFilterIndex = 1;
+                                ofn.lpstrFile = wszPath;
+                                ofn.nMaxFile = MAX_PATH;
+                                ofn.lpstrFileTitle = NULL;
+                                ofn.nMaxFileTitle = 0;
+                                ofn.lpstrInitialDir = NULL;
+                                ofn.lpstrTitle = title;
+                                ofn.Flags = OFN_DONTADDTORECENT | OFN_CREATEPROMPT | OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT | OFN_FILEMUSTEXIST;
+                                ofn.nFileOffset = 0;
+                                ofn.nFileExtension = 0;
+                                ofn.lpstrDefExt = L"reg";
+                                ofn.lCustData = NULL;
+                                ofn.lpfnHook = NULL;
+                                ofn.lpTemplateName = NULL;
+                                if (GetOpenFileNameW(&ofn))
+                                {
+                                    RegDeleteKeyValueW(HKEY_CURRENT_USER, _T(REGPATH), L"ImportOK");
+
+                                    DWORD dwError = 0;
+                                    // https://stackoverflow.com/questions/50298722/win32-launching-a-highestavailable-child-process-as-a-normal-user-process
+                                    if (pvRtlQueryElevationFlags = GetProcAddress(GetModuleHandleW(L"ntdll"), "RtlQueryElevationFlags"))
+                                    {
+                                        PVOID pv;
+                                        if (pv = AddVectoredExceptionHandler(TRUE, OnVex))
+                                        {
+                                            CONTEXT ctx;
+                                            ZeroMemory(&ctx, sizeof(CONTEXT));
+                                            ctx.ContextFlags = CONTEXT_DEBUG_REGISTERS;
+                                            ctx.Dr7 = 0x404;
+                                            ctx.Dr1 = (ULONG_PTR)pvRtlQueryElevationFlags;
+
+                                            if (SetThreadContext(GetCurrentThread(), &ctx))
+                                            {
+                                                WCHAR wszExec[MAX_PATH * 2];
+                                                ZeroMemory(wszExec, MAX_PATH * 2 * sizeof(WCHAR));
+                                                wszExec[0] = L'"';
+                                                GetWindowsDirectoryW(wszExec + 1, MAX_PATH);
+                                                wcscat_s(wszExec, MAX_PATH * 2, L"\\regedit.exe\" \"");
+                                                wcscat_s(wszExec, MAX_PATH * 2, wszPath);
+                                                wcscat_s(wszExec, MAX_PATH * 2, L"\"");
+                                                STARTUPINFO si;
+                                                ZeroMemory(&si, sizeof(STARTUPINFO));
+                                                si.cb = sizeof(STARTUPINFO);
+                                                PROCESS_INFORMATION pi;
+                                                ZeroMemory(&pi, sizeof(PROCESS_INFORMATION));
+                                                wprintf(L"%s\n", wszExec);
+                                                if (CreateProcessW(NULL, wszExec, 0, 0, 0, 0, 0, 0, &si, &pi))
+                                                {
+                                                    CloseHandle(pi.hThread);
+                                                    //CloseHandle(pi.hProcess);
+                                                }
+                                                else
+                                                {
+                                                    dwError = GetLastError();
+                                                }
+
+                                                ctx.Dr7 = 0x400;
+                                                ctx.Dr1 = 0;
+                                                SetThreadContext(GetCurrentThread(), &ctx);
+
+                                                if (pi.hProcess)
+                                                {
+                                                    WaitForSingleObject(pi.hProcess, INFINITE);
+                                                    DWORD dwExitCode = 0;
+                                                    GetExitCodeProcess(pi.hProcess, &dwExitCode);
+                                                    CloseHandle(pi.hProcess);
+                                                }
+                                            }
+                                            else
+                                            {
+                                                dwError = GetLastError();
+                                            }
+                                            RemoveVectoredExceptionHandler(pv);
+                                        }
+                                        else
+                                        {
+                                            dwError = GetLastError();
+                                        }
+                                    }
+                                    else
+                                    {
+                                        dwError = GetLastError();
+                                    }
+
+                                    DWORD dwData = 0, dwSize = sizeof(DWORD);
+                                    RegGetValueW(HKEY_CURRENT_USER, _T(REGPATH), L"ImportOK", RRF_RT_DWORD, NULL, &dwData, &dwSize);
+                                    if (dwData)
+                                    {
+                                        RegDeleteKeyValueW(HKEY_CURRENT_USER, _T(REGPATH), L"ImportOK");
+
+                                        FILE* vf = NULL;
+                                        _wfopen_s(&vf, wszPath, L"r");
+                                        if (vf)
+                                        {
+                                            char* line2 = malloc(MAX_LINE_LENGTH * sizeof(char));
+                                            if (line2)
+                                            {
+                                                int numChRd2 = 0;
+                                                size_t bufsiz2 = MAX_LINE_LENGTH;
+                                                while ((numChRd2 = getline(&line2, &bufsiz2, vf)) != -1)
+                                                {
+                                                    if (!strncmp(line2, ";\"Virtualized_" EP_CLSID, 52))
+                                                    {
+                                                        DWORD dwVal = 0;
+                                                        WCHAR wszName[MAX_PATH];
+                                                        ZeroMemory(wszName, MAX_PATH * sizeof(wchar_t));
+                                                        MultiByteToWideChar(
+                                                            CP_UTF8,
+                                                            MB_PRECOMPOSED,
+                                                            line2 + 2,
+                                                            numChRd2 - 2,
+                                                            wszName,
+                                                            MAX_PATH
+                                                        );
+                                                        wchar_t* ddd = wcschr(wszName, L'=');
+                                                        if (ddd) *ddd = 0;
+                                                        wchar_t* ppp = wcschr(wszName, L'"');
+                                                        if (ppp) *ppp = 0;
+                                                        if (!wcsncmp(ddd + 1, L"dword:", 6))
+                                                        {
+                                                            wchar_t* xxx = wcschr(ddd + 1, L':');
+                                                            xxx++;
+                                                            dwVal = wcstol(xxx, NULL, 16);
+                                                            wprintf(L"%s %d\n", wszName, dwVal);
+                                                            GUI_RegSetValueExW(NULL, wszName, 0, RRF_RT_DWORD, &dwVal, sizeof(DWORD));
+                                                        }
+                                                    }
+                                                }
+                                                free(line2);
+                                            }
+                                            fclose(vf);
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -1626,6 +2013,22 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                             }
                         }
                         numChRd = getline(&line, &bufsiz, f);
+                        if (!strncmp(line, ";\"Virtualized_" EP_CLSID, 52))
+                        {
+                            for (unsigned int kkkk = 1; kkkk < MAX_LINE_LENGTH; ++kkkk)
+                            {
+                                if (line[kkkk])
+                                {
+                                    line[kkkk - 1] = line[kkkk];
+                                }
+                                else
+                                {
+                                    line[kkkk - 1] = 0;
+                                    break;
+                                }
+                            }
+                            ////////printf("%s\n", line);
+                        }
                         ZeroMemory(name, MAX_LINE_LENGTH * sizeof(wchar_t));
                         MultiByteToWideChar(
                             CP_UTF8,
@@ -1699,7 +2102,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
 
                         if (!bJustCheck)
                         {
-                            RegCreateKeyExW(
+                            GUI_RegCreateKeyExW(
                                 bIsHKLM ? HKEY_LOCAL_MACHINE : HKEY_CURRENT_USER,
                                 wcschr(section, L'\\') + 1,
                                 0,
@@ -1733,7 +2136,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                         }
                         else
                         {
-                            RegOpenKeyExW(
+                            GUI_RegOpenKeyExW(
                                 bIsHKLM ? HKEY_LOCAL_MACHINE : HKEY_CURRENT_USER,
                                 wcschr(section, L'\\') + 1,
                                 REG_OPTION_NON_VOLATILE,
@@ -1899,7 +2302,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                     }
                                     else
                                     {
-                                        RegCreateKeyExW(
+                                        GUI_RegCreateKeyExW(
                                             bIsHKLM ? HKEY_LOCAL_MACHINE : HKEY_CURRENT_USER,
                                             wcschr(section, L'\\') + 1,
                                             0,
@@ -3012,12 +3415,11 @@ __declspec(dllexport) int ZZGUI(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLin
     }
     RegisterClassW(&wc);
 
-    TCHAR title[260];
     _this.hExplorerFrame = LoadLibraryExW(L"ExplorerFrame.dll", NULL, LOAD_LIBRARY_AS_DATAFILE);
     if (_this.hExplorerFrame)
     {
-        LoadStringW(_this.hExplorerFrame, 50222, title, 260); // 726 = File Explorer
-        wchar_t* p = wcschr(title, L'(');
+        LoadStringW(_this.hExplorerFrame, 50222, GUI_title, 260); // 726 = File Explorer
+        wchar_t* p = wcschr(GUI_title, L'(');
         if (p)
         {
             p--;
@@ -3031,14 +3433,14 @@ __declspec(dllexport) int ZZGUI(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLin
                 *p = 0;
             }
         }
-        if (title[0] == 0)
+        if (GUI_title[0] == 0)
         {
-            LoadStringW(hModule, IDS_PRODUCTNAME, title, 260);
+            LoadStringW(hModule, IDS_PRODUCTNAME, GUI_title, 260);
         }
     }
     else
     {
-        LoadStringW(hModule, IDS_PRODUCTNAME, title, 260);
+        LoadStringW(hModule, IDS_PRODUCTNAME, GUI_title, 260);
     }
     HANDLE hUxtheme = NULL;
     BOOL bHasLoadedUxtheme = FALSE;
@@ -3070,7 +3472,7 @@ __declspec(dllexport) int ZZGUI(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLin
     HWND hwnd = CreateWindowEx(
         NULL,
         L"ExplorerPatcher_GUI_" _T(EP_CLSID),
-        title,
+        GUI_title,
         WS_SYSMENU | WS_CAPTION | WS_MINIMIZEBOX,
         0,
         0,

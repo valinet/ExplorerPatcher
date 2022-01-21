@@ -22,13 +22,13 @@
 ;x 1 Top
 ;x 0 Left
 ;x 2 Right
-"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_TaskbarPosition"=dword:00000003
+;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_TaskbarPosition"=dword:00000003
 ;c 4 Secondary taskbar(s) location on screen
 ;x 3 Bottom (default)
 ;x 1 Top
 ;x 0 Left
 ;x 2 Right
-"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_MMTaskbarPosition"=dword:00000003
+;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_MMTaskbarPosition"=dword:00000003
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
 ;c 3 Extra button should be
 ;x 0 Hidden (default)
@@ -46,7 +46,7 @@
 "TaskbarSD"=dword:00000001
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;b Automatically hide the taskbar
-"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_AutoHideTaskbar"=dword:00000000
+;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_AutoHideTaskbar"=dword:00000000
 ;t The following settings only apply to the Windows 10 taskbar:                          
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;c 2 Start button style
@@ -68,9 +68,9 @@
 ;x 1 Small
 ;x 0 Large (default)
 "TaskbarSmallIcons"=dword:00000000
-[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\People]
+[HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;b Show People on the taskbar
-"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_PeopleBand"=dword:00000000
+;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_PeopleBand"=dword:00000000
 
 
 ;T System tray
@@ -164,9 +164,9 @@
 ;p 2
 ;b Mica effect on title bar
 "MicaEffectOnTitlebar"=dword:00000000
-[-HKEY_LOCAL_MACHINE\Software\Classes\CLSID\{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}\InprocServer32]
-;d Register as shell extension
-@="{64bc32b5-4eec-4de7-972d-bd8bd0324537}"
+[HKEY_CURRENT_USER\Software\ExplorerPatcher]
+;b Register as shell extension
+;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_RegisterAsShellExtension"=dword:00000000
 
 
 ;T Start menu
@@ -177,7 +177,7 @@
 "OpenAtLogon"=dword:00000000
 ;b Open Start in All apps by default
 "MakeAllAppsDefault"=dword:00000000
-[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
+[HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;c 22 Maximum number of frequent apps to show
 ;x 0 None
 ;x 1 1
@@ -201,7 +201,7 @@
 ;x 19 19
 ;x 20 20
 ;x 99999 Unlimited
-"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_Start_MaximumFrequentApps"=dword:00000006
+;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_Start_MaximumFrequentApps"=dword:00000006
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
 ;c 2 Position on screen
 ;x 0 Left
@@ -365,7 +365,7 @@
 ;b Disable Office hotkeys (Ctrl+Alt+Shift+Windows key combinations) *
 "DisableOfficeHotkeys"=dword:00000000
 ;b Disable rounded corners for application windows
-"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_DisableRoundedCorners"=dword:00000000
+;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_DisableRoundedCorners"=dword:00000000
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
 ;c 6 Default action in the Alt+F4 dialog on the desktop
 ;x 256 Switch user
@@ -425,7 +425,7 @@
 "TaskbarAutohideOnDoubleClick"=dword:00000000
 [HKEY_CURRENT_USER\Control Panel\Desktop]
 ;b Show Windows build info on the desktop *
-"PaintDesktopversion"=dword:00000000
+"PaintDesktopVersion"=dword:00000000
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;b Enable advanced mitigations for correct rendering using classic theme *
 "ClassicThemeMitigations"=dword:00000000
@@ -473,6 +473,12 @@
 ;https://www.paypal.com/donate?business=valentingabrielradu%40gmail.com&no_recurring=0&item_name=ExplorerPatcher&currency_code=EUR
 ;y Frequently Asked Questions 🡕
 ;https://github.com/valinet/ExplorerPatcher/wiki/Frequently-asked-questions
+;y Learn more managing these settings 🡕
+;https://github.com/valinet/ExplorerPatcher/wiki/Settings-management
+;u Import settings
+;import
+;u Export current settings
+;export
 ;u Restore default settings
 ;reset
 
