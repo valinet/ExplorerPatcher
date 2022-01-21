@@ -7968,7 +7968,7 @@ void InjectShellExperienceHost()
                         if (section->SizeOfRawData && !bTwice)
                         {
                             DWORD dwOldProtect;
-                            VirtualProtect(hQA + section->VirtualAddress, section->SizeOfRawData, PAGE_EXECUTE_READWRITE, &dwOldProtect);
+                            //VirtualProtect(hQA + section->VirtualAddress, section->SizeOfRawData, PAGE_EXECUTE_READWRITE, &dwOldProtect);
                             char* pCandidate = NULL;
                             while (TRUE)
                             {
@@ -7999,7 +7999,7 @@ void InjectShellExperienceHost()
                                 }
                                 pCandidate += sizeof(seh_pattern1);
                             }
-                            VirtualProtect(hQA + section->VirtualAddress, section->SizeOfRawData, dwOldProtect, &dwOldProtect);
+                            //VirtualProtect(hQA + section->VirtualAddress, section->SizeOfRawData, dwOldProtect, &dwOldProtect);
                         }
                     }
                     section++;
