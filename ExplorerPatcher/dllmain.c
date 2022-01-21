@@ -161,7 +161,11 @@ HRESULT WINAPI _DllGetClassObject(
     REFIID   riid,
     LPVOID* ppv
 );
-
+BOOL ep_dwm_StartService(LPWSTR wszServiceName, LPWSTR wszEventName);
+__declspec(dllexport) int ZZDWM(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLine, int nCmdShow)
+{
+    ep_dwm_StartService(L"ep_dwm_Service_" _T(EP_CLSID), L"Global\\ep_dwm_" _T(EP_CLSID));
+}
 
 #pragma region "Updates"
 #ifdef _WIN64

@@ -317,6 +317,100 @@ LSTATUS GUI_RegSetValueExW(
         );
         return RegSetValueExW(hKey, L"Start_MaximumFrequentApps", 0, dwType, lpData, cbData);
     }
+    else if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_DisableRoundedCorners"))
+    {
+        WCHAR wszPath[MAX_PATH];
+        GetSystemDirectoryW(wszPath, MAX_PATH);
+        wcscat_s(wszPath, MAX_PATH, L"\\cmd.exe");
+
+        WCHAR wszSCPath[MAX_PATH];
+        GetSystemDirectoryW(wszSCPath, MAX_PATH);
+        wcscat_s(wszSCPath, MAX_PATH, L"\\sc.exe");
+
+        WCHAR wszRundll32[MAX_PATH];
+        GetSystemDirectoryW(wszRundll32, MAX_PATH);
+        wcscat_s(wszRundll32, MAX_PATH, L"\\rundll32.exe");
+
+        WCHAR wszEP[MAX_PATH];
+        GetWindowsDirectoryW(wszEP, MAX_PATH);
+        wcscat_s(wszEP, MAX_PATH, L"\\dxgi.dll");
+
+        WCHAR wszTaskkill[MAX_PATH];
+        GetSystemDirectoryW(wszTaskkill, MAX_PATH);
+        wcscat_s(wszTaskkill, MAX_PATH, L"\\taskkill.exe");
+
+        WCHAR wszArgumentsRegister[MAX_PATH * 10];
+        swprintf_s(
+            wszArgumentsRegister,
+            MAX_PATH * 10, 
+            L"/c \""
+            L"\"%s\" create ep_dwm_" _T(EP_CLSID_LITE) L" binPath= \"\\\"%s\\\" \\\"%s\\\",ZZDWM\" DisplayName= \"ExplorerPatcher Desktop Window Manager Service\" start= auto & "
+            L"\"%s\" description ep_dwm_" _T(EP_CLSID_LITE) L" \"Implements functionality to disable rounded corners for windows\" & "
+            L"\"%s\" start ep_dwm_" _T(EP_CLSID_LITE)
+            L"\"",
+            wszSCPath,
+            wszRundll32, 
+            wszEP,
+            wszSCPath,
+            wszSCPath
+        );
+        WCHAR wszArgumentsUnRegister[MAX_PATH * 10];
+        swprintf_s(
+            wszArgumentsUnRegister,
+            MAX_PATH * 10,
+            L"/c \""
+            L"\"%s\" stop ep_dwm_" _T(EP_CLSID_LITE) L" & "
+            L"\"%s\" delete ep_dwm_" _T(EP_CLSID_LITE) L" & "
+            L"\"",
+            wszSCPath,
+            wszSCPath
+        );
+        wprintf(L"%s\n", wszArgumentsRegister);
+
+        BOOL bAreRoundedCornersDisabled = FALSE;
+        HANDLE h_exists = CreateEventW(NULL, FALSE, FALSE, L"Global\\ep_dwm_" _T(EP_CLSID));
+        if (h_exists)
+        {
+            if (GetLastError() == ERROR_ALREADY_EXISTS)
+            {
+                bAreRoundedCornersDisabled = TRUE;
+            }
+            else
+            {
+                bAreRoundedCornersDisabled = FALSE;
+            }
+            CloseHandle(h_exists);
+        }
+        else
+        {
+            if (GetLastError() == ERROR_ACCESS_DENIED)
+            {
+                bAreRoundedCornersDisabled = TRUE;
+            }
+            else
+            {
+                bAreRoundedCornersDisabled = FALSE;
+            }
+        }
+        SHELLEXECUTEINFO ShExecInfo = { 0 };
+        ShExecInfo.cbSize = sizeof(SHELLEXECUTEINFO);
+        ShExecInfo.fMask = SEE_MASK_NOCLOSEPROCESS;
+        ShExecInfo.hwnd = NULL;
+        ShExecInfo.lpVerb = L"runas";
+        ShExecInfo.lpFile = wszPath;
+        ShExecInfo.lpParameters = !bAreRoundedCornersDisabled ? wszArgumentsRegister : wszArgumentsUnRegister;
+        ShExecInfo.lpDirectory = NULL;
+        ShExecInfo.nShow = SW_HIDE;
+        ShExecInfo.hInstApp = NULL;
+        if (ShellExecuteExW(&ShExecInfo) && ShExecInfo.hProcess)
+        {
+            WaitForSingleObject(ShExecInfo.hProcess, INFINITE);
+            DWORD dwExitCode = 0;
+            GetExitCodeProcess(ShExecInfo.hProcess, &dwExitCode);
+            CloseHandle(ShExecInfo.hProcess);
+        }
+        return ERROR_SUCCESS;
+    }
 }
 
 LSTATUS GUI_RegQueryValueExW(
@@ -416,6 +510,34 @@ LSTATUS GUI_RegQueryValueExW(
     else if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_Start_MaximumFrequentApps"))
     {
         return RegQueryValueExW(hKey, L"Start_MaximumFrequentApps", lpReserved, lpType, lpData, lpcbData);
+    }
+    else if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_DisableRoundedCorners"))
+    {
+        HANDLE h_exists = CreateEventW(NULL, FALSE, FALSE, L"Global\\ep_dwm_" _T(EP_CLSID));
+        if (h_exists)
+        {
+            if (GetLastError() == ERROR_ALREADY_EXISTS)
+            {
+                *(DWORD*)lpData = 1;
+            }
+            else
+            {
+                *(DWORD*)lpData = 0;
+            }
+            CloseHandle(h_exists);
+        }
+        else
+        {
+            if (GetLastError() == ERROR_ACCESS_DENIED)
+            {
+                *(DWORD*)lpData = 1;
+            }
+            else
+            {
+                *(DWORD*)lpData = 0;
+            }
+        }
+        return ERROR_SUCCESS;
     }
 }
 
@@ -1185,8 +1307,34 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                     {
                                         CloseHandle(hFile);
 
+                                        BOOL bAreRoundedCornersDisabled = FALSE;
+                                        HANDLE h_exists = CreateEventW(NULL, FALSE, FALSE, L"Global\\ep_dwm_" _T(EP_CLSID));
+                                        if (h_exists)
+                                        {
+                                            if (GetLastError() == ERROR_ALREADY_EXISTS)
+                                            {
+                                                bAreRoundedCornersDisabled = TRUE;
+                                            }
+                                            else
+                                            {
+                                                bAreRoundedCornersDisabled = FALSE;
+                                            }
+                                            CloseHandle(h_exists);
+                                        }
+                                        else
+                                        {
+                                            if (GetLastError() == ERROR_ACCESS_DENIED)
+                                            {
+                                                bAreRoundedCornersDisabled = TRUE;
+                                            }
+                                            else
+                                            {
+                                                bAreRoundedCornersDisabled = FALSE;
+                                            }
+                                        }
+
                                         DWORD dwError = 1;
-                                        if (hKey == NULL || hKey == INVALID_HANDLE_VALUE)
+                                        if ((hKey == NULL || hKey == INVALID_HANDLE_VALUE) && !bAreRoundedCornersDisabled)
                                         {
                                             dwError = 0;
                                             // https://stackoverflow.com/questions/50298722/win32-launching-a-highestavailable-child-process-as-a-normal-user-process
@@ -1256,13 +1404,45 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                         }
                                         if (dwError)
                                         {
+                                            WCHAR wszCMD[MAX_PATH];
+                                            GetSystemDirectoryW(wszCMD, MAX_PATH);
+                                            wcscat_s(wszCMD, MAX_PATH, L"\\cmd.exe");
+
+                                            WCHAR wszRegedit[MAX_PATH];
+                                            GetWindowsDirectoryW(wszRegedit, MAX_PATH);
+                                            wcscat_s(wszRegedit, MAX_PATH, L"\\regedit.exe");
+
+                                            WCHAR wszSCPath[MAX_PATH];
+                                            GetSystemDirectoryW(wszSCPath, MAX_PATH);
+                                            wcscat_s(wszSCPath, MAX_PATH, L"\\sc.exe");
+
+                                            WCHAR wszTaskkill[MAX_PATH];
+                                            GetSystemDirectoryW(wszTaskkill, MAX_PATH);
+                                            wcscat_s(wszTaskkill, MAX_PATH, L"\\taskkill.exe");
+
+                                            WCHAR wszArguments[MAX_PATH * 10];
+                                            swprintf_s(
+                                                wszArguments,
+                                                MAX_PATH * 10,
+                                                L"/c \""
+                                                L"\"%s\" \"%s\" & "
+                                                L"\"%s\" stop ep_dwm_" _T(EP_CLSID_LITE) L" & "
+                                                L"\"%s\" delete ep_dwm_" _T(EP_CLSID_LITE)
+                                                L"\"",
+                                                wszRegedit,
+                                                wszPath,
+                                                wszSCPath,
+                                                wszSCPath
+                                            );
+                                            wprintf(L"%s\n", wszArguments);
+
                                             SHELLEXECUTEINFO ShExecInfo = { 0 };
                                             ShExecInfo.cbSize = sizeof(SHELLEXECUTEINFO);
                                             ShExecInfo.fMask = SEE_MASK_NOCLOSEPROCESS;
                                             ShExecInfo.hwnd = NULL;
-                                            ShExecInfo.lpVerb = NULL;
-                                            ShExecInfo.lpFile = wszPath;
-                                            ShExecInfo.lpParameters = L"";
+                                            ShExecInfo.lpVerb = L"runas";
+                                            ShExecInfo.lpFile = wszCMD;
+                                            ShExecInfo.lpParameters = wszArguments;
                                             ShExecInfo.lpDirectory = NULL;
                                             ShExecInfo.nShow = SW_SHOW;
                                             ShExecInfo.hInstApp = NULL;

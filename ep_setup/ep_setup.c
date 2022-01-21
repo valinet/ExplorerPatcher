@@ -434,6 +434,27 @@ int WINAPI wWinMain(
             CloseHandle(sei.hProcess);
         }
 
+        WCHAR wszSCPath[MAX_PATH];
+        GetSystemDirectoryW(wszSCPath, MAX_PATH);
+        wcscat_s(wszSCPath, MAX_PATH, L"\\sc.exe");
+        SHELLEXECUTEINFO ShExecInfo = { 0 };
+        ShExecInfo.cbSize = sizeof(SHELLEXECUTEINFO);
+        ShExecInfo.fMask = SEE_MASK_NOCLOSEPROCESS;
+        ShExecInfo.hwnd = NULL;
+        ShExecInfo.lpVerb = L"runas";
+        ShExecInfo.lpFile = wszSCPath;
+        ShExecInfo.lpParameters = L"stop ep_dwm_" _T(EP_CLSID_LITE);
+        ShExecInfo.lpDirectory = NULL;
+        ShExecInfo.nShow = SW_HIDE;
+        ShExecInfo.hInstApp = NULL;
+        if (ShellExecuteExW(&ShExecInfo) && ShExecInfo.hProcess)
+        {
+            WaitForSingleObject(ShExecInfo.hProcess, INFINITE);
+            DWORD dwExitCode = 0;
+            GetExitCodeProcess(ShExecInfo.hProcess, &dwExitCode);
+            CloseHandle(ShExecInfo.hProcess);
+        }
+
         HWND hWnd = FindWindowW(L"ExplorerPatcher_GUI_" _T(EP_CLSID), NULL);
         if (hWnd)
         {
@@ -590,6 +611,14 @@ int WINAPI wWinMain(
             SHGetFolderPathW(NULL, SPECIAL_FOLDER, NULL, SHGFP_TYPE_CURRENT, wszPath + 1);
             wcscat_s(wszPath, MAX_PATH, _T(APP_RELATIVE_PATH) L"\\" _T(SETUP_UTILITY_NAME) L"\" /uninstall");
             bOk = SetupUninstallEntry(bInstall, wszPath);
+        }
+        ShExecInfo.lpParameters = bInstall ? L"start ep_dwm_" _T(EP_CLSID_LITE) : L"delete ep_dwm_" _T(EP_CLSID_LITE);
+        if (ShellExecuteExW(&ShExecInfo) && ShExecInfo.hProcess)
+        {
+            WaitForSingleObject(ShExecInfo.hProcess, INFINITE);
+            DWORD dwExitCode = 0;
+            GetExitCodeProcess(ShExecInfo.hProcess, &dwExitCode);
+            CloseHandle(ShExecInfo.hProcess);
         }
 
         if (bOk)

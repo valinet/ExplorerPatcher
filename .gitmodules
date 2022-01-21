@@ -10,3 +10,6 @@
 [submodule "libs/sws"]
 	path = libs/sws
 	url = https://github.com/valinet/sws
+[submodule "ep_dwm"]
+	path = ep_dwm
+	url = https://github.com/valinet/ep_dwm

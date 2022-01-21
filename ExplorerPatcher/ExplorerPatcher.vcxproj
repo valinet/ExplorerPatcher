@@ -201,6 +201,12 @@
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\ep_dwm\ep_dwm\ep_dwm.c">
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">EP_DWM_NO_DLLMAIN;EP_DWM_NO_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">EP_DWM_NO_DLLMAIN;EP_DWM_NO_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">EP_DWM_NO_DLLMAIN;EP_DWM_NO_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Release|x64'">EP_DWM_NO_DLLMAIN;EP_DWM_NO_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
     <ClCompile Include="..\libs\sws\SimpleWindowSwitcher\sws_error.c">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
@@ -292,6 +298,7 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\ep_dwm\ep_dwm\ep_dwm.h" />
     <ClInclude Include="..\libs\sws\SimpleWindowSwitcher\sws_def.h" />
     <ClInclude Include="..\libs\sws\SimpleWindowSwitcher\sws_error.h" />
     <ClInclude Include="..\libs\sws\SimpleWindowSwitcher\sws_IconPainter.h" />

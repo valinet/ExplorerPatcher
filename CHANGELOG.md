@@ -13,6 +13,7 @@ Tested on OS build 22000.434.
 * Support for screen readers in the Properties window (#627) (.1)
 * Option to disable `Office` hotkeys (`Ctrl`+`Alt`+`Shift`+`Windows` key combinations) (#661) (.4)
 * Simple Window Switcher can switch applications instead of windows (#665) (.5, .6)
+* Option to disable rounded corners for windows (.7)
 
 #### Feature enhancements
 
