@@ -23,6 +23,7 @@ Tested on OS build 22000.434.
   * Windows 11 (default)
   * Windows 10 (with link to "Language Preferences")
   * Windows 10
+* Simple Window Switcher now highlights windows that require user attention (windows that have their taskbar button flash and colored in orange) (.8)
 
 
 #### Fixes
@@ -35,6 +36,7 @@ Tested on OS build 22000.434.
 * Windows 10 language switcher displays correctly when the taskbar is placed in some location other than the bottom of the screen (#629) (.2)
 * Available symbols download properly on Insider builds (tested on 22526.1000) (.3)
 * Mitigated an `explorer.exe` bug where Windows 10 taskbar buttons were becoming too large under certain circumstances when the setting to show labels/never combine is used and the screen resolution/DPI changes (#664) (.6)
+* Performance improvements and bug fixes for Simple Window Switcher (.8)
 
 ## 22000.376.40
 

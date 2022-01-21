@@ -129,7 +129,7 @@
     <ClInclude Include="..\libs\sws\SimpleWindowSwitcher\sws_IconPainter.h">
       <Filter>Header Files\sws</Filter>
     </ClInclude>
-    <ClInclude Include="..\libs\ep_dwm\ep_dwm\ep_dwm.h">
+    <ClInclude Include="..\ep_dwm\ep_dwm\ep_dwm.h">
       <Filter>Header Files\ep_dwm</Filter>
     </ClInclude>
   </ItemGroup>
@@ -211,7 +211,7 @@
     <ClCompile Include="..\libs\sws\SimpleWindowSwitcher\sws_tshwnd.c">
       <Filter>Source Files\sws</Filter>
     </ClCompile>
-    <ClCompile Include="..\libs\ep_dwm\ep_dwm\ep_dwm.c">
+    <ClCompile Include="..\ep_dwm\ep_dwm\ep_dwm.c">
       <Filter>Source Files\ep_dwm</Filter>
     </ClCompile>
   </ItemGroup>
