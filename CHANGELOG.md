@@ -27,6 +27,8 @@ Tested on OS build 22000.434.
   * Windows 10
 * Simple Window Switcher now highlights windows that require user attention (windows that have their taskbar button flash and colored in orange) (.8)
 * Reliability improvements for the option that maps the `Win`+`C` shortcut to open the clock flyout instead of Microsoft Teams (eliminated dependency on symbol data) (.10)
+* When an update is available, the notification displays the version of the update (.12)
+* The updater correctly detects when the current version is a pre-release but the user has switched the update channel to stable and does not suggest the older stable version as an update anymore (multiple reports, #540, #710) (.12)
 
 
 #### Fixes

@@ -241,7 +241,9 @@ static BOOL AppsShouldUseDarkMode() { return TRUE; }
 
 void* ReadFromFile(wchar_t* wszFileName, DWORD* dwSize);
 
-int ComputeFileHash(LPCWSTR filename, LPCSTR hash, DWORD dwHash);
+int ComputeFileHash(LPCWSTR filename, LPSTR hash, DWORD dwHash);
+
+int ComputeFileHash2(HMODULE hModule, LPCWSTR filename, LPSTR hash, DWORD dwHash);
 
 void LaunchPropertiesGUI(HMODULE hModule);
 

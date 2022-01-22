@@ -297,7 +297,7 @@ void* ReadFromFile(wchar_t* wszFileName, DWORD* dwSize)
     return ok;
 }
 
-int ComputeFileHash(LPCWSTR filename, LPCSTR hash, DWORD dwHash)
+int ComputeFileHash(LPCWSTR filename, LPSTR hash, DWORD dwHash)
 {
     DWORD dwStatus = 0;
     BOOL bResult = FALSE;
@@ -407,6 +407,33 @@ int ComputeFileHash(LPCWSTR filename, LPCSTR hash, DWORD dwHash)
     free(rgbFile);
 
     return dwStatus;
+}
+
+int ComputeFileHash2(HMODULE hModule, LPCWSTR filename, LPSTR hash, DWORD dwHash)
+{
+    if (dwHash < 33)
+    {
+        return ERROR_BUFFER_OVERFLOW;
+    }
+    if (!hModule)
+    {
+        return ERROR_INVALID_ADDRESS;
+    }
+
+    DWORD dwLeftMost = 0;
+    DWORD dwSecondLeft = 0;
+    DWORD dwSecondRight = 0;
+    DWORD dwRightMost = 0;
+    QueryVersionInfo(hModule, VS_VERSION_INFO, &dwLeftMost, &dwSecondLeft, &dwSecondRight, &dwRightMost);
+
+    sprintf_s(hash, 33, "%d.%d.%d.%d.", dwLeftMost, dwSecondLeft, dwSecondRight, dwRightMost);
+
+    char real_hash[33];
+    ComputeFileHash(filename, real_hash, 33);
+    strncpy_s(hash + strlen(hash), dwHash, real_hash, 32 - strlen(hash));
+    hash[33] = 0;
+
+    return ERROR_SUCCESS;
 }
 
 void LaunchPropertiesGUI(HMODULE hModule)

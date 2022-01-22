@@ -64,7 +64,9 @@ BOOL IsUpdateAvailableHelper(
     __x_ABI_CWindows_CUI_CNotifications_CIToastNotification** toast,
     BOOL bUpdatePreferStaging,
     WCHAR* wszInfoURL,
-    DWORD dwInfoURLLen
+    DWORD dwInfoURLLen,
+    HMODULE hModule,
+    DWORD* pLeftMost, DWORD* pSecondLeft, DWORD* pSecondRight, DWORD* pRightMost
 )
 {
     BOOL bIsUpdateAvailable = FALSE;
@@ -199,15 +201,127 @@ BOOL IsUpdateAvailableHelper(
 #ifdef UPDATES_VERBOSE_OUTPUT
                     printf("[Updates] Hash of remote file is \"%s\" (%s).\n", DOSMODE_OFFSET + hash, (hash[0] == 0x4D && hash[1] == 0x5A) ? "valid" : "invalid");
 #endif
-                    if (hash[0] == 0x4D && hash[1] == 0x5A && _stricmp(DOSMODE_OFFSET + hash, szCheckAgainst))
+                    BOOL bOldType = TRUE;
+                    char *szLeftMost = NULL, *szSecondLeft = NULL, *szSecondRight = NULL, *szRightMost = NULL, *szRealHash = NULL;
+                    if (hModule)
                     {
-                        bIsUpdateAvailable = TRUE;
+                        if (hash[0] == 0x4D && hash[1] == 0x5A)
+                        {
+                            if (strchr(DOSMODE_OFFSET + hash, '.'))
+                            {
+                                szLeftMost = DOSMODE_OFFSET + hash;
+                                if (szSecondLeft = strchr(szLeftMost, '.'))
+                                {
+                                    *szSecondLeft = 0;
+                                    szSecondLeft++;
+                                    if (szSecondRight = strchr(szSecondLeft, '.'))
+                                    {
+                                        *szSecondRight = 0;
+                                        szSecondRight++;
+                                        if (szRightMost = strchr(szSecondRight, '.'))
+                                        {
+                                            *szRightMost = 0;
+                                            szRightMost++;
+                                            if (szRealHash = strchr(szRightMost, '.'))
+                                            {
+                                                bOldType = FALSE;
+
+                                                *szRealHash = 0;
+                                                szRealHash++;
+                                                DWORD dwRemoteLeftMost = atoi(szLeftMost);
+                                                if (pLeftMost) *pLeftMost = dwRemoteLeftMost;
+                                                DWORD dwRemoteSecondLeft = atoi(szSecondLeft);
+                                                if (pSecondLeft) *pSecondLeft = dwRemoteSecondLeft;
+                                                DWORD dwRemoteSecondRight = atoi(szSecondRight);
+                                                if (pSecondRight) *pSecondRight = dwRemoteSecondRight;
+                                                DWORD dwRemoteRightMost = atoi(szRightMost);
+                                                if (pRightMost) *pRightMost = dwRemoteRightMost;
+                                                DWORD dwLocalLeftMost = 0;
+                                                DWORD dwLocalSecondLeft = 0;
+                                                DWORD dwLocalSecondRight = 0;
+                                                DWORD dwLocalRightMost = 0;
+                                                QueryVersionInfo(hModule, VS_VERSION_INFO, &dwLocalLeftMost, &dwLocalSecondLeft, &dwLocalSecondRight, &dwLocalRightMost);
+
+                                                int res = 0;
+                                                if (!res)
+                                                {
+                                                    if (dwLocalLeftMost < dwRemoteLeftMost)
+                                                    {
+                                                        res = -1;
+                                                    }
+                                                    if (dwLocalLeftMost > dwRemoteLeftMost)
+                                                    {
+                                                        res = 1;
+                                                    }
+                                                    if (!res)
+                                                    {
+                                                        if (dwLocalSecondLeft < dwRemoteSecondLeft)
+                                                        {
+                                                            res = -1;
+                                                        }
+                                                        if (dwLocalSecondLeft > dwRemoteSecondLeft)
+                                                        {
+                                                            res = 1;
+                                                        }
+                                                        if (!res)
+                                                        {
+                                                            if (dwLocalSecondRight < dwRemoteSecondRight)
+                                                            {
+                                                                res = -1;
+                                                            }
+                                                            if (dwLocalSecondRight > dwRemoteSecondRight)
+                                                            {
+                                                                res = 1;
+                                                            }
+                                                            if (!res)
+                                                            {
+                                                                if (dwLocalRightMost < dwRemoteRightMost)
+                                                                {
+                                                                    res = -1;
+                                                                }
+                                                                if (dwLocalRightMost > dwRemoteRightMost)
+                                                                {
+                                                                    res = 1;
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                                if (res == -1)
+                                                {
+                                                    bIsUpdateAvailable = TRUE;
+                                                }
+                                                else if (res == 0)
+                                                {
+                                                    *(szSecondLeft - 1) = '.';
+                                                    *(szSecondRight - 1) = '.';
+                                                    *(szRightMost - 1) = '.';
+                                                    *(szRealHash - 1) = '.';
+                                                    if (_stricmp(DOSMODE_OFFSET + hash, szCheckAgainst))
+                                                    {
+                                                        bIsUpdateAvailable = TRUE;
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if (bOldType)
+                    {
+                        if (hash[0] == 0x4D && hash[1] == 0x5A && _stricmp(DOSMODE_OFFSET + hash, szCheckAgainst))
+                        {
+                            bIsUpdateAvailable = TRUE;
+                        }
                     }
                 }
                 else
                 {
 #ifdef UPDATES_VERBOSE_OUTPUT
-                    printf("[Updates] Failed. Read %d bytes.\n");
+                    printf("[Updates] Failed. Read %d bytes.\n", dwRead);
 #endif
                     if (lpFail) *lpFail = TRUE;
                 }
@@ -439,7 +553,9 @@ BOOL IsUpdateAvailableHelper(
     return bIsUpdateAvailable;
 }
 
-BOOL IsUpdateAvailable(LPCWSTR wszDataStore, char* szCheckAgainst, BOOL* lpFail, WCHAR* wszInfoURL, DWORD dwInfoURLLen)
+BOOL IsUpdateAvailable(LPCWSTR wszDataStore, char* szCheckAgainst, BOOL* lpFail, WCHAR* wszInfoURL, DWORD dwInfoURLLen, HMODULE hModule,
+    DWORD* pLeftMost, DWORD* pSecondLeft, DWORD* pSecondRight, DWORD* pRightMost
+)
 {
     HKEY hKey = NULL;
     DWORD dwSize = 0;
@@ -539,7 +655,9 @@ BOOL IsUpdateAvailable(LPCWSTR wszDataStore, char* szCheckAgainst, BOOL* lpFail,
         NULL, NULL, NULL, 
         bUpdatePreferStaging,
         wszInfoURL,
-        dwInfoURLLen
+        dwInfoURLLen,
+        hModule,
+        pLeftMost, pSecondLeft, pSecondRight, pRightMost
     );
 }
 
@@ -547,7 +665,8 @@ BOOL UpdateProduct(
     LPCWSTR wszDataStore,
     __x_ABI_CWindows_CUI_CNotifications_CIToastNotifier* notifier,
     __x_ABI_CWindows_CUI_CNotifications_CIToastNotificationFactory* notifFactory,
-    __x_ABI_CWindows_CUI_CNotifications_CIToastNotification** toast
+    __x_ABI_CWindows_CUI_CNotifications_CIToastNotification** toast,
+    HMODULE hModule
 )
 {
     HKEY hKey = NULL;
@@ -635,7 +754,9 @@ BOOL UpdateProduct(
         notifFactory,
         toast,
         bUpdatePreferStaging,
-        NULL, 0
+        NULL, 0,
+        hModule,
+        NULL, NULL, NULL, NULL
     );
 }
 
@@ -819,16 +940,17 @@ BOOL InstallUpdatesIfAvailable(
 
     CHAR hash[100];
     ZeroMemory(hash, 100 * sizeof(CHAR));
-    ComputeFileHash(dllName, hash, 100);
+    ComputeFileHash2(hModule, dllName, hash, 100);
 
     BOOL bFail = FALSE;
-    if (IsUpdateAvailable(_T(REGPATH), hash, &bFail, wszInfoURL, MAX_PATH))
+    dwLeftMost = 0; dwSecondLeft = 0; dwSecondRight = 0; dwRightMost = 0;
+    if (IsUpdateAvailable(_T(REGPATH), hash, &bFail, wszInfoURL, MAX_PATH, hModule, &dwLeftMost, &dwSecondLeft, &dwSecondRight, &dwRightMost))
     {
         printf("[Updates] An update is available.\n");
         if ((dwOperation == UPDATES_OP_DEFAULT && dwUpdatePolicy == UPDATE_POLICY_AUTO) || (dwOperation == UPDATES_OP_INSTALL))
         {
             __x_ABI_CWindows_CData_CXml_CDom_CIXmlDocument* inputXml = NULL;
-            BOOL bOk = UpdateProduct(_T(REGPATH), notifier, notifFactory, toast);
+            BOOL bOk = UpdateProduct(_T(REGPATH), notifier, notifFactory, toast, hModule);
             if (!bOk)
             {
                 if (dwOperation == UPDATES_OP_INSTALL)
@@ -885,14 +1007,23 @@ BOOL InstallUpdatesIfAvailable(
                 L"activationType=\"protocol\" launch=\"%s\" duration=\"long\">\r\n"
                 L"	<visual>\r\n"
                 L"		<binding template=\"ToastGeneric\">\r\n"
-                L"			<text><![CDATA[New version available]]></text>\r\n"
+                L"			<text><![CDATA[%s available]]></text>\r\n"
                 L"			<text><![CDATA[You can update by right clicking the taskbar, choosing \"Properties\", then \"Updates\". Click here to learn more about this update.]]></text>\r\n"
                 L"			<text placement=\"attribution\"><![CDATA[ExplorerPatcher]]></text>\r\n"
                 L"		</binding>\r\n"
                 L"	</visual>\r\n"
                 L"	<audio src=\"ms-winsoundevent:Notification.Default\" loop=\"false\" silent=\"false\"/>\r\n"
                 L"</toast>\r\n";
-            swprintf_s(buf, TOAST_BUFSIZ, text, wszInfoURL);
+            if (!dwLeftMost)
+            {
+                swprintf_s(buf, TOAST_BUFSIZ, text, wszInfoURL, L"New version");
+            }
+            else
+            {
+                WCHAR wszVersionInfo[100];
+                swprintf_s(wszVersionInfo, 100, L"Version %d.%d.%d.%d is", dwLeftMost, dwSecondLeft, dwSecondRight, dwRightMost);
+                swprintf_s(buf, TOAST_BUFSIZ, text, wszInfoURL, wszVersionInfo);
+            }
             __x_ABI_CWindows_CData_CXml_CDom_CIXmlDocument* inputXml = NULL;
             String2IXMLDocument(
                 buf,

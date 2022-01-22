@@ -14,10 +14,12 @@ int WINAPI wWinMain(
     GetModuleFileNameW(GetModuleHandle(NULL), wszPath, MAX_PATH);
     PathRemoveFileSpecW(wszPath);
     wcscat_s(wszPath, MAX_PATH, L"\\" _T(PRODUCT_NAME) L".amd64.dll");
+    HMODULE hModule = LoadLibraryExW(wszPath, NULL, LOAD_LIBRARY_AS_DATAFILE);
 
     CHAR hash[100];
     ZeroMemory(hash, 100);
-    ComputeFileHash(wszPath, hash, 100);
+    ComputeFileHash2(hModule, wszPath, hash, 100);
+    FreeLibrary(hModule);
 
     PathRemoveFileSpecW(wszPath);
     wcscat_s(wszPath, MAX_PATH, L"\\" _T(SETUP_UTILITY_NAME));
