@@ -62,6 +62,8 @@ DWORD DownloadSymbols(DownloadSymbolsParams* params)
 {
     HKEY hKey = NULL;
     DWORD dwDisposition;
+    WCHAR hash[100];
+    WCHAR wszPath[MAX_PATH];
 
     HMODULE hModule = params->hModule;
 
@@ -161,6 +163,8 @@ DWORD DownloadSymbols(DownloadSymbolsParams* params)
 
 
 
+    ZeroMemory(hash, sizeof(WCHAR) * 100);
+    ZeroMemory(wszPath, sizeof(WCHAR) * 100);
     char twinui_pcshell_sb_dll[MAX_PATH];
     ZeroMemory(
         twinui_pcshell_sb_dll,
@@ -207,7 +211,10 @@ DWORD DownloadSymbols(DownloadSymbolsParams* params)
         }
         return 9;
     }
-    printf("[Symbols] Downloading symbols for \"%s\"...\n", twinui_pcshell_sb_dll);
+    GetSystemDirectoryW(wszPath, MAX_PATH);
+    wcscat_s(wszPath, MAX_PATH, L"\\" _T(TWINUI_PCSHELL_SB_NAME) L".dll");
+    ComputeFileHash(wszPath, hash, 100);
+    printf("[Symbols] Downloading symbols for \"%s\" (\"%s\")...\n", twinui_pcshell_sb_dll, hash);
     if (VnDownloadSymbols(
         NULL,
         twinui_pcshell_sb_dll,
@@ -356,6 +363,8 @@ DWORD DownloadSymbols(DownloadSymbolsParams* params)
 
 
 
+    ZeroMemory(hash, sizeof(WCHAR) * 100);
+    ZeroMemory(wszPath, sizeof(WCHAR) * 100);
     char startdocked_sb_dll[MAX_PATH];
     ZeroMemory(
         startdocked_sb_dll,
@@ -380,7 +389,10 @@ DWORD DownloadSymbols(DownloadSymbolsParams* params)
         MAX_PATH,
         ".dll"
     );
-    printf("[Symbols] Downloading symbols for \"%s\"...\n", startdocked_sb_dll);
+    GetWindowsDirectoryW(wszPath, MAX_PATH);
+    wcscat_s(wszPath, MAX_PATH, L"\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\" _T(STARTDOCKED_SB_NAME) L".dll");
+    ComputeFileHash(wszPath, hash, 100);
+    printf("[Symbols] Downloading symbols for \"%s\" (\"%s\")...\n", startdocked_sb_dll, hash);
     if (VnDownloadSymbols(
         NULL,
         startdocked_sb_dll,
