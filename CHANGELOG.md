@@ -29,6 +29,7 @@ Tested on OS build 22000.434.
 * Reliability improvements for the option that maps the `Win`+`C` shortcut to open the clock flyout instead of Microsoft Teams (eliminated dependency on symbol data) (.10)
 * When an update is available, the notification displays the version of the update (.12)
 * The updater correctly detects when the current version is a pre-release but the user has switched the update channel to stable and does not suggest the older stable version as an update anymore (multiple reports, #540, #710) (.12)
+* Import/export settings suggests a file name automatically (.15)
 
 
 #### Fixes

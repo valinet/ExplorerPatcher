@@ -1706,6 +1706,12 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                 }
                                 WCHAR wszPath[MAX_PATH];
                                 ZeroMemory(wszPath, MAX_PATH * sizeof(WCHAR));
+                                DWORD dwLeftMost = 0;
+                                DWORD dwSecondLeft = 0;
+                                DWORD dwSecondRight = 0;
+                                DWORD dwRightMost = 0;
+                                QueryVersionInfo(GetWindowLongPtrW(hwnd, GWLP_HINSTANCE), VS_VERSION_INFO, &dwLeftMost, &dwSecondLeft, &dwSecondRight, &dwRightMost);
+                                swprintf_s(wszPath, MAX_PATH, _T(PRODUCT_NAME) L"_%d.%d.%d.%d.reg", dwLeftMost, dwSecondLeft, dwSecondRight, dwRightMost);
                                 OPENFILENAMEW ofn;
                                 ZeroMemory(&ofn, sizeof(OPENFILENAMEW));
                                 ofn.lStructSize = sizeof(OPENFILENAMEW);
@@ -1779,6 +1785,12 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                 }
                                 WCHAR wszPath[MAX_PATH];
                                 ZeroMemory(wszPath, MAX_PATH * sizeof(WCHAR));
+                                DWORD dwLeftMost = 0;
+                                DWORD dwSecondLeft = 0;
+                                DWORD dwSecondRight = 0;
+                                DWORD dwRightMost = 0;
+                                QueryVersionInfo(GetWindowLongPtrW(hwnd, GWLP_HINSTANCE), VS_VERSION_INFO, &dwLeftMost, &dwSecondLeft, &dwSecondRight, &dwRightMost);
+                                swprintf_s(wszPath, MAX_PATH, _T(PRODUCT_NAME) L"_%d.%d.%d.%d.reg", dwLeftMost, dwSecondLeft, dwSecondRight, dwRightMost);
                                 OPENFILENAMEW ofn;
                                 ZeroMemory(&ofn, sizeof(OPENFILENAMEW));
                                 ofn.lStructSize = sizeof(OPENFILENAMEW);
@@ -1794,7 +1806,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                 ofn.nMaxFileTitle = 0;
                                 ofn.lpstrInitialDir = NULL;
                                 ofn.lpstrTitle = title;
-                                ofn.Flags = OFN_DONTADDTORECENT | OFN_CREATEPROMPT | OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT | OFN_FILEMUSTEXIST;
+                                ofn.Flags = OFN_DONTADDTORECENT | OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT | OFN_FILEMUSTEXIST;
                                 ofn.nFileOffset = 0;
                                 ofn.nFileExtension = 0;
                                 ofn.lpstrDefExt = L"reg";
