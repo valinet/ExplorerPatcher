@@ -641,7 +641,7 @@ BOOL LoadSymbols(symbols_addr* symbols_PTRS, HMODULE hModule)
         symbols_PTRS->twinui_pcshell_PTRS[8] = 0x52980;
         bIsTwinuiPcshellHardcoded = TRUE;
     }
-    else if (!_stricmp(hash, "03487ccd5bc5a194fad61b616b0a2b28") || !_stricmp(hash, "3f6ef12a59a2f84a3296771ea7753e01")) // 346, 348, 376
+    else if (!_stricmp(hash, "03487ccd5bc5a194fad61b616b0a2b28") || !_stricmp(hash, "3f6ef12a59a2f84a3296771ea7753e01")) // 346, 348, 376, 434, 438
     {
         symbols_PTRS->twinui_pcshell_PTRS[0] = 0x21B036;
         symbols_PTRS->twinui_pcshell_PTRS[1] = 0x5CD740;
@@ -652,6 +652,19 @@ BOOL LoadSymbols(symbols_addr* symbols_PTRS, HMODULE hModule)
         symbols_PTRS->twinui_pcshell_PTRS[6] = 0x5CEB90;
         symbols_PTRS->twinui_pcshell_PTRS[7] = 0x5f861c;
         symbols_PTRS->twinui_pcshell_PTRS[8] = 0x4D780;
+        bIsTwinuiPcshellHardcoded = TRUE;
+    }
+    else if (!_stricmp(hash, "6399b5913a7048c4422e3cfb03860da2")) // 466
+    {
+        symbols_PTRS->twinui_pcshell_PTRS[0] = 0x229fa6;
+        symbols_PTRS->twinui_pcshell_PTRS[1] = 0x5dc500;
+        symbols_PTRS->twinui_pcshell_PTRS[2] = 0x5fa868;
+        symbols_PTRS->twinui_pcshell_PTRS[3] = 0x5fb070;
+        symbols_PTRS->twinui_pcshell_PTRS[4] = 0x5df640;
+        symbols_PTRS->twinui_pcshell_PTRS[5] = 0x5df2f4;
+        symbols_PTRS->twinui_pcshell_PTRS[6] = 0x5dd910;
+        symbols_PTRS->twinui_pcshell_PTRS[7] = 0x5fbe2c;
+        symbols_PTRS->twinui_pcshell_PTRS[8] = 0x5dd910;
         bIsTwinuiPcshellHardcoded = TRUE;
     }
     if (bIsTwinuiPcshellHardcoded)
@@ -671,7 +684,7 @@ BOOL LoadSymbols(symbols_addr* symbols_PTRS, HMODULE hModule)
         symbols_PTRS->startdocked_PTRS[4] = 0x160AEC;
         bIsStartHardcoded = TRUE;
     }
-    else if (!_stricmp(hash, "e9c1c45a659dafabf671cb0ae195f8d9") || !_stricmp(hash, "7e652d78661ba62e33d41ad1d3180344")) // 346, 348, 376
+    else if (!_stricmp(hash, "e9c1c45a659dafabf671cb0ae195f8d9") || !_stricmp(hash, "7e652d78661ba62e33d41ad1d3180344")) // 346, 348, 376, 434, 438, 466
     {
         symbols_PTRS->startdocked_PTRS[0] = 0x18969C;
         symbols_PTRS->startdocked_PTRS[1] = 0x18969C;
