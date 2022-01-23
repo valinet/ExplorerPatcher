@@ -310,13 +310,13 @@ BOOL IsUpdateAvailableHelper(
                         }
                     }
 
-                    if (bOldType)
+                    /*if (bOldType)
                     {
                         if (hash[0] == 0x4D && hash[1] == 0x5A && _stricmp(DOSMODE_OFFSET + hash, szCheckAgainst))
                         {
                             bIsUpdateAvailable = TRUE;
                         }
-                    }
+                    }*/
                 }
                 else
                 {
