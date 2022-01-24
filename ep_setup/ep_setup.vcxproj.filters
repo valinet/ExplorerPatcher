@@ -46,5 +46,7 @@
     </None>
     <None Include="..\build\Debug\ExplorerPatcher.amd64.dll" />
     <None Include="..\build\Debug\ExplorerPatcher.IA-32.dll" />
+    <None Include="..\build\Release\ep_dwm.exe" />
+    <None Include="..\build\Debug\ep_dwm.exe" />
   </ItemGroup>
 </Project>

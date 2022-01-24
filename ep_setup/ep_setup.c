@@ -333,6 +333,19 @@ int WINAPI wWinMain(
             wcscat_s(wszPath, MAX_PATH, L"\\" _T(PRODUCT_NAME) L".amd64.dll");
             bOk = InstallResource(TRUE, hInstance, IDR_EP_AMD64, wszPath);
         }
+        if (argc >= 2)
+        {
+            wcsncpy_s(wszPath, MAX_PATH, wargv[1], MAX_PATH);
+        }
+        else
+        {
+            GetCurrentDirectoryW(MAX_PATH, wszPath);
+        }
+        if (bOk)
+        {
+            wcscat_s(wszPath, MAX_PATH, L"\\ep_dwm.exe");
+            bOk = InstallResource(TRUE, hInstance, IDR_EP_DWM, wszPath);
+        }
         return 0;
     }
 
@@ -434,6 +447,37 @@ int WINAPI wWinMain(
             CloseHandle(sei.hProcess);
         }
 
+        BOOL bAreRoundedCornersDisabled = FALSE;
+        HANDLE h_exists = CreateEventW(NULL, FALSE, FALSE, L"Global\\ep_dwm_" _T(EP_CLSID));
+        if (h_exists)
+        {
+            if (GetLastError() == ERROR_ALREADY_EXISTS)
+            {
+                bAreRoundedCornersDisabled = TRUE;
+            }
+            else
+            {
+                bAreRoundedCornersDisabled = FALSE;
+            }
+            CloseHandle(h_exists);
+        }
+        else
+        {
+            if (GetLastError() == ERROR_ACCESS_DENIED)
+            {
+                bAreRoundedCornersDisabled = TRUE;
+            }
+            else
+            {
+                bAreRoundedCornersDisabled = FALSE;
+            }
+        }
+        if (bAreRoundedCornersDisabled)
+        {
+            RegisterDWMService(0, 1);
+            RegisterDWMService(0, 3);
+        }
+
         WCHAR wszSCPath[MAX_PATH];
         GetSystemDirectoryW(wszSCPath, MAX_PATH);
         wcscat_s(wszSCPath, MAX_PATH, L"\\sc.exe");
@@ -443,7 +487,7 @@ int WINAPI wWinMain(
         ShExecInfo.hwnd = NULL;
         ShExecInfo.lpVerb = L"runas";
         ShExecInfo.lpFile = wszSCPath;
-        ShExecInfo.lpParameters = L"stop ep_dwm_" _T(EP_CLSID_LITE);
+        ShExecInfo.lpParameters = L"stop " _T(EP_DWM_SERVICENAME);
         ShExecInfo.lpDirectory = NULL;
         ShExecInfo.nShow = SW_HIDE;
         ShExecInfo.hInstApp = NULL;
@@ -580,6 +624,12 @@ int WINAPI wWinMain(
         }
         if (bOk)
         {
+            PathRemoveFileSpecW(wszPath);
+            wcscat_s(wszPath, MAX_PATH, L"\\ep_dwm.exe");
+            bOk = InstallResource(bInstall, hInstance, IDR_EP_DWM, wszPath);
+        }
+        if (bOk)
+        {
             bOk = GetWindowsDirectoryW(wszPath, MAX_PATH);
         }
         if (bOk)
@@ -612,7 +662,7 @@ int WINAPI wWinMain(
             wcscat_s(wszPath, MAX_PATH, _T(APP_RELATIVE_PATH) L"\\" _T(SETUP_UTILITY_NAME) L"\" /uninstall");
             bOk = SetupUninstallEntry(bInstall, wszPath);
         }
-        ShExecInfo.lpParameters = bInstall ? L"start ep_dwm_" _T(EP_CLSID_LITE) : L"delete ep_dwm_" _T(EP_CLSID_LITE);
+        ShExecInfo.lpParameters = bInstall ? L"start " _T(EP_DWM_SERVICENAME) : L"delete " _T(EP_DWM_SERVICENAME);
         if (ShellExecuteExW(&ShExecInfo) && ShExecInfo.hProcess)
         {
             WaitForSingleObject(ShExecInfo.hProcess, INFINITE);

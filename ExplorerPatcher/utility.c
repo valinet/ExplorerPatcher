@@ -681,3 +681,111 @@ void ToggleTaskbarAutohide()
         SHAppBarMessage(ABM_SETSTATE, &abd);
     }
 }
+
+LSTATUS RegisterDWMService(DWORD dwDesiredState, DWORD dwOverride)
+{
+    WCHAR wszPath[MAX_PATH];
+    GetSystemDirectoryW(wszPath, MAX_PATH);
+    wcscat_s(wszPath, MAX_PATH, L"\\cmd.exe");
+
+    WCHAR wszSCPath[MAX_PATH];
+    GetSystemDirectoryW(wszSCPath, MAX_PATH);
+    wcscat_s(wszSCPath, MAX_PATH, L"\\sc.exe");
+
+    WCHAR wszRundll32[MAX_PATH];
+    SHGetFolderPathW(NULL, SPECIAL_FOLDER, NULL, SHGFP_TYPE_CURRENT, wszRundll32);
+    wcscat_s(wszRundll32, MAX_PATH, _T(APP_RELATIVE_PATH));
+    wcscat_s(wszRundll32, MAX_PATH, L"\\ep_dwm.exe");
+
+    WCHAR wszEP[MAX_PATH];
+    GetWindowsDirectoryW(wszEP, MAX_PATH);
+    wcscat_s(wszEP, MAX_PATH, L"\\dxgi.dll");
+
+    WCHAR wszTaskkill[MAX_PATH];
+    GetSystemDirectoryW(wszTaskkill, MAX_PATH);
+    wcscat_s(wszTaskkill, MAX_PATH, L"\\taskkill.exe");
+
+    WCHAR wszArgumentsRegister[MAX_PATH * 10];
+    swprintf_s(
+        wszArgumentsRegister,
+        MAX_PATH * 10,
+        L"/c \""
+        L"\"%s\" create " _T(EP_DWM_SERVICENAME) L" binPath= \"\\\"%s\\\" %s\" DisplayName= \"ExplorerPatcher Desktop Window Manager Service\" start= auto & "
+        L"\"%s\" description " _T(EP_DWM_SERVICENAME) L" \"Service for managing aspects related to the Desktop Window Manager.\" & "
+        L"\"%s\" %s " _T(EP_DWM_SERVICENAME)
+        L"\"",
+        wszSCPath,
+        wszRundll32,
+        _T(EP_DWM_SERVICENAME) L" " _T(EP_DWM_EVENTNAME),
+        wszSCPath,
+        wszSCPath,
+        (!dwOverride || dwOverride == 3) ? L"start" : L"query"
+    );
+    WCHAR wszArgumentsUnRegister[MAX_PATH * 10];
+    swprintf_s(
+        wszArgumentsUnRegister,
+        MAX_PATH * 10,
+        L"/c \""
+        L"\"%s\" stop " _T(EP_DWM_SERVICENAME) L" & "
+        L"\"%s\" delete " _T(EP_DWM_SERVICENAME) L" & "
+        L"\"",
+        wszSCPath,
+        wszSCPath
+    );
+    wprintf(L"%s\n", wszArgumentsRegister);
+
+    BOOL bAreRoundedCornersDisabled = FALSE;
+    if (dwOverride)
+    {
+        bAreRoundedCornersDisabled = !(dwOverride - 1);
+    }
+    else
+    {
+        HANDLE h_exists = CreateEventW(NULL, FALSE, FALSE, _T(EP_DWM_EVENTNAME));
+        if (h_exists)
+        {
+            if (GetLastError() == ERROR_ALREADY_EXISTS)
+            {
+                bAreRoundedCornersDisabled = TRUE;
+            }
+            else
+            {
+                bAreRoundedCornersDisabled = FALSE;
+            }
+            CloseHandle(h_exists);
+        }
+        else
+        {
+            if (GetLastError() == ERROR_ACCESS_DENIED)
+            {
+                bAreRoundedCornersDisabled = TRUE;
+            }
+            else
+            {
+                bAreRoundedCornersDisabled = FALSE;
+            }
+        }
+        if ((bAreRoundedCornersDisabled && dwDesiredState) || (!bAreRoundedCornersDisabled && !dwDesiredState))
+        {
+            return FALSE;
+        }
+    }
+    SHELLEXECUTEINFO ShExecInfo = { 0 };
+    ShExecInfo.cbSize = sizeof(SHELLEXECUTEINFO);
+    ShExecInfo.fMask = SEE_MASK_NOCLOSEPROCESS;
+    ShExecInfo.hwnd = NULL;
+    ShExecInfo.lpVerb = L"runas";
+    ShExecInfo.lpFile = wszPath;
+    ShExecInfo.lpParameters = !bAreRoundedCornersDisabled ? wszArgumentsRegister : wszArgumentsUnRegister;
+    ShExecInfo.lpDirectory = NULL;
+    ShExecInfo.nShow = SW_HIDE;
+    ShExecInfo.hInstApp = NULL;
+    if (ShellExecuteExW(&ShExecInfo) && ShExecInfo.hProcess)
+    {
+        WaitForSingleObject(ShExecInfo.hProcess, INFINITE);
+        DWORD dwExitCode = 0;
+        GetExitCodeProcess(ShExecInfo.hProcess, &dwExitCode);
+        CloseHandle(ShExecInfo.hProcess);
+    }
+    return TRUE;
+}

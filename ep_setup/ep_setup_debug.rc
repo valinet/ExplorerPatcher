@@ -94,6 +94,8 @@ IDR_EP_AMD64            RCDATA             "..\\build\\Debug\\ExplorerPatcher.am
 
 IDR_EP_IA32             RCDATA             "..\\build\\Debug\\ExplorerPatcher.IA-32.dll"
 
+IDR_EP_DWM              RCDATA             "..\\build\\Debug\\ep_dwm.exe"
+
 #endif    // English (United States) resources
 /////////////////////////////////////////////////////////////////////////////
 

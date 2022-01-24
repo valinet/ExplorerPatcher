@@ -28,12 +28,6 @@
     <Filter Include="Settings">
       <UniqueIdentifier>{190d08ad-4a1d-4b58-81a1-6403eeb3cd2a}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\ep_dwm">
-      <UniqueIdentifier>{50a6ac61-12c4-460e-a9d1-cdaf9bf7e7b1}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Header Files\ep_dwm">
-      <UniqueIdentifier>{fd25654b-7123-401a-86c7-90413d703f30}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="resource.h">
@@ -129,8 +123,8 @@
     <ClInclude Include="..\libs\sws\SimpleWindowSwitcher\sws_IconPainter.h">
       <Filter>Header Files\sws</Filter>
     </ClInclude>
-    <ClInclude Include="..\ep_dwm\ep_dwm\ep_dwm.h">
-      <Filter>Header Files\ep_dwm</Filter>
+    <ClInclude Include="def.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -210,9 +204,6 @@
     </ClCompile>
     <ClCompile Include="..\libs\sws\SimpleWindowSwitcher\sws_tshwnd.c">
       <Filter>Source Files\sws</Filter>
-    </ClCompile>
-    <ClCompile Include="..\ep_dwm\ep_dwm\ep_dwm.c">
-      <Filter>Source Files\ep_dwm</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

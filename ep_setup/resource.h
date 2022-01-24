@@ -4,6 +4,7 @@
 //
 #define IDR_EP_AMD64                    103
 #define IDR_EP_IA32                     104
+#define IDR_EP_DWM                      105
 
 // Next default values for new objects
 // 

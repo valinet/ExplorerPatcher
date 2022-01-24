@@ -327,101 +327,7 @@ LSTATUS GUI_Internal_RegSetValueExW(
     }
     else if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_DisableRoundedCorners"))
     {
-        WCHAR wszPath[MAX_PATH];
-        GetSystemDirectoryW(wszPath, MAX_PATH);
-        wcscat_s(wszPath, MAX_PATH, L"\\cmd.exe");
-
-        WCHAR wszSCPath[MAX_PATH];
-        GetSystemDirectoryW(wszSCPath, MAX_PATH);
-        wcscat_s(wszSCPath, MAX_PATH, L"\\sc.exe");
-
-        WCHAR wszRundll32[MAX_PATH];
-        GetSystemDirectoryW(wszRundll32, MAX_PATH);
-        wcscat_s(wszRundll32, MAX_PATH, L"\\rundll32.exe");
-
-        WCHAR wszEP[MAX_PATH];
-        GetWindowsDirectoryW(wszEP, MAX_PATH);
-        wcscat_s(wszEP, MAX_PATH, L"\\dxgi.dll");
-
-        WCHAR wszTaskkill[MAX_PATH];
-        GetSystemDirectoryW(wszTaskkill, MAX_PATH);
-        wcscat_s(wszTaskkill, MAX_PATH, L"\\taskkill.exe");
-
-        WCHAR wszArgumentsRegister[MAX_PATH * 10];
-        swprintf_s(
-            wszArgumentsRegister,
-            MAX_PATH * 10, 
-            L"/c \""
-            L"\"%s\" create ep_dwm_" _T(EP_CLSID_LITE) L" binPath= \"\\\"%s\\\" \\\"%s\\\",ZZDWM\" DisplayName= \"ExplorerPatcher Desktop Window Manager Service\" start= auto & "
-            L"\"%s\" description ep_dwm_" _T(EP_CLSID_LITE) L" \"Implements functionality to disable rounded corners for windows\" & "
-            L"\"%s\" start ep_dwm_" _T(EP_CLSID_LITE)
-            L"\"",
-            wszSCPath,
-            wszRundll32, 
-            wszEP,
-            wszSCPath,
-            wszSCPath
-        );
-        WCHAR wszArgumentsUnRegister[MAX_PATH * 10];
-        swprintf_s(
-            wszArgumentsUnRegister,
-            MAX_PATH * 10,
-            L"/c \""
-            L"\"%s\" stop ep_dwm_" _T(EP_CLSID_LITE) L" & "
-            L"\"%s\" delete ep_dwm_" _T(EP_CLSID_LITE) L" & "
-            L"\"",
-            wszSCPath,
-            wszSCPath
-        );
-        wprintf(L"%s\n", wszArgumentsRegister);
-
-        BOOL bAreRoundedCornersDisabled = FALSE;
-        HANDLE h_exists = CreateEventW(NULL, FALSE, FALSE, L"Global\\ep_dwm_" _T(EP_CLSID));
-        if (h_exists)
-        {
-            if (GetLastError() == ERROR_ALREADY_EXISTS)
-            {
-                bAreRoundedCornersDisabled = TRUE;
-            }
-            else
-            {
-                bAreRoundedCornersDisabled = FALSE;
-            }
-            CloseHandle(h_exists);
-        }
-        else
-        {
-            if (GetLastError() == ERROR_ACCESS_DENIED)
-            {
-                bAreRoundedCornersDisabled = TRUE;
-            }
-            else
-            {
-                bAreRoundedCornersDisabled = FALSE;
-            }
-        }
-        if ((bAreRoundedCornersDisabled && *(DWORD*)lpData) || (!bAreRoundedCornersDisabled && !*(DWORD*)lpData))
-        {
-            return ERROR_SUCCESS;
-        }
-        SHELLEXECUTEINFO ShExecInfo = { 0 };
-        ShExecInfo.cbSize = sizeof(SHELLEXECUTEINFO);
-        ShExecInfo.fMask = SEE_MASK_NOCLOSEPROCESS;
-        ShExecInfo.hwnd = NULL;
-        ShExecInfo.lpVerb = L"runas";
-        ShExecInfo.lpFile = wszPath;
-        ShExecInfo.lpParameters = !bAreRoundedCornersDisabled ? wszArgumentsRegister : wszArgumentsUnRegister;
-        ShExecInfo.lpDirectory = NULL;
-        ShExecInfo.nShow = SW_HIDE;
-        ShExecInfo.hInstApp = NULL;
-        if (ShellExecuteExW(&ShExecInfo) && ShExecInfo.hProcess)
-        {
-            WaitForSingleObject(ShExecInfo.hProcess, INFINITE);
-            DWORD dwExitCode = 0;
-            GetExitCodeProcess(ShExecInfo.hProcess, &dwExitCode);
-            CloseHandle(ShExecInfo.hProcess);
-        }
-        return ERROR_SUCCESS;
+        return RegisterDWMService(*(DWORD*)lpData, 0);
     }
     else if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_RegisterAsShellExtension"))
     {
@@ -612,7 +518,7 @@ LSTATUS GUI_Internal_RegQueryValueExW(
     }
     else if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_DisableRoundedCorners"))
     {
-        HANDLE h_exists = CreateEventW(NULL, FALSE, FALSE, L"Global\\ep_dwm_" _T(EP_CLSID));
+        HANDLE h_exists = CreateEventW(NULL, FALSE, FALSE, _T(EP_DWM_EVENTNAME));
         if (h_exists)
         {
             if (GetLastError() == ERROR_ALREADY_EXISTS)

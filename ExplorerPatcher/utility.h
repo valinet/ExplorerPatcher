@@ -19,22 +19,7 @@
 #include "queryversion.h"
 #pragma comment(lib, "Psapi.lib")
 
-#define APPID L"Microsoft.Windows.Explorer"
-#define REGPATH "SOFTWARE\\ExplorerPatcher"
-#define REGPATH_OLD "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\ExplorerPatcher"
-#define REGPATH_STARTMENU REGPATH_OLD
-#define SPECIAL_FOLDER CSIDL_PROGRAM_FILES
-#define SPECIAL_FOLDER_LEGACY CSIDL_APPDATA
-#define PRODUCT_NAME "ExplorerPatcher"
-#define PRODUCT_PUBLISHER "VALINET Solutions SRL"
-#define APP_RELATIVE_PATH "\\" PRODUCT_NAME
-#define EP_CLSID_LITE "D17F1E1A-5919-4427-8F89-A1A8503CA3EB"
-#define EP_CLSID "{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}"
-#define DOSMODE_OFFSET 78
-#define SETUP_UTILITY_NAME "ep_setup.exe"
-#define TOAST_BUFSIZ 1024
-#define SEH_REGPATH "Control Panel\\Quick Actions\\Control Center\\QuickActionsStateCapture\\ExplorerPatcher"
-#define EP_SETUP_HELPER_SWITCH "/CreateExplorerShellUnelevatedAfterServicing"
+#include "def.h"
 
 #define WM_MSG_GUI_SECTION WM_USER + 1
 #define WM_MSG_GUI_SECTION_GET 1
@@ -248,6 +233,8 @@ int ComputeFileHash2(HMODULE hModule, LPCWSTR filename, LPSTR hash, DWORD dwHash
 void LaunchPropertiesGUI(HMODULE hModule);
 
 BOOL SystemShutdown(BOOL reboot);
+
+LSTATUS RegisterDWMService(DWORD dwDesiredState, DWORD dwOverride);
 
 inline long long milliseconds_now() {
     LARGE_INTEGER s_frequency;
