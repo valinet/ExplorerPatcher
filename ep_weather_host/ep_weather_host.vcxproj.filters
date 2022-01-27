@@ -15,10 +15,13 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="ep_setup.c">
+    <ClCompile Include="ep_weather_host.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\ExplorerPatcher\utility.c">
+    <ClCompile Include="ep_weather_factory.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ep_weather.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -26,31 +29,39 @@
     <ClInclude Include="resource.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\ExplorerPatcher\utility.h">
+    <ClInclude Include="ep_weather_factory.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ep_weather.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ep_weather_host.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ep_weather_host_stub\ep_weather_host_h.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ep_weather_utility.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ep_weather_provider_google_script.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ep_weather_provider_google_html.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="ep_setup.rc">
-      <Filter>Resource Files</Filter>
-    </ResourceCompile>
-    <ResourceCompile Include="ep_setup_debug.rc">
+    <ResourceCompile Include="ep_weather_host.rc">
       <Filter>Resource Files</Filter>
     </ResourceCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\build\Release\ExplorerPatcher.amd64.dll" />
-    <None Include="..\build\Release\ExplorerPatcher.IA-32.dll" />
-    <None Include="applicat.bin">
-      <Filter>Resource Files</Filter>
-    </None>
-    <None Include="..\build\Debug\ExplorerPatcher.amd64.dll" />
-    <None Include="..\build\Debug\ExplorerPatcher.IA-32.dll" />
-    <None Include="..\build\Release\ep_dwm.exe" />
-    <None Include="..\build\Debug\ep_dwm.exe" />
-    <None Include="..\build\Debug\ep_weather_host.dll" />
-    <None Include="..\build\Release\ep_weather_host.dll" />
-    <None Include="..\build\Release\ep_weather_host_stub.dll" />
-    <None Include="..\build\Debug\ep_weather_host_stub.dll" />
+    <Midl Include="..\ep_weather_host_stub\ep_weather_host.idl">
+      <Filter>Source Files</Filter>
+    </Midl>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
   </ItemGroup>
 </Project>

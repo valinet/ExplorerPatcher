@@ -623,10 +623,18 @@ LSTATUS GUI_RegQueryValueExW(
     LPDWORD lpcbData
 )
 {
+    DWORD dwSize = lpcbData ? *(DWORD*)lpcbData : sizeof(DWORD);
     LSTATUS lRes = GUI_Internal_RegQueryValueExW(hKey, lpValueName, lpReserved, lpType, lpData, lpcbData);
     if (AuditFile)
     {
-        fwprintf(AuditFile, L"%s\"%s\"=dword:%08x\n", (lpValueName && wcsncmp(lpValueName, L"Virtualized_" _T(EP_CLSID), 50)) ? L"" : L";", lpValueName, *(DWORD*)lpData);
+        if (dwSize != sizeof(DWORD))
+        {
+            fwprintf(AuditFile, L"%s\"%s\"=\"%s\"\n", (lpValueName && wcsncmp(lpValueName, L"Virtualized_" _T(EP_CLSID), 50)) ? L"" : L";", lpValueName, lpData);
+        }
+        else
+        {
+            fwprintf(AuditFile, L"%s\"%s\"=dword:%08x\n", (lpValueName && wcsncmp(lpValueName, L"Virtualized_" _T(EP_CLSID), 50)) ? L"" : L";", lpValueName, *(DWORD*)lpData);
+        }
     }
     return lRes;
 }
@@ -1831,6 +1839,13 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                                             wprintf(L"%s %d\n", wszName, dwVal);
                                                             GUI_RegSetValueExW(NULL, wszName, 0, RRF_RT_DWORD, &dwVal, sizeof(DWORD));
                                                         }
+                                                        else
+                                                        {
+                                                            WCHAR* wszTitle = malloc(MAX_LINE_LENGTH * sizeof(WCHAR));
+                                                            wchar_t* x = wcschr(ddd + 2, L'"');
+                                                            x[0] = 0;
+                                                            //wprintf(L">>> %s\n", ddd + 2);
+                                                        }
                                                     }
                                                 }
                                                 free(line2);
@@ -1840,6 +1855,10 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                     }
                                 }
                             }
+                            else if (!strncmp(line + 1, "update_weather", 14))
+                            {
+                                PostMessageW(FindWindowW(_T(EPW_WEATHER_CLASSNAME), NULL), EP_WEATHER_WM_FETCH_DATA, 0, 0);
+                            }
                         }
                     }
                     dwMaxHeight += dwLineHeight * dy;
@@ -1848,7 +1867,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                         tabOrder++;
                     }
                 }
-                else if (!strncmp(line, ";l ", 3) || !strncmp(line, ";y ", 3) || !strncmp(line, ";c ", 3) || !strncmp(line, ";z ", 3) || !strncmp(line, ";b ", 3) || !strncmp(line, ";i ", 3) || !strncmp(line, ";d ", 3) || !strncmp(line, ";v ", 3))
+                else if (!strncmp(line, ";l ", 3) || !strncmp(line, ";y ", 3) || !strncmp(line, ";c ", 3) || !strncmp(line, ";w ", 3) || !strncmp(line, ";z ", 3) || !strncmp(line, ";b ", 3) || !strncmp(line, ";i ", 3) || !strncmp(line, ";d ", 3) || !strncmp(line, ";v ", 3))
                 {
                     ZeroMemory(text, (MAX_LINE_LENGTH + 3) * sizeof(wchar_t));
                     text[0] = L'\u2795';
@@ -1867,9 +1886,14 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                     if (x) *x = 0;
                     x = wcschr(text, L'\r');
                     if (x) *x = 0;
-                    if (!strncmp(line, ";c ", 3) || !strncmp(line, ";z ", 3) || !strncmp(line, ";b ", 3) || !strncmp(line, ";i ", 3) || !strncmp(line, ";d ", 3) || !strncmp(line, ";v ", 3))
+                    if (!strncmp(line, ";w ", 3) || !strncmp(line, ";c ", 3) || !strncmp(line, ";z ", 3) || !strncmp(line, ";b ", 3) || !strncmp(line, ";i ", 3) || !strncmp(line, ";d ", 3) || !strncmp(line, ";v ", 3))
                     {
+                        WCHAR* wszTitle = NULL;
+                        WCHAR* wszPrompt = NULL;
+                        WCHAR* wszDefault = NULL;
+                        WCHAR* wszFallbackDefault = NULL;
                         HMENU hMenu = NULL;
+                        BOOL bInput = !strncmp(line, ";w ", 3);
                         BOOL bChoice = !strncmp(line, ";c ", 3);
                         BOOL bChoiceLefted = !strncmp(line, ";z ", 3);
                         BOOL bInvert = !strncmp(line, ";i ", 3);
@@ -1929,6 +1953,43 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
 
                                 free(miText);
                             }
+                        }
+                        else if (bInput)
+                        {
+                            wszTitle = malloc(MAX_LINE_LENGTH * sizeof(WCHAR));
+                            wszPrompt = malloc(MAX_LINE_LENGTH * sizeof(WCHAR));
+                            wszDefault = malloc(MAX_LINE_LENGTH * sizeof(WCHAR));
+                            wszFallbackDefault = malloc(MAX_LINE_LENGTH * sizeof(WCHAR));
+                            char* l = malloc(MAX_LINE_LENGTH * sizeof(char));
+                            numChRd = getline(&l, &bufsiz, f);
+                            char* p = l;
+                            p = strchr(p + 1, '\r');
+                            if (p) *p = 0;
+                            p = strchr(p + 1, '\n');
+                            if (p) *p = 0;
+                            MultiByteToWideChar(
+                                CP_UTF8,
+                                MB_PRECOMPOSED,
+                                l + 1,
+                                numChRd - 1,
+                                wszPrompt,
+                                MAX_LINE_LENGTH
+                            );
+                            numChRd = getline(&l, &bufsiz, f);
+                            p = l;
+                            p = strchr(p + 1, '\r');
+                            if (p) *p = 0;
+                            p = strchr(p + 1, '\n');
+                            if (p) *p = 0;
+                            MultiByteToWideChar(
+                                CP_UTF8,
+                                MB_PRECOMPOSED,
+                                l + 1,
+                                numChRd - 1,
+                                wszFallbackDefault,
+                                MAX_LINE_LENGTH
+                            );
+                            free(l);
                         }
                         numChRd = getline(&line, &bufsiz, f);
                         if (!strncmp(line, ";\"Virtualized_" EP_CLSID, 52))
@@ -2011,14 +2072,47 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                         DWORD value = FALSE;
 
                         //wprintf(L"%s %s %s\n", section, name, d + 1);
-                        if (!wcsncmp(d + 1, L"dword:", 6))
+                        if (!bInput && !wcsncmp(d + 1, L"dword:", 6))
                         {
                             wchar_t* x = wcschr(d + 1, L':');
                             x++;
                             value = wcstol(x, NULL, 16);
                         }
+                        if (bInput)
+                        {
+                            wchar_t* x = wcschr(d + 2, L'"');
+                            x[0] = 0;
+                            wcscpy_s(wszDefault, MAX_LINE_LENGTH, d + 2);
+                        }
 
-                        if (!bJustCheck)
+                        if (bInput)
+                        {
+                            dwSize = MAX_LINE_LENGTH;
+                            GUI_RegCreateKeyExW(
+                                bIsHKLM ? HKEY_LOCAL_MACHINE : HKEY_CURRENT_USER,
+                                wcschr(section, L'\\') + 1,
+                                0,
+                                NULL,
+                                REG_OPTION_NON_VOLATILE,
+                                KEY_READ | (hDC ? 0 : (!bIsHKLM ? KEY_WRITE : 0)),
+                                NULL,
+                                & hKey,
+                                & dwDisposition
+                            );
+                            if (hKey == NULL || hKey == INVALID_HANDLE_VALUE)
+                            {
+                                hKey = NULL;
+                            }
+                            GUI_RegQueryValueExW(
+                                hKey,
+                                name,
+                                0,
+                                NULL,
+                                wszDefault,
+                                &dwSize
+                            );
+                        }
+                        else if (!bJustCheck)
                         {
                             GUI_RegCreateKeyExW(
                                 bIsHKLM ? HKEY_LOCAL_MACHINE : HKEY_CURRENT_USER,
@@ -2067,7 +2161,28 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                             }
                             value = hKey;
                         }
-                        if (bInvert || bBool || bJustCheck)
+                        if (bInput)
+                        {
+                            wcscpy_s(wszTitle, MAX_LINE_LENGTH, text + 3);
+                            wcscat_s(
+                                text,
+                                MAX_LINE_LENGTH,
+                                L" : "
+                            );
+                            if (wszDefault[0] == 0)
+                            {
+                                wcscat_s(text, MAX_LINE_LENGTH, wszFallbackDefault);
+                            }
+                            else
+                            {
+                                wcscat_s(
+                                    text,
+                                    MAX_LINE_LENGTH,
+                                    wszDefault
+                                );
+                            }
+                        }
+                        else if (bInvert || bBool || bJustCheck)
                         {
                             if (value)
                             {
@@ -2254,7 +2369,23 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                             else
                             {
                                 DWORD val = 0;
-                                if (bChoice || bChoiceLefted)
+                                if (bInput)
+                                {
+                                    WCHAR* wszAnswer = malloc(MAX_LINE_LENGTH * sizeof(WCHAR));
+                                    InputBox(FALSE, hwnd, wszPrompt, wszTitle, wszDefault, wszAnswer, MAX_LINE_LENGTH);
+                                    GUI_RegSetValueExW(
+                                        hKey,
+                                        name,
+                                        0,
+                                        REG_SZ,
+                                        wszAnswer,
+                                        (wcslen(wszAnswer) + 1) * sizeof(WCHAR)
+                                    );
+                                    Sleep(100);
+                                    PostMessageW(FindWindowW(_T(EPW_WEATHER_CLASSNAME), NULL), EP_WEATHER_WM_FETCH_DATA, 0, 0);
+                                    free(wszAnswer);
+                                }
+                                else if (bChoice || bChoiceLefted)
                                 {
                                     RECT rcTemp;
                                     rcTemp = rcText;
@@ -2298,7 +2429,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                 {
                                     value = _this->section + 1;
                                 }
-                                if (!(bChoice || bChoiceLefted) || ((bChoice || bChoiceLefted) && val))
+                                if (!bInput && (!(bChoice || bChoiceLefted) || ((bChoice || bChoiceLefted) && val)))
                                 {
                                     GUI_RegSetValueExW(
                                         hKey,
@@ -2331,6 +2462,22 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                 }
                             }
                             DestroyMenu(hMenu);
+                        }
+                        if (wszTitle)
+                        {
+                            free(wszTitle);
+                        }
+                        if (wszPrompt)
+                        {
+                            free(wszPrompt);
+                        }
+                        if (wszDefault)
+                        {
+                            free(wszDefault);
+                        }
+                        if (wszFallbackDefault)
+                        {
+                            free(wszFallbackDefault);
                         }
                     }
                     if (hDC && (!strncmp(line, ";l ", 3) || !strncmp(line, ";y ", 3)))
@@ -2477,6 +2624,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                 if (text[0] == L'\u2714') dwType = 1;
                                 else if (text[0] == L'\u274C') dwType = 2;
                                 else if (text[accLen - 1] == 56405) dwType = 3;
+                                else if (!strstr(line, "dword")) dwType = 5;
                                 WCHAR accText[1000], accText2[1000];
                                 ZeroMemory(accText, 1000 * sizeof(wchar_t));
                                 ZeroMemory(accText2, 1000 * sizeof(wchar_t));
@@ -2494,7 +2642,8 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                     (dwType == 2 ? L"Disabled" :
                                         (dwType == 3 ? L"Link" :
                                             (dwType == 4 ? L"Button" :
-                                                L"List")))
+                                                (dwType == 5 ? L"Input" : 
+                                                    L"List"))))
                                 );
                                 accLen = wcslen(accText);
                                 unsigned int j = 0;
@@ -2935,10 +3084,10 @@ static LRESULT CALLBACK GUI_WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
             return 0;
         }
         // this should be determined from the file, but for now it works
-        else if (wParam >= '1' && wParam <= '9') 
+        else if (wParam >= '1' && wParam <= '9' || wParam == '0')
         {
             _this->tabOrder = 0;
-            GUI_SetSection(_this, TRUE, wParam - '1');
+            GUI_SetSection(_this, TRUE, wParam == '0' ? 9 : wParam - '1');
             _this->bShouldAnnounceSelected = TRUE;
             InvalidateRect(hWnd, NULL, FALSE);
             return 0;
@@ -2981,6 +3130,14 @@ static LRESULT CALLBACK GUI_WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
         else if (wParam == 'H' || wParam == VK_F1)
         {
             SetTimer(hWnd, GUI_TIMER_READ_HELP, 200, NULL);
+            return 0;
+        }
+        else if (wParam == 'Z')
+        {
+            return 0;
+        }
+        else if (wParam == 'X')
+        {
             return 0;
         }
     }
@@ -3187,7 +3344,7 @@ __declspec(dllexport) int ZZGUI(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLin
         return 0;
     }
 
-    HRESULT hr = CoInitialize(0);
+    HRESULT hr = CoInitializeEx(0, COINIT_APARTMENTTHREADED);
 
     HKEY hKey = NULL;
     DWORD dwSize = sizeof(DWORD);

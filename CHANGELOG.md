@@ -2,6 +2,14 @@
 
 This document includes the same release notes as in the [Releases](https://github.com/valinet/ExplorerPatcher/releases) section on GitHub.
 
+## 22000.469.42
+
+Tested on OS build 22000.434.
+
+#### New features
+
+* Implemented Weather widget for the classic taskbar, similar to what is available in the more recent updates to Windows 10. Read more about it [here](https://github.com/valinet/ExplorerPatcher/wiki/Weather).
+
 ## 22000.469.41
 
 Tested on OS build 22000.434.

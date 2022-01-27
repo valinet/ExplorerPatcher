@@ -18,6 +18,7 @@
 #include <valinet/universal/toast/toast.h>
 #include "queryversion.h"
 #pragma comment(lib, "Psapi.lib")
+#include <activscp.h>
 
 #include "def.h"
 
@@ -220,6 +221,8 @@ static void(*AllowDarkModeForWindow)(HWND hWnd, INT64 bAllowDark);
 
 static BOOL(*ShouldAppsUseDarkMode)();
 
+static BOOL(*ShouldSystemUseDarkMode)();
+
 static void(*GetThemeName)(void*, void*, void*);
 
 static BOOL AppsShouldUseDarkMode() { return TRUE; }
@@ -235,6 +238,27 @@ void LaunchPropertiesGUI(HMODULE hModule);
 BOOL SystemShutdown(BOOL reboot);
 
 LSTATUS RegisterDWMService(DWORD dwDesiredState, DWORD dwOverride);
+
+char* StrReplaceAllA(const char* s, const char* oldW, const char* newW, int* dwNewSize);
+
+WCHAR* StrReplaceAllW(const WCHAR* s, const WCHAR* oldW, const WCHAR* newW, int* dwNewSize);
+
+HRESULT InputBox(BOOL bPassword, HWND hWnd, LPCWSTR wszPrompt, LPCWSTR wszTitle, LPCWSTR wszDefault, LPCWSTR wszAnswer, DWORD cbAnswer);
+
+// https://codereview.stackexchange.com/questions/29198/random-string-generator-in-c
+static inline WCHAR* rand_string(WCHAR* str, size_t size)
+{
+    const WCHAR charset[] = L"abcdefghijklmnopqrstuvwxyz";
+    if (size) {
+        --size;
+        for (size_t n = 0; n < size; n++) {
+            int key = rand() % (int)(sizeof charset - 1);
+            str[n] = charset[key];
+        }
+        str[size] = L'\0';
+    }
+    return str;
+}
 
 inline long long milliseconds_now() {
     LARGE_INTEGER s_frequency;

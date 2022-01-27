@@ -78,6 +78,13 @@ jobs:
         C:\msys64\usr\bin\patch.exe -N SimpleWindowSwitcher/sws_def.h 972acb76d1e6429133c92ed7cdefd29b9a2c6179.patch
         C:\msys64\usr\bin\unix2dos.exe SimpleWindowSwitcher/sws_def.h
         exit /b 0
+        
+    - name: Setup NuGet
+      uses: nuget/setup-nuget@v1
+      
+    - name: Restore NuGet packages
+      run: |
+        nuget restore ExplorerPatcher.sln
       
     - name: Build funchook
       shell: powershell
