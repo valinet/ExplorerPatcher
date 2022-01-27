@@ -654,7 +654,7 @@ BOOL LoadSymbols(symbols_addr* symbols_PTRS, HMODULE hModule)
         symbols_PTRS->twinui_pcshell_PTRS[8] = 0x4D780;
         bIsTwinuiPcshellHardcoded = TRUE;
     }
-    else if (!_stricmp(hash, "6399b5913a7048c4422e3cfb03860da2")) // 466
+    else if (!_stricmp(hash, "6399b5913a7048c4422e3cfb03860da2") || !_stricmp(hash, "99dea5939a2b1945b2d3fd65433ca401")) // 466, 469
     {
         symbols_PTRS->twinui_pcshell_PTRS[0] = 0x229fa6;
         symbols_PTRS->twinui_pcshell_PTRS[1] = 0x5dc500;
