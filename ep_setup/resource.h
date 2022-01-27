@@ -5,6 +5,9 @@
 #define IDR_EP_AMD64                    103
 #define IDR_EP_IA32                     104
 #define IDR_EP_DWM                      105
+#define IDR_EP_WEATHER                  106
+#define IDR_EP_WEATHER_STUB             107
+#define IDR_MS_WEBVIEW2_LOADER          201
 
 // Next default values for new objects
 // 

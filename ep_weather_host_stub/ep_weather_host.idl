@@ -1,0 +1,61 @@
+import "oaidl.idl";
+import "ocidl.idl";
+import "unknwn.idl";
+
+[
+	object,
+	uuid(CDBF3734-F847-4F1B-B953-A605434DC1E7),
+	oleautomation,
+	helpstring("ExplorerPatcher Weather Information")
+] interface IEPWeather : IUnknown
+{
+	HRESULT About([in] HWND hWnd);
+
+	HRESULT Initialize([in] WCHAR wszName[260], [in] BOOL bAllocConsole, [in] LONG64 dwProvider, [in] LONG64 cbx, [in] LONG64 cby, [in] LONG64 dwTemperatureUnit, [in] LONG64 dwUpdateSchedule, [in] double dpi);
+
+	HRESULT Show();
+
+	HRESULT Hide();
+
+	HRESULT GetWindowHandle([out] HWND* phWnd);
+
+	HRESULT LockData();
+
+	HRESULT GetDataSizes(
+		[out] LPDWORD pcbTemperature,
+		[out] LPDWORD pcbUnit,
+		[out] LPDWORD pcbCondition,
+		[out] LPDWORD pcbImage
+	);
+
+	HRESULT GetData(
+		[in] DWORD cbTemperature,
+		[out, size_is(cbTemperature)] BYTE* wszTemperature,
+		[in] DWORD cbUnit,
+		[ out, size_is(cbUnit)] BYTE* wszUnit,
+		[in] DWORD cbCondition,
+		[out, size_is(cbCondition)] BYTE* wszCondition,
+		[in] DWORD cbImage,
+		[out, size_is(cbImage)] BYTE* pImage
+	);
+
+	HRESULT UnlockData();
+
+	HRESULT SetNotifyWindow([in] HWND hWndNotify);
+
+	HRESULT IsInitialized([out] BOOL* bIsInitialized);
+
+	HRESULT GetTitle([in] DWORD cbTitle, [out, size_is(cbTitle)] BYTE* wszTitle, [in] DWORD dwType);
+
+	HRESULT SetTemperatureUnit([in] LONG64 dwTemperatureUnit);
+
+	HRESULT SetTerm([in] DWORD cbTerm, [in, size_is(cbTerm)] BYTE* wszTerm);
+
+	HRESULT SetLanguage([in] DWORD cblanguage, [in, size_is(cblanguage)] BYTE* wszLanguage);
+
+	HRESULT SetUpdateSchedule([in] LONG64 dwUpdateSchedule);
+
+	HRESULT SetIconSize([in] LONG64 cbx, [in] LONG64 cby);
+
+	HRESULT GetIconSize([out] LONG64* cbx, [out] LONG64* cby);
+};

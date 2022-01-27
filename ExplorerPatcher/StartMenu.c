@@ -77,6 +77,7 @@ LRESULT CALLBACK OpenStartOnCurentMonitorThreadHook(
         MSG* msg = (MSG*)lParam;
         if (GetSystemMetrics(SM_CMONITORS) >= 2 && msg->message == WM_SYSCOMMAND && (msg->wParam & 0xFFF0) == SC_TASKLIST)
         {
+            printf("Position Start\n");
             if (bMonitorOverride)
             {
                 goto finish;
@@ -102,6 +103,7 @@ LRESULT CALLBACK OpenStartOnCurentMonitorThreadHook(
             POINT pt;
             pt.x = GET_X_LPARAM(pts);
             pt.y = GET_Y_LPARAM(pts);
+            printf("!! %d %d\n", pt.x, pt.y);
             HMONITOR monitor = MonitorFromPoint(
                 pt,
                 MONITOR_DEFAULTTONULL
@@ -131,12 +133,7 @@ DWORD OpenStartOnCurentMonitorThread(OpenStartOnCurentMonitorThreadParams* unuse
     HWND g_ProgWin = NULL;
     while (!g_ProgWin)
     {
-        g_ProgWin = FindWindowEx(
-            NULL,
-            NULL,
-            L"Progman",
-            NULL
-        );
+        g_ProgWin = GetShellWindow();
         if (!g_ProgWin)
         {
             Sleep(100);
