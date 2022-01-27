@@ -245,6 +245,16 @@ WCHAR* StrReplaceAllW(const WCHAR* s, const WCHAR* oldW, const WCHAR* newW, int*
 
 HRESULT InputBox(BOOL bPassword, HWND hWnd, LPCWSTR wszPrompt, LPCWSTR wszTitle, LPCWSTR wszDefault, LPCWSTR wszAnswer, DWORD cbAnswer);
 
+inline BOOL IsHighContrast()
+{
+    HIGHCONTRASTW highContrast;
+    ZeroMemory(&highContrast, sizeof(HIGHCONTRASTW));
+    highContrast.cbSize = sizeof(highContrast);
+    if (SystemParametersInfoW(SPI_GETHIGHCONTRAST, sizeof(highContrast), &highContrast, FALSE))
+        return highContrast.dwFlags & HCF_HIGHCONTRASTON;
+    return FALSE;
+}
+
 // https://codereview.stackexchange.com/questions/29198/random-string-generator-in-c
 static inline WCHAR* rand_string(WCHAR* str, size_t size)
 {

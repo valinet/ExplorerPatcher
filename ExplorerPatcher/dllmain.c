@@ -107,6 +107,7 @@ HANDLE hCanStartSws = NULL;
 DWORD dwWeatherViewMode = EP_WEATHER_VIEW_ICONTEXT;
 DWORD dwWeatherTemperatureUnit = EP_WEATHER_TUNIT_CELSIUS;
 DWORD dwWeatherUpdateSchedule = EP_WEATHER_UPDATE_NORMAL;
+DWORD bWeatherFixedSize = FALSE;
 WCHAR* wszWeatherTerm = NULL;
 WCHAR* wszWeatherLanguage = NULL;
 WCHAR* wszEPWeatherKillswitch = NULL;
@@ -3504,7 +3505,7 @@ LRESULT explorer_SendMessageW(HWND hWndx, UINT uMsg, WPARAM wParam, LPARAM lPara
 #pragma endregion
 
 
-#pragma region "Set up taskbar button hooks"
+#pragma region "Set up taskbar button hooks, implement Weather widget"
 #ifdef _WIN64
 
 DWORD ShouldShowWidgetsInsteadOfCortana()
@@ -3596,28 +3597,47 @@ BOOL explorer_DeleteMenu(HMENU hMenu, UINT uPosition, UINT uFlags)
     return DeleteMenu(hMenu, uPosition, uFlags);
 }
 
+int prev_total_h = 0;
 SIZE (*PeopleButton_CalculateMinimumSizeFunc)(void*, SIZE*);
 SIZE WINAPI PeopleButton_CalculateMinimumSizeHook(void* _this, SIZE* pSz)
 {
     SIZE ret = PeopleButton_CalculateMinimumSizeFunc(_this, pSz);
-    int mul = 1;
     if (epw)
     {
-        switch (dwWeatherViewMode)
+        if (bWeatherFixedSize)
         {
-        case EP_WEATHER_VIEW_ICONTEXT:
-            mul = 4;
-            break;
-        case EP_WEATHER_VIEW_ICONTEMP:
-            mul = 2;
-            break;
-        case EP_WEATHER_VIEW_ICONONLY:
-            mul = 1;
-            break;
+            int mul = 1;
+            switch (dwWeatherViewMode)
+            {
+            case EP_WEATHER_VIEW_ICONTEXT:
+                mul = 4;
+                break;
+            case EP_WEATHER_VIEW_TEXTONLY:
+                mul = 3;
+                break;
+            case EP_WEATHER_VIEW_ICONTEMP:
+                mul = 2;
+                break;
+            case EP_WEATHER_VIEW_ICONONLY:
+            case EP_WEATHER_VIEW_TEMPONLY:
+                mul = 1;
+                break;
+            }
+            pSz->cx = pSz->cx * mul;
+        }
+        else
+        {
+            if (!prev_total_h)
+            {
+                pSz->cx = 10000;
+            }
+            else
+            {
+                pSz->cx = prev_total_h;
+            }
         }
     }
-    //printf(">> %d %d\n", pSz->cx, pSz->cy);
-    pSz->cx = pSz->cx * mul;
+    //printf("[CalculateMinimumSize] %d %d\n", pSz->cx, pSz->cy);
     if (pSz->cy && epw)
     {
         BOOL bIsInitialized = TRUE;
@@ -3629,7 +3649,9 @@ SIZE WINAPI PeopleButton_CalculateMinimumSizeHook(void* _this, SIZE* pSz)
             {
                 epw->lpVtbl->SetTerm(epw, MAX_PATH * sizeof(WCHAR), wszWeatherTerm);
                 epw->lpVtbl->SetLanguage(epw, MAX_PATH * sizeof(WCHAR), wszWeatherLanguage);
-                if (FAILED(epw->lpVtbl->Initialize(epw, wszEPWeatherKillswitch, bAllocConsole, EP_WEATHER_PROVIDER_GOOGLE, rt, rt, dwWeatherTemperatureUnit, dwWeatherUpdateSchedule * 1000, pSz->cy / 48.0)))
+                UINT dpiX = 0, dpiY = 0;
+                HRESULT hr = GetDpiForMonitor(MonitorFromWindow(PeopleButton_LastHWND, MONITOR_DEFAULTTOPRIMARY), MDT_DEFAULT, &dpiX, &dpiY);
+                if (FAILED(epw->lpVtbl->Initialize(epw, wszEPWeatherKillswitch, bAllocConsole, EP_WEATHER_PROVIDER_GOOGLE, rt, rt, dwWeatherTemperatureUnit, dwWeatherUpdateSchedule * 1000, dpiX / 96.0)))
                 {
                     epw->lpVtbl->Release(epw);
                 }
@@ -3653,24 +3675,44 @@ SIZE WINAPI PeopleButton_CalculateMinimumSizeHook(void* _this, SIZE* pSz)
 
 int PeopleBand_MulDivHook(int nNumber, int nNumerator, int nDenominator)
 {
-    //printf("<< %d %d %d\n", nNumber, nNumerator, nDenominator);
-    int mul = 1;
+    //printf("[MulDivHook] %d %d %d\n", nNumber, nNumerator, nDenominator);
     if (epw)
     {
-        switch (dwWeatherViewMode)
+        if (bWeatherFixedSize)
         {
-        case EP_WEATHER_VIEW_ICONTEXT:
-            mul = 4;
-            break;
-        case EP_WEATHER_VIEW_ICONTEMP:
-            mul = 2;
-            break;
-        case EP_WEATHER_VIEW_ICONONLY:
-            mul = 1;
-            break;
+            int mul = 1;
+            switch (dwWeatherViewMode)
+            {
+            case EP_WEATHER_VIEW_ICONTEXT:
+                mul = 4;
+                break;
+            case EP_WEATHER_VIEW_TEXTONLY:
+                mul = 3;
+                break;
+            case EP_WEATHER_VIEW_ICONTEMP:
+                mul = 2;
+                break;
+            case EP_WEATHER_VIEW_ICONONLY:
+            case EP_WEATHER_VIEW_TEMPONLY:
+                mul = 1;
+                break;
+            }
+            return MulDiv(nNumber * mul, nNumerator, nDenominator);
+        }
+        else
+        {
+            if (prev_total_h)
+            {
+                return prev_total_h;
+            }
+            else
+            {
+                prev_total_h = MulDiv(nNumber, nNumerator, nDenominator);
+                return prev_total_h;
+            }
         }
     }
-    return MulDiv(nNumber * mul, nNumerator, nDenominator);
+    return MulDiv(nNumber, nNumerator, nDenominator);
 }
 
 DWORD epw_cbTemperature = 0;
@@ -3711,6 +3753,11 @@ __int64 __fastcall PeopleBand_DrawTextWithGlowHook(
     if (a5 == 0x21 && epw)
     {
         BOOL bUseCachedData = InSendMessage();
+        BOOL bIsThemeActive = TRUE;
+        if (!IsThemeActive() || IsHighContrast())
+        {
+            bIsThemeActive = FALSE;
+        }
         HRESULT hr = S_OK;
         if (bUseCachedData ? TRUE : SUCCEEDED(hr = epw->lpVtbl->LockData(epw)))
         {
@@ -3775,6 +3822,13 @@ __int64 __fastcall PeopleBand_DrawTextWithGlowHook(
                 {
                     if (!bUseCachedData)
                     {
+                        WCHAR wszBuffer[MAX_PATH];
+                        ZeroMemory(wszBuffer, sizeof(WCHAR) * MAX_PATH);
+                        swprintf_s(wszBuffer, MAX_PATH, L"%s %s, %s, ", epw_wszTemperature, epw_wszUnit, epw_wszCondition);
+                        int len = wcslen(wszBuffer);
+                        epw->lpVtbl->GetTitle(epw, sizeof(WCHAR) * (MAX_PATH - len), wszBuffer + len, dwWeatherViewMode);
+                        SetWindowTextW(PeopleButton_LastHWND, wszBuffer);
+
                         epw->lpVtbl->UnlockData(epw);
                         bShouldUnlockData = FALSE;
                     }
@@ -3784,9 +3838,9 @@ __int64 __fastcall PeopleBand_DrawTextWithGlowHook(
                     NONCLIENTMETRICS ncm;
                     ZeroMemory(&ncm, sizeof(NONCLIENTMETRICS));
                     ncm.cbSize = sizeof(NONCLIENTMETRICS);
-                    SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, sizeof(NONCLIENTMETRICS), &ncm, 0);
+                    SystemParametersInfoForDpi(SPI_GETNONCLIENTMETRICS, sizeof(NONCLIENTMETRICS), &ncm, 0, dpiX);
                     logFont = ncm.lfCaptionFont;
-                    logFont.lfHeight = -14 * (dpiX / 96.0);
+                    logFont.lfWeight = FW_NORMAL;
                     if (bEmptyData)
                     {
                         DWORD dwVal = 1, dwSize = sizeof(DWORD);
@@ -3810,9 +3864,16 @@ __int64 __fastcall PeopleBand_DrawTextWithGlowHook(
                         if (hDC)
                         {
                             COLORREF rgbColor = RGB(0, 0, 0);
-                            if (ShouldSystemUseDarkMode && ShouldSystemUseDarkMode())
+                            if (bIsThemeActive)
                             {
-                                rgbColor = RGB(255, 255, 255);
+                                if (ShouldSystemUseDarkMode && ShouldSystemUseDarkMode())
+                                {
+                                    rgbColor = RGB(255, 255, 255);
+                                }
+                            }
+                            else
+                            {
+                                rgbColor = GetSysColor(COLOR_WINDOWTEXT);
                             }
                             HFONT hOldFont = SelectFont(hDC, hFont);
                             if (bEmptyData)
@@ -3846,19 +3907,22 @@ __int64 __fastcall PeopleBand_DrawTextWithGlowHook(
                                 DWORD dwTextFlags = DT_SINGLELINE | DT_VCENTER | DT_HIDEPREFIX;
 
                                 WCHAR wszText1[MAX_PATH];
-                                swprintf_s(wszText1, MAX_PATH, L"%s %s", epw_wszTemperature, dwWeatherTemperatureUnit == EP_WEATHER_TUNIT_FAHRENHEIT ? L"\u00B0F" : L"\u00B0C");// epw_wszUnit);
+                                swprintf_s(wszText1, MAX_PATH, L"%s%s %s", bIsThemeActive ? L"" : L" ", epw_wszTemperature, dwWeatherTemperatureUnit == EP_WEATHER_TUNIT_FAHRENHEIT ? L"\u00B0F" : L"\u00B0C");// epw_wszUnit);
                                 RECT rcText1;
                                 SetRect(&rcText1, 0, 0, a4->right, a4->bottom);
                                 DrawTextW(hDC, wszText1, -1, &rcText1, dwTextFlags | DT_CALCRECT);
                                 rcText1.bottom = a4->bottom;
                                 WCHAR wszText2[MAX_PATH];
-                                swprintf_s(wszText2, MAX_PATH, L"%s", epw_wszCondition);
+                                swprintf_s(wszText2, MAX_PATH, L"%s%s", bIsThemeActive ? L"" : L" ", epw_wszCondition);
                                 RECT rcText2;
                                 SetRect(&rcText2, 0, 0, a4->right, a4->bottom);
                                 DrawTextW(hDC, wszText2, -1, &rcText2, dwTextFlags | DT_CALCRECT);
                                 rcText2.bottom = a4->bottom;
 
-                                dwTextFlags |= DT_END_ELLIPSIS;
+                                if (bWeatherFixedSize)
+                                {
+                                    dwTextFlags |= DT_END_ELLIPSIS;
+                                }
 
                                 int addend = 0;
                                 //int rt = MulDiv(48, a4->bottom, 60);
@@ -3866,12 +3930,18 @@ __int64 __fastcall PeopleBand_DrawTextWithGlowHook(
                                 int p = 0;// MulDiv(rt, 4, 64);
                                 int margin_h = MulDiv(12, dpiX, 144);
 
+                                BOOL bIsIconMode = (
+                                    dwWeatherViewMode == EP_WEATHER_VIEW_ICONTEMP ||
+                                    dwWeatherViewMode == EP_WEATHER_VIEW_ICONTEXT ||
+                                    dwWeatherViewMode == EP_WEATHER_VIEW_ICONONLY);
                                 switch (dwWeatherViewMode)
                                 {
                                 case EP_WEATHER_VIEW_ICONTEXT:
+                                case EP_WEATHER_VIEW_TEXTONLY:
                                     addend = (rcText1.right - rcText1.left) + margin_h + (rcText2.right - rcText2.left) + margin_h;
                                     break;
                                 case EP_WEATHER_VIEW_ICONTEMP:
+                                case EP_WEATHER_VIEW_TEMPONLY:
                                     addend = (rcText1.right - rcText1.left) + margin_h;
                                     break;
                                 case EP_WEATHER_VIEW_ICONONLY:
@@ -3879,58 +3949,73 @@ __int64 __fastcall PeopleBand_DrawTextWithGlowHook(
                                     break;
                                 }
                                 int margin_v = (a4->bottom - rt) / 2;
-                                int total_h = (margin_h - p) + rt + (margin_h - p) + addend;
-                                if (total_h > a4->right)
+                                int total_h = (bIsIconMode ? ((margin_h - p) + rt + (margin_h - p)) : margin_h) + addend;
+                                if (bWeatherFixedSize)
                                 {
-                                    int diff = total_h - a4->right;
-                                    rcText2.right -= diff - 2;
-                                    switch (dwWeatherViewMode)
+                                    if (total_h > a4->right)
                                     {
-                                    case EP_WEATHER_VIEW_ICONTEXT:
-                                        addend = (rcText1.right - rcText1.left) + margin_h + (rcText2.right - rcText2.left) + margin_h;
-                                        break;
-                                    case EP_WEATHER_VIEW_ICONTEMP:
-                                        addend = (rcText1.right - rcText1.left) + margin_h;
-                                        break;
-                                    case EP_WEATHER_VIEW_ICONONLY:
-                                        addend = 0;
-                                        break;
+                                        int diff = total_h - a4->right;
+                                        rcText2.right -= diff - 2;
+                                        switch (dwWeatherViewMode)
+                                        {
+                                        case EP_WEATHER_VIEW_ICONTEXT:
+                                        case EP_WEATHER_VIEW_TEXTONLY:
+                                            addend = (rcText1.right - rcText1.left) + margin_h + (rcText2.right - rcText2.left) + margin_h;
+                                            break;
+                                        case EP_WEATHER_VIEW_ICONTEMP:
+                                        case EP_WEATHER_VIEW_TEMPONLY: // should be impossible
+                                            addend = (rcText1.right - rcText1.left) + margin_h;
+                                            break;
+                                        case EP_WEATHER_VIEW_ICONONLY:
+                                            addend = 0;
+                                            break;
+                                        }
+                                        total_h = (margin_h - p) + rt + (margin_h - p) + addend;
                                     }
-                                    total_h = (margin_h - p) + rt + (margin_h - p) + addend;
                                 }
-
-                                int start_x = (a4->right - total_h) / 2;
+                                int start_x = 0; // prev_total_h - total_h;
+                                if (bWeatherFixedSize)
+                                {
+                                    start_x = (a4->right - total_h) / 2;
+                                }
 
                                 HBITMAP hBitmap = NULL, hOldBitmap = NULL;
                                 void* pvBits = NULL;
                                 SIZE size;
 
-                                BITMAPINFOHEADER BMIH;
-                                ZeroMemory(&BMIH, sizeof(BITMAPINFOHEADER));
-                                BMIH.biSize = sizeof(BITMAPINFOHEADER);
-                                BMIH.biWidth = rt;
-                                BMIH.biHeight = -rt;
-                                BMIH.biPlanes = 1;
-                                BMIH.biBitCount = 32;
-                                BMIH.biCompression = BI_RGB;
-                                hBitmap = CreateDIBSection(hDC, &BMIH, 0, &pvBits, NULL, 0);
-                                if (hBitmap)
+                                if (bIsIconMode)
                                 {
-                                    memcpy(pvBits, epw_pImage, epw_cbImage);
-                                    hOldBitmap = SelectBitmap(hDC, hBitmap);
+                                    BITMAPINFOHEADER BMIH;
+                                    ZeroMemory(&BMIH, sizeof(BITMAPINFOHEADER));
+                                    BMIH.biSize = sizeof(BITMAPINFOHEADER);
+                                    BMIH.biWidth = rt;
+                                    BMIH.biHeight = -rt;
+                                    BMIH.biPlanes = 1;
+                                    BMIH.biBitCount = 32;
+                                    BMIH.biCompression = BI_RGB;
+                                    hBitmap = CreateDIBSection(hDC, &BMIH, 0, &pvBits, NULL, 0);
+                                    if (hBitmap)
+                                    {
+                                        memcpy(pvBits, epw_pImage, epw_cbImage);
+                                        hOldBitmap = SelectBitmap(hDC, hBitmap);
 
-                                    BLENDFUNCTION bf;
-                                    bf.BlendOp = AC_SRC_OVER;
-                                    bf.BlendFlags = 0;
-                                    bf.SourceConstantAlpha = 0xFF;
-                                    bf.AlphaFormat = AC_SRC_ALPHA;
-                                    GdiAlphaBlend(hdc, start_x + (margin_h - p), margin_v, rt, rt, hDC, 0, 0, rt, rt, bf);
+                                        BLENDFUNCTION bf;
+                                        bf.BlendOp = AC_SRC_OVER;
+                                        bf.BlendFlags = 0;
+                                        bf.SourceConstantAlpha = 0xFF;
+                                        bf.AlphaFormat = AC_SRC_ALPHA;
+                                        GdiAlphaBlend(hdc, start_x + (margin_h - p), margin_v, rt, rt, hDC, 0, 0, rt, rt, bf);
 
-                                    SelectBitmap(hDC, hOldBitmap);
-                                    DeleteBitmap(hBitmap);
+                                        SelectBitmap(hDC, hOldBitmap);
+                                        DeleteBitmap(hBitmap);
+                                    }
                                 }
 
-                                if (dwWeatherViewMode == EP_WEATHER_VIEW_ICONTEMP || dwWeatherViewMode == EP_WEATHER_VIEW_ICONTEXT)
+                                if (dwWeatherViewMode == EP_WEATHER_VIEW_ICONTEMP || 
+                                    dwWeatherViewMode == EP_WEATHER_VIEW_ICONTEXT ||
+                                    dwWeatherViewMode == EP_WEATHER_VIEW_TEMPONLY ||
+                                    dwWeatherViewMode == EP_WEATHER_VIEW_TEXTONLY
+                                    )
                                 {
                                     size.cx = rcText1.right - rcText1.left;
                                     size.cy = rcText1.bottom - rcText1.top;
@@ -3946,14 +4031,16 @@ __int64 __fastcall PeopleBand_DrawTextWithGlowHook(
                                         bf.BlendFlags = 0;
                                         bf.SourceConstantAlpha = 0xFF;
                                         bf.AlphaFormat = AC_SRC_ALPHA;
-                                        GdiAlphaBlend(hdc, start_x + (margin_h - p) + rt + (margin_h - p), 0, BMInf.bmWidth, BMInf.bmHeight, hDC, 0, 0, BMInf.bmWidth, BMInf.bmHeight, bf);
+                                        GdiAlphaBlend(hdc, start_x + (bIsIconMode ? ((margin_h - p) + rt + (margin_h - p)) : margin_h), 0, BMInf.bmWidth, BMInf.bmHeight, hDC, 0, 0, BMInf.bmWidth, BMInf.bmHeight, bf);
 
                                         SelectBitmap(hDC, hOldBMP);
                                         DeleteBitmap(hBitmap);
                                     }
                                 }
 
-                                if (dwWeatherViewMode == EP_WEATHER_VIEW_ICONTEXT)
+                                if (dwWeatherViewMode == EP_WEATHER_VIEW_ICONTEXT ||
+                                    dwWeatherViewMode == EP_WEATHER_VIEW_TEXTONLY
+                                    )
                                 {
                                     size.cx = rcText2.right - rcText2.left;
                                     size.cy = rcText2.bottom - rcText2.top;
@@ -3969,12 +4056,46 @@ __int64 __fastcall PeopleBand_DrawTextWithGlowHook(
                                         bf.BlendFlags = 0;
                                         bf.SourceConstantAlpha = 0xFF;
                                         bf.AlphaFormat = AC_SRC_ALPHA;
-                                        GdiAlphaBlend(hdc, start_x + (margin_h - p) + rt + (margin_h - p) + (rcText1.right - rcText1.left) + margin_h, 0, BMInf.bmWidth, BMInf.bmHeight, hDC, 0, 0, BMInf.bmWidth, BMInf.bmHeight, bf);
+                                        GdiAlphaBlend(hdc, start_x + (bIsIconMode ? ((margin_h - p) + rt + (margin_h - p)) : margin_h) + (rcText1.right - rcText1.left) + margin_h, 0, BMInf.bmWidth, BMInf.bmHeight, hDC, 0, 0, BMInf.bmWidth, BMInf.bmHeight, bf);
 
                                         SelectBitmap(hDC, hOldBMP);
                                         DeleteBitmap(hBitmap);
                                     }
                                 }
+
+                                if (bWeatherFixedSize)
+                                {
+
+                                }
+                                else
+                                {
+                                    if (total_h != prev_total_h)
+                                    {
+                                        prev_total_h = total_h;
+                                        SendNotifyMessageW(HWND_BROADCAST, WM_WININICHANGE, 0, (LPARAM)L"TraySettings");
+                                    }
+                                }
+
+                                /*
+                                SetLastError(0);
+                                LONG_PTR oldStyle = GetWindowLongPtrW(PeopleButton_LastHWND, GWL_EXSTYLE);
+                                if (!GetLastError())
+                                {
+                                    LONG_PTR style;
+                                    if (bIsThemeActive)
+                                    {
+                                        style = oldStyle & ~WS_EX_DLGMODALFRAME;
+                                    }
+                                    else
+                                    {
+                                        style = oldStyle | WS_EX_DLGMODALFRAME;
+                                    }
+                                    if (style != oldStyle)
+                                    {
+                                        SetWindowLongPtrW(PeopleButton_LastHWND, GWL_EXSTYLE, style);
+                                    }
+                                }
+                                */
                             }
                             SelectFont(hDC, hOldFont);
                             DeleteDC(hDC);
@@ -4267,6 +4388,15 @@ BOOL explorer_SetChildWindowNoActivateHook(HWND hWnd)
                     if (SUCCEEDED(CoCreateInstance(&CLSID_EPWeather, NULL, CLSCTX_LOCAL_SERVER, &IID_IEPWeather, &epw)) && epw)
                     {
                         epw->lpVtbl->SetNotifyWindow(epw, hWnd);
+
+                        WCHAR wszBuffer[MAX_PATH];
+                        ZeroMemory(wszBuffer, sizeof(WCHAR) * MAX_PATH);
+                        HMODULE hModule = GetModuleHandleW(L"pnidui.dll");
+                        if (hModule)
+                        {
+                            LoadStringW(hModule, 35, wszBuffer, MAX_PATH);
+                        }
+                        SetWindowTextW(hWnd, wszBuffer);
                     }
                 }
             }
@@ -4695,9 +4825,10 @@ DWORD WindowSwitcher(DWORD unused)
 
 
 #pragma region "Load Settings from registry"
-#define REFRESHUI_NONE 0b00
-#define REFRESHUI_GLOM 0b01
-#define REFRESHUI_ORB 0b10
+#define REFRESHUI_NONE    0b000
+#define REFRESHUI_GLOM    0b001
+#define REFRESHUI_ORB     0b010
+#define REFRESHUI_PEOPLE  0b100
 void WINAPI LoadSettings(LPARAM lParam)
 {
     BOOL bIsExplorer = LOWORD(lParam);
@@ -5268,9 +5399,7 @@ void WINAPI LoadSettings(LPARAM lParam)
         );
         if (dwWeatherViewMode != dwOldWeatherViewMode && PeopleButton_LastHWND)
         {
-            ToggleTaskbarAutohide();
-            ToggleTaskbarAutohide();
-            InvalidateRect(PeopleButton_LastHWND, NULL, TRUE);
+            dwRefreshUIMask |= REFRESHUI_PEOPLE;
         }
 
         DWORD dwOldUpdateSchedule = dwWeatherUpdateSchedule;
@@ -5311,6 +5440,7 @@ void WINAPI LoadSettings(LPARAM lParam)
         {
             epw->lpVtbl->SetTerm(epw, MAX_PATH * sizeof(WCHAR), wszWeatherTerm);
         }
+
         dwSize = MAX_PATH * sizeof(WCHAR);
         if (RegQueryValueExW(
             hKey,
@@ -5333,6 +5463,21 @@ void WINAPI LoadSettings(LPARAM lParam)
         if (epw)
         {
             epw->lpVtbl->SetLanguage(epw, MAX_PATH * sizeof(WCHAR), wszWeatherLanguage);
+        }
+
+        DWORD bOldWeatherFixedSize = bWeatherFixedSize;
+        dwSize = sizeof(DWORD);
+        RegQueryValueExW(
+            hKey,
+            TEXT("WeatherFixedSize"),
+            0,
+            NULL,
+            &bWeatherFixedSize,
+            &dwSize
+        );
+        if (bWeatherFixedSize != bOldWeatherFixedSize && epw)
+        {
+            dwRefreshUIMask |= REFRESHUI_PEOPLE;
         }
 #endif
 
@@ -5563,13 +5708,19 @@ void WINAPI LoadSettings(LPARAM lParam)
         {
             Explorer_RefreshUI(0);
         }
-        if (dwRefreshUIMask & REFRESHUI_ORB)
+        if ((dwRefreshUIMask & REFRESHUI_ORB) || (dwRefreshUIMask & REFRESHUI_PEOPLE))
         {
+            SendNotifyMessageW(HWND_BROADCAST, WM_WININICHANGE, 0, (LPARAM)L"TraySettings");
+            if (dwRefreshUIMask & REFRESHUI_ORB)
+            {
+                InvalidateRect(FindWindowW(L"ExplorerPatcher_GUI_" _T(EP_CLSID), NULL), NULL, FALSE);
+            }
+            if (dwRefreshUIMask & REFRESHUI_PEOPLE)
+            {
 #ifdef _WIN64
-            ToggleTaskbarAutohide();
-            ToggleTaskbarAutohide();
+                InvalidateRect(PeopleButton_LastHWND, NULL, TRUE);
 #endif
-            InvalidateRect(FindWindowW(L"ExplorerPatcher_GUI_" _T(EP_CLSID), NULL), NULL, FALSE);
+            }
         }
     }
 }

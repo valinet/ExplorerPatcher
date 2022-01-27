@@ -92,15 +92,6 @@ LONG NTAPI OnVex(PEXCEPTION_POINTERS ExceptionInfo)
     return EXCEPTION_CONTINUE_SEARCH;
 }
 
-BOOL IsHighContrast()
-{
-    HIGHCONTRASTW highContrast;
-    ZeroMemory(&highContrast, sizeof(HIGHCONTRASTW));
-    highContrast.cbSize = sizeof(highContrast);
-    if (SystemParametersInfoW(SPI_GETHIGHCONTRAST, sizeof(highContrast), &highContrast, FALSE))
-        return highContrast.dwFlags & HCF_HIGHCONTRASTON;
-    return FALSE;
-}
 BOOL IsColorSchemeChangeMessage(LPARAM lParam)
 {
     BOOL is = FALSE;

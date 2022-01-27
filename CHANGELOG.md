@@ -10,6 +10,18 @@ Tested on OS build 22000.434.
 
 * Implemented Weather widget for the classic taskbar, similar to what is available in the more recent updates to Windows 10. Read more about it [here](https://github.com/valinet/ExplorerPatcher/wiki/Weather).
 
+#### Feature enhancements
+
+* The weather widget recomputes its area automatically, by default, in order to fit its contents, instead of remaining at a fixed size; there is also an option to choose between the two behaviors (.1)
+* Possibility to disable the icon in the weather widget (.1)
+
+#### Fixes
+
+* Fixed a bug that prevented the weather widget flyout from displaying correctly when the taskbar was using small icons (#741) (.1)
+* Fixed inconsistencies when displaying the weather widget and the system themes are disabled (aka the classic theme is used) (.1)
+* Screen readers now read the weather data when requested for the weather widget (.1)
+* Changing the Start button style or weather widget layout does not toggle taskbar auto-hide now; instead, the settings take effect immediately (.1)
+
 ## 22000.469.41
 
 Tested on OS build 22000.434.

@@ -588,6 +588,7 @@ LRESULT CALLBACK epw_Weather_WindowProc(_In_ HWND hWnd, _In_ UINT uMsg, _In_ WPA
 DWORD WINAPI epw_Weather_MainThread(EPWeather* _this)
 {
     HRESULT hr = S_OK;
+    DWORD bIsThemeActive = IsThemeActive();
 
     SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
 
@@ -614,7 +615,7 @@ DWORD WINAPI epw_Weather_MainThread(EPWeather* _this)
     wc.style = CS_DBLCLKS;
     wc.lpfnWndProc = epw_Weather_WindowProc;
     wc.hInstance = epw_hModule;
-    wc.hbrBackground = (HBRUSH)GetStockObject(BLACK_BRUSH);
+    wc.hbrBackground = bIsThemeActive ? (HBRUSH)GetStockObject(BLACK_BRUSH) : (HBRUSH)GetStockObject(WHITE_BRUSH);
     wc.lpszClassName = _T(EPW_WEATHER_CLASSNAME);
     wc.hCursor = LoadCursorW(NULL, IDC_ARROW);
     if (!RegisterClassW(&wc))
@@ -623,7 +624,7 @@ DWORD WINAPI epw_Weather_MainThread(EPWeather* _this)
         goto cleanup;
     }
 
-    _this->hWnd = CreateWindowExW(0, _T(EPW_WEATHER_CLASSNAME), L"", WS_OVERLAPPED | WS_CAPTION, 100, 100, 825 * _this->dpi, 515 * _this->dpi, NULL, NULL, epw_hModule, _this); // 1030, 630
+    _this->hWnd = CreateWindowExW(0, _T(EPW_WEATHER_CLASSNAME), L"", WS_OVERLAPPED | WS_CAPTION, 100, 100, 690 * _this->dpi, 425 * _this->dpi, NULL, NULL, epw_hModule, _this); // 1030, 630
     if (!_this->hWnd)
     {
         _this->hrLastError = HRESULT_FROM_WIN32(GetLastError());
@@ -649,10 +650,13 @@ DWORD WINAPI epw_Weather_MainThread(EPWeather* _this)
         goto cleanup;
     }
 
-    MARGINS marGlassInset = { -1, -1, -1, -1 }; // -1 means the whole window
-    DwmExtendFrameIntoClientArea(_this->hWnd, &marGlassInset);
-    BOOL value = 1;
-    DwmSetWindowAttribute(_this->hWnd, 1029, &value, sizeof(BOOL));
+    if (bIsThemeActive)
+    {
+        MARGINS marGlassInset = { -1, -1, -1, -1 }; // -1 means the whole window
+        DwmExtendFrameIntoClientArea(_this->hWnd, &marGlassInset);
+        BOOL value = 1;
+        DwmSetWindowAttribute(_this->hWnd, 1029, &value, sizeof(BOOL));
+    }
 
     InterlockedExchange64(&_this->bBrowserBusy, TRUE);
 
@@ -942,9 +946,11 @@ HRESULT STDMETHODCALLTYPE epw_Weather_GetTitle(EPWeather* _this, DWORD cbTitle, 
         switch (dwType)
         {
         case EP_WEATHER_VIEW_ICONTEXT:
+        case EP_WEATHER_VIEW_TEXTONLY:
             swprintf_s(wszBuffer, MAX_PATH, L"%s", _this->wszLocation);
             break;
         case EP_WEATHER_VIEW_ICONTEMP:
+        case EP_WEATHER_VIEW_TEMPONLY:
             swprintf_s(wszBuffer, MAX_PATH, L"%s - %s", _this->wszLocation, _this->wszCondition);
             break;
         case EP_WEATHER_VIEW_ICONONLY:

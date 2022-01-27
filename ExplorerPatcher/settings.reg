@@ -350,11 +350,17 @@
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;b Show Weather on the taskbar
 ;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_PeopleBand"=dword:00000000
-;c 3 Layout
-;x 1 Icon only
+;c 5 Layout
+;x 0 Icon and description (default)
 ;x 3 Icon and temperature
-;x 0 Icon and text (default)
+;x 1 Icon only
+;x 4 Temperature only
+;x 5 Temperature and description
 "WeatherViewMode"=dword:00000000
+;c 2 Widget size
+;x 0 Enlarge/shrink to fit contents (default)
+;x 1 Fixed
+"WeatherFixedSize"=dword:00000000
 ;c 7 Update frequency
 ;x 60 Every minute
 ;x 300 Every 5 minutes
