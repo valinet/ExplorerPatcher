@@ -96,6 +96,12 @@ IDR_EP_IA32             RCDATA             "..\\build\\Release\\ExplorerPatcher.
 
 IDR_EP_DWM              RCDATA             "..\\build\\Release\\ep_dwm.exe"
 
+IDR_EP_WEATHER          RCDATA             "..\\build\\Release\\ep_weather_host.dll"
+
+IDR_EP_WEATHER_STUB     RCDATA             "..\\build\\Release\\ep_weather_host_stub.dll"
+
+IDR_MS_WEBVIEW2_LOADER  RCDATA             "..\\build\\Release\\WebView2Loader.dll"
+
 #endif    // English (United States) resources
 /////////////////////////////////////////////////////////////////////////////
 

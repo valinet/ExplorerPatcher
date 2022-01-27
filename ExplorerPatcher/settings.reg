@@ -68,9 +68,7 @@
 ;x 1 Small
 ;x 0 Large (default)
 "TaskbarSmallIcons"=dword:00000000
-[HKEY_CURRENT_USER\Software\ExplorerPatcher]
-;b Show People on the taskbar
-;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_PeopleBand"=dword:00000000
+;e 
 
 
 ;T System tray
@@ -346,6 +344,48 @@
 ;https://github.com/valinet/ExplorerPatcher/wiki/Simple-Window-Switcher
 
 
+
+;T Weather
+;t The following settings only apply to the Windows 10 taskbar:
+[HKEY_CURRENT_USER\Software\ExplorerPatcher]
+;b Show Weather on the taskbar
+;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_PeopleBand"=dword:00000000
+;c 3 Layout
+;x 1 Icon only
+;x 3 Icon and temperature
+;x 0 Icon and text (default)
+"WeatherViewMode"=dword:00000000
+;c 7 Update frequency
+;x 60 Every minute
+;x 300 Every 5 minutes
+;x 900 Every 15 minutes
+;x 1200 Every 20 minutes (default)
+;x 1800 Every half an hour
+;x 3600 Every hour
+;x 7200 Every couple of hours
+"WeatherContentUpdateMode"=dword:000004B0
+;c 2 Temperature unit
+;x 0 Celsius (default)
+;x 1 Fahrenheit
+"WeatherTemperatureUnit"=dword:00000000
+;w Location
+;Search City or Zip Code; the program looks up "weather in /* what you typed */" on Google. Leave blank for the default value (IP-based current location).
+;Current location (default)
+"WeatherLocation"=""
+;w Language
+;Type the short code for the language you'd like the weather data to be displayed in. For example, try "en", "ro", "de", "fr" etc. Leave blank for the default value (English).
+;en (default)
+"WeatherLanguage"=""
+;q
+;t Weather data courtesy of Google, and weather.com.
+;y Learn more about the Weather taskbar widget 🡕
+;https://github.com/valinet/ExplorerPatcher/wiki/Weather
+;u Refresh weather data
+;update_weather
+
+
+
+
 ;T Other
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;b Remember last used section in this window
@@ -401,6 +441,15 @@
 "UpdatePolicy"=dword:00000001
 ;b Receive pre-release versions, if available (not recommended)
 "UpdatePreferStaging"=dword:00000000
+;t Update servers:
+;w Releases
+;Type a URL that serves resources adhering to GitHub's releases API. To learn how to configure your own update server, please consult the wiki.
+;github.com/valinet/ExplorerPatcher/releases/latest
+"UpdateURL"=""
+;w Pre-releases
+;Type a URL that serves resources adhering to GitHub's pre-releases API. To learn how to configure your own update server, please consult the wiki.
+;api.github.com/repos/valinet/ExplorerPatcher/releases?per_page=1
+"UpdateURLStaging"=""
 ;y Check for updates
 ;;;EP_CHECK_FOR_UPDATES
 ;y Update program and restart File Explorer
@@ -481,6 +530,7 @@
 ;export
 ;u Restore default settings
 ;reset
+
 
 
 ;f

@@ -346,6 +346,32 @@ int WINAPI wWinMain(
             wcscat_s(wszPath, MAX_PATH, L"\\ep_dwm.exe");
             bOk = InstallResource(TRUE, hInstance, IDR_EP_DWM, wszPath);
         }
+        if (argc >= 2)
+        {
+            wcsncpy_s(wszPath, MAX_PATH, wargv[1], MAX_PATH);
+        }
+        else
+        {
+            GetCurrentDirectoryW(MAX_PATH, wszPath);
+        }
+        if (bOk)
+        {
+            wcscat_s(wszPath, MAX_PATH, L"\\ep_weather_host.dll");
+            bOk = InstallResource(TRUE, hInstance, IDR_EP_WEATHER, wszPath);
+        }
+        if (argc >= 2)
+        {
+            wcsncpy_s(wszPath, MAX_PATH, wargv[1], MAX_PATH);
+        }
+        else
+        {
+            GetCurrentDirectoryW(MAX_PATH, wszPath);
+        }
+        if (bOk)
+        {
+            wcscat_s(wszPath, MAX_PATH, L"\\ep_weather_host_stub.dll");
+            bOk = InstallResource(TRUE, hInstance, IDR_EP_WEATHER_STUB, wszPath);
+        }
         return 0;
     }
 
@@ -446,6 +472,8 @@ int WINAPI wWinMain(
             WaitForSingleObject(sei.hProcess, INFINITE);
             CloseHandle(sei.hProcess);
         }
+
+        Sleep(500);
 
         BOOL bAreRoundedCornersDisabled = FALSE;
         HANDLE h_exists = CreateEventW(NULL, FALSE, FALSE, L"Global\\ep_dwm_" _T(EP_CLSID));
@@ -628,6 +656,27 @@ int WINAPI wWinMain(
             wcscat_s(wszPath, MAX_PATH, L"\\ep_dwm.exe");
             bOk = InstallResource(bInstall, hInstance, IDR_EP_DWM, wszPath);
         }
+        if (bInstall)
+        {
+            if (bOk)
+            {
+                PathRemoveFileSpecW(wszPath);
+                wcscat_s(wszPath, MAX_PATH, L"\\ep_weather_host.dll");
+                bOk = InstallResource(bInstall, hInstance, IDR_EP_WEATHER, wszPath);
+            }
+            if (bOk)
+            {
+                PathRemoveFileSpecW(wszPath);
+                wcscat_s(wszPath, MAX_PATH, L"\\ep_weather_host_stub.dll");
+                bOk = InstallResource(bInstall, hInstance, IDR_EP_WEATHER_STUB, wszPath);
+            }
+            if (bOk)
+            {
+                PathRemoveFileSpecW(wszPath);
+                wcscat_s(wszPath, MAX_PATH, L"\\WebView2Loader.dll");
+                bOk = InstallResource(bInstall, hInstance, IDR_MS_WEBVIEW2_LOADER, wszPath);
+            }
+        }
         if (bOk)
         {
             bOk = GetWindowsDirectoryW(wszPath, MAX_PATH);
@@ -669,6 +718,109 @@ int WINAPI wWinMain(
             DWORD dwExitCode = 0;
             GetExitCodeProcess(ShExecInfo.hProcess, &dwExitCode);
             CloseHandle(ShExecInfo.hProcess);
+        }
+        if (bOk)
+        {
+            WCHAR wszArgs[MAX_PATH];
+            wszArgs[0] = L'/';
+            wszArgs[1] = L's';
+            wszArgs[2] = L' ';
+            wszArgs[3] = L'"';
+            if (!bInstall)
+            {
+                wszArgs[3] = L'/';
+                wszArgs[4] = L'u';
+                wszArgs[5] = L' ';
+                wszArgs[6] = L'"';
+            }
+            SHGetFolderPathW(NULL, SPECIAL_FOLDER, NULL, SHGFP_TYPE_CURRENT, wszArgs + 4 + (bInstall ? 0 : 3));
+            wcscat_s(wszArgs, MAX_PATH, _T(APP_RELATIVE_PATH) L"\\ep_weather_host.dll\"");
+            wprintf(L"%s\n", wszArgs);
+            WCHAR wszApp[MAX_PATH * 2];
+            GetSystemDirectoryW(wszApp, MAX_PATH * 2);
+            wcscat_s(wszApp, MAX_PATH * 2, L"\\regsvr32.exe");
+            wprintf(L"%s\n", wszApp);
+            SHELLEXECUTEINFOW sei;
+            ZeroMemory(&sei, sizeof(SHELLEXECUTEINFOW));
+            sei.cbSize = sizeof(sei);
+            sei.fMask = SEE_MASK_NOCLOSEPROCESS;
+            sei.hwnd = NULL;
+            sei.hInstApp = NULL;
+            sei.lpVerb = NULL;
+            sei.lpFile = wszApp;
+            sei.lpParameters = wszArgs;
+            sei.hwnd = NULL;
+            sei.nShow = SW_NORMAL;
+            if (ShellExecuteExW(&sei) && sei.hProcess)
+            {
+                WaitForSingleObject(sei.hProcess, INFINITE);
+                DWORD dwExitCode = 0;
+                GetExitCodeProcess(sei.hProcess, &dwExitCode);
+                SetLastError(dwExitCode);
+                CloseHandle(sei.hProcess);
+            }
+        }
+        if (bOk)
+        {
+            WCHAR wszArgs[MAX_PATH];
+            wszArgs[0] = L'/';
+            wszArgs[1] = L's';
+            wszArgs[2] = L' ';
+            wszArgs[3] = L'"';
+            if (!bInstall)
+            {
+                wszArgs[3] = L'/';
+                wszArgs[4] = L'u';
+                wszArgs[5] = L' ';
+                wszArgs[6] = L'"';
+            }
+            SHGetFolderPathW(NULL, SPECIAL_FOLDER, NULL, SHGFP_TYPE_CURRENT, wszArgs + 4 + (bInstall ? 0 : 3));
+            wcscat_s(wszArgs, MAX_PATH, _T(APP_RELATIVE_PATH) L"\\ep_weather_host_stub.dll\"");
+            wprintf(L"%s\n", wszArgs);
+            WCHAR wszApp[MAX_PATH * 2];
+            GetSystemDirectoryW(wszApp, MAX_PATH * 2);
+            wcscat_s(wszApp, MAX_PATH * 2, L"\\regsvr32.exe");
+            wprintf(L"%s\n", wszApp);
+            SHELLEXECUTEINFOW sei;
+            ZeroMemory(&sei, sizeof(SHELLEXECUTEINFOW));
+            sei.cbSize = sizeof(sei);
+            sei.fMask = SEE_MASK_NOCLOSEPROCESS;
+            sei.hwnd = NULL;
+            sei.hInstApp = NULL;
+            sei.lpVerb = NULL;
+            sei.lpFile = wszApp;
+            sei.lpParameters = wszArgs;
+            sei.hwnd = NULL;
+            sei.nShow = SW_NORMAL;
+            if (ShellExecuteExW(&sei) && sei.hProcess)
+            {
+                WaitForSingleObject(sei.hProcess, INFINITE);
+                DWORD dwExitCode = 0;
+                GetExitCodeProcess(sei.hProcess, &dwExitCode);
+                SetLastError(dwExitCode);
+                CloseHandle(sei.hProcess);
+            }
+        }
+        if (!bInstall)
+        {
+            if (bOk)
+            {
+                SHGetFolderPathW(NULL, SPECIAL_FOLDER, NULL, SHGFP_TYPE_CURRENT, wszPath);
+                wcscat_s(wszPath, MAX_PATH, _T(APP_RELATIVE_PATH) L"\\ep_weather_host.dll");
+                bOk = InstallResource(bInstall, hInstance, IDR_EP_WEATHER, wszPath);
+            }
+            if (bOk)
+            {
+                PathRemoveFileSpecW(wszPath);
+                wcscat_s(wszPath, MAX_PATH, L"\\ep_weather_host_stub.dll");
+                bOk = InstallResource(bInstall, hInstance, IDR_EP_WEATHER_STUB, wszPath);
+            }
+            if (bOk)
+            {
+                PathRemoveFileSpecW(wszPath);
+                wcscat_s(wszPath, MAX_PATH, L"\\WebView2Loader.dll");
+                bOk = InstallResource(bInstall, hInstance, IDR_MS_WEBVIEW2_LOADER, wszPath);
+            }
         }
 
         if (bOk)

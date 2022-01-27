@@ -596,6 +596,10 @@ BOOL IsUpdateAvailable(LPCWSTR wszDataStore, char* szCheckAgainst, BOOL* lpFail,
             szUpdateURL,
             &dwSize
         );
+        if (dwSize == 1 && szUpdateURL[0] == 0)
+        {
+            strcat_s(szUpdateURL, MAX_PATH, UPDATES_RELEASE_INFO_URL_STABLE);
+        }
         strcat_s(szUpdateURL, MAX_PATH, "/download/");
         strcat_s(szUpdateURL, MAX_PATH, SETUP_UTILITY_NAME);
         if (wszInfoURL)
@@ -609,6 +613,10 @@ BOOL IsUpdateAvailable(LPCWSTR wszDataStore, char* szCheckAgainst, BOOL* lpFail,
                 wszInfoURL,
                 &dwSize
             );
+            if (dwSize == 1 && wszInfoURL[0] == 0)
+            {
+                wcscat_s(wszInfoURL, dwInfoURLLen, _T(UPDATES_RELEASE_INFO_URL_STABLE));
+            }
         }
         dwSize = sizeof(DWORD);
         RegQueryValueExA(
@@ -641,6 +649,10 @@ BOOL IsUpdateAvailable(LPCWSTR wszDataStore, char* szCheckAgainst, BOOL* lpFail,
                 szUpdateURL,
                 &dwSize
             );
+            if (dwSize == 1 && szUpdateURL[0] == 0)
+            {
+                strcat_s(szUpdateURL, MAX_PATH, UPDATES_RELEASE_INFO_URL_STAGING);
+            }
         }
         RegCloseKey(hKey);
     }
@@ -706,6 +718,10 @@ BOOL UpdateProduct(
             szUpdateURL,
             &dwSize
         );
+        if (dwSize == 1 && szUpdateURL[0] == 0)
+        {
+            strcat_s(szUpdateURL, MAX_PATH, UPDATES_RELEASE_INFO_URL_STABLE);
+        }
         strcat_s(szUpdateURL, MAX_PATH, "/download/");
         strcat_s(szUpdateURL, MAX_PATH, SETUP_UTILITY_NAME);
         dwSize = sizeof(DWORD);
@@ -739,6 +755,10 @@ BOOL UpdateProduct(
                 szUpdateURL,
                 &dwSize
             );
+            if (dwSize == 1 && szUpdateURL[0] == 0)
+            {
+                strcat_s(szUpdateURL, MAX_PATH, UPDATES_RELEASE_INFO_URL_STAGING);
+            }
         }
         RegCloseKey(hKey);
     }

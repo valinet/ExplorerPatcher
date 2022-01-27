@@ -789,3 +789,408 @@ LSTATUS RegisterDWMService(DWORD dwDesiredState, DWORD dwOverride)
     }
     return TRUE;
 }
+
+char* StrReplaceAllA(const char* s, const char* oldW, const char* newW, int* dwNewSize)
+{
+    char* result;
+    int i, cnt = 0;
+    int newWlen = strlen(newW);
+    int oldWlen = strlen(oldW);
+
+    for (i = 0; s[i] != '\0'; i++) {
+        if (strstr(&s[i], oldW) == &s[i]) {
+            cnt++;
+            i += oldWlen - 1;
+        }
+    }
+    result = (char*)malloc(i + cnt * (newWlen - oldWlen) + 1);
+    i = 0;
+    while (*s) {
+        if (strstr(s, oldW) == s) {
+            strcpy_s(&result[i], strlen(newW) + 1, newW);
+            i += newWlen;
+            s += oldWlen;
+        }
+        else
+            result[i++] = *s++;
+    }
+
+    result[i] = '\0';
+    if (dwNewSize) *dwNewSize = i;
+    return result;
+}
+
+WCHAR* StrReplaceAllW(const WCHAR* s, const WCHAR* oldW, const WCHAR* newW, int* dwNewSize)
+{
+    WCHAR* result;
+    int i, cnt = 0;
+    int newWlen = wcslen(newW);
+    int oldWlen = wcslen(oldW);
+
+    for (i = 0; s[i] != L'\0'; i++) {
+        if (wcsstr(&s[i], oldW) == &s[i]) {
+            cnt++;
+            i += oldWlen - 1;
+        }
+    }
+    result = (WCHAR*)malloc((i + cnt * (newWlen - oldWlen) + 1) * sizeof(WCHAR));
+    i = 0;
+    while (*s) {
+        if (wcsstr(s, oldW) == s) {
+            wcscpy_s(&result[i], newWlen + 1, newW);
+            i += newWlen;
+            s += oldWlen;
+        }
+        else
+            result[i++] = *s++;
+    }
+    result[i] = L'\0';
+    if (dwNewSize) *dwNewSize = i;
+    return result;
+}
+
+HWND InputBox_HWND;
+
+HRESULT getEngineGuid(LPCTSTR extension, GUID* guidBuffer)
+{
+    wchar_t   buffer[100];
+    HKEY      hk;
+    DWORD     size;
+    HKEY      subKey;
+    DWORD     type;
+
+    // See if this file extension is associated
+    // with an ActiveX script engine
+    if (!RegOpenKeyEx(HKEY_CLASSES_ROOT, extension, 0,
+        KEY_QUERY_VALUE | KEY_READ, &hk))
+    {
+        type = REG_SZ;
+        size = sizeof(buffer);
+        size = RegQueryValueEx(hk, 0, 0, &type,
+            (LPBYTE)&buffer[0], &size);
+        RegCloseKey(hk);
+        if (!size)
+        {
+            // The engine set an association.
+            // We got the Language string in buffer[]. Now
+            // we can use it to look up the engine's GUID
+
+            // Open HKEY_CLASSES_ROOT\{LanguageName}
+        again:   size = sizeof(buffer);
+            if (!RegOpenKeyEx(HKEY_CLASSES_ROOT, (LPCTSTR)&buffer[0], 0,
+                KEY_QUERY_VALUE | KEY_READ, &hk))
+            {
+                // Read the GUID (in string format)
+                // into buffer[] by querying the value of CLSID
+                if (!RegOpenKeyEx(hk, L"CLSID", 0,
+                    KEY_QUERY_VALUE | KEY_READ, &subKey))
+                {
+                    size = RegQueryValueExW(subKey, 0, 0, &type,
+                        (LPBYTE)&buffer[0], &size);
+                    RegCloseKey(subKey);
+                }
+                else if (extension)
+                {
+                    // If an error, see if we have a "ScriptEngine"
+                    // key under here that contains
+                    // the real language name
+                    if (!RegOpenKeyEx(hk, L"ScriptEngine", 0,
+                        KEY_QUERY_VALUE | KEY_READ, &subKey))
+                    {
+                        size = RegQueryValueEx(subKey, 0, 0, &type,
+                            (LPBYTE)&buffer[0], &size);
+                        RegCloseKey(subKey);
+                        if (!size)
+                        {
+                            RegCloseKey(hk);
+                            extension = 0;
+                            goto again;
+                        }
+                    }
+                }
+            }
+
+            RegCloseKey(hk);
+
+            if (!size)
+            {
+                // Convert the GUID string to a GUID
+                // and put it in caller's guidBuffer
+                if ((size = CLSIDFromString(&buffer[0], guidBuffer)))
+                {
+                    return(E_FAIL);
+                }
+                return(size);
+            }
+        }
+    }
+
+    return(E_FAIL);
+}
+
+ULONG STDMETHODCALLTYPE ep_static_AddRefRelease(void* _this)
+{
+    return 1;
+}
+
+HRESULT STDMETHODCALLTYPE IActiveScriptSite_QueryInterface(void* _this, REFIID riid, void** ppv)
+{
+    if (IsEqualIID(riid, &IID_IUnknown) || IsEqualIID(riid, &IID_IActiveScriptSite))
+        *ppv = _this;
+    else if (IsEqualIID(riid, &IID_IActiveScriptSiteWindow))
+        *ppv = ((unsigned char*)_this + 8);
+    else
+    {
+        *ppv = 0;
+        return(E_NOINTERFACE);
+    }
+    return S_OK;
+}
+
+HRESULT STDMETHODCALLTYPE IActiveScriptSiteWindow_QueryInterface(void* _this, REFIID riid, void** ppv)
+{
+    return IActiveScriptSite_QueryInterface((char*)_this - 8, riid, ppv);
+}
+
+HRESULT STDMETHODCALLTYPE IActiveScriptSite_GetLCID(void* _this, LCID* plcid)
+{
+    *plcid = LOCALE_USER_DEFAULT;
+    return S_OK;
+}
+
+HRESULT STDMETHODCALLTYPE IActiveScriptSite_GetItemInfo(void* _this, LPCOLESTR pstrName, DWORD dwReturnMask, IUnknown** ppiunkItem, ITypeInfo** ppti)
+{
+    return TYPE_E_ELEMENTNOTFOUND;
+}
+
+HRESULT STDMETHODCALLTYPE IActiveScriptSite_GetDocVersionString(void* _this, BSTR* pbstrVersion)
+{
+    *pbstrVersion = 0;
+    return S_OK;
+}
+
+HRESULT STDMETHODCALLTYPE IActiveScriptSite_OnScriptTerminate(void* _this, const void* pvarResult, const EXCEPINFO* pexcepinfo)
+{
+    return S_OK;
+}
+
+HRESULT STDMETHODCALLTYPE IActiveScriptSite_OnStateChange(void* _this, SCRIPTSTATE ssScriptState)
+{
+    return S_OK;
+}
+
+HRESULT STDMETHODCALLTYPE IActiveScriptSite_OnScriptError(void* _this, IActiveScriptError* scriptError)
+{
+    ULONG        lineNumber;
+    BSTR         desc;
+    EXCEPINFO    ei;
+    OLECHAR      wszOutput[1024];
+
+    // Call GetSourcePosition() to retrieve the line # where
+    // the error occurred in the script
+    scriptError->lpVtbl->GetSourcePosition(scriptError, 0, &lineNumber, 0);
+
+    // Call GetSourceLineText() to retrieve the line in the script that
+    // has an error.
+    desc = 0;
+    scriptError->lpVtbl->GetSourceLineText(scriptError, &desc);
+
+    // Call GetExceptionInfo() to fill in our EXCEPINFO struct with more
+    // information.
+    ZeroMemory(&ei, sizeof(EXCEPINFO));
+    scriptError->lpVtbl->GetExceptionInfo(scriptError, &ei);
+
+    // Format the message we'll display to the user
+    wsprintfW(&wszOutput[0], L"%s\nLine %u: %s\n%s", ei.bstrSource,
+        lineNumber + 1, ei.bstrDescription, desc ? desc : "");
+
+    // Free what we got from the IActiveScriptError functions
+    SysFreeString(desc);
+    SysFreeString(ei.bstrSource);
+    SysFreeString(ei.bstrDescription);
+    SysFreeString(ei.bstrHelpFile);
+
+    // Display the message
+    MessageBoxW(0, &wszOutput[0], L"Error",
+        MB_SETFOREGROUND | MB_OK | MB_ICONEXCLAMATION);
+
+    return(S_OK);
+}
+
+HRESULT STDMETHODCALLTYPE IActiveScriptSite_OnEnterScript(void* _this)
+{
+    return S_OK;
+}
+
+HRESULT STDMETHODCALLTYPE IActiveScriptSite_OnLeaveScript(void* _this)
+{
+    return S_OK;
+}
+
+HRESULT STDMETHODCALLTYPE IActiveScriptSiteWindow_GetWindow(void* _this, HWND* phWnd)
+{
+    *phWnd = InputBox_HWND;
+    return S_OK;
+}
+
+HRESULT STDMETHODCALLTYPE IActiveScriptSiteWindow_EnableModeless(void* _this, BOOL fEnable)
+{
+    return S_OK;
+}
+
+static const IActiveScriptSiteVtbl IActiveScriptSite_Vtbl = {
+    .QueryInterface = IActiveScriptSite_QueryInterface,
+    .AddRef = ep_static_AddRefRelease,
+    .Release = ep_static_AddRefRelease,
+    .GetLCID = IActiveScriptSite_GetLCID,
+    .GetItemInfo = IActiveScriptSite_GetItemInfo,
+    .GetDocVersionString = IActiveScriptSite_GetDocVersionString,
+    .OnScriptTerminate = IActiveScriptSite_OnScriptTerminate,
+    .OnStateChange = IActiveScriptSite_OnStateChange,
+    .OnScriptError = IActiveScriptSite_OnScriptError,
+    .OnEnterScript = IActiveScriptSite_OnEnterScript,
+    .OnLeaveScript = IActiveScriptSite_OnLeaveScript,
+};
+
+static const IActiveScriptSiteWindowVtbl IActiveScriptSiteWindow_Vtbl = {
+    .QueryInterface = IActiveScriptSiteWindow_QueryInterface,
+    .AddRef = ep_static_AddRefRelease,
+    .Release = ep_static_AddRefRelease,
+    .GetWindow = IActiveScriptSiteWindow_GetWindow,
+    .EnableModeless = IActiveScriptSiteWindow_EnableModeless,
+};
+
+typedef struct _CSimpleScriptSite
+{
+    IActiveScriptSiteVtbl* lpVtbl;
+    IActiveScriptSiteWindowVtbl* lpVtbl1;
+} CSimpleScriptSite;
+
+static const CSimpleScriptSite CSimpleScriptSite_Instance = {
+    .lpVtbl = &IActiveScriptSite_Vtbl,
+    .lpVtbl1 = &IActiveScriptSiteWindow_Vtbl
+};
+
+static BOOL HideInput = FALSE;
+static LRESULT CALLBACK InputBoxProc(int nCode, WPARAM wParam, LPARAM lParam) {
+    if (nCode < HC_ACTION)
+        return CallNextHookEx(0, nCode, wParam, lParam);
+    if (nCode = HCBT_ACTIVATE) {
+        if (HideInput == TRUE) {
+            HWND TextBox = FindWindowExA((HWND)wParam, NULL, "Edit", NULL);
+            SendDlgItemMessageW((HWND)wParam, GetDlgCtrlID(TextBox), EM_SETPASSWORDCHAR, L'\x25cf', 0);
+        }
+    }
+    if (nCode = HCBT_CREATEWND) {
+        if (!(GetWindowLongPtr((HWND)wParam, GWL_STYLE) & WS_CHILD))
+            SetWindowLongPtr((HWND)wParam, GWL_EXSTYLE, GetWindowLongPtr((HWND)wParam, GWL_EXSTYLE) | WS_EX_DLGMODALFRAME);
+    }
+    return CallNextHookEx(0, nCode, wParam, lParam);
+}
+
+HRESULT InputBox(BOOL bPassword, HWND hWnd, LPCWSTR wszPrompt, LPCWSTR wszTitle, LPCWSTR wszDefault, LPCWSTR wszAnswer, DWORD cbAnswer)
+{
+    HRESULT hr = S_OK;
+
+    GUID guidBuffer;
+    getEngineGuid(L".vbs", &guidBuffer);
+
+    DWORD cchPromptSafe = 0, cchTitleSafe = 0, cchDefaultSafe = 0;
+    LPWSTR wszPromptSafe = StrReplaceAllW(wszPrompt, L"\"", L"\"\"", &cchPromptSafe);
+    LPWSTR wszTitleSafe = StrReplaceAllW(wszTitle, L"\"", L"\"\"", &cchTitleSafe);
+    LPWSTR wszDefaultSafe = StrReplaceAllW(wszDefault, L"\"", L"\"\"", &cchDefaultSafe);
+    if (!wszPromptSafe || !wszTitleSafe || !wszDefaultSafe)
+    {
+        if (wszPromptSafe)
+        {
+            free(wszPromptSafe);
+        }
+        if (wszTitleSafe)
+        {
+            free(wszTitleSafe);
+        }
+        if (wszDefaultSafe)
+        {
+            free(wszDefaultSafe);
+        }
+        return E_OUTOFMEMORY;
+    }
+
+    IActiveScript* pActiveScript = NULL;
+    hr = CoCreateInstance(&guidBuffer, 0, CLSCTX_ALL,
+        &IID_IActiveScript,
+        (void**)&pActiveScript);
+    if (SUCCEEDED(hr) && pActiveScript)
+    {
+        hr = pActiveScript->lpVtbl->SetScriptSite(pActiveScript, &CSimpleScriptSite_Instance);
+        if (SUCCEEDED(hr))
+        {
+            IActiveScriptParse* pActiveScriptParse = NULL;
+            hr = pActiveScript->lpVtbl->QueryInterface(pActiveScript, &IID_IActiveScriptParse, &pActiveScriptParse);
+            if (SUCCEEDED(hr) && pActiveScriptParse)
+            {
+                hr = pActiveScriptParse->lpVtbl->InitNew(pActiveScriptParse);
+                if (SUCCEEDED(hr))
+                {
+                    LPWSTR wszEvaluation = malloc(sizeof(WCHAR) * (cchPromptSafe + cchTitleSafe + cchDefaultSafe + 100));
+                    if (wszEvaluation)
+                    {
+                        swprintf_s(wszEvaluation, cchPromptSafe + cchTitleSafe + cchDefaultSafe + 100, L"InputBox(\"%s\", \"%s\", \"%s\")", wszPromptSafe, wszTitleSafe, wszDefaultSafe);
+                        DWORD cchEvaluation2 = 0;
+                        LPWSTR wszEvaluation2 = StrReplaceAllW(wszEvaluation, L"\n", L"\" + vbNewLine + \"", &cchEvaluation2);
+                        if (wszEvaluation2)
+                        {
+                            EXCEPINFO ei;
+                            ZeroMemory(&ei, sizeof(EXCEPINFO));
+                            DWORD dwThreadId = GetCurrentThreadId();
+                            HINSTANCE hInstance = GetModuleHandle(NULL);
+
+                            if (!hWnd)
+                            {
+                                InputBox_HWND = GetAncestor(GetActiveWindow(), GA_ROOTOWNER);
+                            }
+                            else
+                            {
+                                InputBox_HWND = hWnd;
+                            }
+
+                            HHOOK hHook = SetWindowsHookExW(WH_CBT, &InputBoxProc, hInstance, dwThreadId);
+
+                            VARIANT result;
+                            VariantInit(&result);
+
+                            HideInput = bPassword;
+                            hr = pActiveScriptParse->lpVtbl->ParseScriptText(pActiveScriptParse, wszEvaluation2, NULL, NULL, NULL, 0, 0, SCRIPTTEXT_ISEXPRESSION, &result, &ei);
+
+                            UnhookWindowsHookEx(hHook);
+
+                            free(wszEvaluation2);
+
+                            memcpy(wszAnswer, result.bstrVal, cbAnswer * sizeof(WCHAR));
+
+                            VariantClear(&result);
+                        }
+                        free(wszEvaluation);
+                    }
+                }
+                pActiveScriptParse->lpVtbl->Release(pActiveScriptParse);
+            }
+            pActiveScript->lpVtbl->Release(pActiveScript);
+        }
+    }
+
+    if (wszPromptSafe)
+    {
+        free(wszPromptSafe);
+    }
+    if (wszTitleSafe)
+    {
+        free(wszTitleSafe);
+    }
+    if (wszDefaultSafe)
+    {
+        free(wszDefaultSafe);
+    }
+
+    return hr;
+}

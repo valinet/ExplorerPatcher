@@ -31,6 +31,11 @@
 #endif
 #include <valinet/hooking/iatpatch.h>
 #include <valinet/utility/memmem.h>
+#include "../ep_weather_host/ep_weather.h"
+#ifdef _WIN64
+#include "../ep_weather_host/ep_weather_host_h.h"
+IEPWeather* epw = NULL;
+#endif
 
 #define WINX_ADJUST_X 5
 #define WINX_ADJUST_Y 5
@@ -99,6 +104,13 @@ BYTE* lpShouldDisplayCCButton = NULL;
 HMONITOR hMonitorList[MAX_NUM_MONITORS];
 DWORD dwMonitorCount = 0;
 HANDLE hCanStartSws = NULL;
+DWORD dwWeatherViewMode = EP_WEATHER_VIEW_ICONTEXT;
+DWORD dwWeatherTemperatureUnit = EP_WEATHER_TUNIT_CELSIUS;
+DWORD dwWeatherUpdateSchedule = EP_WEATHER_UPDATE_NORMAL;
+WCHAR* wszWeatherTerm = NULL;
+WCHAR* wszWeatherLanguage = NULL;
+WCHAR* wszEPWeatherKillswitch = NULL;
+HANDLE hEPWeatherKillswitch = NULL;
 int Code = 0;
 HRESULT InjectStartFromExplorer();
 void InvokeClockFlyout();
@@ -3552,9 +3564,638 @@ HRESULT WINAPI Widgets_GetTooltipTextHook(__int64 a1, __int64 a2, __int64 a3, WC
     }
 }
 
+/*int WINAPI explorer_LoadStringWHook(HINSTANCE hInstance, UINT uID, WCHAR* lpBuffer, UINT cchBufferMax)
+{
+    WCHAR wszBuffer[MAX_PATH];
+    if (hInstance == GetModuleHandle(NULL) && uID == 912)// && SUCCEEDED(epw->lpVtbl->GetTitle(epw, MAX_PATH, wszBuffer)))
+    {
+        //sws_error_PrintStackTrace();
+        int rez = LoadStringW(hInstance, uID, lpBuffer, cchBufferMax);
+        //wprintf(L"%s\n", lpBuffer);
+        return rez;
+    }
+    else
+    {
+        return LoadStringW(hInstance, uID, lpBuffer, cchBufferMax);
+    }
+}*/
+
 void stub1(void* i)
 {
 }
+
+HWND PeopleButton_LastHWND = NULL;
+
+BOOL explorer_DeleteMenu(HMENU hMenu, UINT uPosition, UINT uFlags)
+{
+    if (uPosition == 621 && uFlags == 0) // when removing News and interests
+    {
+        DeleteMenu(hMenu, 449, 0); // remove Cortana menu
+        DeleteMenu(hMenu, 435, 0); // remove People menu
+    }
+    return DeleteMenu(hMenu, uPosition, uFlags);
+}
+
+SIZE (*PeopleButton_CalculateMinimumSizeFunc)(void*, SIZE*);
+SIZE WINAPI PeopleButton_CalculateMinimumSizeHook(void* _this, SIZE* pSz)
+{
+    SIZE ret = PeopleButton_CalculateMinimumSizeFunc(_this, pSz);
+    int mul = 1;
+    if (epw)
+    {
+        switch (dwWeatherViewMode)
+        {
+        case EP_WEATHER_VIEW_ICONTEXT:
+            mul = 4;
+            break;
+        case EP_WEATHER_VIEW_ICONTEMP:
+            mul = 2;
+            break;
+        case EP_WEATHER_VIEW_ICONONLY:
+            mul = 1;
+            break;
+        }
+    }
+    //printf(">> %d %d\n", pSz->cx, pSz->cy);
+    pSz->cx = pSz->cx * mul;
+    if (pSz->cy && epw)
+    {
+        BOOL bIsInitialized = TRUE;
+        HRESULT hr = epw->lpVtbl->IsInitialized(epw, &bIsInitialized);
+        if (SUCCEEDED(hr))
+        {
+            int rt = MulDiv(48, pSz->cy, 60);
+            if (!bIsInitialized)
+            {
+                epw->lpVtbl->SetTerm(epw, MAX_PATH * sizeof(WCHAR), wszWeatherTerm);
+                epw->lpVtbl->SetLanguage(epw, MAX_PATH * sizeof(WCHAR), wszWeatherLanguage);
+                if (FAILED(epw->lpVtbl->Initialize(epw, wszEPWeatherKillswitch, bAllocConsole, EP_WEATHER_PROVIDER_GOOGLE, rt, rt, dwWeatherTemperatureUnit, dwWeatherUpdateSchedule * 1000, pSz->cy / 48.0)))
+                {
+                    epw->lpVtbl->Release(epw);
+                }
+            }
+            else
+            {
+                epw->lpVtbl->SetIconSize(epw, rt, rt);
+            }
+        }
+        else
+        {
+            if (hr == 0x800706ba) // RPC server is unavailable
+            {
+                epw = NULL;
+                InvalidateRect(PeopleButton_LastHWND, NULL, TRUE);
+            }
+        }
+    }
+    return ret;
+}
+
+int PeopleBand_MulDivHook(int nNumber, int nNumerator, int nDenominator)
+{
+    //printf("<< %d %d %d\n", nNumber, nNumerator, nDenominator);
+    int mul = 1;
+    if (epw)
+    {
+        switch (dwWeatherViewMode)
+        {
+        case EP_WEATHER_VIEW_ICONTEXT:
+            mul = 4;
+            break;
+        case EP_WEATHER_VIEW_ICONTEMP:
+            mul = 2;
+            break;
+        case EP_WEATHER_VIEW_ICONONLY:
+            mul = 1;
+            break;
+        }
+    }
+    return MulDiv(nNumber * mul, nNumerator, nDenominator);
+}
+
+DWORD epw_cbTemperature = 0;
+DWORD epw_cbUnit = 0;
+DWORD epw_cbCondition = 0;
+DWORD epw_cbImage = 0;
+WCHAR* epw_wszTemperature = NULL;
+WCHAR* epw_wszUnit = NULL;
+WCHAR* epw_wszCondition = NULL;
+char* epw_pImage = NULL;
+__int64 (*PeopleBand_DrawTextWithGlowFunc)(
+    HDC hdc,
+    const unsigned __int16* a2,
+    int a3,
+    struct tagRECT* a4,
+    unsigned int a5,
+    unsigned int a6,
+    unsigned int a7,
+    unsigned int dy,
+    unsigned int a9,
+    int a10,
+    int(__stdcall* a11)(HDC, unsigned __int16*, int, struct tagRECT*, unsigned int, __int64),
+    __int64 a12);
+__int64 __fastcall PeopleBand_DrawTextWithGlowHook(
+    HDC hdc,
+    const unsigned __int16* a2,
+    int a3,
+    struct tagRECT* a4,
+    unsigned int a5,
+    unsigned int a6,
+    unsigned int a7,
+    unsigned int dy,
+    unsigned int a9,
+    int a10,
+    int(__stdcall* a11)(HDC, unsigned __int16*, int, struct tagRECT*, unsigned int, __int64),
+    __int64 a12)
+{
+    if (a5 == 0x21 && epw)
+    {
+        BOOL bUseCachedData = InSendMessage();
+        HRESULT hr = S_OK;
+        if (bUseCachedData ? TRUE : SUCCEEDED(hr = epw->lpVtbl->LockData(epw)))
+        {
+            UINT dpiX = 0, dpiY = 0;
+            HRESULT hr = GetDpiForMonitor(MonitorFromWindow(PeopleButton_LastHWND, MONITOR_DEFAULTTOPRIMARY), MDT_DEFAULT, &dpiX, &dpiY);
+            BOOL bShouldUnlockData = TRUE;
+            DWORD cbTemperature = 0;
+            DWORD cbUnit = 0;
+            DWORD cbCondition = 0;
+            DWORD cbImage = 0;
+            BOOL bEmptyData = FALSE;
+            if (bUseCachedData ? TRUE : SUCCEEDED(hr = epw->lpVtbl->GetDataSizes(epw, &cbTemperature, &cbUnit, &cbCondition, &cbImage)))
+            {
+                if (cbTemperature && cbUnit && cbCondition && cbImage)
+                {
+                    epw_cbTemperature = cbTemperature;
+                    epw_cbUnit = cbUnit;
+                    epw_cbCondition = cbCondition;
+                    epw_cbImage = cbImage;
+                }
+                else
+                {
+                    if (!bUseCachedData)
+                    {
+                        bEmptyData = TRUE;
+                        if (bShouldUnlockData)
+                        {
+                            epw->lpVtbl->UnlockData(epw);
+                            bShouldUnlockData = FALSE;
+                        }
+                    }
+                    else
+                    {
+                        bEmptyData = !epw_wszTemperature || !epw_wszUnit || !epw_wszCondition;
+                    }
+                    bUseCachedData = TRUE;
+                }
+                if (!bUseCachedData)
+                {
+                    if (epw_wszTemperature)
+                    {
+                        free(epw_wszTemperature);
+                    }
+                    epw_wszTemperature = calloc(1, epw_cbTemperature);
+                    if (epw_wszUnit)
+                    {
+                        free(epw_wszUnit);
+                    }
+                    epw_wszUnit = calloc(1, epw_cbUnit);
+                    if (epw_wszCondition)
+                    {
+                        free(epw_wszCondition);
+                    }
+                    epw_wszCondition = calloc(1, epw_cbCondition);
+                    if (epw_pImage)
+                    {
+                        free(epw_pImage);
+                    }
+                    epw_pImage = calloc(1, epw_cbImage);
+                }
+                if (bUseCachedData ? TRUE : SUCCEEDED(hr = epw->lpVtbl->GetData(epw, epw_cbTemperature, epw_wszTemperature, epw_cbUnit, epw_wszUnit, epw_cbCondition, epw_wszCondition, epw_cbImage, epw_pImage)))
+                {
+                    if (!bUseCachedData)
+                    {
+                        epw->lpVtbl->UnlockData(epw);
+                        bShouldUnlockData = FALSE;
+                    }
+
+                    LOGFONTW logFont;
+                    ZeroMemory(&logFont, sizeof(logFont));
+                    NONCLIENTMETRICS ncm;
+                    ZeroMemory(&ncm, sizeof(NONCLIENTMETRICS));
+                    ncm.cbSize = sizeof(NONCLIENTMETRICS);
+                    SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, sizeof(NONCLIENTMETRICS), &ncm, 0);
+                    logFont = ncm.lfCaptionFont;
+                    logFont.lfHeight = -14 * (dpiX / 96.0);
+                    if (bEmptyData)
+                    {
+                        DWORD dwVal = 1, dwSize = sizeof(DWORD);
+                        RegGetValueW(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", L"TaskbarSmallIcons", RRF_RT_DWORD, NULL, &dwVal, &dwSize);
+                        if (!dwVal)
+                        {
+                            logFont.lfHeight *= 1.6;
+                        }
+                    }
+                    else
+                    {
+                        if (dwWeatherViewMode == EP_WEATHER_VIEW_ICONTEXT)
+                        {
+                            //logFont.lfHeight = -12 * (dpiX / 96.0);
+                        }
+                    }
+                    HFONT hFont = CreateFontIndirectW(&logFont);
+                    if (hFont)
+                    {
+                        HDC hDC = CreateCompatibleDC(0);
+                        if (hDC)
+                        {
+                            COLORREF rgbColor = RGB(0, 0, 0);
+                            if (ShouldSystemUseDarkMode && ShouldSystemUseDarkMode())
+                            {
+                                rgbColor = RGB(255, 255, 255);
+                            }
+                            HFONT hOldFont = SelectFont(hDC, hFont);
+                            if (bEmptyData)
+                            {
+                                RECT rcText;
+                                SetRect(&rcText, 0, 0, a4->right, a4->bottom);
+                                SIZE size;
+                                size.cx = rcText.right - rcText.left;
+                                size.cy = rcText.bottom - rcText.top;
+                                DWORD dwTextFlags = DT_SINGLELINE | DT_VCENTER | DT_HIDEPREFIX | DT_CENTER;
+                                HBITMAP hBitmap = sws_WindowHelpers_CreateAlphaTextBitmap(L"\U0001f4f0", hFont, dwTextFlags, size, rgbColor);
+                                if (hBitmap)
+                                {
+                                    HBITMAP hOldBMP = SelectBitmap(hDC, hBitmap);
+                                    BITMAP BMInf;
+                                    GetObjectW(hBitmap, sizeof(BITMAP), &BMInf);
+
+                                    BLENDFUNCTION bf;
+                                    bf.BlendOp = AC_SRC_OVER;
+                                    bf.BlendFlags = 0;
+                                    bf.SourceConstantAlpha = 0xFF;
+                                    bf.AlphaFormat = AC_SRC_ALPHA;
+                                    GdiAlphaBlend(hdc, 0, 0, BMInf.bmWidth, BMInf.bmHeight, hDC, 0, 0, BMInf.bmWidth, BMInf.bmHeight, bf);
+
+                                    SelectBitmap(hDC, hOldBMP);
+                                    DeleteBitmap(hBitmap);
+                                }
+                            }
+                            else
+                            {
+                                DWORD dwTextFlags = DT_SINGLELINE | DT_VCENTER | DT_HIDEPREFIX;
+
+                                WCHAR wszText1[MAX_PATH];
+                                swprintf_s(wszText1, MAX_PATH, L"%s %s", epw_wszTemperature, dwWeatherTemperatureUnit == EP_WEATHER_TUNIT_FAHRENHEIT ? L"\u00B0F" : L"\u00B0C");// epw_wszUnit);
+                                RECT rcText1;
+                                SetRect(&rcText1, 0, 0, a4->right, a4->bottom);
+                                DrawTextW(hDC, wszText1, -1, &rcText1, dwTextFlags | DT_CALCRECT);
+                                rcText1.bottom = a4->bottom;
+                                WCHAR wszText2[MAX_PATH];
+                                swprintf_s(wszText2, MAX_PATH, L"%s", epw_wszCondition);
+                                RECT rcText2;
+                                SetRect(&rcText2, 0, 0, a4->right, a4->bottom);
+                                DrawTextW(hDC, wszText2, -1, &rcText2, dwTextFlags | DT_CALCRECT);
+                                rcText2.bottom = a4->bottom;
+
+                                dwTextFlags |= DT_END_ELLIPSIS;
+
+                                int addend = 0;
+                                //int rt = MulDiv(48, a4->bottom, 60);
+                                int rt = sqrt(epw_cbImage / 4);
+                                int p = 0;// MulDiv(rt, 4, 64);
+                                int margin_h = MulDiv(12, dpiX, 144);
+
+                                switch (dwWeatherViewMode)
+                                {
+                                case EP_WEATHER_VIEW_ICONTEXT:
+                                    addend = (rcText1.right - rcText1.left) + margin_h + (rcText2.right - rcText2.left) + margin_h;
+                                    break;
+                                case EP_WEATHER_VIEW_ICONTEMP:
+                                    addend = (rcText1.right - rcText1.left) + margin_h;
+                                    break;
+                                case EP_WEATHER_VIEW_ICONONLY:
+                                    addend = 0;
+                                    break;
+                                }
+                                int margin_v = (a4->bottom - rt) / 2;
+                                int total_h = (margin_h - p) + rt + (margin_h - p) + addend;
+                                if (total_h > a4->right)
+                                {
+                                    int diff = total_h - a4->right;
+                                    rcText2.right -= diff - 2;
+                                    switch (dwWeatherViewMode)
+                                    {
+                                    case EP_WEATHER_VIEW_ICONTEXT:
+                                        addend = (rcText1.right - rcText1.left) + margin_h + (rcText2.right - rcText2.left) + margin_h;
+                                        break;
+                                    case EP_WEATHER_VIEW_ICONTEMP:
+                                        addend = (rcText1.right - rcText1.left) + margin_h;
+                                        break;
+                                    case EP_WEATHER_VIEW_ICONONLY:
+                                        addend = 0;
+                                        break;
+                                    }
+                                    total_h = (margin_h - p) + rt + (margin_h - p) + addend;
+                                }
+
+                                int start_x = (a4->right - total_h) / 2;
+
+                                HBITMAP hBitmap = NULL, hOldBitmap = NULL;
+                                void* pvBits = NULL;
+                                SIZE size;
+
+                                BITMAPINFOHEADER BMIH;
+                                ZeroMemory(&BMIH, sizeof(BITMAPINFOHEADER));
+                                BMIH.biSize = sizeof(BITMAPINFOHEADER);
+                                BMIH.biWidth = rt;
+                                BMIH.biHeight = -rt;
+                                BMIH.biPlanes = 1;
+                                BMIH.biBitCount = 32;
+                                BMIH.biCompression = BI_RGB;
+                                hBitmap = CreateDIBSection(hDC, &BMIH, 0, &pvBits, NULL, 0);
+                                if (hBitmap)
+                                {
+                                    memcpy(pvBits, epw_pImage, epw_cbImage);
+                                    hOldBitmap = SelectBitmap(hDC, hBitmap);
+
+                                    BLENDFUNCTION bf;
+                                    bf.BlendOp = AC_SRC_OVER;
+                                    bf.BlendFlags = 0;
+                                    bf.SourceConstantAlpha = 0xFF;
+                                    bf.AlphaFormat = AC_SRC_ALPHA;
+                                    GdiAlphaBlend(hdc, start_x + (margin_h - p), margin_v, rt, rt, hDC, 0, 0, rt, rt, bf);
+
+                                    SelectBitmap(hDC, hOldBitmap);
+                                    DeleteBitmap(hBitmap);
+                                }
+
+                                if (dwWeatherViewMode == EP_WEATHER_VIEW_ICONTEMP || dwWeatherViewMode == EP_WEATHER_VIEW_ICONTEXT)
+                                {
+                                    size.cx = rcText1.right - rcText1.left;
+                                    size.cy = rcText1.bottom - rcText1.top;
+                                    hBitmap = sws_WindowHelpers_CreateAlphaTextBitmap(wszText1, hFont, dwTextFlags, size, rgbColor);
+                                    if (hBitmap)
+                                    {
+                                        HBITMAP hOldBMP = SelectBitmap(hDC, hBitmap);
+                                        BITMAP BMInf;
+                                        GetObjectW(hBitmap, sizeof(BITMAP), &BMInf);
+
+                                        BLENDFUNCTION bf;
+                                        bf.BlendOp = AC_SRC_OVER;
+                                        bf.BlendFlags = 0;
+                                        bf.SourceConstantAlpha = 0xFF;
+                                        bf.AlphaFormat = AC_SRC_ALPHA;
+                                        GdiAlphaBlend(hdc, start_x + (margin_h - p) + rt + (margin_h - p), 0, BMInf.bmWidth, BMInf.bmHeight, hDC, 0, 0, BMInf.bmWidth, BMInf.bmHeight, bf);
+
+                                        SelectBitmap(hDC, hOldBMP);
+                                        DeleteBitmap(hBitmap);
+                                    }
+                                }
+
+                                if (dwWeatherViewMode == EP_WEATHER_VIEW_ICONTEXT)
+                                {
+                                    size.cx = rcText2.right - rcText2.left;
+                                    size.cy = rcText2.bottom - rcText2.top;
+                                    hBitmap = sws_WindowHelpers_CreateAlphaTextBitmap(wszText2, hFont, dwTextFlags, size, rgbColor);
+                                    if (hBitmap)
+                                    {
+                                        HBITMAP hOldBMP = SelectBitmap(hDC, hBitmap);
+                                        BITMAP BMInf;
+                                        GetObjectW(hBitmap, sizeof(BITMAP), &BMInf);
+
+                                        BLENDFUNCTION bf;
+                                        bf.BlendOp = AC_SRC_OVER;
+                                        bf.BlendFlags = 0;
+                                        bf.SourceConstantAlpha = 0xFF;
+                                        bf.AlphaFormat = AC_SRC_ALPHA;
+                                        GdiAlphaBlend(hdc, start_x + (margin_h - p) + rt + (margin_h - p) + (rcText1.right - rcText1.left) + margin_h, 0, BMInf.bmWidth, BMInf.bmHeight, hDC, 0, 0, BMInf.bmWidth, BMInf.bmHeight, bf);
+
+                                        SelectBitmap(hDC, hOldBMP);
+                                        DeleteBitmap(hBitmap);
+                                    }
+                                }
+                            }
+                            SelectFont(hDC, hOldFont);
+                            DeleteDC(hDC);
+                        }
+                    }
+                }
+                /*free(epw_pImage);
+                free(epw_wszCondition);
+                free(epw_wszUnit);
+                free(epw_wszTemperature);*/
+            }
+            if (!bUseCachedData && bShouldUnlockData)
+            {
+                epw->lpVtbl->UnlockData(epw);
+            }
+        }
+        else
+        {
+            //printf("444444444444 0x%x\n", hr);
+            if (hr == 0x800706ba) // RPC server is unavailable
+            {
+                epw = NULL;
+                InvalidateRect(PeopleButton_LastHWND, NULL, TRUE);
+            }
+        }
+
+        //printf("hr %x\n", hr);
+
+        return S_OK;
+    }
+    else
+    {
+        return PeopleBand_DrawTextWithGlowFunc(hdc, a2, a3, a4, a5, a6, a7, dy, a9, a10, a11, a12);
+    }
+}
+
+void(*PeopleButton_ShowTooltipFunc)(__int64 a1, unsigned __int8 bShow) = 0;
+void WINAPI PeopleButton_ShowTooltipHook(__int64 _this, unsigned __int8 bShow)
+{
+    if (epw)
+    {
+        if (bShow)
+        {
+            HRESULT hr = epw->lpVtbl->LockData(epw);
+            if (SUCCEEDED(hr))
+            {
+                WCHAR wszBuffer[MAX_PATH];
+                ZeroMemory(wszBuffer, sizeof(WCHAR) * MAX_PATH);
+                epw->lpVtbl->GetTitle(epw, sizeof(WCHAR) * MAX_PATH, wszBuffer, dwWeatherViewMode);
+                if (wcsstr(wszBuffer, L"(null)"))
+                {
+                    HMODULE hModule = GetModuleHandleW(L"pnidui.dll");
+                    if (hModule)
+                    {
+                        LoadStringW(hModule, 35, wszBuffer, MAX_PATH);
+                    }
+                }
+                TTTOOLINFOW ti;
+                ZeroMemory(&ti, sizeof(TTTOOLINFOW));
+                ti.cbSize = sizeof(TTTOOLINFOW);
+                ti.hwnd = *((INT64*)_this + 1);
+                ti.uId = *((INT64*)_this + 1);
+                ti.lpszText = wszBuffer;
+                SendMessageW((HWND) * ((INT64*)_this + 10), TTM_UPDATETIPTEXTW, 0, (LPARAM)&ti);
+                epw->lpVtbl->UnlockData(epw);
+            }
+        }
+    }
+    else
+    {
+        WCHAR wszBuffer[MAX_PATH];
+        ZeroMemory(wszBuffer, sizeof(WCHAR) * MAX_PATH);
+        LoadStringW(GetModuleHandle(NULL), 912, wszBuffer, MAX_PATH);
+        if (wszBuffer[0])
+        {
+            TTTOOLINFOW ti;
+            ZeroMemory(&ti, sizeof(TTTOOLINFOW));
+            ti.cbSize = sizeof(TTTOOLINFOW);
+            ti.hwnd = *((INT64*)_this + 1);
+            ti.uId = *((INT64*)_this + 1);
+            ti.lpszText = wszBuffer;
+            SendMessageW((HWND) * ((INT64*)_this + 10), TTM_UPDATETIPTEXTW, 0, (LPARAM)&ti);
+        }
+    }
+    if (PeopleButton_ShowTooltipFunc)
+    {
+        return PeopleButton_ShowTooltipFunc(_this, bShow);
+    }
+    return 0;
+}
+
+__int64 (*PeopleButton_OnClickFunc)(__int64 a1, __int64 a2) = 0;
+__int64 PeopleButton_OnClickHook(__int64 a1, __int64 a2)
+{
+    if (epw)
+    {
+        HWND hWnd = NULL;
+        if (SUCCEEDED(epw->lpVtbl->GetWindowHandle(epw, &hWnd)) && hWnd)
+        {
+            if (IsWindowVisible(hWnd))
+            {
+                if (GetForegroundWindow() != hWnd)
+                {
+                    SwitchToThisWindow(hWnd, TRUE);
+                }
+                else
+                {
+                    epw->lpVtbl->Hide(epw);
+                    //printf("HR %x\n", PostMessageW(hWnd, EP_WEATHER_WM_FETCH_DATA, 0, 0));
+                }
+            }
+            else
+            {
+                RECT rcButton;
+                GetWindowRect(PeopleButton_LastHWND, &rcButton);
+                POINT pButton;
+                pButton.x = rcButton.left;
+                pButton.y = rcButton.top;
+
+                RECT rcWindow;
+                GetWindowRect(hWnd, &rcWindow);
+
+                POINT pNewWindow;
+
+                RECT rc;
+                UINT tbPos = GetTaskbarLocationAndSize(pButton, &rc);
+                if (tbPos == TB_POS_BOTTOM)
+                {
+                    pNewWindow.y = rcButton.top - (rcWindow.bottom - rcWindow.top);
+                }
+                else if (tbPos == TB_POS_TOP)
+                {
+                    pNewWindow.y = rcButton.bottom;
+                }
+                else if (tbPos == TB_POS_LEFT)
+                {
+                    pNewWindow.x = rcButton.right;
+                }
+                if (tbPos == TB_POS_RIGHT)
+                {
+                    pNewWindow.x = rcButton.left - (rcWindow.right - rcWindow.left);
+                }
+
+                if (tbPos == TB_POS_BOTTOM || tbPos == TB_POS_TOP)
+                {
+                    pNewWindow.x = rcButton.left + ((rcButton.right - rcButton.left) / 2) - ((rcWindow.right - rcWindow.left) / 2);
+
+                    HMONITOR hMonitor = MonitorFromPoint(pButton, MONITOR_DEFAULTTOPRIMARY);
+                    if (hMonitor)
+                    {
+                        MONITORINFO mi;
+                        mi.cbSize = sizeof(MONITORINFO);
+                        if (GetMonitorInfoW(hMonitor, &mi))
+                        {
+                            if (mi.rcWork.right < pNewWindow.x + (rcWindow.right - rcWindow.left))
+                            {
+                                pNewWindow.x = mi.rcWork.right - (rcWindow.right - rcWindow.left);
+                            }
+                        }
+                    }
+                }
+                else if (tbPos == TB_POS_LEFT || tbPos == TB_POS_RIGHT)
+                {
+                    pNewWindow.y = rcButton.top + ((rcButton.bottom - rcButton.top) / 2) - ((rcWindow.bottom - rcWindow.top) / 2);
+
+                    HMONITOR hMonitor = MonitorFromPoint(pButton, MONITOR_DEFAULTTOPRIMARY);
+                    if (hMonitor)
+                    {
+                        MONITORINFO mi;
+                        mi.cbSize = sizeof(MONITORINFO);
+                        if (GetMonitorInfoW(hMonitor, &mi))
+                        {
+                            if (mi.rcWork.bottom < pNewWindow.y + (rcWindow.bottom - rcWindow.top))
+                            {
+                                pNewWindow.y = mi.rcWork.bottom - (rcWindow.bottom - rcWindow.top);
+                            }
+                        }
+                    }
+                }
+
+                SetWindowPos(hWnd, NULL, pNewWindow.x, pNewWindow.y, 0, 0, SWP_NOSIZE, SWP_SHOWWINDOW | SWP_FRAMECHANGED);
+
+                epw->lpVtbl->Show(epw);
+
+                SwitchToThisWindow(hWnd, TRUE);
+            }
+        }
+        return 0;
+    }
+    else
+    {
+        if (PeopleButton_OnClickFunc)
+        {
+            return PeopleButton_OnClickFunc(a1, a2);
+        }
+        return 0;
+    }
+}
+
+INT64 PeopleButton_SubclassProc(
+    _In_ HWND   hWnd,
+    _In_ UINT   uMsg,
+    _In_ WPARAM wParam,
+    _In_ LPARAM lParam,
+    UINT_PTR    uIdSubclass,
+    DWORD_PTR   dwRefData
+)
+{
+    if (uMsg == WM_NCDESTROY)
+    {
+        RemoveWindowSubclass(hWnd, PeopleButton_SubclassProc, PeopleButton_SubclassProc);
+        if (epw)
+        {
+            epw->lpVtbl->Release(epw);
+            epw = NULL;
+            PeopleButton_LastHWND = NULL;
+        }
+    }
+    return DefSubclassProc(hWnd, uMsg, wParam, lParam);
+}
+
 
 static BOOL(*SetChildWindowNoActivateFunc)(HWND);
 BOOL explorer_SetChildWindowNoActivateHook(HWND hWnd)
@@ -3597,13 +4238,38 @@ BOOL explorer_SetChildWindowNoActivateHook(HWND hWnd)
                 *(uintptr_t*)(Instance + 160) = ToggleTaskView;    // OnClick
                 VirtualProtect(Instance + 160, sizeof(uintptr_t), dwOldProtect, &dwOldProtect);
             }
-            /*else if (!wcscmp(wszComponentName, L"PeopleButton"))
+            else if (!wcscmp(wszComponentName, L"PeopleButton"))
             {
                 DWORD dwOldProtect;
+
+                uintptr_t PeopleButton_Instance = *((uintptr_t*)GetWindowLongPtrW(hWnd, 0) + 17);
+
+                VirtualProtect(PeopleButton_Instance + 32, sizeof(uintptr_t), PAGE_READWRITE, &dwOldProtect);
+                if (!PeopleButton_CalculateMinimumSizeFunc) PeopleButton_CalculateMinimumSizeFunc = *(uintptr_t*)(PeopleButton_Instance + 32);
+                *(uintptr_t*)(PeopleButton_Instance + 32) = PeopleButton_CalculateMinimumSizeHook; // CalculateMinimumSize
+                VirtualProtect(PeopleButton_Instance + 32, sizeof(uintptr_t), dwOldProtect, &dwOldProtect);
+
+                VirtualProtect(Instance + 224, sizeof(uintptr_t), PAGE_READWRITE, &dwOldProtect);
+                if (!PeopleButton_ShowTooltipFunc) PeopleButton_ShowTooltipFunc = *(uintptr_t*)(Instance + 224);
+                *(uintptr_t*)(Instance + 224) = PeopleButton_ShowTooltipHook; // OnTooltipShow
+                VirtualProtect(Instance + 224, sizeof(uintptr_t), dwOldProtect, &dwOldProtect);
+
                 VirtualProtect(Instance + 160, sizeof(uintptr_t), PAGE_READWRITE, &dwOldProtect);
-                *(uintptr_t*)(Instance + 160) = ToggleMainClockFlyout;    // OnClick
+                if (!PeopleButton_OnClickFunc) PeopleButton_OnClickFunc = *(uintptr_t*)(Instance + 160);
+                *(uintptr_t*)(Instance + 160) = PeopleButton_OnClickHook;    // OnClick
                 VirtualProtect(Instance + 160, sizeof(uintptr_t), dwOldProtect, &dwOldProtect);
-            }*/
+
+                PeopleButton_LastHWND = hWnd;
+                SetWindowSubclass(hWnd, PeopleButton_SubclassProc, PeopleButton_SubclassProc, 0);
+
+                if (!epw)
+                {
+                    if (SUCCEEDED(CoCreateInstance(&CLSID_EPWeather, NULL, CLSCTX_LOCAL_SERVER, &IID_IEPWeather, &epw)) && epw)
+                    {
+                        epw->lpVtbl->SetNotifyWindow(epw, hWnd);
+                    }
+                }
+            }
         }
     }
     return SetChildWindowNoActivateFunc(hWnd);
@@ -4568,6 +5234,108 @@ void WINAPI LoadSettings(LPARAM lParam)
             &bDisableOfficeHotkeys,
             &dwSize
         );
+
+#ifdef _WIN64
+        DWORD dwOldWeatherTemperatureUnit = dwWeatherTemperatureUnit;
+        dwSize = sizeof(DWORD);
+        RegQueryValueExW(
+            hKey,
+            TEXT("WeatherTemperatureUnit"),
+            0,
+            NULL,
+            &dwWeatherTemperatureUnit,
+            &dwSize
+        );
+        if (dwWeatherTemperatureUnit != dwOldWeatherTemperatureUnit && epw)
+        {
+            epw->lpVtbl->SetTemperatureUnit(epw, dwWeatherTemperatureUnit);
+            HWND hWnd = NULL;
+            if (SUCCEEDED(epw->lpVtbl->GetWindowHandle(epw, &hWnd)) && hWnd)
+            {
+                SendMessageW(hWnd, EP_WEATHER_WM_FETCH_DATA, 0, 0);
+            }
+        }
+
+        DWORD dwOldWeatherViewMode = dwWeatherViewMode;
+        dwSize = sizeof(DWORD);
+        RegQueryValueExW(
+            hKey,
+            TEXT("WeatherViewMode"),
+            0,
+            NULL,
+            &dwWeatherViewMode,
+            &dwSize
+        );
+        if (dwWeatherViewMode != dwOldWeatherViewMode && PeopleButton_LastHWND)
+        {
+            ToggleTaskbarAutohide();
+            ToggleTaskbarAutohide();
+            InvalidateRect(PeopleButton_LastHWND, NULL, TRUE);
+        }
+
+        DWORD dwOldUpdateSchedule = dwWeatherUpdateSchedule;
+        dwSize = sizeof(DWORD);
+        RegQueryValueExW(
+            hKey,
+            TEXT("WeatherContentUpdateMode"),
+            0,
+            NULL,
+            &dwWeatherUpdateSchedule,
+            &dwSize
+        );
+        if (dwWeatherUpdateSchedule != dwOldUpdateSchedule && epw)
+        {
+            epw->lpVtbl->SetUpdateSchedule(epw, dwWeatherUpdateSchedule * 1000);
+        }
+
+        dwSize = MAX_PATH * sizeof(WCHAR);
+        if (RegQueryValueExW(
+            hKey,
+            TEXT("WeatherLocation"),
+            0,
+            NULL,
+            wszWeatherTerm,
+            &dwSize
+        ))
+        {
+            wcscpy_s(wszWeatherTerm, MAX_PATH, L"");
+        }        
+        else
+        {
+            if (wszWeatherTerm[0] == 0)
+            {
+                wcscpy_s(wszWeatherTerm, MAX_PATH, L"");
+            }
+        }
+        if (epw)
+        {
+            epw->lpVtbl->SetTerm(epw, MAX_PATH * sizeof(WCHAR), wszWeatherTerm);
+        }
+        dwSize = MAX_PATH * sizeof(WCHAR);
+        if (RegQueryValueExW(
+            hKey,
+            TEXT("WeatherLanguage"),
+            0,
+            NULL,
+            wszWeatherLanguage,
+            &dwSize
+        ))
+        {
+            wcscpy_s(wszWeatherLanguage, MAX_PATH, L"en");
+        }
+        else
+        {
+            if (wszWeatherLanguage[0] == 0)
+            {
+                wcscpy_s(wszWeatherLanguage, MAX_PATH, L"en");
+            }
+        }
+        if (epw)
+        {
+            epw->lpVtbl->SetLanguage(epw, MAX_PATH * sizeof(WCHAR), wszWeatherLanguage);
+        }
+#endif
+
         dwTemp = TASKBARGLOMLEVEL_DEFAULT;
         dwSize = sizeof(DWORD);
         RegQueryValueExW(
@@ -6534,6 +7302,12 @@ DWORD Inject(BOOL bIsExplorer)
 
     int rv;
 
+    if (bIsExplorer)
+    {
+        wszWeatherLanguage = malloc(sizeof(WCHAR) * MAX_PATH);
+        wszWeatherTerm = malloc(sizeof(WCHAR) * MAX_PATH);
+    }
+
     LoadSettings(MAKELPARAM(bIsExplorer, FALSE));
 
 #ifdef _WIN64
@@ -6724,6 +7498,13 @@ DWORD Inject(BOOL bIsExplorer)
         return;
     }
 
+
+    wszEPWeatherKillswitch = calloc(sizeof(WCHAR), MAX_PATH);
+    rand_string(wszEPWeatherKillswitch, MAX_PATH / 2);
+    wcscat_s(wszEPWeatherKillswitch, MAX_PATH, _T(EP_Weather_Killswitch));
+    hEPWeatherKillswitch = CreateMutexW(NULL, TRUE, wszEPWeatherKillswitch);
+
+
 #ifdef _WIN64
     hCanStartSws = CreateEventW(NULL, FALSE, FALSE, NULL);
     hWin11AltTabInitialized = CreateEventW(NULL, FALSE, FALSE, NULL);
@@ -6798,6 +7579,7 @@ DWORD Inject(BOOL bIsExplorer)
     VnPatchIAT(hExplorer, "uxtheme.dll", "OpenThemeDataForDpi", explorer_OpenThemeDataForDpi);
     VnPatchIAT(hExplorer, "uxtheme.dll", "DrawThemeBackground", explorer_DrawThemeBackground);
     VnPatchIAT(hExplorer, "uxtheme.dll", "CloseThemeData", explorer_CloseThemeData);
+    //VnPatchIAT(hExplorer, "api-ms-win-core-libraryloader-l1-2-0.dll", "LoadStringW", explorer_LoadStringWHook);
     if (bClassicThemeMitigations)
     {
         /*explorer_SetWindowThemeFunc = SetWindowTheme;
@@ -6826,6 +7608,10 @@ DWORD Inject(BOOL bIsExplorer)
     if (bOldTaskbar)
     {
         VnPatchIAT(hExplorer, "API-MS-WIN-NTUSER-RECTANGLE-L1-1-0.DLL", "SetRect", explorer_SetRect);
+    }
+    if (bOldTaskbar)
+    {
+        VnPatchIAT(hExplorer, "USER32.DLL", "DeleteMenu", explorer_DeleteMenu);
     }
 
 
@@ -6870,7 +7656,13 @@ DWORD Inject(BOOL bIsExplorer)
     SetPreferredAppMode = GetProcAddress(hUxtheme, (LPCSTR)0x87);
     AllowDarkModeForWindow = GetProcAddress(hUxtheme, (LPCSTR)0x85);
     ShouldAppsUseDarkMode = GetProcAddress(hUxtheme, (LPCSTR)0x84);
+    ShouldSystemUseDarkMode = GetProcAddress(hUxtheme, (LPCSTR)0x8A);
     GetThemeName = GetProcAddress(hUxtheme, (LPCSTR)0x4A);
+    PeopleBand_DrawTextWithGlowFunc = GetProcAddress(hUxtheme, (LPCSTR)0x7E);
+    if (bOldTaskbar)
+    {
+        VnPatchIAT(hExplorer, "uxtheme.dll", (LPCSTR)0x7E, PeopleBand_DrawTextWithGlowHook);
+    }
     printf("Setup uxtheme functions done\n");
 
 
@@ -7064,6 +7856,16 @@ DWORD Inject(BOOL bIsExplorer)
         VnPatchIAT(hInputSwitch, "user32.dll", "TrackPopupMenuEx", inputswitch_TrackPopupMenuExHook);
         printf("Setup inputswitch functions done\n");
     }
+
+
+
+    HANDLE hPeopleBand = LoadLibraryW(L"PeopleBand.dll");
+    if (hPeopleBand)
+    {
+        VnPatchIAT(hPeopleBand, "api-ms-win-core-largeinteger-l1-1-0.dll", "MulDiv", PeopleBand_MulDivHook);
+        printf("Setup peopleband functions done\n");
+    }
+
 
 
 

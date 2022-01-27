@@ -4,6 +4,10 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ExplorerPatcher", "ExplorerPatcher\ExplorerPatcher.vcxproj", "{DB3E4319-2969-42B6-B7E8-BB57AA8C9FA9}"
+	ProjectSection(ProjectDependencies) = postProject
+		{AF02ABAC-EAEB-471C-9957-73D430B8B4DE} = {AF02ABAC-EAEB-471C-9957-73D430B8B4DE}
+		{314A50C1-F0A0-4D0C-89E1-AD8F3951043E} = {314A50C1-F0A0-4D0C-89E1-AD8F3951043E}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ep_generate_release_description", "ep_generate_release_description\ep_generate_release_description.vcxproj", "{C362CFBE-7C6B-4457-8D01-839818D42ECB}"
 EndProject
@@ -13,6 +17,7 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ep_setup", "ep_setup\ep_set
 	ProjectSection(ProjectDependencies) = postProject
 		{DB3E4319-2969-42B6-B7E8-BB57AA8C9FA9} = {DB3E4319-2969-42B6-B7E8-BB57AA8C9FA9}
 		{1ECCAB38-61B6-4C85-BBB5-2E2232DA3A87} = {1ECCAB38-61B6-4C85-BBB5-2E2232DA3A87}
+		{314A50C1-F0A0-4D0C-89E1-AD8F3951043E} = {314A50C1-F0A0-4D0C-89E1-AD8F3951043E}
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ep_setup_patch", "ep_setup_patch\ep_setup_patch.vcxproj", "{0C13E5F3-106B-4836-A7C2-8E5808A6ED78}"
@@ -21,6 +26,13 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ep_setup_patch", "ep_setup_
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ep_dwm", "ep_dwm\ep_dwm\ep_dwm.vcxproj", "{1ECCAB38-61B6-4C85-BBB5-2E2232DA3A87}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ep_weather_host", "ep_weather_host\ep_weather_host.vcxproj", "{314A50C1-F0A0-4D0C-89E1-AD8F3951043E}"
+	ProjectSection(ProjectDependencies) = postProject
+		{AF02ABAC-EAEB-471C-9957-73D430B8B4DE} = {AF02ABAC-EAEB-471C-9957-73D430B8B4DE}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ep_weather_host_stub", "ep_weather_host_stub\ep_weather_host_stub.vcxproj", "{AF02ABAC-EAEB-471C-9957-73D430B8B4DE}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -64,10 +76,22 @@ Global
 		{0C13E5F3-106B-4836-A7C2-8E5808A6ED78}.Release|IA-32.ActiveCfg = Release|Win32
 		{1ECCAB38-61B6-4C85-BBB5-2E2232DA3A87}.Debug|amd64.ActiveCfg = Debug|x64
 		{1ECCAB38-61B6-4C85-BBB5-2E2232DA3A87}.Debug|amd64.Build.0 = Debug|x64
-		{1ECCAB38-61B6-4C85-BBB5-2E2232DA3A87}.Debug|IA-32.ActiveCfg = Debug|x64
+		{1ECCAB38-61B6-4C85-BBB5-2E2232DA3A87}.Debug|IA-32.ActiveCfg = Debug|Win32
 		{1ECCAB38-61B6-4C85-BBB5-2E2232DA3A87}.Release|amd64.ActiveCfg = Release|x64
 		{1ECCAB38-61B6-4C85-BBB5-2E2232DA3A87}.Release|amd64.Build.0 = Release|x64
 		{1ECCAB38-61B6-4C85-BBB5-2E2232DA3A87}.Release|IA-32.ActiveCfg = Release|Win32
+		{314A50C1-F0A0-4D0C-89E1-AD8F3951043E}.Debug|amd64.ActiveCfg = Debug|x64
+		{314A50C1-F0A0-4D0C-89E1-AD8F3951043E}.Debug|amd64.Build.0 = Debug|x64
+		{314A50C1-F0A0-4D0C-89E1-AD8F3951043E}.Debug|IA-32.ActiveCfg = Debug|Win32
+		{314A50C1-F0A0-4D0C-89E1-AD8F3951043E}.Release|amd64.ActiveCfg = Release|x64
+		{314A50C1-F0A0-4D0C-89E1-AD8F3951043E}.Release|amd64.Build.0 = Release|x64
+		{314A50C1-F0A0-4D0C-89E1-AD8F3951043E}.Release|IA-32.ActiveCfg = Release|Win32
+		{AF02ABAC-EAEB-471C-9957-73D430B8B4DE}.Debug|amd64.ActiveCfg = Debug|x64
+		{AF02ABAC-EAEB-471C-9957-73D430B8B4DE}.Debug|amd64.Build.0 = Debug|x64
+		{AF02ABAC-EAEB-471C-9957-73D430B8B4DE}.Debug|IA-32.ActiveCfg = Debug|Win32
+		{AF02ABAC-EAEB-471C-9957-73D430B8B4DE}.Release|amd64.ActiveCfg = Release|x64
+		{AF02ABAC-EAEB-471C-9957-73D430B8B4DE}.Release|amd64.Build.0 = Release|x64
+		{AF02ABAC-EAEB-471C-9957-73D430B8B4DE}.Release|IA-32.ActiveCfg = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
