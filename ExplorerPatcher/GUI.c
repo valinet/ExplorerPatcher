@@ -798,22 +798,19 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
         );
     }
 
+    UINT dpiX = 0, dpiY = 0;
+    HRESULT hr = GetDpiForMonitor(MonitorFromWindow(hwnd, MONITOR_DEFAULTTOPRIMARY), MDT_DEFAULT, &dpiX, &dpiY);
     LOGFONT logFont;
     memset(&logFont, 0, sizeof(logFont));
     NONCLIENTMETRICS ncm;
     ncm.cbSize = sizeof(NONCLIENTMETRICS);
-    SystemParametersInfoW(
-        SPI_GETNONCLIENTMETRICS,
-        sizeof(NONCLIENTMETRICS),
-        &ncm,
-        0
-    );
+    SystemParametersInfoForDpi(SPI_GETNONCLIENTMETRICS, sizeof(NONCLIENTMETRICS), &ncm, 0, dpiX);
     logFont = ncm.lfCaptionFont;
-    logFont.lfHeight = GUI_CAPTION_FONT_SIZE * dy;
+    //logFont.lfHeight = GUI_CAPTION_FONT_SIZE * dy;
     //logFont.lfWeight = FW_BOLD;
     HFONT hFontCaption = CreateFontIndirect(&logFont);
     logFont = ncm.lfMenuFont;
-    logFont.lfHeight = GUI_TITLE_FONT_SIZE * dy;
+    //logFont.lfHeight = GUI_TITLE_FONT_SIZE * dy;
     HFONT hFontTitle = CreateFontIndirect(&logFont);
     logFont.lfWeight = FW_REGULAR;
     logFont.lfUnderline = 1;
@@ -822,7 +819,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
     logFont.lfUnderline = 0;
     HFONT hFontRegular = CreateFontIndirect(&logFont);
     logFont.lfWeight = FW_DEMIBOLD;
-    logFont.lfHeight = GUI_SECTION_FONT_SIZE * dy;
+    //logFont.lfHeight = GUI_SECTION_FONT_SIZE * dy;
     HFONT hFontSection = CreateFontIndirect(&logFont);
     logFont.lfUnderline = 1;
     HFONT hFontSectionSel = CreateFontIndirect(&logFont);
