@@ -14,6 +14,7 @@ Tested on OS build 22000.434.
 
 * The weather widget recomputes its area automatically, by default, in order to fit its contents, instead of remaining at a fixed size; there is also an option to choose between the two behaviors (.1)
 * Possibility to disable the icon in the weather widget (.1)
+* The weather widget defaults to showing in the preferred language set in Windows, instead of English (#734) (.2)
 
 #### Fixes
 
@@ -21,6 +22,8 @@ Tested on OS build 22000.434.
 * Fixed inconsistencies when displaying the weather widget and the system themes are disabled (aka the classic theme is used) (.1)
 * Screen readers now read the weather data when requested for the weather widget (.1)
 * Changing the Start button style or weather widget layout does not toggle taskbar auto-hide now; instead, the settings take effect immediately (.1)
+* Fixed a bug that could corrupt registry entries of type REG_SZ set via the Properties UI (#734) (.2)
+* Fixed a bug that reset the setting when pressing "Cancel" in an input box in the Properties UI (#734) (.2)
 
 ## 22000.469.41
 
