@@ -508,7 +508,7 @@ LRESULT CALLBACK epw_Weather_WindowProc(_In_ HWND hWnd, _In_ UINT uMsg, _In_ WPA
         }
         return HRESULT_FROM_WIN32(ERROR_BUSY);
     }
-    else if ((uMsg == WM_KEYUP && wParam == VK_ESCAPE) || (uMsg == WM_ACTIVATEAPP && wParam == FALSE && GetAncestor(GetForegroundWindow(), GA_ROOT) != _this->hWnd))
+    else if (uMsg == WM_CLOSE || (uMsg == WM_KEYUP && wParam == VK_ESCAPE) || (uMsg == WM_ACTIVATEAPP && wParam == FALSE && GetAncestor(GetForegroundWindow(), GA_ROOT) != _this->hWnd))
     {
         epw_Weather_Hide(_this);
         return 0;
@@ -531,64 +531,76 @@ LRESULT CALLBACK epw_Weather_WindowProc(_In_ HWND hWnd, _In_ UINT uMsg, _In_ WPA
         return 0;
     }
 
-    /*if (uMsg == WM_CREATE)
+    BOOL bIsRunningWithoutVisualStyle = !IsThemeActive() || IsHighContrast();
+    if (uMsg == WM_CREATE)
     {
-        SetRectEmpty(&_this->rcBorderThickness);
-        if (GetWindowLongPtrW(hWnd, GWL_STYLE) & WS_THICKFRAME)
+        if (bIsRunningWithoutVisualStyle)
         {
-            AdjustWindowRectEx(&_this->rcBorderThickness, GetWindowLongPtr(hWnd, GWL_STYLE) & ~WS_CAPTION, FALSE, NULL);
-            _this->rcBorderThickness.left *= -1;
-            _this->rcBorderThickness.top *= -1;
+            SetRectEmpty(&_this->rcBorderThickness);
+            if (GetWindowLongPtrW(hWnd, GWL_STYLE) & WS_THICKFRAME)
+            {
+                AdjustWindowRectEx(&_this->rcBorderThickness, GetWindowLongPtr(hWnd, GWL_STYLE) & ~WS_CAPTION, FALSE, NULL);
+                _this->rcBorderThickness.left *= -1;
+                _this->rcBorderThickness.top *= -1;
+            }
+            else if (GetWindowLongPtrW(hWnd, GWL_STYLE) & WS_BORDER)
+            {
+                SetRect(&_this->rcBorderThickness, 1, 1, 1, 1);
+            }
+            SetWindowPos(hWnd, NULL, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_FRAMECHANGED);
         }
-        else if (GetWindowLongPtrW(hWnd, GWL_STYLE) & WS_BORDER)
-        {
-            SetRect(&_this->rcBorderThickness, 1, 1, 1, 1);
-        }
-        SetWindowPos(hWnd, NULL, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_FRAMECHANGED);
     }
     else if (uMsg == WM_NCCALCSIZE)
     {
-        if (lParam)
+        if (bIsRunningWithoutVisualStyle)
         {
-            NCCALCSIZE_PARAMS* sz = (NCCALCSIZE_PARAMS*)lParam;
-            sz->rgrc[0].left += _this->rcBorderThickness.left;
-            sz->rgrc[0].right -= _this->rcBorderThickness.right;
-            sz->rgrc[0].bottom -= _this->rcBorderThickness.bottom;
-            return 0;
+            if (lParam)
+            {
+                NCCALCSIZE_PARAMS* sz = (NCCALCSIZE_PARAMS*)lParam;
+                sz->rgrc[0].left += _this->rcBorderThickness.left;
+                sz->rgrc[0].right -= _this->rcBorderThickness.right;
+                sz->rgrc[0].bottom -= _this->rcBorderThickness.bottom;
+                return 0;
+            }
         }
     }
     else if (uMsg == WM_NCHITTEST)
     {
-        LRESULT lRes = DefWindowProcW(hWnd, uMsg, wParam, lParam);
-        if (lRes == HTCLIENT)
+        if (bIsRunningWithoutVisualStyle)
         {
-            POINT pt = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
-            ScreenToClient(hWnd, &pt);
-            if (pt.y < _this->rcBorderThickness.top)
+            LRESULT lRes = DefWindowProcW(hWnd, uMsg, wParam, lParam);
+            if (lRes == HTCLIENT)
             {
-                return HTTOP;
+                POINT pt = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
+                ScreenToClient(hWnd, &pt);
+                if (pt.y < _this->rcBorderThickness.top)
+                {
+                    return HTTOP;
+                }
+                else
+                {
+                    return HTCAPTION;
+                }
             }
             else
             {
-                return HTCAPTION;
+                return lRes;
             }
-        }
-        else
-        {
-            return lRes;
         }
     }
     else if (uMsg == WM_NCACTIVATE)
     {
-        return 0;
-    }*/
+        if (bIsRunningWithoutVisualStyle)
+        {
+            return 0;
+        }
+    }
     return DefWindowProcW(hWnd, uMsg, wParam, lParam);
 }
 
 DWORD WINAPI epw_Weather_MainThread(EPWeather* _this)
 {
     HRESULT hr = S_OK;
-    DWORD bIsThemeActive = IsThemeActive();
 
     SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
 
@@ -615,7 +627,7 @@ DWORD WINAPI epw_Weather_MainThread(EPWeather* _this)
     wc.style = CS_DBLCLKS;
     wc.lpfnWndProc = epw_Weather_WindowProc;
     wc.hInstance = epw_hModule;
-    wc.hbrBackground = bIsThemeActive ? (HBRUSH)GetStockObject(BLACK_BRUSH) : (HBRUSH)GetStockObject(WHITE_BRUSH);
+    wc.hbrBackground = (HBRUSH)GetStockObject(BLACK_BRUSH);
     wc.lpszClassName = _T(EPW_WEATHER_CLASSNAME);
     wc.hCursor = LoadCursorW(NULL, IDC_ARROW);
     if (!RegisterClassW(&wc))
@@ -650,13 +662,10 @@ DWORD WINAPI epw_Weather_MainThread(EPWeather* _this)
         goto cleanup;
     }
 
-    if (bIsThemeActive)
-    {
-        MARGINS marGlassInset = { -1, -1, -1, -1 }; // -1 means the whole window
-        DwmExtendFrameIntoClientArea(_this->hWnd, &marGlassInset);
-        BOOL value = 1;
-        DwmSetWindowAttribute(_this->hWnd, 1029, &value, sizeof(BOOL));
-    }
+    MARGINS marGlassInset = { -1, -1, -1, -1 }; // -1 means the whole window
+    DwmExtendFrameIntoClientArea(_this->hWnd, &marGlassInset);
+    BOOL value = 1;
+    DwmSetWindowAttribute(_this->hWnd, 1029, &value, sizeof(BOOL));
 
     InterlockedExchange64(&_this->bBrowserBusy, TRUE);
 

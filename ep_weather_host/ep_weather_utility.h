@@ -2,6 +2,15 @@
 #define _H_EP_WEATHER_UTILITY_H_
 #include <Windows.h>
 #include <stdint.h>
+inline BOOL IsHighContrast()
+{
+    HIGHCONTRASTW highContrast;
+    ZeroMemory(&highContrast, sizeof(HIGHCONTRASTW));
+    highContrast.cbSize = sizeof(highContrast);
+    if (SystemParametersInfoW(SPI_GETHIGHCONTRAST, sizeof(highContrast), &highContrast, FALSE))
+        return highContrast.dwFlags & HCF_HIGHCONTRASTON;
+    return FALSE;
+}
 inline void QueryVersionInfo(HMODULE hModule, WORD Resource, DWORD* dwLeftMost, DWORD* dwSecondLeft, DWORD* dwSecondRight, DWORD* dwRightMost)
 {
     HRSRC hResInfo;
