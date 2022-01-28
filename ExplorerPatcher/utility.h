@@ -249,7 +249,7 @@ char* StrReplaceAllA(const char* s, const char* oldW, const char* newW, int* dwN
 
 WCHAR* StrReplaceAllW(const WCHAR* s, const WCHAR* oldW, const WCHAR* newW, int* dwNewSize);
 
-HRESULT InputBox(BOOL bPassword, HWND hWnd, LPCWSTR wszPrompt, LPCWSTR wszTitle, LPCWSTR wszDefault, LPCWSTR wszAnswer, DWORD cbAnswer);
+HRESULT InputBox(BOOL bPassword, HWND hWnd, LPCWSTR wszPrompt, LPCWSTR wszTitle, LPCWSTR wszDefault, LPWSTR wszAnswer, DWORD cbAnswer, BOOL* bCancelled);
 
 inline BOOL IsHighContrast()
 {

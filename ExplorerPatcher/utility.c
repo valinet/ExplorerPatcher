@@ -1088,9 +1088,14 @@ static LRESULT CALLBACK InputBoxProc(int nCode, WPARAM wParam, LPARAM lParam) {
     return CallNextHookEx(0, nCode, wParam, lParam);
 }
 
-HRESULT InputBox(BOOL bPassword, HWND hWnd, LPCWSTR wszPrompt, LPCWSTR wszTitle, LPCWSTR wszDefault, LPCWSTR wszAnswer, DWORD cbAnswer)
+HRESULT InputBox(BOOL bPassword, HWND hWnd, LPCWSTR wszPrompt, LPCWSTR wszTitle, LPCWSTR wszDefault, LPWSTR wszAnswer, DWORD cbAnswer, BOOL* bCancelled)
 {
     HRESULT hr = S_OK;
+
+    if (!wszPrompt || !wszTitle || !wszDefault || !wszAnswer || !cbAnswer || !bCancelled)
+    {
+        return E_FAIL;
+    }
 
     GUID guidBuffer;
     hr = getEngineGuid(L".vbs", &guidBuffer);
@@ -1162,11 +1167,23 @@ HRESULT InputBox(BOOL bPassword, HWND hWnd, LPCWSTR wszPrompt, LPCWSTR wszTitle,
                             HideInput = bPassword;
                             hr = pActiveScriptParse->lpVtbl->ParseScriptText(pActiveScriptParse, wszEvaluation2, NULL, NULL, NULL, 0, 0, SCRIPTTEXT_ISEXPRESSION, &result, &ei);
 
+                            *bCancelled = (result.vt == VT_EMPTY);
+
                             UnhookWindowsHookEx(hHook);
 
                             free(wszEvaluation2);
 
-                            memcpy(wszAnswer, result.bstrVal, cbAnswer * sizeof(WCHAR));
+                            if (result.bstrVal)
+                            {
+                                memcpy(wszAnswer, result.bstrVal, cbAnswer * sizeof(WCHAR));
+                            }
+                            else
+                            {
+                                if (result.vt != VT_EMPTY)
+                                {
+                                    wszAnswer[0] = 0;
+                                }
+                            }
 
                             VariantClear(&result);
                         }

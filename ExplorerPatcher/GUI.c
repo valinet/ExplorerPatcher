@@ -1829,9 +1829,9 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                                         }
                                                         else
                                                         {
-                                                            WCHAR* wszTitle = malloc(MAX_LINE_LENGTH * sizeof(WCHAR));
-                                                            wchar_t* x = wcschr(ddd + 2, L'"');
-                                                            x[0] = 0;
+                                                            //WCHAR* wszTitle = malloc(MAX_LINE_LENGTH * sizeof(WCHAR));
+                                                            //wchar_t* x = wcschr(ddd + 2, L'"');
+                                                            //x[0] = 0;
                                                             //wprintf(L">>> %s\n", ddd + 2);
                                                         }
                                                     }
@@ -2359,18 +2359,28 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                 DWORD val = 0;
                                 if (bInput)
                                 {
-                                    WCHAR* wszAnswer = malloc(MAX_LINE_LENGTH * sizeof(WCHAR));
-                                    InputBox(FALSE, hwnd, wszPrompt, wszTitle, wszDefault, wszAnswer, MAX_LINE_LENGTH);
-                                    GUI_RegSetValueExW(
-                                        hKey,
-                                        name,
-                                        0,
-                                        REG_SZ,
-                                        wszAnswer,
-                                        (wcslen(wszAnswer) + 1) * sizeof(WCHAR)
-                                    );
-                                    Sleep(100);
-                                    PostMessageW(FindWindowW(_T(EPW_WEATHER_CLASSNAME), NULL), EP_WEATHER_WM_FETCH_DATA, 0, 0);
+                                    WCHAR* wszAnswer = calloc(MAX_LINE_LENGTH, sizeof(WCHAR));
+                                    BOOL bWasCancelled = FALSE;
+                                    if (SUCCEEDED(InputBox(FALSE, hwnd, wszPrompt, wszTitle, wszDefault, wszAnswer, MAX_LINE_LENGTH, &bWasCancelled)) && !bWasCancelled)
+                                    {
+                                        if (wszAnswer[0])
+                                        {
+                                            GUI_RegSetValueExW(
+                                                hKey,
+                                                name,
+                                                0,
+                                                REG_SZ,
+                                                wszAnswer,
+                                                (wcslen(wszAnswer) + 1) * sizeof(WCHAR)
+                                            );
+                                        }
+                                        else
+                                        {
+                                            RegDeleteValueW(hKey, name);
+                                        }
+                                        Sleep(100);
+                                        PostMessageW(FindWindowW(_T(EPW_WEATHER_CLASSNAME), NULL), EP_WEATHER_WM_FETCH_DATA, 0, 0);
+                                    }
                                     free(wszAnswer);
                                 }
                                 else if (bChoice || bChoiceLefted)
