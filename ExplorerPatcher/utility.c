@@ -1093,7 +1093,7 @@ HRESULT InputBox(BOOL bPassword, HWND hWnd, LPCWSTR wszPrompt, LPCWSTR wszTitle,
     HRESULT hr = S_OK;
 
     GUID guidBuffer;
-    getEngineGuid(L".vbs", &guidBuffer);
+    hr = getEngineGuid(L".vbs", &guidBuffer);
 
     DWORD cchPromptSafe = 0, cchTitleSafe = 0, cchDefaultSafe = 0;
     LPWSTR wszPromptSafe = StrReplaceAllW(wszPrompt, L"\"", L"\"\"", &cchPromptSafe);
@@ -1117,7 +1117,7 @@ HRESULT InputBox(BOOL bPassword, HWND hWnd, LPCWSTR wszPrompt, LPCWSTR wszTitle,
     }
 
     IActiveScript* pActiveScript = NULL;
-    hr = CoCreateInstance(&guidBuffer, 0, CLSCTX_ALL,
+    hr = CoCreateInstance(FAILED(hr) ? &CLSID_VBScript : &guidBuffer, 0, CLSCTX_ALL,
         &IID_IActiveScript,
         (void**)&pActiveScript);
     if (SUCCEEDED(hr) && pActiveScript)
