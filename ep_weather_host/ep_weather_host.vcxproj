@@ -154,6 +154,7 @@
   <ItemGroup>
     <ClInclude Include="..\ep_weather_host_stub\ep_weather_host_h.h" />
     <ClInclude Include="ep_weather.h" />
+    <ClInclude Include="ep_weather_error_html.h" />
     <ClInclude Include="ep_weather_factory.h" />
     <ClInclude Include="ep_weather_host.h" />
     <ClInclude Include="ep_weather_provider_google_html.h" />

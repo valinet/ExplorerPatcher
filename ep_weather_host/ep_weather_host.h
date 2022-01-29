@@ -43,6 +43,7 @@ typedef interface EPWeather
     LONG64 cbx; // interlocked
     LONG64 cby; // interlocked
     LONG64 dwProvider; // interlocked
+    LONG64 bIsNavigatingToError; // interlocked
 
     double dpi;
 

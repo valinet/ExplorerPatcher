@@ -50,6 +50,9 @@
     <ClInclude Include="ep_weather_provider_google_html.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="ep_weather_error_html.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="ep_weather_host.rc">

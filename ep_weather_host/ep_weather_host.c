@@ -1,6 +1,7 @@
 #include "ep_weather_host.h"
 #include "ep_weather_provider_google_html.h"
 #include "ep_weather_provider_google_script.h"
+#include "ep_weather_error_html.h"
 
 LPCWSTR EP_Weather_Script_Provider_Google = L"<!DOCTYPE html>\n";
 
@@ -100,6 +101,12 @@ HRESULT STDMETHODCALLTYPE ICoreWebView2_CreateCoreWebView2EnvironmentCompleted(I
 {
     pCoreWebView2Environemnt->lpVtbl->CreateCoreWebView2Controller(pCoreWebView2Environemnt, FindWindowW(_T(EPW_WEATHER_CLASSNAME), NULL), &EPWeather_ICoreWebView2CreateCoreWebView2ControllerCompletedHandler);
     return S_OK;
+}
+
+HRESULT STDMETHODCALLTYPE _epw_Weather_NavigateToError(EPWeather* _this)
+{
+    InterlockedExchange64(&_this->bIsNavigatingToError, TRUE);
+    return _this->pCoreWebView2->lpVtbl->NavigateToString(_this->pCoreWebView2, ep_weather_error_html);
 }
 
 HRESULT STDMETHODCALLTYPE _epw_Weather_NavigateToProvider(EPWeather* _this)
@@ -230,11 +237,20 @@ HRESULT STDMETHODCALLTYPE ICoreWebView2_NavigationCompleted(ICoreWebView2Navigat
     pCoreWebView2NavigationCompletedEventArgs->lpVtbl->get_IsSuccess(pCoreWebView2NavigationCompletedEventArgs, &bIsSuccess);
     if (bIsSuccess)
     {
-        _epw_Weather_ExecuteDataScript(_this);
+        BOOL bIsNavigatingToError = InterlockedAdd64(&_this->bIsNavigatingToError, 0);
+        if (bIsNavigatingToError)
+        {
+            InterlockedExchange64(&_this->bIsNavigatingToError, FALSE);
+            InterlockedExchange64(&_this->bBrowserBusy, FALSE);
+        }
+        else
+        {
+            _epw_Weather_ExecuteDataScript(_this);
+        }
     }
     else
     {
-        InterlockedExchange64(&_this->bBrowserBusy, FALSE);
+        _epw_Weather_NavigateToError(_this);
     }
     _this->pCoreWebView2Controller->lpVtbl->put_IsVisible(_this->pCoreWebView2Controller, FALSE);
     _this->pCoreWebView2Controller->lpVtbl->put_IsVisible(_this->pCoreWebView2Controller, TRUE);
@@ -246,11 +262,7 @@ HRESULT STDMETHODCALLTYPE ICoreWebView2_ExecuteScriptCompleted(ICoreWebView2Exec
     EPWeather* _this = GetWindowLongPtrW(FindWindowW(_T(EPW_WEATHER_CLASSNAME), NULL), GWLP_USERDATA);
     if (_this)
     {
-        //if (_this->dwType != EP_WEATHER_FETCH_RECOMPUTE)
-        {
-            epw_Weather_LockData(_this);
-        }
-
+        BOOL bOk = FALSE;
         LONG64 dwProvider = InterlockedAdd64(&_this->dwProvider, 0);
         if (dwProvider == EP_WEATHER_PROVIDER_GOOGLE)
         {
@@ -260,6 +272,7 @@ HRESULT STDMETHODCALLTYPE ICoreWebView2_ExecuteScriptCompleted(ICoreWebView2Exec
 
                 //printf("running part 2\n");
                 _this->pCoreWebView2->lpVtbl->ExecuteScript(_this->pCoreWebView2, ep_weather_provider_google_script2, &EPWeather_ICoreWebView2ExecuteScriptCompletedHandler);
+                bOk = TRUE;
             }
             else
             {
@@ -267,6 +280,8 @@ HRESULT STDMETHODCALLTYPE ICoreWebView2_ExecuteScriptCompleted(ICoreWebView2Exec
                 _this->wszScriptData = NULL;
 
                 //wprintf(L"%s\n", pResultObjectAsJson);
+
+                epw_Weather_LockData(_this);
 
                 WCHAR* wszTemperature = pResultObjectAsJson + 1;
                 if (wszTemperature)
@@ -340,6 +355,8 @@ HRESULT STDMETHODCALLTYPE ICoreWebView2_ExecuteScriptCompleted(ICoreWebView2Exec
                                                 tmp[2] = 0;
                                                 _this->pImage[i / 2] = wcstol(tmp, NULL, 16);
                                             }
+
+                                            bOk = TRUE;
                                         }
                                     }
                                 }
@@ -347,17 +364,19 @@ HRESULT STDMETHODCALLTYPE ICoreWebView2_ExecuteScriptCompleted(ICoreWebView2Exec
                         }
                     }
                 }
+
+                epw_Weather_UnlockData(_this);
             }
         }
 
-        //DWORD dwType = _this->dwType;
-        //_this->dwType = EP_WEATHER_FETCH_NONE;
-
-        epw_Weather_UnlockData(_this);
-        InterlockedExchange64(&_this->bBrowserBusy, FALSE);
-
-        //if (dwType == EP_WEATHER_FETCH_ALL_ASYNC)
+        if (!bOk)
         {
+            printf("[General] Navigating to error page.\n");
+            _epw_Weather_NavigateToError(_this);
+        }
+        else
+        {
+            InterlockedExchange64(&_this->bBrowserBusy, FALSE);
             printf("[General] Fetched data, requesting redraw.\n");
             SetTimer(_this->hWnd, EP_WEATHER_TIMER_REQUEST_REPAINT, EP_WEATHER_TIMER_REQUEST_REPAINT_DELAY, NULL);
         }
