@@ -13,6 +13,7 @@
 #pragma comment(lib, "IPHLPAPI.lib")
 #include "WebView2.h"
 #pragma comment(lib, "uxtheme.lib")
+#include <ShellScalingApi.h>
 
 DEFINE_GUID(IID_ITaskbarList,
     0x56FDF342, 0xFD6D, 0x11d0, 0x95, 0x8A, 0x00, 0x60, 0x97, 0xC9, 0xA0, 0x90);
@@ -45,8 +46,6 @@ typedef interface EPWeather
     LONG64 dwProvider; // interlocked
     LONG64 bIsNavigatingToError; // interlocked
 
-    double dpi;
-
     HANDLE hMutexData; // protects the following:
     DWORD cbTemperature;
     LPCWSTR wszTemperature;
@@ -65,6 +64,7 @@ typedef interface EPWeather
     ICoreWebView2* pCoreWebView2;
     EventRegistrationToken* tkOnNavigationCompleted;
     LPCWSTR wszScriptData;
+    RECT rc;
 
     HANDLE hSignalExitMainThread;
     HANDLE hSignalKillSwitch;
@@ -75,7 +75,7 @@ ULONG   STDMETHODCALLTYPE epw_Weather_Release(EPWeather* _this);
 HRESULT STDMETHODCALLTYPE epw_Weather_QueryInterface(EPWeather* _this, REFIID riid, void** ppv);
 HRESULT STDMETHODCALLTYPE epw_Weather_About(EPWeather* _this, HWND hWnd);
 
-HRESULT STDMETHODCALLTYPE epw_Weather_Initialize(EPWeather* _this, WCHAR wszName[MAX_PATH], BOOL bAllocConsole, LONG64 dwProvider, LONG64 cbx, LONG64 cby, LONG64 dwTemperatureUnit, LONG64 dwUpdateSchedule, double dpi);
+HRESULT STDMETHODCALLTYPE epw_Weather_Initialize(EPWeather* _this, WCHAR wszName[MAX_PATH], BOOL bAllocConsole, LONG64 dwProvider, LONG64 cbx, LONG64 cby, LONG64 dwTemperatureUnit, LONG64 dwUpdateSchedule, RECT rc, HWND* hWnd);
 
 HRESULT STDMETHODCALLTYPE epw_Weather_Show(EPWeather* _this);
 HRESULT STDMETHODCALLTYPE epw_Weather_Hide(EPWeather* _this);

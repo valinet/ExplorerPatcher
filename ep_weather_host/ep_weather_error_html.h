@@ -21,7 +21,7 @@ body {\n\
 </style>\n\
 </head>\n\
 <body><center>\n\
-<h1>&#128433;</h1>\n\
+<h1>&#128240;</h1>\n\
 <h2>Unable to load weather information</h2>\n\
 <p>Check to make sure that the location you have entered is correct.<br/>\n\
 Verify that you are connected to the Internet.</p>\n\

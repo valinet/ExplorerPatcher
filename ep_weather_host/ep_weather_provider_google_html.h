@@ -21,9 +21,6 @@ html {\n\
     transition: 0.3s; \n\
     position: absolute;\n\
 }\n\
-.google-weather-crop:hover {\n\
-    width: 655px; height: 370px;\n\
-}\n\
 .google-weather {\n\
     position: relative;\n\
     left: -180px; top: -180px;\n\

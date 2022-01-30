@@ -3597,6 +3597,79 @@ BOOL explorer_DeleteMenu(HMENU hMenu, UINT uPosition, UINT uFlags)
     return DeleteMenu(hMenu, uPosition, uFlags);
 }
 
+HWND hWndWeatherFlyout;
+void RecomputeWeatherFlyoutLocation(HWND hWnd)
+{
+    RECT rcButton;
+    GetWindowRect(PeopleButton_LastHWND, &rcButton);
+    POINT pButton;
+    pButton.x = rcButton.left;
+    pButton.y = rcButton.top;
+
+    RECT rcWeatherFlyoutWindow;
+    GetWindowRect(hWnd, &rcWeatherFlyoutWindow);
+
+    POINT pNewWindow;
+
+    RECT rc;
+    UINT tbPos = GetTaskbarLocationAndSize(pButton, &rc);
+    if (tbPos == TB_POS_BOTTOM)
+    {
+        pNewWindow.y = rcButton.top - (rcWeatherFlyoutWindow.bottom - rcWeatherFlyoutWindow.top);
+    }
+    else if (tbPos == TB_POS_TOP)
+    {
+        pNewWindow.y = rcButton.bottom;
+    }
+    else if (tbPos == TB_POS_LEFT)
+    {
+        pNewWindow.x = rcButton.right;
+    }
+    if (tbPos == TB_POS_RIGHT)
+    {
+        pNewWindow.x = rcButton.left - (rcWeatherFlyoutWindow.right - rcWeatherFlyoutWindow.left);
+    }
+
+    if (tbPos == TB_POS_BOTTOM || tbPos == TB_POS_TOP)
+    {
+        pNewWindow.x = rcButton.left + ((rcButton.right - rcButton.left) / 2) - ((rcWeatherFlyoutWindow.right - rcWeatherFlyoutWindow.left) / 2);
+
+        HMONITOR hMonitor = MonitorFromPoint(pButton, MONITOR_DEFAULTTOPRIMARY);
+        if (hMonitor)
+        {
+            MONITORINFO mi;
+            mi.cbSize = sizeof(MONITORINFO);
+            if (GetMonitorInfoW(hMonitor, &mi))
+            {
+                if (mi.rcWork.right < pNewWindow.x + (rcWeatherFlyoutWindow.right - rcWeatherFlyoutWindow.left))
+                {
+                    pNewWindow.x = mi.rcWork.right - (rcWeatherFlyoutWindow.right - rcWeatherFlyoutWindow.left);
+                }
+            }
+        }
+    }
+    else if (tbPos == TB_POS_LEFT || tbPos == TB_POS_RIGHT)
+    {
+        pNewWindow.y = rcButton.top + ((rcButton.bottom - rcButton.top) / 2) - ((rcWeatherFlyoutWindow.bottom - rcWeatherFlyoutWindow.top) / 2);
+
+        HMONITOR hMonitor = MonitorFromPoint(pButton, MONITOR_DEFAULTTOPRIMARY);
+        if (hMonitor)
+        {
+            MONITORINFO mi;
+            mi.cbSize = sizeof(MONITORINFO);
+            if (GetMonitorInfoW(hMonitor, &mi))
+            {
+                if (mi.rcWork.bottom < pNewWindow.y + (rcWeatherFlyoutWindow.bottom - rcWeatherFlyoutWindow.top))
+                {
+                    pNewWindow.y = mi.rcWork.bottom - (rcWeatherFlyoutWindow.bottom - rcWeatherFlyoutWindow.top);
+                }
+            }
+        }
+    }
+
+    SetWindowPos(hWnd, NULL, pNewWindow.x, pNewWindow.y, 0, 0, SWP_NOSIZE | SWP_NOSENDCHANGING);
+}
+
 int prev_total_h = 0;
 SIZE (*PeopleButton_CalculateMinimumSizeFunc)(void*, SIZE*);
 SIZE WINAPI PeopleButton_CalculateMinimumSizeHook(void* _this, SIZE* pSz)
@@ -3650,10 +3723,22 @@ SIZE WINAPI PeopleButton_CalculateMinimumSizeHook(void* _this, SIZE* pSz)
                 epw->lpVtbl->SetTerm(epw, MAX_PATH * sizeof(WCHAR), wszWeatherTerm);
                 epw->lpVtbl->SetLanguage(epw, MAX_PATH * sizeof(WCHAR), wszWeatherLanguage);
                 UINT dpiX = 0, dpiY = 0;
-                HRESULT hr = GetDpiForMonitor(MonitorFromWindow(PeopleButton_LastHWND, MONITOR_DEFAULTTOPRIMARY), MDT_DEFAULT, &dpiX, &dpiY);
-                if (FAILED(epw->lpVtbl->Initialize(epw, wszEPWeatherKillswitch, bAllocConsole, EP_WEATHER_PROVIDER_GOOGLE, rt, rt, dwWeatherTemperatureUnit, dwWeatherUpdateSchedule * 1000, dpiX / 96.0)))
+                HMONITOR hMonitor = MonitorFromWindow(PeopleButton_LastHWND, MONITOR_DEFAULTTOPRIMARY);
+                HRESULT hr = GetDpiForMonitor(hMonitor, MDT_DEFAULT, &dpiX, &dpiY);
+                MONITORINFO mi;
+                ZeroMemory(&mi, sizeof(MONITORINFO));
+                mi.cbSize = sizeof(MONITORINFO);
+                if (GetMonitorInfoW(hMonitor, &mi))
                 {
-                    epw->lpVtbl->Release(epw);
+                    RECT rcWeatherFlyoutWindow;
+                    rcWeatherFlyoutWindow.left = mi.rcWork.left;
+                    rcWeatherFlyoutWindow.top = mi.rcWork.top;
+                    rcWeatherFlyoutWindow.right = rcWeatherFlyoutWindow.left + MulDiv(EP_WEATHER_HEIGHT, dpiX, 96);
+                    rcWeatherFlyoutWindow.bottom = rcWeatherFlyoutWindow.top + MulDiv(EP_WEATHER_WIDTH, dpiX, 96);
+                    if (FAILED(epw->lpVtbl->Initialize(epw, wszEPWeatherKillswitch, bAllocConsole, EP_WEATHER_PROVIDER_GOOGLE, rt, rt, dwWeatherTemperatureUnit, dwWeatherUpdateSchedule * 1000, rcWeatherFlyoutWindow, &hWndWeatherFlyout)))
+                    {
+                        epw->lpVtbl->Release(epw);
+                    }
                 }
             }
             else
@@ -4101,6 +4186,10 @@ __int64 __fastcall PeopleBand_DrawTextWithGlowHook(
                             DeleteDC(hDC);
                         }
                     }
+                    if (IsWindowVisible(hWndWeatherFlyout))
+                    {
+                        RecomputeWeatherFlyoutLocation(hWndWeatherFlyout);
+                    }
                 }
                 /*free(epw_pImage);
                 free(epw_wszCondition);
@@ -4192,14 +4281,17 @@ __int64 PeopleButton_OnClickHook(__int64 a1, __int64 a2)
 {
     if (epw)
     {
-        HWND hWnd = NULL;
-        if (SUCCEEDED(epw->lpVtbl->GetWindowHandle(epw, &hWnd)) && hWnd)
+        if (!hWndWeatherFlyout)
         {
-            if (IsWindowVisible(hWnd))
+            epw->lpVtbl->GetWindowHandle(epw, &hWndWeatherFlyout);
+        }
+        if (hWndWeatherFlyout)
+        {
+            if (IsWindowVisible(hWndWeatherFlyout))
             {
-                if (GetForegroundWindow() != hWnd)
+                if (GetForegroundWindow() != hWndWeatherFlyout)
                 {
-                    SwitchToThisWindow(hWnd, TRUE);
+                    SwitchToThisWindow(hWndWeatherFlyout, TRUE);
                 }
                 else
                 {
@@ -4209,78 +4301,11 @@ __int64 PeopleButton_OnClickHook(__int64 a1, __int64 a2)
             }
             else
             {
-                RECT rcButton;
-                GetWindowRect(PeopleButton_LastHWND, &rcButton);
-                POINT pButton;
-                pButton.x = rcButton.left;
-                pButton.y = rcButton.top;
-
-                RECT rcWindow;
-                GetWindowRect(hWnd, &rcWindow);
-
-                POINT pNewWindow;
-
-                RECT rc;
-                UINT tbPos = GetTaskbarLocationAndSize(pButton, &rc);
-                if (tbPos == TB_POS_BOTTOM)
-                {
-                    pNewWindow.y = rcButton.top - (rcWindow.bottom - rcWindow.top);
-                }
-                else if (tbPos == TB_POS_TOP)
-                {
-                    pNewWindow.y = rcButton.bottom;
-                }
-                else if (tbPos == TB_POS_LEFT)
-                {
-                    pNewWindow.x = rcButton.right;
-                }
-                if (tbPos == TB_POS_RIGHT)
-                {
-                    pNewWindow.x = rcButton.left - (rcWindow.right - rcWindow.left);
-                }
-
-                if (tbPos == TB_POS_BOTTOM || tbPos == TB_POS_TOP)
-                {
-                    pNewWindow.x = rcButton.left + ((rcButton.right - rcButton.left) / 2) - ((rcWindow.right - rcWindow.left) / 2);
-
-                    HMONITOR hMonitor = MonitorFromPoint(pButton, MONITOR_DEFAULTTOPRIMARY);
-                    if (hMonitor)
-                    {
-                        MONITORINFO mi;
-                        mi.cbSize = sizeof(MONITORINFO);
-                        if (GetMonitorInfoW(hMonitor, &mi))
-                        {
-                            if (mi.rcWork.right < pNewWindow.x + (rcWindow.right - rcWindow.left))
-                            {
-                                pNewWindow.x = mi.rcWork.right - (rcWindow.right - rcWindow.left);
-                            }
-                        }
-                    }
-                }
-                else if (tbPos == TB_POS_LEFT || tbPos == TB_POS_RIGHT)
-                {
-                    pNewWindow.y = rcButton.top + ((rcButton.bottom - rcButton.top) / 2) - ((rcWindow.bottom - rcWindow.top) / 2);
-
-                    HMONITOR hMonitor = MonitorFromPoint(pButton, MONITOR_DEFAULTTOPRIMARY);
-                    if (hMonitor)
-                    {
-                        MONITORINFO mi;
-                        mi.cbSize = sizeof(MONITORINFO);
-                        if (GetMonitorInfoW(hMonitor, &mi))
-                        {
-                            if (mi.rcWork.bottom < pNewWindow.y + (rcWindow.bottom - rcWindow.top))
-                            {
-                                pNewWindow.y = mi.rcWork.bottom - (rcWindow.bottom - rcWindow.top);
-                            }
-                        }
-                    }
-                }
-
-                SetWindowPos(hWnd, NULL, pNewWindow.x, pNewWindow.y, 0, 0, SWP_NOSIZE, SWP_SHOWWINDOW | SWP_FRAMECHANGED);
+                RecomputeWeatherFlyoutLocation(hWndWeatherFlyout);
 
                 epw->lpVtbl->Show(epw);
 
-                SwitchToThisWindow(hWnd, TRUE);
+                SwitchToThisWindow(hWndWeatherFlyout, TRUE);
             }
         }
         return 0;

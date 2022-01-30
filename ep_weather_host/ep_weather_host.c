@@ -3,7 +3,7 @@
 #include "ep_weather_provider_google_script.h"
 #include "ep_weather_error_html.h"
 
-LPCWSTR EP_Weather_Script_Provider_Google = L"<!DOCTYPE html>\n";
+EPWeather* EPWeather_Instance;
 
 HRESULT STDMETHODCALLTYPE INetworkListManagerEvents_QueryInterface(void* _this, REFIID riid, void** ppv)
 {
@@ -24,7 +24,7 @@ ULONG STDMETHODCALLTYPE INetworkListManagerEvents_AddRefRelease(void* _this)
 
 HRESULT STDMETHODCALLTYPE INetworkListManagerEvents_ConnectivityChanged(void* _this2, NLM_CONNECTIVITY newConnectivity)
 {
-    EPWeather* _this = GetWindowLongPtrW(FindWindowW(_T(EPW_WEATHER_CLASSNAME), NULL), GWLP_USERDATA);
+    EPWeather* _this = EPWeather_Instance; // GetWindowLongPtrW(FindWindowW(_T(EPW_WEATHER_CLASSNAME), NULL), GWLP_USERDATA);
     if (_this)
     {
         if ((newConnectivity & (NLM_CONNECTIVITY_IPV4_INTERNET | NLM_CONNECTIVITY_IPV6_INTERNET)) != 0)
@@ -99,14 +99,40 @@ HRESULT STDMETHODCALLTYPE ICoreWebView2_get_AllowSingleSignOnUsingOSPrimaryAccou
 
 HRESULT STDMETHODCALLTYPE ICoreWebView2_CreateCoreWebView2EnvironmentCompleted(ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler* _this, HRESULT hr, ICoreWebView2Environment* pCoreWebView2Environemnt)
 {
-    pCoreWebView2Environemnt->lpVtbl->CreateCoreWebView2Controller(pCoreWebView2Environemnt, FindWindowW(_T(EPW_WEATHER_CLASSNAME), NULL), &EPWeather_ICoreWebView2CreateCoreWebView2ControllerCompletedHandler);
+    pCoreWebView2Environemnt->lpVtbl->CreateCoreWebView2Controller(pCoreWebView2Environemnt, EPWeather_Instance->hWnd /* FindWindowW(_T(EPW_WEATHER_CLASSNAME), NULL) */, &EPWeather_ICoreWebView2CreateCoreWebView2ControllerCompletedHandler);
     return S_OK;
 }
 
 HRESULT STDMETHODCALLTYPE _epw_Weather_NavigateToError(EPWeather* _this)
 {
     InterlockedExchange64(&_this->bIsNavigatingToError, TRUE);
-    return _this->pCoreWebView2->lpVtbl->NavigateToString(_this->pCoreWebView2, ep_weather_error_html);
+    UINT dpi = GetDpiForWindow(_this->hWnd);
+    int ch = MulDiv(305, dpi, 96);
+    RECT rc;
+    GetWindowRect(_this->hWnd, &rc);
+    if (rc.bottom - rc.top != ch)
+    {
+        SetWindowPos(_this->hWnd, NULL, 0, 0, rc.right - rc.left, ch, SWP_NOMOVE | SWP_NOSENDCHANGING);
+        RECT bounds;
+        GetClientRect(_this->hWnd, &bounds);
+        if (_this->pCoreWebView2Controller)
+        {
+            _this->pCoreWebView2Controller->lpVtbl->put_Bounds(_this->pCoreWebView2Controller, bounds);
+        }
+        HWND hNotifyWnd = InterlockedAdd64(&_this->hNotifyWnd, 0);
+        if (hNotifyWnd)
+        {
+            InvalidateRect(hNotifyWnd, NULL, TRUE);
+        }
+    }
+    if (_this->pCoreWebView2)
+    {
+        return _this->pCoreWebView2->lpVtbl->NavigateToString(_this->pCoreWebView2, ep_weather_error_html);
+    }
+    else
+    {
+        return E_FAIL;
+    }
 }
 
 HRESULT STDMETHODCALLTYPE _epw_Weather_NavigateToProvider(EPWeather* _this)
@@ -123,7 +149,14 @@ HRESULT STDMETHODCALLTYPE _epw_Weather_NavigateToProvider(EPWeather* _this)
         if (_this->wszScriptData)
         {
             swprintf_s(_this->wszScriptData, EP_WEATHER_PROVIDER_GOOGLE_HTML_LEN, ep_weather_provider_google_html, _this->wszLanguage, _this->wszTerm[0] ? L" " : L"", _this->wszTerm);
-            hr = _this->pCoreWebView2->lpVtbl->NavigateToString(_this->pCoreWebView2, _this->wszScriptData);
+            if (_this->pCoreWebView2)
+            {
+                hr = _this->pCoreWebView2->lpVtbl->NavigateToString(_this->pCoreWebView2, _this->wszScriptData);
+            }
+            else
+            {
+                hr = E_FAIL;
+            }
             if (FAILED(hr))
             {
                 InterlockedExchange64(&_this->bBrowserBusy, FALSE);
@@ -154,7 +187,14 @@ HRESULT STDMETHODCALLTYPE _epw_Weather_ExecuteDataScript(EPWeather* _this)
             LONG64 cbx = InterlockedAdd64(&_this->cbx, 0);
             swprintf_s(_this->wszScriptData, EP_WEATHER_PROVIDER_GOOGLE_SCRIPT_LEN, ep_weather_provider_google_script, dwTemperatureUnit == EP_WEATHER_TUNIT_FAHRENHEIT ? L'F' : L'C', cbx, cbx);
             //wprintf(L"%s\n", _this->wszScriptData);
-            hr = _this->pCoreWebView2->lpVtbl->ExecuteScript(_this->pCoreWebView2, _this->wszScriptData, &EPWeather_ICoreWebView2ExecuteScriptCompletedHandler);
+            if (_this->pCoreWebView2)
+            {
+                hr = _this->pCoreWebView2->lpVtbl->ExecuteScript(_this->pCoreWebView2, _this->wszScriptData, &EPWeather_ICoreWebView2ExecuteScriptCompletedHandler);
+            }
+            else
+            {
+                return E_FAIL;
+            }
             if (FAILED(hr))
             {
                 InterlockedExchange64(&_this->bBrowserBusy, FALSE);
@@ -171,7 +211,7 @@ HRESULT STDMETHODCALLTYPE _epw_Weather_ExecuteDataScript(EPWeather* _this)
 
 HRESULT STDMETHODCALLTYPE ICoreWebView2_CreateCoreWebView2ControllerCompleted(ICoreWebView2CreateCoreWebView2ControllerCompletedHandler* _this2, HRESULT hr, ICoreWebView2Controller* pCoreWebView2Controller)
 {
-    EPWeather* _this = GetWindowLongPtrW(FindWindowW(_T(EPW_WEATHER_CLASSNAME), NULL), GWLP_USERDATA);
+    EPWeather* _this = EPWeather_Instance; // GetWindowLongPtrW(FindWindowW(_T(EPW_WEATHER_CLASSNAME), NULL), GWLP_USERDATA);
     if (!_this->pCoreWebView2Controller)
     {
         _this->pCoreWebView2Controller = pCoreWebView2Controller;
@@ -228,7 +268,7 @@ HRESULT STDMETHODCALLTYPE ICoreWebView2_CreateCoreWebView2ControllerCompleted(IC
 
 HRESULT STDMETHODCALLTYPE ICoreWebView2_NavigationCompleted(ICoreWebView2NavigationCompletedEventHandler* _this2, ICoreWebView2* pCoreWebView2, ICoreWebView2NavigationCompletedEventArgs* pCoreWebView2NavigationCompletedEventArgs)
 {
-    EPWeather* _this = GetWindowLongPtrW(FindWindowW(_T(EPW_WEATHER_CLASSNAME), NULL), GWLP_USERDATA);
+    EPWeather* _this = EPWeather_Instance; // GetWindowLongPtrW(FindWindowW(_T(EPW_WEATHER_CLASSNAME), NULL), GWLP_USERDATA);
     if (_this->wszScriptData)
     {
         free(_this->wszScriptData);
@@ -259,7 +299,7 @@ HRESULT STDMETHODCALLTYPE ICoreWebView2_NavigationCompleted(ICoreWebView2Navigat
 
 HRESULT STDMETHODCALLTYPE ICoreWebView2_ExecuteScriptCompleted(ICoreWebView2ExecuteScriptCompletedHandler* _this2, HRESULT hr, LPCWSTR pResultObjectAsJson)
 {
-    EPWeather* _this = GetWindowLongPtrW(FindWindowW(_T(EPW_WEATHER_CLASSNAME), NULL), GWLP_USERDATA);
+    EPWeather* _this = EPWeather_Instance; // GetWindowLongPtrW(FindWindowW(_T(EPW_WEATHER_CLASSNAME), NULL), GWLP_USERDATA);
     if (_this)
     {
         BOOL bOk = FALSE;
@@ -283,80 +323,104 @@ HRESULT STDMETHODCALLTYPE ICoreWebView2_ExecuteScriptCompleted(ICoreWebView2Exec
 
                 epw_Weather_LockData(_this);
 
-                WCHAR* wszTemperature = pResultObjectAsJson + 1;
-                if (wszTemperature)
+                WCHAR* wszHeight = pResultObjectAsJson + 1;
+                if (wszHeight)
                 {
-                    WCHAR* wszUnit = wcschr(wszTemperature, L'#');
-                    if (wszUnit)
+                    WCHAR* wszTemperature = wcschr(wszHeight, L'#');
+                    if (wszTemperature)
                     {
-                        wszUnit[0] = 0;
-                        wszUnit++;
-                        WCHAR* wszCondition = wcschr(wszUnit, L'#');
-                        if (wszCondition)
+                        wszTemperature[0] = 0;
+                        wszTemperature++;
+                        WCHAR* wszUnit = wcschr(wszTemperature, L'#');
+                        if (wszUnit)
                         {
-                            wszCondition[0] = 0;
-                            wszCondition++;
-                            WCHAR* wszLocation = wcschr(wszCondition, L'#');
-                            if (wszLocation)
+                            wszUnit[0] = 0;
+                            wszUnit++;
+                            WCHAR* wszCondition = wcschr(wszUnit, L'#');
+                            if (wszCondition)
                             {
-                                wszLocation[0] = 0;
-                                wszLocation++;
-                                WCHAR* pImage = wcschr(wszLocation, L'#');
-                                if (pImage)
+                                wszCondition[0] = 0;
+                                wszCondition++;
+                                WCHAR* wszLocation = wcschr(wszCondition, L'#');
+                                if (wszLocation)
                                 {
-                                    pImage[0] = 0;
-                                    pImage++;
-                                    WCHAR* pTerm = wcschr(pImage, L'"');
-                                    if (pTerm)
+                                    wszLocation[0] = 0;
+                                    wszLocation++;
+                                    WCHAR* pImage = wcschr(wszLocation, L'#');
+                                    if (pImage)
                                     {
-                                        pTerm[0] = 0;
-                                        if (_this->wszTemperature)
+                                        pImage[0] = 0;
+                                        pImage++;
+                                        WCHAR* pTerm = wcschr(pImage, L'"');
+                                        if (pTerm)
                                         {
-                                            free(_this->wszTemperature);
-                                        }
-                                        if (_this->wszUnit)
-                                        {
-                                            free(_this->wszUnit);
-                                        }
-                                        if (_this->wszCondition)
-                                        {
-                                            free(_this->wszCondition);
-                                        }
-                                        if (_this->pImage)
-                                        {
-                                            free(_this->pImage);
-                                        }
-                                        if (_this->wszLocation)
-                                        {
-                                            free(_this->wszLocation);
-                                        }
-                                        _this->cbTemperature = (wcslen(wszTemperature) + 1) * sizeof(WCHAR);
-                                        _this->wszTemperature = malloc(_this->cbTemperature);
-                                        _this->cbUnit = (wcslen(wszUnit) + 1) * sizeof(WCHAR);
-                                        _this->wszUnit = malloc(_this->cbUnit);
-                                        _this->cbCondition = (wcslen(wszCondition) + 1) * sizeof(WCHAR);
-                                        _this->wszCondition = malloc(_this->cbCondition);
-                                        _this->cbImage = wcslen(pImage) / 2;
-                                        _this->pImage = malloc(_this->cbImage);
-                                        _this->cbLocation = (wcslen(wszLocation) + 1) * sizeof(WCHAR);
-                                        _this->wszLocation = malloc(_this->cbLocation);
-                                        if (_this->wszTemperature && _this->wszUnit && _this->wszCondition && _this->pImage && _this->wszLocation)
-                                        {
-                                            wcscpy_s(_this->wszTemperature, _this->cbTemperature / 2, wszTemperature);
-                                            wcscpy_s(_this->wszUnit, _this->cbUnit / 2, wszUnit);
-                                            wcscpy_s(_this->wszCondition, _this->cbCondition / 2, wszCondition);
-                                            wcscpy_s(_this->wszLocation, _this->cbLocation / 2, wszLocation);
-
-                                            for (unsigned int i = 0; i < _this->cbImage * 2; i = i + 2)
+                                            pTerm[0] = 0;
+                                            if (_this->wszTemperature)
                                             {
-                                                WCHAR tmp[3];
-                                                tmp[0] = pImage[i];
-                                                tmp[1] = pImage[i + 1];
-                                                tmp[2] = 0;
-                                                _this->pImage[i / 2] = wcstol(tmp, NULL, 16);
+                                                free(_this->wszTemperature);
                                             }
+                                            if (_this->wszUnit)
+                                            {
+                                                free(_this->wszUnit);
+                                            }
+                                            if (_this->wszCondition)
+                                            {
+                                                free(_this->wszCondition);
+                                            }
+                                            if (_this->pImage)
+                                            {
+                                                free(_this->pImage);
+                                            }
+                                            if (_this->wszLocation)
+                                            {
+                                                free(_this->wszLocation);
+                                            }
+                                            _this->cbTemperature = (wcslen(wszTemperature) + 1) * sizeof(WCHAR);
+                                            _this->wszTemperature = malloc(_this->cbTemperature);
+                                            _this->cbUnit = (wcslen(wszUnit) + 1) * sizeof(WCHAR);
+                                            _this->wszUnit = malloc(_this->cbUnit);
+                                            _this->cbCondition = (wcslen(wszCondition) + 1) * sizeof(WCHAR);
+                                            _this->wszCondition = malloc(_this->cbCondition);
+                                            _this->cbImage = wcslen(pImage) / 2;
+                                            _this->pImage = malloc(_this->cbImage);
+                                            _this->cbLocation = (wcslen(wszLocation) + 1) * sizeof(WCHAR);
+                                            _this->wszLocation = malloc(_this->cbLocation);
+                                            if (_this->wszTemperature && _this->wszUnit && _this->wszCondition && _this->pImage && _this->wszLocation)
+                                            {
+                                                wcscpy_s(_this->wszTemperature, _this->cbTemperature / 2, wszTemperature);
+                                                wcscpy_s(_this->wszUnit, _this->cbUnit / 2, wszUnit);
+                                                wcscpy_s(_this->wszCondition, _this->cbCondition / 2, wszCondition);
+                                                wcscpy_s(_this->wszLocation, _this->cbLocation / 2, wszLocation);
 
-                                            bOk = TRUE;
+                                                for (unsigned int i = 0; i < _this->cbImage * 2; i = i + 2)
+                                                {
+                                                    WCHAR tmp[3];
+                                                    tmp[0] = pImage[i];
+                                                    tmp[1] = pImage[i + 1];
+                                                    tmp[2] = 0;
+                                                    _this->pImage[i / 2] = wcstol(tmp, NULL, 16);
+                                                }
+
+                                                bOk = TRUE;
+                                            }
+                                            int h = _wtoi(wszHeight);
+                                            int ch = MulDiv(h, EP_WEATHER_WIDTH, 367);
+                                            UINT dpi = GetDpiForWindow(_this->hWnd);
+                                            ch = MulDiv(ch, dpi, 96);
+                                            RECT rc;
+                                            GetWindowRect(_this->hWnd, &rc);
+                                            if (rc.bottom - rc.top != ch)
+                                            {
+                                                SetWindowPos(_this->hWnd, NULL, 0, 0, rc.right - rc.left, ch, SWP_NOMOVE | SWP_NOSENDCHANGING);
+                                                RECT bounds;
+                                                GetClientRect(_this->hWnd, &bounds);
+                                                _this->pCoreWebView2Controller->lpVtbl->put_Bounds(_this->pCoreWebView2Controller, bounds);
+                                                HWND hNotifyWnd = InterlockedAdd64(&_this->hNotifyWnd, 0);
+                                                if (hNotifyWnd)
+                                                {
+                                                    InvalidateRect(hNotifyWnd, NULL, TRUE);
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -515,8 +579,12 @@ LRESULT CALLBACK epw_Weather_WindowProc(_In_ HWND hWnd, _In_ UINT uMsg, _In_ WPA
     {
         RECT bounds;
         GetClientRect(_this->hWnd, &bounds);
-        _this->pCoreWebView2Controller->lpVtbl->put_Bounds(_this->pCoreWebView2Controller, bounds);
+        if (_this->pCoreWebView2Controller)
+        {
+            _this->pCoreWebView2Controller->lpVtbl->put_Bounds(_this->pCoreWebView2Controller, bounds);
+        }
         KillTimer(_this->hWnd, EP_WEATHER_TIMER_REBOUND_BROWSER);
+        return 0;
     }
     else if (uMsg == EP_WEATHER_WM_FETCH_DATA)
     {
@@ -655,7 +723,7 @@ DWORD WINAPI epw_Weather_MainThread(EPWeather* _this)
         goto cleanup;
     }
 
-    _this->hWnd = CreateWindowExW(0, _T(EPW_WEATHER_CLASSNAME), L"", WS_OVERLAPPED | WS_CAPTION, 100, 100, 690 * _this->dpi, 425 * _this->dpi, NULL, NULL, epw_hModule, _this); // 1030, 630
+    _this->hWnd = CreateWindowExW(0, _T(EPW_WEATHER_CLASSNAME), L"", WS_OVERLAPPED | WS_CAPTION, _this->rc.left, _this->rc.top, _this->rc.right - _this->rc.left, _this->rc.bottom - _this->rc.top, NULL, NULL, epw_hModule, _this); // 1030, 630
     if (!_this->hWnd)
     {
         _this->hrLastError = HRESULT_FROM_WIN32(GetLastError());
@@ -822,7 +890,7 @@ DWORD WINAPI epw_Weather_MainThread(EPWeather* _this)
     return 0;
 }
 
-HRESULT STDMETHODCALLTYPE epw_Weather_Initialize(EPWeather* _this, WCHAR wszName[MAX_PATH], BOOL bAllocConsole, LONG64 dwProvider, LONG64 cbx, LONG64 cby, LONG64 dwTemperatureUnit, LONG64 dwUpdateSchedule, double dpi)
+HRESULT STDMETHODCALLTYPE epw_Weather_Initialize(EPWeather* _this, WCHAR wszName[MAX_PATH], BOOL bAllocConsole, LONG64 dwProvider, LONG64 cbx, LONG64 cby, LONG64 dwTemperatureUnit, LONG64 dwUpdateSchedule, RECT rc, HWND* hWnd)
 {
     if (bAllocConsole)
     {
@@ -836,7 +904,11 @@ HRESULT STDMETHODCALLTYPE epw_Weather_Initialize(EPWeather* _this, WCHAR wszName
         );
     }
 
-    _this->dpi = dpi;
+    if (EPWeather_Instance)
+    {
+        return E_FAIL;
+    }
+    EPWeather_Instance = _this;
 
     if (dwUpdateSchedule < 0)
     {
@@ -887,6 +959,8 @@ HRESULT STDMETHODCALLTYPE epw_Weather_Initialize(EPWeather* _this, WCHAR wszName
         return HRESULT_FROM_WIN32(GetLastError());
     }
 
+    _this->rc = rc;
+
     _this->hMainThread = CreateThread(NULL, 0, epw_Weather_MainThread, _this, 0, NULL);
     if (!_this->hMainThread)
     {
@@ -898,6 +972,8 @@ HRESULT STDMETHODCALLTYPE epw_Weather_Initialize(EPWeather* _this, WCHAR wszName
     {
         return _this->hrLastError;
     }
+
+    *hWnd = _this->hWnd;
 
     return S_OK;
 }

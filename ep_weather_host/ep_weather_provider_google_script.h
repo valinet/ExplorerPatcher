@@ -51,13 +51,14 @@ function ep_weather_getData(imageBitmap, ch) {\n\
     }\n\
   }\n\
   let res = (\n\
+    document.getElementById(\"frame\").contentWindow.document.getElementsByClassName(\"ULSxyf\")[0].offsetHeight + \"#\" + \n\
     document.getElementById(\"frame\").contentWindow.document.getElementById(ch.includes('x') ? \"wob_ttm\" : \"wob_tm\").innerText + \"#\" + \n\
     Array.from(document.getElementById(\"frame\").contentWindow.document.getElementsByClassName('wob-unit')[0].getElementsByTagName('span')).filter(e => e.className == 'wob_t').filter(e => !e.style.display.toString().includes(\"none\"))[0].innerText + \"#\" + \n\
     document.getElementById(\"frame\").contentWindow.document.getElementById(\"wob_tci\").alt + \"#\" + \n\
     document.getElementById(\"frame\").contentWindow.document.getElementById(\"wob_loc\").innerText + \"#\" + \n\
     ep_weather_toHexString(result)\n\
   );\n\
-  console.log(res);\n\
+  //console.log(res);\n\
   document.body.style.backgroundColor='transparent';\n\
   document.getElementById(\"frame\").contentWindow.document.body.style.backgroundColor='transparent';\n\
   return res;\n\
@@ -84,6 +85,9 @@ ep_weather_part1();\n\
 
 LPCWSTR ep_weather_provider_google_script2 = L"\
 function ep_weather_part2() {\n\
+let h = document.getElementById(\"frame\").contentWindow.document.getElementsByClassName(\"ULSxyf\")[0].offsetHeight;\n\
+document.getElementsByClassName(\"google-weather-place\")[0].style.height = h + 'px';\n\
+document.getElementsByClassName(\"google-weather-crop\")[0].style.height = h + 'px';\n\
 document.getElementById(\"frame\").contentWindow.document.getElementsByClassName(\"KFFQ0c\")[0].style.display = 'none';\n\
 document.getElementById(\"frame\").contentWindow.document.getElementById(\"search\").scrollIntoView(true);\n\
 return ep_result;\n\
