@@ -11,7 +11,7 @@ import "unknwn.idl";
 {
 	HRESULT About([in] HWND hWnd);
 
-	HRESULT Initialize([in] WCHAR wszName[260], [in] BOOL bAllocConsole, [in] LONG64 dwProvider, [in] LONG64 cbx, [in] LONG64 cby, [in] LONG64 dwTemperatureUnit, [in] LONG64 dwUpdateSchedule, [in] RECT rc, [out] HWND* hWnd);
+	HRESULT Initialize([in] WCHAR wszName[260], [in] BOOL bAllocConsole, [in] LONG64 dwProvider, [in] LONG64 cbx, [in] LONG64 cby, [in] LONG64 dwTemperatureUnit, [in] LONG64 dwUpdateSchedule, [in] RECT rc, [in] LONG64 dwDarkMode, [in] LONG64 dwGeolocationMode, [out] HWND* hWnd);
 
 	HRESULT Show();
 
@@ -58,4 +58,8 @@ import "unknwn.idl";
 	HRESULT SetIconSize([in] LONG64 cbx, [in] LONG64 cby);
 
 	HRESULT GetIconSize([out] LONG64* cbx, [out] LONG64* cby);
+
+	HRESULT SetDarkMode([in] LONG64 dwDarkMode, [in] LONG64 bRefresh);
+
+	HRESULT SetGeolocationMode([in] LONG64 dwGeolocationMode);
 };

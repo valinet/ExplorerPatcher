@@ -375,13 +375,22 @@
 ;x 1 Fahrenheit
 "WeatherTemperatureUnit"=dword:00000000
 ;w Location
-;Search City or Zip Code; the program looks up "weather in /* what you typed */" on Google. Leave blank for the default value (IP-based current location).
+;Search City or Zip Code; the program looks up "weather in /* what you typed */" on Google. Leave blank for the default value (current location).
 ;Current location (default)
 "WeatherLocation"=""
+;;;c 2 Location accuracy
+;;;x 0 Generic (based on the IP address) (default)
+;;;x 1 Precise (geolocation)
+;;"WeatherLocationType"=dword:00000000
 ;w Language
 ;Type the short code for the language you'd like the weather data to be displayed in. For example, try "en", "ro", "de", "fr" etc. Leave blank for the default value (English).
 ;en (default)
 "WeatherLanguage"=""
+;c 3 Color scheme
+;x 0 Follow system setting (default)
+;x 1 Light
+;x 2 Dark
+"WeatherTheme"=dword:00000000
 ;q
 ;t Weather data courtesy of Google, and weather.com.
 ;y Learn more about the Weather taskbar widget 🡕

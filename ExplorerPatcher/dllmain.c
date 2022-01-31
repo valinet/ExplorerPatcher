@@ -108,6 +108,8 @@ DWORD dwWeatherViewMode = EP_WEATHER_VIEW_ICONTEXT;
 DWORD dwWeatherTemperatureUnit = EP_WEATHER_TUNIT_CELSIUS;
 DWORD dwWeatherUpdateSchedule = EP_WEATHER_UPDATE_NORMAL;
 DWORD bWeatherFixedSize = FALSE;
+DWORD dwWeatherTheme = 0;
+DWORD dwWeatherGeolocationMode = 0;
 WCHAR* wszWeatherTerm = NULL;
 WCHAR* wszWeatherLanguage = NULL;
 WCHAR* wszEPWeatherKillswitch = NULL;
@@ -3733,9 +3735,9 @@ SIZE WINAPI PeopleButton_CalculateMinimumSizeHook(void* _this, SIZE* pSz)
                     RECT rcWeatherFlyoutWindow;
                     rcWeatherFlyoutWindow.left = mi.rcWork.left;
                     rcWeatherFlyoutWindow.top = mi.rcWork.top;
-                    rcWeatherFlyoutWindow.right = rcWeatherFlyoutWindow.left + MulDiv(EP_WEATHER_HEIGHT, dpiX, 96);
-                    rcWeatherFlyoutWindow.bottom = rcWeatherFlyoutWindow.top + MulDiv(EP_WEATHER_WIDTH, dpiX, 96);
-                    if (FAILED(epw->lpVtbl->Initialize(epw, wszEPWeatherKillswitch, bAllocConsole, EP_WEATHER_PROVIDER_GOOGLE, rt, rt, dwWeatherTemperatureUnit, dwWeatherUpdateSchedule * 1000, rcWeatherFlyoutWindow, &hWndWeatherFlyout)))
+                    rcWeatherFlyoutWindow.right = rcWeatherFlyoutWindow.left + MulDiv(EP_WEATHER_WIDTH, dpiX, 96);
+                    rcWeatherFlyoutWindow.bottom = rcWeatherFlyoutWindow.top + MulDiv(EP_WEATHER_HEIGHT, dpiX, 96);
+                    if (FAILED(epw->lpVtbl->Initialize(epw, wszEPWeatherKillswitch, bAllocConsole, EP_WEATHER_PROVIDER_GOOGLE, rt, rt, dwWeatherTemperatureUnit, dwWeatherUpdateSchedule * 1000, rcWeatherFlyoutWindow, dwWeatherTheme, dwWeatherGeolocationMode, &hWndWeatherFlyout)))
                     {
                         epw->lpVtbl->Release(epw);
                     }
@@ -5541,6 +5543,42 @@ void WINAPI LoadSettings(LPARAM lParam)
         if (bWeatherFixedSize != bOldWeatherFixedSize && epw)
         {
             dwRefreshUIMask |= REFRESHUI_PEOPLE;
+        }
+
+        DWORD dwOldWeatherTheme = dwWeatherTheme;
+        dwSize = sizeof(DWORD);
+        RegQueryValueExW(
+            hKey,
+            TEXT("WeatherTheme"),
+            0,
+            NULL,
+            &dwWeatherTheme,
+            &dwSize
+        );
+        if (dwWeatherTheme != dwOldWeatherTheme && PeopleButton_LastHWND)
+        {
+            if (epw)
+            {
+                epw->lpVtbl->SetDarkMode(epw, (LONG64)dwWeatherTheme, TRUE);
+            }
+        }
+
+        DWORD dwOldWeatherGeolocationMode = dwWeatherGeolocationMode;
+        dwSize = sizeof(DWORD);
+        RegQueryValueExW(
+            hKey,
+            TEXT("WeatherLocationType"),
+            0,
+            NULL,
+            &dwWeatherGeolocationMode,
+            &dwSize
+        );
+        if (dwWeatherGeolocationMode != dwOldWeatherGeolocationMode && PeopleButton_LastHWND)
+        {
+            if (epw)
+            {
+                epw->lpVtbl->SetGeolocationMode(epw, (LONG64)dwWeatherGeolocationMode);
+            }
         }
 #endif
 

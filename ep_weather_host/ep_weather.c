@@ -6,6 +6,12 @@ HMODULE epw_hModule;
 DWORD epw_OutstandingObjects = 0;
 DWORD epw_LockCount = 0;
 
+void(*RefreshImmersiveColorPolicyState)();
+void(*SetPreferredAppMode)(INT64 bAllowDark);
+void(*AllowDarkModeForWindow)(HWND hWnd, INT64 bAllowDark);
+BOOL(*ShouldAppsUseDarkMode)();
+BOOL(*ShouldSystemUseDarkMode)();
+
 #ifdef _WIN64
 #pragma comment(linker, "/export:DllRegisterServer=_DllRegisterServer")
 #else

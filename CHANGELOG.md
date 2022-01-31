@@ -16,6 +16,7 @@ Tested on OS build 22000.434.
 * Possibility to disable the icon in the weather widget (.1)
 * The weather widget defaults to showing in the preferred language set in Windows, instead of English (#734) (.2)
 * The weather widget shows an error screen when an error happens (like, using an incorrect location, or the network not working etc) (.3)
+* The weather widget supports dark mode (thanks @krlvm) (#755) (.4)
 
 #### Fixes
 

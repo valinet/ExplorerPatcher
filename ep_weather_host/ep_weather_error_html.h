@@ -7,6 +7,7 @@ LPCWSTR ep_weather_error_html = L"\
 <html lang=\"en\" xmlns=\"http://www.w3.org/1999/xhtml\">\n\
 <head>\n\
 <meta charset=\"utf-8\" />\n\
+<meta name=\"color-scheme\" content=\"light dark\">\n\
 <title>Weather</title>\n\
 <style>\n\
 html {\n\
@@ -23,7 +24,7 @@ body {\n\
 <body><center>\n\
 <h1>&#128240;</h1>\n\
 <h2>Unable to load weather information</h2>\n\
-<p>Check to make sure that the location you have entered is correct.<br/>\n\
+<p>Make sure that the location you have entered is correct.<br/>\n\
 Verify that you are connected to the Internet.</p>\n\
 </center></body>\n\
 </html>";
