@@ -96,6 +96,13 @@ ep_weather_part1();\n\
 ";
 
 LPCWSTR ep_weather_provider_google_script2 = L"\
+function scrolldisable() {\n\
+TopScroll = window.pageYOffset || document.documentElement.scrollTop;\n\
+LeftScroll = window.pageXOffset || document.documentElement.scrollLeft;\n\
+window.onscroll = function() {\n\
+window.scrollTo(LeftScroll, TopScroll);\n\
+        };\n\
+}\n\
 function ep_weather_part2() {\n\
 let h = document.getElementsByClassName(\"ULSxyf\")[0].offsetHeight;\n\
 ////document.getElementsByClassName(\"google-weather-place\")[0].style.height = h + 'px';\n\
@@ -106,6 +113,7 @@ if (document.getElementsByClassName(\"QS5gu sy4vM\").length > 1) { document.getE
 //document.getElementById(\"search\").scrollIntoView(true);\n\
 return ep_result;\n\
 }\n\
+scrolldisable();\n\
 ep_weather_part2();\n\
 ";
 #endif
