@@ -636,7 +636,7 @@ LRESULT CALLBACK epw_Weather_WindowProc(_In_ HWND hWnd, _In_ UINT uMsg, _In_ WPA
         }
         return 0;
     }
-    else if (uMsg == WM_TIMER && wParam == EP_WEATHER_TIMER_REBOUND_BROWSER)
+    else if (wParam == EP_WEATHER_WM_REBOUND_BROWSER)
     {
         LPWSTR uri = NULL;
         if (_this->pCoreWebView2)
@@ -645,7 +645,6 @@ LRESULT CALLBACK epw_Weather_WindowProc(_In_ HWND hWnd, _In_ UINT uMsg, _In_ WPA
         }
         _ep_weather_ReboundBrowser(_this, !wcscmp(L"about:blank", uri ? uri : L""));
         CoTaskMemFree(uri);
-        KillTimer(_this->hWnd, EP_WEATHER_TIMER_REBOUND_BROWSER);
         return 0;
     }
     else if (uMsg == EP_WEATHER_WM_FETCH_DATA)
@@ -1147,7 +1146,7 @@ HRESULT STDMETHODCALLTYPE epw_Weather_Initialize(EPWeather* _this, WCHAR wszName
 
 HRESULT STDMETHODCALLTYPE epw_Weather_Show(EPWeather* _this)
 {
-    SetTimer(_this->hWnd, EP_WEATHER_TIMER_REBOUND_BROWSER, EP_WEATHER_TIMER_REBOUND_BROWSER_DELAY, NULL);
+    PostMessageW(_this->hWnd, EP_WEATHER_WM_REBOUND_BROWSER, 0, 0);
     ShowWindow(_this->hWnd, SW_SHOW);
     _this->pTaskList->lpVtbl->DeleteTab(_this->pTaskList, _this->hWnd);
     return S_OK;
