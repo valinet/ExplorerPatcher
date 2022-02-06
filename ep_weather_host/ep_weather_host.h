@@ -68,7 +68,6 @@ typedef interface EPWeather
     ICoreWebView2* pCoreWebView2;
     EventRegistrationToken* tkOnNavigationCompleted;
     EventRegistrationToken* tkOnPermissionRequested;
-    LPCWSTR wszScriptData;
     RECT rc;
 
     HANDLE hSignalExitMainThread;

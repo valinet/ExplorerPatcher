@@ -141,13 +141,13 @@ HRESULT STDMETHODCALLTYPE _epw_Weather_NavigateToProvider(EPWeather* _this)
     else if (dwProvider == EP_WEATHER_PROVIDER_GOOGLE)
     {
         //hr = _this->pCoreWebView2->lpVtbl->Navigate(_this->pCoreWebView2, L"https://google.com");
-        _this->wszScriptData = malloc(sizeof(WCHAR) * EP_WEATHER_PROVIDER_GOOGLE_HTML_LEN);
-        if (_this->wszScriptData)
+        LPWSTR wszScriptData = malloc(sizeof(WCHAR) * EP_WEATHER_PROVIDER_GOOGLE_HTML_LEN);
+        if (wszScriptData)
         {
-            swprintf_s(_this->wszScriptData, EP_WEATHER_PROVIDER_GOOGLE_HTML_LEN, L"https://www.google.com/search?hl=%s&q=weather%s%s", _this->wszLanguage, _this->wszTerm[0] ? L" " : L"", _this->wszTerm);
+            swprintf_s(wszScriptData, EP_WEATHER_PROVIDER_GOOGLE_HTML_LEN, L"https://www.google.com/search?hl=%s&q=weather%s%s", _this->wszLanguage, _this->wszTerm[0] ? L" " : L"", _this->wszTerm);
             if (_this->pCoreWebView2)
             {
-                hr = _this->pCoreWebView2->lpVtbl->Navigate(_this->pCoreWebView2, _this->wszScriptData);
+                hr = _this->pCoreWebView2->lpVtbl->Navigate(_this->pCoreWebView2, wszScriptData);
             }
             else
             {
@@ -156,8 +156,8 @@ HRESULT STDMETHODCALLTYPE _epw_Weather_NavigateToProvider(EPWeather* _this)
             if (FAILED(hr))
             {
                 InterlockedExchange64(&_this->bBrowserBusy, FALSE);
-                free(_this->wszScriptData);
             }
+            free(wszScriptData);
         }
         else
         {
@@ -176,30 +176,30 @@ HRESULT STDMETHODCALLTYPE _epw_Weather_ExecuteDataScript(EPWeather* _this)
     }
     else if (dwProvider == EP_WEATHER_PROVIDER_GOOGLE)
     {
-        _this->wszScriptData = malloc(sizeof(WCHAR) * EP_WEATHER_PROVIDER_GOOGLE_SCRIPT_LEN);
-        if (_this->wszScriptData)
+        LPWSTR wszScriptData = malloc(sizeof(WCHAR) * EP_WEATHER_PROVIDER_GOOGLE_SCRIPT_LEN);
+        if (wszScriptData)
         {
             LONG64 dwTemperatureUnit = InterlockedAdd64(&_this->dwTemperatureUnit, 0);
             LONG64 cbx = InterlockedAdd64(&_this->cbx, 0);
-            swprintf_s(_this->wszScriptData, EP_WEATHER_PROVIDER_GOOGLE_SCRIPT_LEN, ep_weather_provider_google_script, dwTemperatureUnit == EP_WEATHER_TUNIT_FAHRENHEIT ? L'F' : L'C', cbx, cbx);
+            swprintf_s(wszScriptData, EP_WEATHER_PROVIDER_GOOGLE_SCRIPT_LEN, ep_weather_provider_google_script, dwTemperatureUnit == EP_WEATHER_TUNIT_FAHRENHEIT ? L'F' : L'C', cbx, cbx);
             //wprintf(L"%s\n", _this->wszScriptData);
             if (_this->pCoreWebView2)
             {
-                hr = _this->pCoreWebView2->lpVtbl->ExecuteScript(_this->pCoreWebView2, _this->wszScriptData, &EPWeather_ICoreWebView2ExecuteScriptCompletedHandler);
+                hr = _this->pCoreWebView2->lpVtbl->ExecuteScript(_this->pCoreWebView2, wszScriptData, &EPWeather_ICoreWebView2ExecuteScriptCompletedHandler);
             }
             else
             {
-                return E_FAIL;
+                hr = E_FAIL;
             }
             if (FAILED(hr))
             {
                 InterlockedExchange64(&_this->bBrowserBusy, FALSE);
-                free(_this->wszScriptData);
             }
+            free(wszScriptData);
         }
         else
         {
-hr = E_OUTOFMEMORY;
+            hr = E_OUTOFMEMORY;
         }
     }
     return hr;
@@ -310,10 +310,6 @@ HRESULT STDMETHODCALLTYPE ICoreWebView2_CallDevToolsProtocolMethodCompleted(ICor
 HRESULT STDMETHODCALLTYPE ICoreWebView2_NavigationCompleted(ICoreWebView2NavigationCompletedEventHandler* _this2, ICoreWebView2* pCoreWebView2, ICoreWebView2NavigationCompletedEventArgs* pCoreWebView2NavigationCompletedEventArgs)
 {
     EPWeather* _this = EPWeather_Instance; // GetWindowLongPtrW(FindWindowW(_T(EPW_WEATHER_CLASSNAME), NULL), GWLP_USERDATA);
-    if (_this->wszScriptData)
-    {
-        free(_this->wszScriptData);
-    }
     BOOL bIsSuccess = FALSE;
     pCoreWebView2NavigationCompletedEventArgs->lpVtbl->get_IsSuccess(pCoreWebView2NavigationCompletedEventArgs, &bIsSuccess);
     if (bIsSuccess)
@@ -361,8 +357,6 @@ HRESULT STDMETHODCALLTYPE ICoreWebView2_ExecuteScriptCompleted(ICoreWebView2Exec
             }
             else if (!_wcsicmp(pResultObjectAsJson, L"\"run_part_1\""))
             {
-                free(_this->wszScriptData);
-                _this->wszScriptData = NULL;
                 printf("consent granted\n");
                 PostMessageW(EPWeather_Instance->hWnd, EP_WEATHER_WM_FETCH_DATA, 0, 0);
                 SetTimer(EPWeather_Instance->hWnd, EP_WEATHER_TIMER_REQUEST_REFRESH, EP_WEATHER_TIMER_REQUEST_REFRESH_DELAY, NULL);
@@ -370,9 +364,6 @@ HRESULT STDMETHODCALLTYPE ICoreWebView2_ExecuteScriptCompleted(ICoreWebView2Exec
             }
             else
             {
-                free(_this->wszScriptData);
-                _this->wszScriptData = NULL;
-
                 //wprintf(L"%s\n", pResultObjectAsJson);
 
                 epw_Weather_LockData(_this);
