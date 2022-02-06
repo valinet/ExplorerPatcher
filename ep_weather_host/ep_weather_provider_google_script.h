@@ -103,7 +103,7 @@ let h = document.getElementsByClassName(\"ULSxyf\")[0].offsetHeight;\n\
 //if (1) for (let j = 0; j < document.styleSheets.length; j++) changeCSSStyle(j, '.wob_ds', 'background-color', '#303134');\n\
 document.getElementsByClassName(\"KFFQ0c\")[0].style.display = 'none';\n\
 if (document.getElementsByClassName(\"QS5gu sy4vM\").length > 1) { document.getElementsByClassName(\"QS5gu sy4vM\")[1].click(); return \"run_part_1\"; }\n\
-document.getElementById(\"search\").scrollIntoView(true);\n\
+//document.getElementById(\"search\").scrollIntoView(true);\n\
 return ep_result;\n\
 }\n\
 ep_weather_part2();\n\

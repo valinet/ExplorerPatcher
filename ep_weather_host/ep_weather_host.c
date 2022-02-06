@@ -217,8 +217,8 @@ HRESULT STDMETHODCALLTYPE _ep_weather_ReboundBrowser(EPWeather* _this, LONG64 dw
     {
         bounds.left = 0 - MulDiv(167, dpi, 96);
         bounds.top = 0 - MulDiv(178, dpi, 96);
-        bounds.right = 5560;
-        bounds.bottom = 15600;
+        bounds.right = MulDiv(1333, dpi, 96);// 5560;
+        bounds.bottom = MulDiv(600, dpi, 96);// 15600;
     }
     if (_this->pCoreWebView2Controller)
     {
