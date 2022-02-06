@@ -30,6 +30,7 @@ Tested on OS build 22000.434.
 * Fixed a bug that prevented correct registration of the weather flyout on certain systems (26b6646) (.5)
 * Fixed a bug that made the weather flyout open with noticeable delay under certain circumstances (.5)
 * Fixed a bug that prevented correct operation on builds without built-in symbols (#783) (.5)
+* Fixed several race conditions that could lead to incorrect operation of the weather widget (for example, `explorer.exe` crashing when disabling or enabling the widget) (.6)
 
 ## 22000.469.41
 
