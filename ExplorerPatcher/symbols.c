@@ -241,7 +241,7 @@ DWORD DownloadSymbols(DownloadSymbolsParams* params)
         TWINUI_PCSHELL_SB_CNT
     ))
     {
-        printf("[Symbols] Hooking Win+C is not available in this build.\n");
+        //printf("[Symbols] Hooking Win+C is not available in this build.\n");
         DWORD dwZero = 0;
         RegSetValueExW(
             hKey,
