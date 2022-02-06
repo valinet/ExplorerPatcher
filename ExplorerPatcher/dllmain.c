@@ -35,6 +35,7 @@
 #ifdef _WIN64
 #include "../ep_weather_host/ep_weather_host_h.h"
 IEPWeather* epw = NULL;
+SRWLOCK lock_epw = { .Ptr = SRWLOCK_INIT };
 #endif
 
 #define WINX_ADJUST_X 5
@@ -3677,6 +3678,7 @@ SIZE (*PeopleButton_CalculateMinimumSizeFunc)(void*, SIZE*);
 SIZE WINAPI PeopleButton_CalculateMinimumSizeHook(void* _this, SIZE* pSz)
 {
     SIZE ret = PeopleButton_CalculateMinimumSizeFunc(_this, pSz);
+    AcquireSRWLockShared(&lock_epw);
     if (epw)
     {
         if (bWeatherFixedSize)
@@ -3722,6 +3724,8 @@ SIZE WINAPI PeopleButton_CalculateMinimumSizeHook(void* _this, SIZE* pSz)
             int rt = MulDiv(48, pSz->cy, 60);
             if (!bIsInitialized)
             {
+                ReleaseSRWLockShared(&lock_epw);
+                AcquireSRWLockExclusive(&lock_epw);
                 epw->lpVtbl->SetTerm(epw, MAX_PATH * sizeof(WCHAR), wszWeatherTerm);
                 epw->lpVtbl->SetLanguage(epw, MAX_PATH * sizeof(WCHAR), wszWeatherLanguage);
                 UINT dpiX = 0, dpiY = 0;
@@ -3740,8 +3744,12 @@ SIZE WINAPI PeopleButton_CalculateMinimumSizeHook(void* _this, SIZE* pSz)
                     if (FAILED(epw->lpVtbl->Initialize(epw, wszEPWeatherKillswitch, bAllocConsole, EP_WEATHER_PROVIDER_GOOGLE, rt, rt, dwWeatherTemperatureUnit, dwWeatherUpdateSchedule * 1000, rcWeatherFlyoutWindow, dwWeatherTheme, dwWeatherGeolocationMode, &hWndWeatherFlyout)))
                     {
                         epw->lpVtbl->Release(epw);
+                        epw = NULL;
+                        prev_total_h = 0;
                     }
                 }
+                ReleaseSRWLockExclusive(&lock_epw);
+                AcquireSRWLockShared(&lock_epw);
             }
             else
             {
@@ -3752,17 +3760,24 @@ SIZE WINAPI PeopleButton_CalculateMinimumSizeHook(void* _this, SIZE* pSz)
         {
             if (hr == 0x800706ba) // RPC server is unavailable
             {
+                ReleaseSRWLockShared(&lock_epw);
+                AcquireSRWLockExclusive(&lock_epw);
                 epw = NULL;
+                prev_total_h = 0;
                 InvalidateRect(PeopleButton_LastHWND, NULL, TRUE);
+                ReleaseSRWLockExclusive(&lock_epw);
+                AcquireSRWLockShared(&lock_epw);
             }
         }
     }
+    ReleaseSRWLockShared(&lock_epw);
     return ret;
 }
 
 int PeopleBand_MulDivHook(int nNumber, int nNumerator, int nDenominator)
 {
     //printf("[MulDivHook] %d %d %d\n", nNumber, nNumerator, nDenominator);
+    AcquireSRWLockShared(&lock_epw);
     if (epw)
     {
         if (bWeatherFixedSize)
@@ -3784,21 +3799,25 @@ int PeopleBand_MulDivHook(int nNumber, int nNumerator, int nDenominator)
                 mul = 1;
                 break;
             }
+            ReleaseSRWLockShared(&lock_epw);
             return MulDiv(nNumber * mul, nNumerator, nDenominator);
         }
         else
         {
             if (prev_total_h)
             {
+                ReleaseSRWLockShared(&lock_epw);
                 return prev_total_h;
             }
             else
             {
                 prev_total_h = MulDiv(nNumber, nNumerator, nDenominator);
+                ReleaseSRWLockShared(&lock_epw);
                 return prev_total_h;
             }
         }
     }
+    ReleaseSRWLockShared(&lock_epw);
     return MulDiv(nNumber, nNumerator, nDenominator);
 }
 
@@ -3837,6 +3856,7 @@ __int64 __fastcall PeopleBand_DrawTextWithGlowHook(
     int(__stdcall* a11)(HDC, unsigned __int16*, int, struct tagRECT*, unsigned int, __int64),
     __int64 a12)
 {
+    AcquireSRWLockShared(&lock_epw);
     if (a5 == 0x21 && epw)
     {
         BOOL bUseCachedData = InSendMessage();
@@ -4208,17 +4228,24 @@ __int64 __fastcall PeopleBand_DrawTextWithGlowHook(
             //printf("444444444444 0x%x\n", hr);
             if (hr == 0x800706ba) // RPC server is unavailable
             {
+                ReleaseSRWLockShared(&lock_epw);
+                AcquireSRWLockExclusive(&lock_epw);
                 epw = NULL;
-                InvalidateRect(PeopleButton_LastHWND, NULL, TRUE);
+                prev_total_h = 0;
+                InvalidateRect(PeopleButton_LastHWND, NULL, TRUE); 
+                ReleaseSRWLockExclusive(&lock_epw);
+                AcquireSRWLockShared(&lock_epw);
             }
         }
 
         //printf("hr %x\n", hr);
 
+        ReleaseSRWLockShared(&lock_epw);
         return S_OK;
     }
     else
     {
+        ReleaseSRWLockShared(&lock_epw);
         return PeopleBand_DrawTextWithGlowFunc(hdc, a2, a3, a4, a5, a6, a7, dy, a9, a10, a11, a12);
     }
 }
@@ -4226,6 +4253,7 @@ __int64 __fastcall PeopleBand_DrawTextWithGlowHook(
 void(*PeopleButton_ShowTooltipFunc)(__int64 a1, unsigned __int8 bShow) = 0;
 void WINAPI PeopleButton_ShowTooltipHook(__int64 _this, unsigned __int8 bShow)
 {
+    AcquireSRWLockShared(&lock_epw);
     if (epw)
     {
         if (bShow)
@@ -4271,6 +4299,7 @@ void WINAPI PeopleButton_ShowTooltipHook(__int64 _this, unsigned __int8 bShow)
             SendMessageW((HWND) * ((INT64*)_this + 10), TTM_UPDATETIPTEXTW, 0, (LPARAM)&ti);
         }
     }
+    ReleaseSRWLockShared(&lock_epw);
     if (PeopleButton_ShowTooltipFunc)
     {
         return PeopleButton_ShowTooltipFunc(_this, bShow);
@@ -4281,6 +4310,7 @@ void WINAPI PeopleButton_ShowTooltipHook(__int64 _this, unsigned __int8 bShow)
 __int64 (*PeopleButton_OnClickFunc)(__int64 a1, __int64 a2) = 0;
 __int64 PeopleButton_OnClickHook(__int64 a1, __int64 a2)
 {
+    AcquireSRWLockShared(&lock_epw);
     if (epw)
     {
         if (!hWndWeatherFlyout)
@@ -4310,10 +4340,12 @@ __int64 PeopleButton_OnClickHook(__int64 a1, __int64 a2)
                 SwitchToThisWindow(hWndWeatherFlyout, TRUE);
             }
         }
+        ReleaseSRWLockShared(&lock_epw);
         return 0;
     }
     else
     {
+        ReleaseSRWLockShared(&lock_epw);
         if (PeopleButton_OnClickFunc)
         {
             return PeopleButton_OnClickFunc(a1, a2);
@@ -4334,12 +4366,15 @@ INT64 PeopleButton_SubclassProc(
     if (uMsg == WM_NCDESTROY)
     {
         RemoveWindowSubclass(hWnd, PeopleButton_SubclassProc, PeopleButton_SubclassProc);
+        AcquireSRWLockExclusive(&lock_epw);
         if (epw)
         {
             epw->lpVtbl->Release(epw);
             epw = NULL;
             PeopleButton_LastHWND = NULL;
+            prev_total_h = 0;
         }
+        ReleaseSRWLockExclusive(&lock_epw);
     }
     return DefSubclassProc(hWnd, uMsg, wParam, lParam);
 }
@@ -4410,6 +4445,7 @@ BOOL explorer_SetChildWindowNoActivateHook(HWND hWnd)
                 PeopleButton_LastHWND = hWnd;
                 SetWindowSubclass(hWnd, PeopleButton_SubclassProc, PeopleButton_SubclassProc, 0);
 
+                AcquireSRWLockExclusive(&lock_epw);
                 if (!epw)
                 {
                     if (SUCCEEDED(CoCreateInstance(&CLSID_EPWeather, NULL, CLSCTX_LOCAL_SERVER, &IID_IEPWeather, &epw)) && epw)
@@ -4426,6 +4462,7 @@ BOOL explorer_SetChildWindowNoActivateHook(HWND hWnd)
                         SetWindowTextW(hWnd, wszBuffer);
                     }
                 }
+                ReleaseSRWLockExclusive(&lock_epw);
             }
         }
     }
@@ -5394,6 +5431,8 @@ void WINAPI LoadSettings(LPARAM lParam)
         );
 
 #ifdef _WIN64
+        AcquireSRWLockShared(&lock_epw);
+
         DWORD dwOldWeatherTemperatureUnit = dwWeatherTemperatureUnit;
         dwSize = sizeof(DWORD);
         RegQueryValueExW(
@@ -5580,6 +5619,8 @@ void WINAPI LoadSettings(LPARAM lParam)
                 epw->lpVtbl->SetGeolocationMode(epw, (LONG64)dwWeatherGeolocationMode);
             }
         }
+
+        ReleaseSRWLockShared(&lock_epw);
 #endif
 
         dwTemp = TASKBARGLOMLEVEL_DEFAULT;
