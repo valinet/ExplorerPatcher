@@ -537,6 +537,8 @@ ULONG STDMETHODCALLTYPE epw_Weather_Release(EPWeather* _this)
         {
         }
 
+        TerminateProcess(GetCurrentProcess(), 0);
+
         return(0);
     }
     return value;
@@ -963,6 +965,7 @@ DWORD WINAPI epw_Weather_MainThread(EPWeather* _this)
         }
         else if (dwRes == WAIT_ABANDONED_0 + 1 || dwRes == WAIT_OBJECT_0 + 1)
         {
+            if (dwRes == WAIT_OBJECT_0 + 1) ReleaseMutex(_this->hSignalKillSwitch);
             CloseHandle(_this->hSignalKillSwitch);
             TerminateProcess(GetCurrentProcess(), 0);
         }
