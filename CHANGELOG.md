@@ -27,6 +27,9 @@ Tested on OS build 22000.434.
 * Fixed a bug that could corrupt registry entries of type REG_SZ set via the Properties UI (#734) (.2)
 * Fixed a bug that reset the setting when pressing "Cancel" in an input box in the Properties UI (#734) (.2)
 * The weather widget adjusts its size vertically to accommodate the entire contents (#734) (.3)
+* Fixed a bug that prevented correct registration of the weather flyout on certain systems (26b6646) (.5)
+* Fixed a bug that made the weather flyout open with noticeable delay under certain circumstances (.5)
+* Fixed a bug that prevented correct operation on builds without built-in symbols (#783) (.5)
 
 ## 22000.469.41
 
