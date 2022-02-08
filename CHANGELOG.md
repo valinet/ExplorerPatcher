@@ -9,7 +9,8 @@ Tested on OS build 22000.434.
 #### New features
 
 * Implemented Weather widget for the classic taskbar, similar to what is available in the more recent updates to Windows 10. Read more about it [here](https://github.com/valinet/ExplorerPatcher/wiki/Weather).
-* Implemented 2 features that help in replacing the functionality of the quick launch toolbar with pinned taskbar items. Read more about it [here](https://github.com/valinet/ExplorerPatcher/discussions/819).
+* Implemented 2 features that help in replacing the functionality of the quick launch toolbar with pinned taskbar items. Read more about it [here](https://github.com/valinet/ExplorerPatcher/discussions/819) (.7).
+* Implemented option to have Start open on a specific monitor (#821) (.8)
 
 #### Feature enhancements
 
@@ -18,6 +19,7 @@ Tested on OS build 22000.434.
 * The weather widget defaults to showing in the preferred language set in Windows, instead of English (#734) (.2)
 * The weather widget shows an error screen when an error happens (like, using an incorrect location, or the network not working etc) (.3)
 * The weather widget supports dark mode (thanks @krlvm) (#755) (.4)
+* The weather widget supports setting window corner preference (rounded/not rounded) (.8)
 
 #### Fixes
 
