@@ -111,6 +111,7 @@ DWORD dwWeatherUpdateSchedule = EP_WEATHER_UPDATE_NORMAL;
 DWORD bWeatherFixedSize = FALSE;
 DWORD dwWeatherTheme = 0;
 DWORD dwWeatherGeolocationMode = 0;
+DWORD dwWeatherWindowCornerPreference = DWMWCP_ROUND;
 WCHAR* wszWeatherTerm = NULL;
 WCHAR* wszWeatherLanguage = NULL;
 WCHAR* wszEPWeatherKillswitch = NULL;
@@ -3955,6 +3956,7 @@ SIZE WINAPI PeopleButton_CalculateMinimumSizeHook(void* _this, SIZE* pSz)
                         epw = NULL;
                         prev_total_h = 0;
                     }
+                    epw->lpVtbl->SetWindowCornerPreference(epw, dwWeatherWindowCornerPreference);
                 }
                 ReleaseSRWLockExclusive(&lock_epw);
                 AcquireSRWLockShared(&lock_epw);
@@ -5864,6 +5866,24 @@ void WINAPI LoadSettings(LPARAM lParam)
             if (epw)
             {
                 epw->lpVtbl->SetGeolocationMode(epw, (LONG64)dwWeatherGeolocationMode);
+            }
+        }
+
+        DWORD dwOldWeatherWindowCornerPreference = dwWeatherWindowCornerPreference;
+        dwSize = sizeof(DWORD);
+        RegQueryValueExW(
+            hKey,
+            TEXT("WeatherWindowCornerPreference"),
+            0,
+            NULL,
+            &dwWeatherWindowCornerPreference,
+            &dwSize
+        );
+        if (dwWeatherWindowCornerPreference != dwOldWeatherWindowCornerPreference && PeopleButton_LastHWND)
+        {
+            if (epw)
+            {
+                epw->lpVtbl->SetWindowCornerPreference(epw, (LONG64)dwWeatherWindowCornerPreference);
             }
         }
 

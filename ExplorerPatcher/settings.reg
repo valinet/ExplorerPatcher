@@ -404,6 +404,11 @@
 ;x 1 Light
 ;x 2 Dark
 "WeatherTheme"=dword:00000000
+;c 3 Corner preference
+;x 2 Rounded (default)
+;x 3 Small rounded
+;x 1 Not rounded
+"WeatherWindowCornerPreference"=dword:00000002
 ;q
 ;t Weather data courtesy of Google, and weather.com.
 ;y Learn more about the Weather taskbar widget 🡕

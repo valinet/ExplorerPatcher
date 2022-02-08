@@ -47,6 +47,7 @@ typedef interface EPWeather
     LONG64 bIsNavigatingToError; // interlocked
     LONG64 g_darkModeEnabled; // interlocked
     LONG64 dwGeolocationMode;
+    LONG64 dwWindowCornerPreference;
 
     HANDLE hMutexData; // protects the following:
     DWORD cbTemperature;
@@ -100,6 +101,7 @@ HRESULT STDMETHODCALLTYPE epw_Weather_GetIconSize(EPWeather* _this, LONG64* cbx,
 HRESULT STDMETHODCALLTYPE epw_Weather_SetDarkMode(EPWeather* _this, LONG64 dwDarkMode, LONG64 bRefresh);
 HRESULT STDMETHODCALLTYPE epw_Weather_IsDarkMode(EPWeather* _this, LONG64 dwDarkMode, LONG64* bEnabled);
 HRESULT STDMETHODCALLTYPE epw_Weather_SetGeolocationMode(EPWeather* _this, LONG64 dwGeolocationMode);
+HRESULT STDMETHODCALLTYPE epw_Weather_SetWindowCornerPreference(EPWeather* _this, LONG64 dwWindowCornerPreference);
 
 static const IEPWeatherVtbl IEPWeather_Vtbl = {
     .QueryInterface = epw_Weather_QueryInterface,
@@ -125,6 +127,7 @@ static const IEPWeatherVtbl IEPWeather_Vtbl = {
     .SetUpdateSchedule = epw_Weather_SetUpdateSchedule,
     .SetDarkMode = epw_Weather_SetDarkMode,
     .SetGeolocationMode = epw_Weather_SetGeolocationMode,
+    .SetWindowCornerPreference = epw_Weather_SetWindowCornerPreference,
 };
 
 HRESULT STDMETHODCALLTYPE epw_Weather_static_Stub(void* _this);

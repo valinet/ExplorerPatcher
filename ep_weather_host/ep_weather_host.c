@@ -829,6 +829,17 @@ HRESULT STDMETHODCALLTYPE epw_Weather_SetGeolocationMode(EPWeather* _this, LONG6
     return S_OK;
 }
 
+HRESULT STDMETHODCALLTYPE epw_Weather_SetWindowCornerPreference(EPWeather* _this, LONG64 dwWindowCornerPreference)
+{
+    InterlockedExchange64(&_this->dwWindowCornerPreference, dwWindowCornerPreference);
+    INT preference = dwWindowCornerPreference;
+    if (_this->hWnd)
+    {
+        DwmSetWindowAttribute(_this->hWnd, DWMWA_WINDOW_CORNER_PREFERENCE, &preference, sizeof(preference));
+    }
+    return S_OK;
+}
+
 DWORD WINAPI epw_Weather_MainThread(EPWeather* _this)
 {
     HRESULT hr = S_OK;
@@ -1149,6 +1160,8 @@ HRESULT STDMETHODCALLTYPE epw_Weather_Initialize(EPWeather* _this, WCHAR wszName
 
 HRESULT STDMETHODCALLTYPE epw_Weather_Show(EPWeather* _this)
 {
+    INT preference = InterlockedAdd64(&_this->dwWindowCornerPreference, 0);
+    DwmSetWindowAttribute(_this->hWnd, DWMWA_WINDOW_CORNER_PREFERENCE, &preference, sizeof(preference));
     PostMessageW(_this->hWnd, EP_WEATHER_WM_REBOUND_BROWSER, 0, 0);
     ShowWindow(_this->hWnd, SW_SHOW);
     _this->pTaskList->lpVtbl->DeleteTab(_this->pTaskList, _this->hWnd);
