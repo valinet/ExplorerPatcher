@@ -68,7 +68,9 @@
 ;x 1 Small
 ;x 0 Large (default)
 "TaskbarSmallIcons"=dword:00000000
-;e 
+[HKEY_CURRENT_USER\Software\ExplorerPatcher]
+;b Pinned items act as quick launch (don't group pinned items with active apps) *
+"PinnedItemsActAsQuickLaunch"=dword:00000000
 
 
 ;T System tray

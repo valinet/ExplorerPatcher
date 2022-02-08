@@ -115,6 +115,8 @@ WCHAR* wszWeatherTerm = NULL;
 WCHAR* wszWeatherLanguage = NULL;
 WCHAR* wszEPWeatherKillswitch = NULL;
 HANDLE hEPWeatherKillswitch = NULL;
+DWORD bWasPinnedItemsActAsQuickLaunch = FALSE;
+DWORD bPinnedItemsActAsQuickLaunch = FALSE;
 int Code = 0;
 HRESULT InjectStartFromExplorer();
 void InvokeClockFlyout();
@@ -1348,6 +1350,106 @@ finalize:
 }
 #endif
 #pragma endregion
+
+
+#ifdef _WIN64
+#pragma region "Disable taskbar pinned items grouping"
+DEFINE_GUID(IID_ITaskGroup,
+    0x3af85589, 0x678f, 0x4fb5, 0x89, 0x25, 0x5a, 0x13, 0x4e, 0xbf, 0x57, 0x2c);
+
+typedef interface ITaskGroup ITaskGroup;
+
+typedef struct ITaskGroupVtbl
+{
+    BEGIN_INTERFACE
+
+    HRESULT(STDMETHODCALLTYPE* QueryInterface)(
+        ITaskGroup* This,
+        /* [in] */ REFIID riid,
+        /* [annotation][iid_is][out] */
+        _COM_Outptr_  void** ppvObject);
+
+    ULONG(STDMETHODCALLTYPE* AddRef)(
+        ITaskGroup* This);
+
+    ULONG(STDMETHODCALLTYPE* Release)(
+        ITaskGroup* This);
+
+    HRESULT(STDMETHODCALLTYPE* Initialize)(
+        ITaskGroup* This);
+
+    HRESULT(STDMETHODCALLTYPE* AddTaskItem)(
+        ITaskGroup* This);
+
+    HRESULT(STDMETHODCALLTYPE* RemoveTaskItem)(
+        ITaskGroup* This);
+
+    HRESULT(STDMETHODCALLTYPE* EnumTaskItems)(
+        ITaskGroup* This);
+
+    HRESULT(STDMETHODCALLTYPE* DoesWindowMatch)(
+        ITaskGroup* This,
+        HWND hCompareWnd,
+        ITEMIDLIST* pCompareItemIdList,
+        WCHAR* pCompareAppId,
+        int* pnMatch,
+        LONG** p_task_item);
+    // ...
+
+    END_INTERFACE
+} ITaskGroupVtbl;
+
+interface ITaskGroup
+{
+    CONST_VTBL struct ITaskGroupVtbl* lpVtbl;
+};
+
+// credits: https://github.com/m417z/7-Taskbar-Tweaker
+HRESULT(*CTaskGroup_DoesWindowMatchFunc)(LONG_PTR* task_group, HWND hCompareWnd, ITEMIDLIST* pCompareItemIdList,
+    WCHAR* pCompareAppId, int* pnMatch, LONG_PTR** p_task_item) = NULL;
+HRESULT __stdcall CTaskGroup_DoesWindowMatchHook(LONG_PTR* task_group, HWND hCompareWnd, ITEMIDLIST* pCompareItemIdList,
+    WCHAR* pCompareAppId, int* pnMatch, LONG_PTR** p_task_item)
+{
+    HRESULT hr = CTaskGroup_DoesWindowMatchFunc(task_group, hCompareWnd, pCompareItemIdList, pCompareAppId, pnMatch, p_task_item);
+    BOOL bDontGroup = FALSE;
+    BOOL bPinned = FALSE;
+    if (bPinnedItemsActAsQuickLaunch && SUCCEEDED(hr) && *pnMatch >= 1 && *pnMatch <= 3) // itemlist or appid match
+    {
+        bDontGroup = FALSE;
+        bPinned = (!task_group[4] || (int)((LONG_PTR*)task_group[4])[0] == 0);
+        if (bPinned)
+        {
+            bDontGroup = TRUE;
+        }
+        if (bDontGroup)
+        {
+            hr = E_FAIL;
+        }
+    }
+    return hr;
+}
+
+void explorer_QISearch(void* that, LPCQITAB pqit, REFIID riid, void** ppv)
+{
+    HRESULT hr = QISearch(that, pqit, riid, ppv);
+    if (SUCCEEDED(hr) && IsEqualGUID(pqit[0].piid, &IID_ITaskGroup))
+    {
+        ITaskGroup* pTaskGroup = *ppv;
+        DWORD flOldProtect = 0;
+        if (VirtualProtect(pTaskGroup->lpVtbl, sizeof(ITaskGroupVtbl), PAGE_EXECUTE_READWRITE, &flOldProtect))
+        {
+            if (!CTaskGroup_DoesWindowMatchFunc)
+            {
+                CTaskGroup_DoesWindowMatchFunc = pTaskGroup->lpVtbl->DoesWindowMatch;
+            }
+            pTaskGroup->lpVtbl->DoesWindowMatch = CTaskGroup_DoesWindowMatchHook;
+            VirtualProtect(pTaskGroup->lpVtbl, sizeof(ITaskGroupVtbl), flOldProtect, &flOldProtect);
+        }
+    }
+    return hr;
+}
+#pragma endregion
+#endif
 
 
 #pragma region "Show Start in correct location according to TaskbarAl"
@@ -4889,10 +4991,11 @@ DWORD WindowSwitcher(DWORD unused)
 
 
 #pragma region "Load Settings from registry"
-#define REFRESHUI_NONE    0b000
-#define REFRESHUI_GLOM    0b001
-#define REFRESHUI_ORB     0b010
-#define REFRESHUI_PEOPLE  0b100
+#define REFRESHUI_NONE    0b0000
+#define REFRESHUI_GLOM    0b0001
+#define REFRESHUI_ORB     0b0010
+#define REFRESHUI_PEOPLE  0b0100
+#define REFRESHUI_TASKBAR 0b1000
 void WINAPI LoadSettings(LPARAM lParam)
 {
     BOOL bIsExplorer = LOWORD(lParam);
@@ -5429,6 +5532,22 @@ void WINAPI LoadSettings(LPARAM lParam)
             &bDisableOfficeHotkeys,
             &dwSize
         );
+        dwTemp = FALSE;
+        dwSize = sizeof(DWORD);
+        RegQueryValueExW(
+            hKey,
+            TEXT("PinnedItemsActAsQuickLaunch"),
+            0,
+            NULL,
+            &dwTemp,
+            &dwSize
+        );
+        if (!bWasPinnedItemsActAsQuickLaunch)
+        {
+            bPinnedItemsActAsQuickLaunch = dwTemp;
+            bWasPinnedItemsActAsQuickLaunch = TRUE;
+            dwRefreshUIMask |= REFRESHUI_TASKBAR;
+        }
 
 #ifdef _WIN64
         AcquireSRWLockShared(&lock_epw);
@@ -5863,6 +5982,10 @@ void WINAPI LoadSettings(LPARAM lParam)
                 InvalidateRect(PeopleButton_LastHWND, NULL, TRUE);
 #endif
             }
+        }
+        if (dwRefreshUIMask & REFRESHUI_TASKBAR)
+        {
+            // not implemented
         }
     }
 }
@@ -7872,6 +7995,7 @@ DWORD Inject(BOOL bIsExplorer)
     VnPatchIAT(hExplorer, "uxtheme.dll", "OpenThemeDataForDpi", explorer_OpenThemeDataForDpi);
     VnPatchIAT(hExplorer, "uxtheme.dll", "DrawThemeBackground", explorer_DrawThemeBackground);
     VnPatchIAT(hExplorer, "uxtheme.dll", "CloseThemeData", explorer_CloseThemeData);
+    VnPatchIAT(hExplorer, "api-ms-win-core-shlwapi-obsolete-l1-1-0.dll", "QISearch", explorer_QISearch);
     //VnPatchIAT(hExplorer, "api-ms-win-core-libraryloader-l1-2-0.dll", "LoadStringW", explorer_LoadStringWHook);
     if (bClassicThemeMitigations)
     {
