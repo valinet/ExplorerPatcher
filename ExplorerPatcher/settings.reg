@@ -396,8 +396,8 @@
 ;;;x 1 Precise (geolocation)
 ;;"WeatherLocationType"=dword:00000000
 ;w Language
-;Type the short code for the language you'd like the weather data to be displayed in. For example, try "en", "ro", "de", "fr" etc. Leave blank for the default value (English).
-;en (default)
+;Type the short code for the language you'd like the weather data to be displayed in. For example, try "en", "ro", "de", "fr" etc. Leave blank for the default value (language of the Windows OS).
+;System language (default)
 "WeatherLanguage"=""
 ;c 3 Color scheme
 ;x 0 Follow system setting (default)
