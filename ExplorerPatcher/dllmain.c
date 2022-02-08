@@ -117,6 +117,8 @@ WCHAR* wszEPWeatherKillswitch = NULL;
 HANDLE hEPWeatherKillswitch = NULL;
 DWORD bWasPinnedItemsActAsQuickLaunch = FALSE;
 DWORD bPinnedItemsActAsQuickLaunch = FALSE;
+DWORD bWasRemoveExtraGapAroundPinnedItems = FALSE;
+DWORD bRemoveExtraGapAroundPinnedItems = FALSE;
 int Code = 0;
 HRESULT InjectStartFromExplorer();
 void InvokeClockFlyout();
@@ -1353,7 +1355,9 @@ finalize:
 
 
 #ifdef _WIN64
-#pragma region "Disable taskbar pinned items grouping"
+#pragma region "Windows 10 Taskbar Hooks"
+// credits: https://github.com/m417z/7-Taskbar-Tweaker
+
 DEFINE_GUID(IID_ITaskGroup,
     0x3af85589, 0x678f, 0x4fb5, 0x89, 0x25, 0x5a, 0x13, 0x4e, 0xbf, 0x57, 0x2c);
 
@@ -1404,7 +1408,6 @@ interface ITaskGroup
     CONST_VTBL struct ITaskGroupVtbl* lpVtbl;
 };
 
-// credits: https://github.com/m417z/7-Taskbar-Tweaker
 HRESULT(*CTaskGroup_DoesWindowMatchFunc)(LONG_PTR* task_group, HWND hCompareWnd, ITEMIDLIST* pCompareItemIdList,
     WCHAR* pCompareAppId, int* pnMatch, LONG_PTR** p_task_item) = NULL;
 HRESULT __stdcall CTaskGroup_DoesWindowMatchHook(LONG_PTR* task_group, HWND hCompareWnd, ITEMIDLIST* pCompareItemIdList,
@@ -1413,7 +1416,7 @@ HRESULT __stdcall CTaskGroup_DoesWindowMatchHook(LONG_PTR* task_group, HWND hCom
     HRESULT hr = CTaskGroup_DoesWindowMatchFunc(task_group, hCompareWnd, pCompareItemIdList, pCompareAppId, pnMatch, p_task_item);
     BOOL bDontGroup = FALSE;
     BOOL bPinned = FALSE;
-    if (bPinnedItemsActAsQuickLaunch && SUCCEEDED(hr) && *pnMatch >= 1 && *pnMatch <= 3) // itemlist or appid match
+    if (SUCCEEDED(hr) && *pnMatch >= 1 && *pnMatch <= 3) // itemlist or appid match
     {
         bDontGroup = FALSE;
         bPinned = (!task_group[4] || (int)((LONG_PTR*)task_group[4])[0] == 0);
@@ -1429,12 +1432,101 @@ HRESULT __stdcall CTaskGroup_DoesWindowMatchHook(LONG_PTR* task_group, HWND hCom
     return hr;
 }
 
+DEFINE_GUID(IID_ITaskBtnGroup,
+    0x2e52265d, 0x1a3b, 0x4e46, 0x94, 0x17, 0x51, 0xa5, 0x9c, 0x47, 0xd6, 0x0b);
+
+typedef interface ITaskBtnGroup ITaskBtnGroup;
+
+typedef struct ITaskBtnGroupVtbl
+{
+    BEGIN_INTERFACE
+
+    HRESULT(STDMETHODCALLTYPE* QueryInterface)(
+        ITaskBtnGroup* This,
+        /* [in] */ REFIID riid,
+        /* [annotation][iid_is][out] */
+        _COM_Outptr_  void** ppvObject);
+
+    ULONG(STDMETHODCALLTYPE* AddRef)(
+        ITaskBtnGroup* This);
+
+    ULONG(STDMETHODCALLTYPE* Release)(
+        ITaskBtnGroup* This);
+
+    HRESULT(STDMETHODCALLTYPE* Shutdown)(
+        ITaskBtnGroup* This);
+
+    HRESULT(STDMETHODCALLTYPE* GetGroupType)(
+        ITaskBtnGroup* This);
+
+    HRESULT(STDMETHODCALLTYPE* UpdateGroupType)(
+        ITaskBtnGroup* This);
+
+    HRESULT(STDMETHODCALLTYPE* GetGroup)(
+        ITaskBtnGroup* This);
+
+    HRESULT(STDMETHODCALLTYPE* AddTaskItem)(
+        ITaskBtnGroup* This);
+
+    HRESULT(STDMETHODCALLTYPE* IndexOfTaskItem)(
+        ITaskBtnGroup* This);
+
+    HRESULT(STDMETHODCALLTYPE* RemoveTaskItem)(
+        ITaskBtnGroup* This);
+
+    HRESULT(STDMETHODCALLTYPE* RealityCheck)(
+        ITaskBtnGroup* This);
+
+    HRESULT(STDMETHODCALLTYPE* IsItemBeingRemoved)(
+        ITaskBtnGroup* This);
+
+    HRESULT(STDMETHODCALLTYPE* CancelRemoveItem)(
+        ITaskBtnGroup* This);
+
+    LONG_PTR(STDMETHODCALLTYPE* GetIdealSpan)(
+        ITaskBtnGroup* This,
+        LONG_PTR var2, 
+        LONG_PTR var3,
+        LONG_PTR var4, 
+        LONG_PTR var5, 
+        LONG_PTR var6);
+    // ...
+
+    END_INTERFACE
+} ITaskBtnGroupVtbl;
+
+interface ITaskBtnGroup
+{
+    CONST_VTBL struct ITaskBtnGroupVtbl* lpVtbl;
+};
+
+LONG_PTR (*CTaskBtnGroup_GetIdealSpanFunc)(ITaskBtnGroup* _this, LONG_PTR var2, LONG_PTR var3,
+    LONG_PTR var4, LONG_PTR var5, LONG_PTR var6) = NULL;
+LONG_PTR __stdcall CTaskBtnGroup_GetIdealSpanHook(ITaskBtnGroup* _this, LONG_PTR var2, LONG_PTR var3,
+    LONG_PTR var4, LONG_PTR var5, LONG_PTR var6)
+{
+    LONG_PTR ret = NULL;
+    BOOL bTypeModified = FALSE;
+    int button_group_type = _this->lpVtbl->GetGroupType(_this);
+    if (button_group_type == 2)
+    {
+        *(unsigned int*)((INT64)_this + 64) = 4;
+        bTypeModified = TRUE;
+    }
+    ret = CTaskBtnGroup_GetIdealSpanFunc(_this, var2, var3, var4, var5, var6);
+    if (bTypeModified)
+    {
+        *(unsigned int*)((INT64)_this + 64) = button_group_type;
+    }
+    return ret;
+}
+
 void explorer_QISearch(void* that, LPCQITAB pqit, REFIID riid, void** ppv)
 {
     HRESULT hr = QISearch(that, pqit, riid, ppv);
     if (SUCCEEDED(hr) && IsEqualGUID(pqit[0].piid, &IID_ITaskGroup))
     {
-        ITaskGroup* pTaskGroup = *ppv;
+        ITaskGroup* pTaskGroup = (char*)that + pqit[0].dwOffset;
         DWORD flOldProtect = 0;
         if (VirtualProtect(pTaskGroup->lpVtbl, sizeof(ITaskGroupVtbl), PAGE_EXECUTE_READWRITE, &flOldProtect))
         {
@@ -1442,8 +1534,28 @@ void explorer_QISearch(void* that, LPCQITAB pqit, REFIID riid, void** ppv)
             {
                 CTaskGroup_DoesWindowMatchFunc = pTaskGroup->lpVtbl->DoesWindowMatch;
             }
-            pTaskGroup->lpVtbl->DoesWindowMatch = CTaskGroup_DoesWindowMatchHook;
+            if (bPinnedItemsActAsQuickLaunch)
+            {
+                pTaskGroup->lpVtbl->DoesWindowMatch = CTaskGroup_DoesWindowMatchHook;
+            }
             VirtualProtect(pTaskGroup->lpVtbl, sizeof(ITaskGroupVtbl), flOldProtect, &flOldProtect);
+        }
+    }
+    else if (SUCCEEDED(hr) && IsEqualGUID(pqit[0].piid, &IID_ITaskBtnGroup))
+    {
+        ITaskBtnGroup* pTaskBtnGroup = (char*)that + pqit[0].dwOffset;
+        DWORD flOldProtect = 0;
+        if (VirtualProtect(pTaskBtnGroup->lpVtbl, sizeof(ITaskBtnGroupVtbl), PAGE_EXECUTE_READWRITE, &flOldProtect))
+        {
+            if (!CTaskBtnGroup_GetIdealSpanFunc)
+            {
+                CTaskBtnGroup_GetIdealSpanFunc = pTaskBtnGroup->lpVtbl->GetIdealSpan;
+            }
+            if (bRemoveExtraGapAroundPinnedItems)
+            {
+                pTaskBtnGroup->lpVtbl->GetIdealSpan = CTaskBtnGroup_GetIdealSpanHook;
+            }
+            VirtualProtect(pTaskBtnGroup->lpVtbl, sizeof(ITaskBtnGroupVtbl), flOldProtect, &flOldProtect);
         }
     }
     return hr;
@@ -5548,6 +5660,22 @@ void WINAPI LoadSettings(LPARAM lParam)
             bWasPinnedItemsActAsQuickLaunch = TRUE;
             dwRefreshUIMask |= REFRESHUI_TASKBAR;
         }
+        dwTemp = FALSE;
+        dwSize = sizeof(DWORD);
+        RegQueryValueExW(
+            hKey,
+            TEXT("RemoveExtraGapAroundPinnedItems"),
+            0,
+            NULL,
+            &dwTemp,
+            &dwSize
+        );
+        if (!bWasRemoveExtraGapAroundPinnedItems)
+        {
+            bRemoveExtraGapAroundPinnedItems = dwTemp;
+            bWasRemoveExtraGapAroundPinnedItems = TRUE;
+            dwRefreshUIMask |= REFRESHUI_TASKBAR;
+        }
 
 #ifdef _WIN64
         AcquireSRWLockShared(&lock_epw);
@@ -7988,6 +8116,7 @@ DWORD Inject(BOOL bIsExplorer)
         VnPatchIAT(hExplorer, "API-MS-WIN-CORE-REGISTRY-L1-1-0.DLL", "RegCreateKeyExW", explorer_RegCreateKeyExW);
         VnPatchIAT(hExplorer, "API-MS-WIN-SHCORE-REGISTRY-L1-1-0.DLL", "SHGetValueW", explorer_SHGetValueW);
         VnPatchIAT(hExplorer, "user32.dll", "LoadMenuW", explorer_LoadMenuW);
+        VnPatchIAT(hExplorer, "api-ms-win-core-shlwapi-obsolete-l1-1-0.dll", "QISearch", explorer_QISearch);
     }
     VnPatchIAT(hExplorer, "API-MS-WIN-CORE-REGISTRY-L1-1-0.DLL", "RegOpenKeyExW", explorer_RegOpenKeyExW);
     VnPatchIAT(hExplorer, "shell32.dll", (LPCSTR)85, explorer_OpenRegStream);
@@ -7995,7 +8124,6 @@ DWORD Inject(BOOL bIsExplorer)
     VnPatchIAT(hExplorer, "uxtheme.dll", "OpenThemeDataForDpi", explorer_OpenThemeDataForDpi);
     VnPatchIAT(hExplorer, "uxtheme.dll", "DrawThemeBackground", explorer_DrawThemeBackground);
     VnPatchIAT(hExplorer, "uxtheme.dll", "CloseThemeData", explorer_CloseThemeData);
-    VnPatchIAT(hExplorer, "api-ms-win-core-shlwapi-obsolete-l1-1-0.dll", "QISearch", explorer_QISearch);
     //VnPatchIAT(hExplorer, "api-ms-win-core-libraryloader-l1-2-0.dll", "LoadStringW", explorer_LoadStringWHook);
     if (bClassicThemeMitigations)
     {
