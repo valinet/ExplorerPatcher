@@ -68,11 +68,7 @@
 ;x 1 Small
 ;x 0 Large (default)
 "TaskbarSmallIcons"=dword:00000000
-[HKEY_CURRENT_USER\Software\ExplorerPatcher]
-;b Pinned items act as quick launch (don't group pinned items with active apps) *
-"PinnedItemsActAsQuickLaunch"=dword:00000000
-;b Remove extra gap around pinned items *
-"RemoveExtraGapAroundPinnedItems"=dword:00000000
+;e
 
 
 ;T System tray
@@ -521,6 +517,11 @@
 ;x 8000 8 seconds
 ;x 10000 10 seconds
 "ExplorerReadyDelay"=dword:00000000
+;t The following settings only apply to the Windows 10 taskbar:                          
+;b Pinned items act as quick launch (don't group pinned items with active apps) *
+"PinnedItemsActAsQuickLaunch"=dword:00000000
+;b When the taskbar shows button labels, remove the extra gap around pinned items
+"RemoveExtraGapAroundPinnedItems"=dword:00000000
 
 
 ;T About

@@ -1416,7 +1416,7 @@ HRESULT __stdcall CTaskGroup_DoesWindowMatchHook(LONG_PTR* task_group, HWND hCom
     HRESULT hr = CTaskGroup_DoesWindowMatchFunc(task_group, hCompareWnd, pCompareItemIdList, pCompareAppId, pnMatch, p_task_item);
     BOOL bDontGroup = FALSE;
     BOOL bPinned = FALSE;
-    if (SUCCEEDED(hr) && *pnMatch >= 1 && *pnMatch <= 3) // itemlist or appid match
+    if (bPinnedItemsActAsQuickLaunch && SUCCEEDED(hr) && *pnMatch >= 1 && *pnMatch <= 3) // itemlist or appid match
     {
         bDontGroup = FALSE;
         bPinned = (!task_group[4] || (int)((LONG_PTR*)task_group[4])[0] == 0);
@@ -1507,14 +1507,14 @@ LONG_PTR __stdcall CTaskBtnGroup_GetIdealSpanHook(ITaskBtnGroup* _this, LONG_PTR
 {
     LONG_PTR ret = NULL;
     BOOL bTypeModified = FALSE;
-    int button_group_type = _this->lpVtbl->GetGroupType(_this);
-    if (button_group_type == 2)
+    int button_group_type = *(unsigned int*)((INT64)_this + 64);
+    if (bRemoveExtraGapAroundPinnedItems && button_group_type == 2)
     {
         *(unsigned int*)((INT64)_this + 64) = 4;
         bTypeModified = TRUE;
     }
     ret = CTaskBtnGroup_GetIdealSpanFunc(_this, var2, var3, var4, var5, var6);
-    if (bTypeModified)
+    if (bRemoveExtraGapAroundPinnedItems && bTypeModified)
     {
         *(unsigned int*)((INT64)_this + 64) = button_group_type;
     }
@@ -1534,10 +1534,7 @@ void explorer_QISearch(void* that, LPCQITAB pqit, REFIID riid, void** ppv)
             {
                 CTaskGroup_DoesWindowMatchFunc = pTaskGroup->lpVtbl->DoesWindowMatch;
             }
-            if (bPinnedItemsActAsQuickLaunch)
-            {
-                pTaskGroup->lpVtbl->DoesWindowMatch = CTaskGroup_DoesWindowMatchHook;
-            }
+            pTaskGroup->lpVtbl->DoesWindowMatch = CTaskGroup_DoesWindowMatchHook;
             VirtualProtect(pTaskGroup->lpVtbl, sizeof(ITaskGroupVtbl), flOldProtect, &flOldProtect);
         }
     }
@@ -1551,10 +1548,7 @@ void explorer_QISearch(void* that, LPCQITAB pqit, REFIID riid, void** ppv)
             {
                 CTaskBtnGroup_GetIdealSpanFunc = pTaskBtnGroup->lpVtbl->GetIdealSpan;
             }
-            if (bRemoveExtraGapAroundPinnedItems)
-            {
-                pTaskBtnGroup->lpVtbl->GetIdealSpan = CTaskBtnGroup_GetIdealSpanHook;
-            }
+            pTaskBtnGroup->lpVtbl->GetIdealSpan = CTaskBtnGroup_GetIdealSpanHook;
             VirtualProtect(pTaskBtnGroup->lpVtbl, sizeof(ITaskBtnGroupVtbl), flOldProtect, &flOldProtect);
         }
     }
@@ -5656,9 +5650,12 @@ void WINAPI LoadSettings(LPARAM lParam)
         );
         if (!bWasPinnedItemsActAsQuickLaunch)
         {
-            bPinnedItemsActAsQuickLaunch = dwTemp;
-            bWasPinnedItemsActAsQuickLaunch = TRUE;
-            dwRefreshUIMask |= REFRESHUI_TASKBAR;
+            //if (dwTemp != bPinnedItemsActAsQuickLaunch)
+            {
+                bPinnedItemsActAsQuickLaunch = dwTemp;
+                bWasPinnedItemsActAsQuickLaunch = TRUE;
+                //dwRefreshUIMask |= REFRESHUI_TASKBAR;
+            }
         }
         dwTemp = FALSE;
         dwSize = sizeof(DWORD);
@@ -5670,11 +5667,14 @@ void WINAPI LoadSettings(LPARAM lParam)
             &dwTemp,
             &dwSize
         );
-        if (!bWasRemoveExtraGapAroundPinnedItems)
+        //if (!bWasRemoveExtraGapAroundPinnedItems)
         {
-            bRemoveExtraGapAroundPinnedItems = dwTemp;
-            bWasRemoveExtraGapAroundPinnedItems = TRUE;
-            dwRefreshUIMask |= REFRESHUI_TASKBAR;
+            if (dwTemp != bRemoveExtraGapAroundPinnedItems)
+            {
+                bRemoveExtraGapAroundPinnedItems = dwTemp;
+                bWasRemoveExtraGapAroundPinnedItems = TRUE;
+                dwRefreshUIMask |= REFRESHUI_TASKBAR;
+            }
         }
 
 #ifdef _WIN64
@@ -6113,7 +6113,20 @@ void WINAPI LoadSettings(LPARAM lParam)
         }
         if (dwRefreshUIMask & REFRESHUI_TASKBAR)
         {
-            // not implemented
+            // this is mostly a hack...
+            DWORD dwGlomLevel = 2, dwSize = sizeof(DWORD), dwNewGlomLevel;
+            RegGetValueW(HKEY_CURRENT_USER, TEXT(REGPATH), L"TaskbarGlomLevel", RRF_RT_DWORD, NULL, &dwGlomLevel, &dwSize);
+            Sleep(100);
+            dwNewGlomLevel = 0;
+            RegSetKeyValueW(HKEY_CURRENT_USER, TEXT(REGPATH), L"TaskbarGlomLevel", REG_DWORD, &dwNewGlomLevel, sizeof(DWORD));
+            Explorer_RefreshUI(0);
+            Sleep(100);
+            dwNewGlomLevel = 2;
+            RegSetKeyValueW(HKEY_CURRENT_USER, TEXT(REGPATH), L"TaskbarGlomLevel", REG_DWORD, &dwNewGlomLevel, sizeof(DWORD));
+            Explorer_RefreshUI(0);
+            Sleep(100);
+            RegSetKeyValueW(HKEY_CURRENT_USER, TEXT(REGPATH), L"TaskbarGlomLevel", REG_DWORD, &dwGlomLevel, sizeof(DWORD));
+            Explorer_RefreshUI(0);
         }
     }
 }
