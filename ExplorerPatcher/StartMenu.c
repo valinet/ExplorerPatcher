@@ -66,6 +66,29 @@ void OpenStartOnMonitor(HMONITOR monitor)
     }
 }
 
+typedef struct _MonitorOverrideData
+{
+    DWORD cbIndex;
+    DWORD dwIndex;
+    HMONITOR hMonitor;
+} MonitorOverrideData;
+
+BOOL ExtractMonitorByIndex(HMONITOR hMonitor, HDC hDC, LPRECT lpRect, MonitorOverrideData* mod)
+{
+    POINT pt; pt.x = 0; pt.y = 0;
+    if (MonitorFromPoint(pt, MONITOR_DEFAULTTONULL) == hMonitor)
+    {
+        return TRUE;
+    }
+    if (mod->cbIndex == mod->dwIndex)
+    {
+        mod->hMonitor = hMonitor;
+        return FALSE;
+    }
+    mod->cbIndex++;
+    return TRUE;
+}
+
 LRESULT CALLBACK OpenStartOnCurentMonitorThreadHook(
     int code,
     WPARAM wParam,
@@ -78,7 +101,7 @@ LRESULT CALLBACK OpenStartOnCurentMonitorThreadHook(
         if (GetSystemMetrics(SM_CMONITORS) >= 2 && msg->message == WM_SYSCOMMAND && (msg->wParam & 0xFFF0) == SC_TASKLIST)
         {
             printf("Position Start\n");
-            if (bMonitorOverride)
+            if (bMonitorOverride == 1)
             {
                 goto finish;
             }
@@ -99,15 +122,36 @@ LRESULT CALLBACK OpenStartOnCurentMonitorThreadHook(
                 goto finish;
             }*/
 
-            DWORD pts = GetMessagePos();
-            POINT pt;
-            pt.x = GET_X_LPARAM(pts);
-            pt.y = GET_Y_LPARAM(pts);
-            printf("!! %d %d\n", pt.x, pt.y);
-            HMONITOR monitor = MonitorFromPoint(
-                pt,
-                MONITOR_DEFAULTTONULL
-            );
+            HMONITOR monitor = NULL;
+            if (!bMonitorOverride)
+            {
+                DWORD pts = GetMessagePos();
+                POINT pt;
+                pt.x = GET_X_LPARAM(pts);
+                pt.y = GET_Y_LPARAM(pts);
+                printf("!! %d %d\n", pt.x, pt.y);
+                monitor = MonitorFromPoint(
+                    pt,
+                    MONITOR_DEFAULTTONULL
+                );
+            }
+            else
+            {
+                MonitorOverrideData mod;
+                mod.cbIndex = 2;
+                mod.dwIndex = bMonitorOverride;
+                mod.hMonitor = NULL;
+                EnumDisplayMonitors(NULL, NULL, ExtractMonitorByIndex, &mod);
+                if (mod.hMonitor == NULL)
+                {
+                    POINT pt; pt.x = 0; pt.y = 0;
+                    monitor = MonitorFromPoint(pt, MONITOR_DEFAULTTOPRIMARY);
+                }
+                else
+                {
+                    monitor = mod.hMonitor;
+                }
+            }
             OpenStartOnMonitor(monitor);
 
             msg->message = WM_NULL;

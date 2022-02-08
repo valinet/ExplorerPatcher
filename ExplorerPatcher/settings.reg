@@ -68,7 +68,7 @@
 ;x 1 Small
 ;x 0 Large (default)
 "TaskbarSmallIcons"=dword:00000000
-;e
+;e 
 
 
 ;T System tray
@@ -169,8 +169,6 @@
 
 ;T Start menu
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\StartPage]
-;i Open Start on monitor containing the cursor
-"MonitorOverride"=dword:00000001
 ;b Open Start at logon
 "OpenAtLogon"=dword:00000000
 ;b Open Start in All apps by default
@@ -205,6 +203,21 @@
 ;x 0 Left
 ;x 1 Center (default)
 "TaskbarAl"=dword:00000001
+[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\StartPage]
+;a When using multiple displays, open Start on this monitor when invoked using
+;c 10 the keyboard:
+;x 1 Primary monitor (default)
+;x 0 Monitor on which the cursor is on
+;x 2 Monitor #2
+;x 3 Monitor #3
+;x 4 Monitor #4
+;x 5 Monitor #5
+;x 6 Monitor #6
+;x 7 Monitor #7
+;x 8 Monitor #8
+;x 9 Monitor #9
+"MonitorOverride"=dword:00000001
+;a If the selected monitor is not available, Start will open on the primary display.
 
 
 ;T Window switcher
