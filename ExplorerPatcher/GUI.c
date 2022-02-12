@@ -1847,6 +1847,58 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                             {
                                 PostMessageW(FindWindowW(_T(EPW_WEATHER_CLASSNAME), NULL), EP_WEATHER_WM_FETCH_DATA, 0, 0);
                             }
+                            else if (!strncmp(line + 1, "clear_data_weather", 18))
+                            {
+                                if (MessageBoxW(
+                                    hwnd,
+                                    L"Are you sure you want to permanently clear the weather widget's local data?\n\n"
+                                    L"This will reset the internal components to their default state, but will preserve "
+                                    L"your preferences. This may fix the widget not loading the data properly, or "
+                                    L"having layout issues etc.",
+                                    _T(PRODUCT_NAME),
+                                    MB_ICONQUESTION | MB_YESNO) == IDYES)
+                                {
+                                    DWORD dwData = 0, dwVal = 0, dwSize = sizeof(DWORD);
+                                    GUI_Internal_RegQueryValueExW(NULL, L"Virtualized_" _T(EP_CLSID) L"_PeopleBand", NULL, NULL, &dwData, &dwSize);
+                                    if (dwData)
+                                    {
+                                        HWND hWnd = FindWindowW(_T(EPW_WEATHER_CLASSNAME), NULL);
+                                        GUI_Internal_RegSetValueExW(NULL, L"Virtualized_" _T(EP_CLSID) L"_PeopleBand", 0, 0, &dwVal, sizeof(DWORD));
+                                        while (hWnd)
+                                        {
+                                            Sleep(100);
+                                            hWnd = FindWindowW(_T(EPW_WEATHER_CLASSNAME), NULL);
+                                        }
+                                        Sleep(100);
+                                    }
+                                    WCHAR wszWorkFolder[MAX_PATH + 1];
+                                    ZeroMemory(wszWorkFolder, (MAX_PATH + 1) * sizeof(WCHAR));
+                                    SHGetFolderPathW(NULL, CSIDL_APPDATA, NULL, SHGFP_TYPE_CURRENT, wszWorkFolder);
+                                    wcscat_s(wszWorkFolder, MAX_PATH, L"\\ExplorerPatcher\\ep_weather_host");
+                                    SHFILEOPSTRUCTW op;
+                                    ZeroMemory(&op, sizeof(SHFILEOPSTRUCTW));
+                                    op.hwnd = hwnd;
+                                    op.wFunc = FO_DELETE;
+                                    op.pFrom = wszWorkFolder;
+                                    op.fFlags = FOF_NO_UI;
+                                    if (!SHFileOperationW(&op))
+                                    {
+                                        MessageBoxW(hwnd, L"Weather widget data cleared successfully.", _T(PRODUCT_NAME), MB_ICONINFORMATION);
+                                    }
+                                    else
+                                    {
+                                        if (!op.fAnyOperationsAborted)
+                                        {
+                                            MessageBoxW(hwnd, L"An error has occured while clearing the data.", _T(PRODUCT_NAME), MB_ICONERROR);
+                                        }
+                                    }
+                                    if (dwData)
+                                    {
+                                        dwVal = 1;
+                                        GUI_Internal_RegSetValueExW(NULL, L"Virtualized_" _T(EP_CLSID) L"_PeopleBand", 0, 0, &dwVal, sizeof(DWORD));
+                                    }
+                                }
+                            }
                         }
                     }
                     dwMaxHeight += dwLineHeight * dy;

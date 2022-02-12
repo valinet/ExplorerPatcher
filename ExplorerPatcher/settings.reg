@@ -413,9 +413,10 @@
 ;t Weather data courtesy of Google, and weather.com.
 ;y Learn more about the Weather taskbar widget 🡕
 ;https://github.com/valinet/ExplorerPatcher/wiki/Weather
-;u Refresh weather data
+;u Update weather now
 ;update_weather
-
+;u Clear weather widget local data
+;clear_data_weather
 
 
 
