@@ -1186,7 +1186,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                             if (p)
                             {
                                 p--;
-                                if (p == L' ')
+                                if (*p == L' ')
                                 {
                                     *p = 0;
                                 }
@@ -3600,7 +3600,7 @@ __declspec(dllexport) int ZZGUI(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLin
         if (p)
         {
             p--;
-            if (p == L' ')
+            if (*p == L' ')
             {
                 *p = 0;
             }

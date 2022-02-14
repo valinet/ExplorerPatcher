@@ -1086,7 +1086,7 @@ DWORD ShowLauncherTipContextMenu(
     if (p)
     {
         p--;
-        if (p == L' ')
+        if (*p == L' ')
         {
             *p = 0;
         }
@@ -1720,7 +1720,7 @@ HMENU explorer_LoadMenuW(HINSTANCE hInstance, LPCWSTR lpMenuName)
             if (p)
             {
                 p--;
-                if (p == L' ')
+                if (*p == L' ')
                 {
                     *p = 0;
                 }
@@ -2034,7 +2034,7 @@ INT64 Shell_TrayWndSubclassProc(
                 if (p)
                 {
                     p--;
-                    if (p == L' ')
+                    if (*p == L' ')
                     {
                         *p = 0;
                     }
