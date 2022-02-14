@@ -1211,3 +1211,71 @@ HRESULT InputBox(BOOL bPassword, HWND hWnd, LPCWSTR wszPrompt, LPCWSTR wszTitle,
 
     return hr;
 }
+
+UINT PleaseWaitTimeout = 0;
+HHOOK PleaseWaitHook = NULL;
+HWND PleaseWaitHWND = NULL;
+void* PleaseWaitCallbackData = NULL;
+BOOL (*PleaseWaitCallbackFunc)(void* data) = NULL;
+BOOL PleaseWait_UpdateTimeout(int timeout)
+{
+    if (PleaseWaitHWND)
+    {
+        KillTimer(PleaseWaitHWND, 'EPPW');
+        PleaseWaitTimeout = timeout;
+        return SetTimer(PleaseWaitHWND, 'EPPW', PleaseWaitTimeout, PleaseWait_TimerProc);
+    }
+    return FALSE;
+}
+
+VOID CALLBACK PleaseWait_TimerProc(HWND hWnd, UINT uMsg, UINT idEvent, DWORD dwTime)
+{
+    if (idEvent == 'EPPW')
+    {
+        if (PleaseWaitCallbackFunc)
+        {
+            if (PleaseWaitCallbackFunc(PleaseWaitCallbackData))
+            {
+                return;
+            }
+            PleaseWaitCallbackData = NULL;
+            PleaseWaitCallbackFunc = NULL;
+        }
+        KillTimer(hWnd, 'EPPW');
+        SetTimer(hWnd, 'EPPW', 0, NULL); // <- this closes the message box
+        PleaseWaitHWND = NULL;
+        PleaseWaitTimeout = 0;
+    }
+}
+
+LRESULT CALLBACK PleaseWait_HookProc(int code, WPARAM wParam, LPARAM lParam)
+{
+    if (code < 0)
+    {
+        return CallNextHookEx(NULL, code, wParam, lParam);
+    }
+
+    CWPSTRUCT* msg = (CWPSTRUCT*)lParam;
+    /*if (msg->message == WM_CREATE)
+    {
+        CREATESTRUCT* pCS = (CREATESTRUCT*)msg->lParam;
+        if (pCS->lpszClass == RegisterWindowMessageW(L"Button"))
+        {
+        }
+    }*/
+    LRESULT result = CallNextHookEx(NULL, code, wParam, lParam);
+
+    if (msg->message == WM_INITDIALOG)
+    {
+        PleaseWaitHWND = msg->hwnd;
+        LONG_PTR style = GetWindowLongPtrW(PleaseWaitHWND, GWL_STYLE);
+        SetWindowLongPtrW(PleaseWaitHWND, GWL_STYLE, style & ~WS_SYSMENU);
+        RECT rc;
+        GetWindowRect(PleaseWaitHWND, &rc);
+        SetWindowPos(PleaseWaitHWND, NULL, 0, 0, rc.right - rc.left, rc.bottom - rc.top - MulDiv(50, GetDpiForWindow(PleaseWaitHWND), 96), SWP_NOMOVE | SWP_FRAMECHANGED);
+        SetTimer(PleaseWaitHWND, 'EPPW', PleaseWaitTimeout, PleaseWait_TimerProc);
+        UnhookWindowsHookEx(PleaseWaitHook);
+        PleaseWaitHook = NULL;
+    }
+    return result;
+}
