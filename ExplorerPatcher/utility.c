@@ -1268,6 +1268,7 @@ LRESULT CALLBACK PleaseWait_HookProc(int code, WPARAM wParam, LPARAM lParam)
     if (msg->message == WM_INITDIALOG)
     {
         PleaseWaitHWND = msg->hwnd;
+        EnableWindow(PleaseWaitHWND, FALSE);
         LONG_PTR style = GetWindowLongPtrW(PleaseWaitHWND, GWL_STYLE);
         SetWindowLongPtrW(PleaseWaitHWND, GWL_STYLE, style & ~WS_SYSMENU);
         RECT rc;
