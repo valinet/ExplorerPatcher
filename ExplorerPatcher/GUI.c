@@ -14,6 +14,65 @@ static BOOL(*ShouldAppsUseDarkMode)() = NULL;
 DWORD dwTaskbarPosition = 3;
 BOOL gui_bOldTaskbar = TRUE;
 
+int GUI_DeleteWeatherFolder()
+{
+    WCHAR wszWorkFolder[MAX_PATH + 1];
+    ZeroMemory(wszWorkFolder, (MAX_PATH + 1) * sizeof(WCHAR));
+    SHGetFolderPathW(NULL, CSIDL_APPDATA, NULL, SHGFP_TYPE_CURRENT, wszWorkFolder);
+    wcscat_s(wszWorkFolder, MAX_PATH, L"\\ExplorerPatcher\\ep_weather_host");
+    SHFILEOPSTRUCTW op;
+    ZeroMemory(&op, sizeof(SHFILEOPSTRUCTW));
+    op.wFunc = FO_DELETE;
+    op.pFrom = wszWorkFolder;
+    op.fFlags = FOF_NO_UI;
+    if (!SHFileOperationW(&op))
+    {
+        return IDOK;
+    }
+    else
+    {
+        if (op.fAnyOperationsAborted)
+        {
+            return IDCANCEL;
+        }
+        else
+        {
+            return IDABORT;
+        }
+    }
+}
+
+BOOL GUI_Internal_DeleteWeatherFolder(int* res)
+{
+    if (!FindWindowW(_T(EPW_WEATHER_CLASSNAME), NULL))
+    {
+        if (!*res)
+        {
+            if (PleaseWait_UpdateTimeout(3000))
+            {
+                *res = IDRETRY;
+            }
+            else
+            {
+                *res = IDABORT;
+                return FALSE;
+            }
+        }
+        else if (*res == IDRETRY)
+        {
+            *res = GUI_DeleteWeatherFolder();
+            if (*res != IDRETRY)
+            {
+                return FALSE;
+            }
+        }
+    }
+    else
+    {
+    }
+    return TRUE;
+}
+
 void PlayHelpMessage(GUI* _this)
 {
     unsigned int max_section = 0;
@@ -1860,34 +1919,27 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                 {
                                     DWORD dwData = 0, dwVal = 0, dwSize = sizeof(DWORD);
                                     GUI_Internal_RegQueryValueExW(NULL, L"Virtualized_" _T(EP_CLSID) L"_PeopleBand", NULL, NULL, &dwData, &dwSize);
+                                    int res = 0;
                                     if (dwData)
                                     {
-                                        HWND hWnd = FindWindowW(_T(EPW_WEATHER_CLASSNAME), NULL);
                                         GUI_Internal_RegSetValueExW(NULL, L"Virtualized_" _T(EP_CLSID) L"_PeopleBand", 0, 0, &dwVal, sizeof(DWORD));
-                                        while (hWnd)
-                                        {
-                                            Sleep(100);
-                                            hWnd = FindWindowW(_T(EPW_WEATHER_CLASSNAME), NULL);
-                                        }
-                                        Sleep(100);
+                                        PleaseWaitTimeout = 100;
+                                        PleaseWaitCallbackData = &res;
+                                        PleaseWaitCallbackFunc = GUI_Internal_DeleteWeatherFolder;
+                                        PleaseWaitHook = SetWindowsHookExW(WH_CALLWNDPROC, PleaseWait_HookProc, NULL, GetCurrentThreadId());
+                                        MessageBoxW(hwnd, L"Please wait...", _T(PRODUCT_NAME), 0);
                                     }
-                                    WCHAR wszWorkFolder[MAX_PATH + 1];
-                                    ZeroMemory(wszWorkFolder, (MAX_PATH + 1) * sizeof(WCHAR));
-                                    SHGetFolderPathW(NULL, CSIDL_APPDATA, NULL, SHGFP_TYPE_CURRENT, wszWorkFolder);
-                                    wcscat_s(wszWorkFolder, MAX_PATH, L"\\ExplorerPatcher\\ep_weather_host");
-                                    SHFILEOPSTRUCTW op;
-                                    ZeroMemory(&op, sizeof(SHFILEOPSTRUCTW));
-                                    op.hwnd = hwnd;
-                                    op.wFunc = FO_DELETE;
-                                    op.pFrom = wszWorkFolder;
-                                    op.fFlags = FOF_NO_UI;
-                                    if (!SHFileOperationW(&op))
+                                    else
+                                    {
+                                        res = GUI_DeleteWeatherFolder();
+                                    }
+                                    if (res == IDOK)
                                     {
                                         MessageBoxW(hwnd, L"Weather widget data cleared successfully.", _T(PRODUCT_NAME), MB_ICONINFORMATION);
                                     }
                                     else
                                     {
-                                        if (!op.fAnyOperationsAborted)
+                                        if (res == IDABORT)
                                         {
                                             MessageBoxW(hwnd, L"An error has occured while clearing the data.", _T(PRODUCT_NAME), MB_ICONERROR);
                                         }
