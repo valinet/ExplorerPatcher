@@ -359,7 +359,7 @@ HRESULT STDMETHODCALLTYPE ICoreWebView2_ExecuteScriptCompleted(ICoreWebView2Exec
             {
                 printf("consent granted\n");
                 PostMessageW(EPWeather_Instance->hWnd, EP_WEATHER_WM_FETCH_DATA, 0, 0);
-                SetTimer(EPWeather_Instance->hWnd, EP_WEATHER_TIMER_REQUEST_REFRESH, EP_WEATHER_TIMER_REQUEST_REFRESH_DELAY, NULL);
+                SetTimer(EPWeather_Instance->hWnd, EP_WEATHER_TIMER_REQUEST_REFRESH, EP_WEATHER_TIMER_REQUEST_REFRESH_DELAY * 3, NULL);
                 return S_OK;
             }
             else
