@@ -21,7 +21,8 @@ Tested on OS build 22000.493.
 * The weather widget shows an error screen when an error happens (like, using an incorrect location, or the network not working etc) (.3)
 * The weather widget supports dark mode (thanks @krlvm) (#755) (.4)
 * The weather widget supports setting window corner preference (rounded/not rounded) (.8)
-* Option to clear weather widget local data (.10)
+* Option to clear weather widget local data (.10, .11)
+* Installer sets a Start menu shortcut for the "Properties" window (.11)
 
 #### Fixes
 
