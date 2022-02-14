@@ -8,6 +8,104 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #include "resource.h"
 #include "../ExplorerPatcher/utility.h"
 
+BOOL SetupShortcut(BOOL bInstall, WCHAR* wszPath, WCHAR* wszArguments)
+{
+    WCHAR wszTitle[MAX_PATH];
+    ZeroMemory(wszTitle, MAX_PATH);
+    WCHAR wszExplorerPath[MAX_PATH];
+    ZeroMemory(wszExplorerPath, MAX_PATH);
+    GetSystemDirectoryW(wszExplorerPath, MAX_PATH);
+    wcscat_s(wszExplorerPath, MAX_PATH, L"\\ExplorerFrame.dll");
+    if (bInstall)
+    {
+        HMODULE hExplorerFrame = LoadLibraryExW(wszExplorerPath, NULL, LOAD_LIBRARY_AS_DATAFILE);
+        if (hExplorerFrame)
+        {
+            LoadStringW(hExplorerFrame, 50222, wszTitle, 260); // 726 = File Explorer
+            wchar_t* p = wcschr(wszTitle, L'(');
+            if (p)
+            {
+                p--;
+                if (*p == L' ')
+                {
+                    *p = 0;
+                }
+                else
+                {
+                    p++;
+                    *p = 0;
+                }
+            }
+            if (wszTitle[0] == 0)
+            {
+                wcscat_s(wszTitle, MAX_PATH, _T(PRODUCT_NAME));
+            }
+        }
+        else
+        {
+            wcscat_s(wszTitle, MAX_PATH, _T(PRODUCT_NAME));
+        }
+    }
+    BOOL bOk = FALSE;
+    WCHAR wszStartPrograms[MAX_PATH];
+    ZeroMemory(wszStartPrograms, MAX_PATH);
+    SHGetFolderPathW(NULL, CSIDL_COMMON_PROGRAMS, NULL, SHGFP_TYPE_CURRENT, wszStartPrograms);
+    wcscat_s(wszStartPrograms, MAX_PATH, L"\\" _T(PRODUCT_NAME));
+    SHFILEOPSTRUCTW op;
+    ZeroMemory(&op, sizeof(SHFILEOPSTRUCTW));
+    op.wFunc = FO_DELETE;
+    op.pFrom = wszStartPrograms;
+    op.fFlags = FOF_NO_UI;
+    bOk = !SHFileOperationW(&op);
+    if (bInstall)
+    {
+        if (!CreateDirectoryW(wszStartPrograms, NULL))
+        {
+            return FALSE;
+        }
+    }
+    else
+    {
+        return bOk;
+    }
+    wcscat_s(wszStartPrograms, MAX_PATH, L"\\");
+    wcscat_s(wszStartPrograms, MAX_PATH, wszTitle);
+    wcscat_s(wszStartPrograms, MAX_PATH, L" (");
+    wcscat_s(wszStartPrograms, MAX_PATH, _T(PRODUCT_NAME) L").lnk");
+    ZeroMemory(wszExplorerPath, MAX_PATH);
+    GetSystemDirectoryW(wszExplorerPath, MAX_PATH);
+    wcscat_s(wszExplorerPath, MAX_PATH, L"\\shell32.dll");
+    if (bInstall)
+    {
+        if (SUCCEEDED(CoInitialize(0)))
+        {
+            IShellLinkW* pShellLink = NULL;
+            if (SUCCEEDED(CoCreateInstance(&CLSID_ShellLink, NULL, CLSCTX_INPROC, &IID_IShellLinkW, &pShellLink)))
+            {
+                pShellLink->lpVtbl->SetPath(pShellLink, wszPath);
+                pShellLink->lpVtbl->SetArguments(pShellLink, wszArguments);
+                pShellLink->lpVtbl->SetIconLocation(pShellLink, wszExplorerPath, 40 - 1);
+                PathRemoveFileSpecW(wszExplorerPath);
+                pShellLink->lpVtbl->SetWorkingDirectory(pShellLink, wszExplorerPath);
+                pShellLink->lpVtbl->SetDescription(pShellLink, _T(PRODUCT_NAME));
+
+                IPersistFile* pPersistFile = NULL;
+                if (SUCCEEDED(pShellLink->lpVtbl->QueryInterface(pShellLink, &IID_IPersistFile, &pPersistFile)))
+                {
+                    if (SUCCEEDED(pPersistFile->lpVtbl->Save(pPersistFile, wszStartPrograms, TRUE)))
+                    {
+                        bOk = TRUE;
+                    }
+                    pPersistFile->lpVtbl->Release(pPersistFile);
+                }
+                pShellLink->lpVtbl->Release(pShellLink);
+            }
+            CoUninitialize();
+        }
+    }
+    return bOk;
+}
+
 BOOL SetupUninstallEntry(BOOL bInstall, WCHAR* wszPath)
 {
     DWORD dwLastError = ERROR_SUCCESS;
@@ -716,6 +814,20 @@ int WINAPI wWinMain(
         {
             wcscat_s(wszPath, MAX_PATH, L"\\SystemApps\\ShellExperienceHost_cw5n1h2txyewy\\dxgi.dll");
             bOk = InstallResource(bInstall, hInstance, IDR_EP_AMD64, wszPath);
+        }
+        if (bOk)
+        {
+            GetSystemDirectoryW(wszPath, MAX_PATH);
+            WCHAR* pArgs = NULL;
+            DWORD dwLen = wcslen(wszPath);
+            wcscat_s(wszPath, MAX_PATH - dwLen, L"\\rundll32.exe \"");
+            dwLen = wcslen(wszPath);
+            pArgs = wszPath + dwLen - 2;
+            SHGetFolderPathW(NULL, SPECIAL_FOLDER, NULL, SHGFP_TYPE_CURRENT, wszPath + dwLen);
+            wcscat_s(wszPath, MAX_PATH, _T(APP_RELATIVE_PATH) L"\\" _T(PRODUCT_NAME) L".amd64.dll\",ZZGUI");
+            pArgs[0] = 0;
+            bOk = SetupShortcut(bInstall, wszPath, pArgs + 1);
+            ZeroMemory(wszPath, MAX_PATH);
         }
         if (bOk)
         {
