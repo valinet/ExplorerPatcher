@@ -3956,7 +3956,10 @@ SIZE WINAPI PeopleButton_CalculateMinimumSizeHook(void* _this, SIZE* pSz)
                         epw = NULL;
                         prev_total_h = 0;
                     }
-                    epw->lpVtbl->SetWindowCornerPreference(epw, dwWeatherWindowCornerPreference);
+                    else
+                    {
+                        epw->lpVtbl->SetWindowCornerPreference(epw, dwWeatherWindowCornerPreference);
+                    }
                 }
                 ReleaseSRWLockExclusive(&lock_epw);
                 AcquireSRWLockShared(&lock_epw);
