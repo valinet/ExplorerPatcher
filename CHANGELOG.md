@@ -37,6 +37,7 @@ Tested on OS build 22000.493.
 * Fixed a bug that made the weather flyout open with noticeable delay under certain circumstances (.5)
 * Fixed a bug that prevented correct operation on builds without built-in symbols (#783) (.5)
 * Fixed several race conditions that could lead to incorrect operation of the weather widget (for example, `explorer.exe` crashing when disabling or enabling the widget) (.6)
+* The weather widget positions and sizes itself with respect to the text size accessibility setting as well ([#734](https://github.com/valinet/ExplorerPatcher/discussions/734#discussioncomment-2190218)) (.14)
 
 ## 22000.469.41
 
