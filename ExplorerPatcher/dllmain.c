@@ -4207,7 +4207,7 @@ __int64 __fastcall PeopleBand_DrawTextWithGlowHook(
                             }
                             else
                             {
-                                rgbColor = GetSysColor(COLOR_WINDOWTEXT);
+                                rgbColor = GetSysColor(COLOR_BTNTEXT);
                             }
                             HFONT hOldFont = SelectFont(hDC, hFont);
                             if (bEmptyData)
