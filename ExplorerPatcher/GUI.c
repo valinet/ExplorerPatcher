@@ -91,7 +91,7 @@ void PlayHelpMessage(GUI* _this)
         wszAccText,
         1000,
         L"Welcome to ExplorerPatcher. "
-        L"Selected page is: %s: %d out of %d. "
+        L"Selected page is: %s: %d of %d. "
         L"To switch pages, press the Left or Right arrow keys or press a number (%d to %d). "
         L"To select an item, press the Up or Down arrow keys or Shift+Tab and Tab. "
         L"To interact with the selected item, press Space or Return. "
@@ -2893,7 +2893,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
             swprintf_s(
                 wszAccText,
                 100,
-                L"Selected page: %s: %d out of %d.",
+                L"Selected page: %s: %d of %d.",
                 _this->sectionNames[_this->section],
                 _this->section + 1,
                 max_section + 1
