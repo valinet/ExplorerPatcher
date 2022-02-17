@@ -638,7 +638,7 @@ LRESULT CALLBACK epw_Weather_WindowProc(_In_ HWND hWnd, _In_ UINT uMsg, _In_ WPA
         }
         return 0;
     }
-    else if (wParam == EP_WEATHER_WM_REBOUND_BROWSER)
+    else if (uMsg == EP_WEATHER_WM_REBOUND_BROWSER)
     {
         LPWSTR uri = NULL;
         if (_this->pCoreWebView2)
