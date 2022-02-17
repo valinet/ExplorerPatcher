@@ -8108,7 +8108,7 @@ DWORD Inject(BOOL bIsExplorer)
         return;
     }
 
-
+#ifdef _WIN64
     wszEPWeatherKillswitch = calloc(sizeof(WCHAR), MAX_PATH);
     srand(time(NULL));
     rand_string(wszEPWeatherKillswitch, MAX_PATH / 2 - 1);
@@ -8129,6 +8129,7 @@ DWORD Inject(BOOL bIsExplorer)
             break;
         }
     }*/
+#endif
 
 
 #ifdef _WIN64
