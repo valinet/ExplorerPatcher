@@ -23,6 +23,7 @@
 #pragma comment(lib, "Dbghelp.lib")
 #include <tlhelp32.h>
 #include <UIAutomationClient.h>
+#include <math.h>
 #ifdef _WIN64
 #include <valinet/pdb/pdb.h>
 #endif
