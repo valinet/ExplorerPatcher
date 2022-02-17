@@ -3945,11 +3945,24 @@ SIZE WINAPI PeopleButton_CalculateMinimumSizeHook(void* _this, SIZE* pSz)
                 mi.cbSize = sizeof(MONITORINFO);
                 if (GetMonitorInfoW(hMonitor, &mi))
                 {
+                    DWORD dwTextScaleFactor = 0, dwSize = sizeof(DWORD);
+                    if (SHRegGetValueFromHKCUHKLMFunc && SHRegGetValueFromHKCUHKLMFunc(
+                        TEXT("SOFTWARE\\Microsoft\\Accessibility"),
+                        TEXT("TextScaleFactor"),
+                        SRRF_RT_REG_DWORD,
+                        NULL,
+                        &dwTextScaleFactor,
+                        (LPDWORD)(&dwSize)
+                    ) != ERROR_SUCCESS)
+                    {
+                        dwTextScaleFactor = 100;
+                    }
+
                     RECT rcWeatherFlyoutWindow;
                     rcWeatherFlyoutWindow.left = mi.rcWork.left;
                     rcWeatherFlyoutWindow.top = mi.rcWork.top;
-                    rcWeatherFlyoutWindow.right = rcWeatherFlyoutWindow.left + MulDiv(EP_WEATHER_WIDTH, dpiX, 96);
-                    rcWeatherFlyoutWindow.bottom = rcWeatherFlyoutWindow.top + MulDiv(EP_WEATHER_HEIGHT, dpiX, 96);
+                    rcWeatherFlyoutWindow.right = rcWeatherFlyoutWindow.left + MulDiv(MulDiv(EP_WEATHER_WIDTH, dpiX, 96), dwTextScaleFactor, 100);
+                    rcWeatherFlyoutWindow.bottom = rcWeatherFlyoutWindow.top + MulDiv(MulDiv(EP_WEATHER_HEIGHT, dpiX, 96), dwTextScaleFactor, 100);
                     if (FAILED(epw->lpVtbl->Initialize(epw, wszEPWeatherKillswitch, bAllocConsole, EP_WEATHER_PROVIDER_GOOGLE, rt, rt, dwWeatherTemperatureUnit, dwWeatherUpdateSchedule * 1000, rcWeatherFlyoutWindow, dwWeatherTheme, dwWeatherGeolocationMode, &hWndWeatherFlyout)))
                     {
                         epw->lpVtbl->Release(epw);

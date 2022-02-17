@@ -18,13 +18,15 @@
 DEFINE_GUID(IID_ITaskbarList,
     0x56FDF342, 0xFD6D, 0x11d0, 0x95, 0x8A, 0x00, 0x60, 0x97, 0xC9, 0xA0, 0x90);
 
-#define EP_WEATHER_NUM_SIGNALS 2
+#define EP_WEATHER_NUM_SIGNALS 4
 
 #define EP_WEATHER_TIMER_REQUEST_REPAINT 1
 #define EP_WEATHER_TIMER_REQUEST_REPAINT_DELAY 1000
 #define EP_WEATHER_TIMER_REQUEST_REFRESH 10
 #define EP_WEATHER_TIMER_REQUEST_REFRESH_DELAY 2000
 #define EP_WEATHER_TIMER_SCHEDULE_REFRESH 11
+#define EP_WEATHER_TIMER_RESIZE_WINDOW 15
+#define EP_WEATHER_TIMER_RESIZE_WINDOW_DELAY 150
 
 typedef interface EPWeather
 {
@@ -60,7 +62,12 @@ typedef interface EPWeather
     char* pImage;
     DWORD cbLocation;
     LPCWSTR wszLocation;
+    LONG64 dwTextScaleFactor; // interlocked
     HMODULE hUxtheme;
+    HMODULE hShlwapi;
+    HKEY hKCUAccessibility;
+    HKEY hKLMAccessibility;
+    DWORD cntResizeWindow;
 
     RECT rcBorderThickness; // local variables:
     ITaskbarList* pTaskList;
@@ -72,6 +79,8 @@ typedef interface EPWeather
 
     HANDLE hSignalExitMainThread;
     HANDLE hSignalKillSwitch;
+    HANDLE hSignalOnAccessibilitySettingsChangedFromHKCU;
+    HANDLE hSignalOnAccessibilitySettingsChangedFromHKLM;
 } EPWeather;
 
 ULONG   STDMETHODCALLTYPE epw_Weather_AddRef(EPWeather* _this);
@@ -130,6 +139,9 @@ static const IEPWeatherVtbl IEPWeather_Vtbl = {
     .SetGeolocationMode = epw_Weather_SetGeolocationMode,
     .SetWindowCornerPreference = epw_Weather_SetWindowCornerPreference,
 };
+
+static inline DWORD epw_Weather_GetTextScaleFactor(EPWeather* _this) { return InterlockedAdd64(&_this->dwTextScaleFactor, 0); }
+static void epw_Weather_SetTextScaleFactorFromRegistry(EPWeather* _this, HKEY hKey, BOOL bRefresh);
 
 HRESULT STDMETHODCALLTYPE epw_Weather_static_Stub(void* _this);
 ULONG   STDMETHODCALLTYPE epw_Weather_static_AddRefRelease(EPWeather* _this);

@@ -4,6 +4,39 @@
 #include "ep_weather_error_html.h"
 
 EPWeather* EPWeather_Instance;
+FARPROC SHRegGetValueFromHKCUHKLMFunc;
+
+static void epw_Weather_SetTextScaleFactorFromRegistry(EPWeather* _this, HKEY hKey, BOOL bRefresh)
+{
+    DWORD dwTextScaleFactor = 100, dwSize = sizeof(DWORD);
+    if (SHRegGetValueFromHKCUHKLMFunc && SHRegGetValueFromHKCUHKLMFunc(L"SOFTWARE\\Microsoft\\Accessibility", L"TextScaleFactor", SRRF_RT_REG_DWORD, NULL, &dwTextScaleFactor, (LPDWORD)(&dwSize)) != ERROR_SUCCESS)
+    {
+        dwTextScaleFactor = 100;
+    }
+    if (InterlockedExchange64(&_this->dwTextScaleFactor, dwTextScaleFactor) == dwTextScaleFactor)
+    {
+        bRefresh = FALSE;
+    }
+    if (hKey == HKEY_CURRENT_USER)
+    {
+        if (RegCreateKeyExW(HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\Accessibility", 0, NULL, REG_OPTION_NON_VOLATILE, KEY_READ | KEY_WOW64_64KEY | KEY_WRITE, NULL, &_this->hKCUAccessibility, NULL) == ERROR_SUCCESS)
+        {
+            RegNotifyChangeKeyValue(_this->hKCUAccessibility, FALSE, REG_NOTIFY_CHANGE_LAST_SET, _this->hSignalOnAccessibilitySettingsChangedFromHKCU, TRUE);
+        }
+    }
+    else if (hKey == HKEY_LOCAL_MACHINE)
+    {
+        if (RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Accessibility", 0, KEY_READ | KEY_WOW64_64KEY | KEY_WRITE, NULL, &_this->hKLMAccessibility))
+        {
+            RegNotifyChangeKeyValue(_this->hKLMAccessibility, FALSE, REG_NOTIFY_CHANGE_LAST_SET, _this->hSignalOnAccessibilitySettingsChangedFromHKLM, TRUE);
+        }
+    }
+    if (bRefresh)
+    {
+        _this->cntResizeWindow = 0;
+        SetTimer(_this->hWnd, EP_WEATHER_TIMER_RESIZE_WINDOW, EP_WEATHER_TIMER_RESIZE_WINDOW_DELAY, NULL);
+    }
+}
 
 HRESULT STDMETHODCALLTYPE INetworkListManagerEvents_QueryInterface(void* _this, REFIID riid, void** ppv)
 {
@@ -108,7 +141,7 @@ HRESULT STDMETHODCALLTYPE _epw_Weather_NavigateToError(EPWeather* _this)
     _ep_weather_ReboundBrowser(_this, TRUE);
     InterlockedExchange64(&_this->bIsNavigatingToError, TRUE);
     UINT dpi = GetDpiForWindow(_this->hWnd);
-    int ch = MulDiv(305, dpi, 96);
+    int ch = MulDiv(MulDiv(305, dpi, 96), epw_Weather_GetTextScaleFactor(_this), 100);
     RECT rc;
     GetWindowRect(_this->hWnd, &rc);
     if (rc.bottom - rc.top != ch)
@@ -215,10 +248,11 @@ HRESULT STDMETHODCALLTYPE _ep_weather_ReboundBrowser(EPWeather* _this, LONG64 dw
     }
     else
     {
-        bounds.left = 0 - MulDiv(167, dpi, 96);
-        bounds.top = 0 - MulDiv(178, dpi, 96);
-        bounds.right = MulDiv(1333, dpi, 96);// 5560;
-        bounds.bottom = MulDiv(600, dpi, 96);// 15600;
+        DWORD dwTextScaleFactor = epw_Weather_GetTextScaleFactor(_this);
+        bounds.left = 0 - MulDiv(MulDiv(167, dpi, 96), dwTextScaleFactor, 100);
+        bounds.top = 0 - MulDiv(MulDiv(178, dpi, 96), dwTextScaleFactor, 100);
+        bounds.right = MulDiv(MulDiv(1333, dpi, 96), dwTextScaleFactor, 100);// 5560;
+        bounds.bottom = MulDiv(MulDiv(600, dpi, 96), dwTextScaleFactor, 100);// 15600;
     }
     if (_this->pCoreWebView2Controller)
     {
@@ -451,7 +485,7 @@ HRESULT STDMETHODCALLTYPE ICoreWebView2_ExecuteScriptCompleted(ICoreWebView2Exec
                                             int h = _wtoi(wszHeight);
                                             int ch = MulDiv(h, EP_WEATHER_HEIGHT, 367);
                                             UINT dpi = GetDpiForWindow(_this->hWnd);
-                                            ch = MulDiv(ch, dpi, 96);
+                                            ch = MulDiv(MulDiv(ch, dpi, 96), epw_Weather_GetTextScaleFactor(_this), 100);
                                             RECT rc;
                                             GetWindowRect(_this->hWnd, &rc);
                                             if (rc.bottom - rc.top != ch)
@@ -516,9 +550,16 @@ ULONG STDMETHODCALLTYPE epw_Weather_Release(EPWeather* _this)
     {
         if (_this->hMainThread)
         {
-            SetEvent(_this->hSignalExitMainThread);
-            WaitForSingleObject(_this->hMainThread, INFINITE);
+            if (_this->hSignalExitMainThread)
+            {
+                SetEvent(_this->hSignalExitMainThread);
+                WaitForSingleObject(_this->hMainThread, INFINITE);
+            }
             CloseHandle(_this->hMainThread);
+            if (_this->hSignalExitMainThread)
+            {
+                CloseHandle(_this->hSignalExitMainThread);
+            }
         }
         if (_this->hInitializeEvent)
         {
@@ -534,6 +575,31 @@ ULONG STDMETHODCALLTYPE epw_Weather_Release(EPWeather* _this)
         {
             FreeLibrary(_this->hUxtheme);
         }
+        if (_this->hShlwapi)
+        {
+            FreeLibrary(_this->hShlwapi);
+        }
+        if (_this->hKCUAccessibility)
+        {
+            RegCloseKey(_this->hKCUAccessibility);
+        }
+        if (_this->hKLMAccessibility)
+        {
+            RegCloseKey(_this->hKLMAccessibility);
+        }
+        if (_this->hSignalOnAccessibilitySettingsChangedFromHKCU)
+        {
+            CloseHandle(_this->hSignalOnAccessibilitySettingsChangedFromHKCU);
+        }
+        if (_this->hSignalOnAccessibilitySettingsChangedFromHKLM)
+        {
+            CloseHandle(_this->hSignalOnAccessibilitySettingsChangedFromHKLM);
+        }
+        if (_this->hSignalKillSwitch)
+        {
+            CloseHandle(_this->hSignalKillSwitch);
+        }
+
         FREE(_this);
         LONG dwOutstandingObjects = InterlockedDecrement(&epw_OutstandingObjects);
         LONG dwOutstandingLocks = InterlockedAdd(&epw_LockCount, 0);
@@ -642,6 +708,22 @@ LRESULT CALLBACK epw_Weather_WindowProc(_In_ HWND hWnd, _In_ UINT uMsg, _In_ WPA
         }
         return 0;
     }
+    else if (uMsg == WM_TIMER && wParam == EP_WEATHER_TIMER_RESIZE_WINDOW)
+    {
+        DWORD dwTextScaleFactor = epw_Weather_GetTextScaleFactor(_this);
+        UINT dpi = GetDpiForWindow(_this->hWnd);
+        SetWindowPos(_this->hWnd, NULL, 0, 0, MulDiv(MulDiv(EP_WEATHER_WIDTH, dpi, 96), dwTextScaleFactor, 100), MulDiv(MulDiv(EP_WEATHER_HEIGHT, dpi, 96), dwTextScaleFactor, 100), SWP_NOMOVE | SWP_NOSENDCHANGING);
+        if (_this->cntResizeWindow == 7)
+        {
+            _this->cntResizeWindow = 0;
+            KillTimer(_this->hWnd, EP_WEATHER_TIMER_RESIZE_WINDOW);
+        }
+        else
+        {
+            _this->cntResizeWindow++;
+        }
+        return 0;
+    }
     else if (uMsg == EP_WEATHER_WM_REBOUND_BROWSER)
     {
         LPWSTR uri = NULL;
@@ -718,7 +800,7 @@ LRESULT CALLBACK epw_Weather_WindowProc(_In_ HWND hWnd, _In_ UINT uMsg, _In_ WPA
     else if (uMsg == WM_DPICHANGED)
     {
         UINT dpiX = LOWORD(wParam);
-        int w = MulDiv(EP_WEATHER_WIDTH, dpiX, 96);
+        int w = MulDiv(MulDiv(EP_WEATHER_WIDTH, dpiX, 96), epw_Weather_GetTextScaleFactor(_this), 100);
         RECT* rc = lParam;
         SetWindowPos(_this->hWnd, NULL, rc->left, rc->top, w, rc->bottom - rc->top, 0);
         return 0;
@@ -984,6 +1066,14 @@ DWORD WINAPI epw_Weather_MainThread(EPWeather* _this)
             CloseHandle(_this->hSignalKillSwitch);
             TerminateProcess(GetCurrentProcess(), 0);
         }
+        else if (dwRes == WAIT_OBJECT_0 + 2)
+        {
+            epw_Weather_SetTextScaleFactorFromRegistry(_this, HKEY_CURRENT_USER, TRUE);
+        }
+        else if (dwRes == WAIT_OBJECT_0 + 3)
+        {
+            epw_Weather_SetTextScaleFactorFromRegistry(_this, HKEY_LOCAL_MACHINE, TRUE);
+        }
     }
 
     if (SUCCEEDED(hr))
@@ -1125,6 +1215,12 @@ HRESULT STDMETHODCALLTYPE epw_Weather_Initialize(EPWeather* _this, WCHAR wszName
         }
     }
 
+    _this->hShlwapi = LoadLibraryW(L"Shlwapi.dll");
+    if (_this->hShlwapi)
+    {
+        SHRegGetValueFromHKCUHKLMFunc = GetProcAddress(_this->hShlwapi, "SHRegGetValueFromHKCUHKLM");
+    }
+
     _this->hMutexData = CreateMutexW(NULL, FALSE, NULL);
     if (!_this->hMutexData)
     {
@@ -1142,6 +1238,19 @@ HRESULT STDMETHODCALLTYPE epw_Weather_Initialize(EPWeather* _this, WCHAR wszName
     {
         return HRESULT_FROM_WIN32(GetLastError());
     }
+
+    _this->hSignalOnAccessibilitySettingsChangedFromHKCU = CreateEventW(NULL, FALSE, FALSE, NULL);
+    if (!_this->hSignalOnAccessibilitySettingsChangedFromHKCU)
+    {
+        return HRESULT_FROM_WIN32(GetLastError());
+    }
+    _this->hSignalOnAccessibilitySettingsChangedFromHKLM = CreateEventW(NULL, FALSE, FALSE, NULL);
+    if (!_this->hSignalOnAccessibilitySettingsChangedFromHKLM)
+    {
+        return HRESULT_FROM_WIN32(GetLastError());
+    }
+    epw_Weather_SetTextScaleFactorFromRegistry(_this, HKEY_CURRENT_USER, FALSE);
+    epw_Weather_SetTextScaleFactorFromRegistry(_this, HKEY_LOCAL_MACHINE, FALSE);
 
     _this->rc = rc;
 
