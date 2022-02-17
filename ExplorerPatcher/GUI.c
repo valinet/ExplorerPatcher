@@ -1322,6 +1322,11 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                 HWND hShellTrayWnd = FindWindowW(L"Shell_TrayWnd", NULL);
                                 if (hShellTrayWnd)
                                 {
+                                    HANDLE hEvent = NULL;
+                                    if (GetAsyncKeyState(VK_SHIFT))
+                                    {
+                                        hEvent = CreateEventW(NULL, FALSE, FALSE, _T(EP_SETUP_EVENTNAME));
+                                    }
                                     WCHAR wszPath[MAX_PATH];
                                     ZeroMemory(wszPath, MAX_PATH * sizeof(WCHAR));
                                     PDWORD_PTR res = -1;
@@ -1362,6 +1367,10 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                     wcscat_s(wszPath, MAX_PATH, L"\\explorer.exe");
                                     Sleep(1000);
                                     GUI_RegSetValueExW(NULL, L"Virtualized_" _T(EP_CLSID) L"_TaskbarPosition", NULL, NULL, &dwTaskbarPosition, NULL);
+                                    if (hEvent)
+                                    {
+                                        CloseHandle(hEvent);
+                                    }
                                     ShellExecuteW(
                                         NULL,
                                         L"open",

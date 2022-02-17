@@ -18,4 +18,5 @@
 #define EP_SETUP_HELPER_SWITCH "/CreateExplorerShellUnelevatedAfterServicing"
 #define EP_DWM_SERVICENAME "ep_dwm_" EP_CLSID_LITE
 #define EP_DWM_EVENTNAME "Global\\ep_dwm_2_" EP_CLSID_LITE
+#define EP_SETUP_EVENTNAME "Global\\ep_setup_" EP_CLSID_LITE
 #endif

@@ -540,6 +540,8 @@ int WINAPI wWinMain(
         exit(0);
     }
 
+    CreateEventW(NULL, FALSE, FALSE, _T(EP_SETUP_EVENTNAME));
+
     SHGetFolderPathW(NULL, SPECIAL_FOLDER, NULL, SHGFP_TYPE_CURRENT, wszPath);
     wcscat_s(wszPath, MAX_PATH, _T(APP_RELATIVE_PATH));
     bOk = CreateDirectoryW(wszPath, NULL);

@@ -8110,9 +8110,25 @@ DWORD Inject(BOOL bIsExplorer)
 
 
     wszEPWeatherKillswitch = calloc(sizeof(WCHAR), MAX_PATH);
-    rand_string(wszEPWeatherKillswitch, MAX_PATH / 2);
-    wcscat_s(wszEPWeatherKillswitch, MAX_PATH, _T(EP_Weather_Killswitch));
+    srand(time(NULL));
+    rand_string(wszEPWeatherKillswitch, MAX_PATH / 2 - 1);
+    swprintf_s(wszEPWeatherKillswitch, sizeof(_T(EP_Weather_Killswitch)) / sizeof(WCHAR), L"%s", _T(EP_Weather_Killswitch));
+    wszEPWeatherKillswitch[wcslen(wszEPWeatherKillswitch)] = L'_';
+    //wprintf(L"%s\n", wszEPWeatherKillswitch);
     hEPWeatherKillswitch = CreateMutexW(NULL, TRUE, wszEPWeatherKillswitch);
+    /*while (TRUE)
+    {
+        hEPWeatherKillswitch = CreateMutexW(NULL, TRUE, wszEPWeatherKillswitch);
+        if (GetLastError() == ERROR_ALREADY_EXISTS)
+        {
+            WaitForSingleObject(hEPWeatherKillswitch, INFINITE);
+            CloseHandle(hEPWeatherKillswitch);
+        }
+        else
+        {
+            break;
+        }
+    }*/
 
 
 #ifdef _WIN64
