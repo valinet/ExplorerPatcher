@@ -47,16 +47,18 @@ BOOL SetupShortcut(BOOL bInstall, WCHAR* wszPath, WCHAR* wszArguments)
         }
     }
     BOOL bOk = FALSE;
-    WCHAR wszStartPrograms[MAX_PATH];
-    ZeroMemory(wszStartPrograms, MAX_PATH);
+    WCHAR wszStartPrograms[MAX_PATH + 1];
+    ZeroMemory(wszStartPrograms, MAX_PATH + 1);
     SHGetFolderPathW(NULL, CSIDL_COMMON_PROGRAMS, NULL, SHGFP_TYPE_CURRENT, wszStartPrograms);
-    wcscat_s(wszStartPrograms, MAX_PATH, L"\\" _T(PRODUCT_NAME));
+    wcscat_s(wszStartPrograms, MAX_PATH + 1, L"\\" _T(PRODUCT_NAME));
+    wszStartPrograms[wcslen(wszStartPrograms) + 1] = 0;
     SHFILEOPSTRUCTW op;
     ZeroMemory(&op, sizeof(SHFILEOPSTRUCTW));
     op.wFunc = FO_DELETE;
     op.pFrom = wszStartPrograms;
     op.fFlags = FOF_NO_UI;
-    bOk = !SHFileOperationW(&op);
+    bOk = SHFileOperationW(&op);
+    bOk = !bOk;
     if (bInstall)
     {
         if (!CreateDirectoryW(wszStartPrograms, NULL))
