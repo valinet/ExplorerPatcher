@@ -60,6 +60,7 @@ typedef interface EPWeather
     char* pImage;
     DWORD cbLocation;
     LPCWSTR wszLocation;
+    HMODULE hUxtheme;
 
     RECT rcBorderThickness; // local variables:
     ITaskbarList* pTaskList;

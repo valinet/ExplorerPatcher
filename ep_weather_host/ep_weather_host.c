@@ -530,6 +530,10 @@ ULONG STDMETHODCALLTYPE epw_Weather_Release(EPWeather* _this)
             CloseHandle(_this->hMutexData);
         }
 
+        if (_this->hUxtheme)
+        {
+            FreeLibrary(_this->hUxtheme);
+        }
         FREE(_this);
         LONG dwOutstandingObjects = InterlockedDecrement(&epw_OutstandingObjects);
         LONG dwOutstandingLocks = InterlockedAdd(&epw_LockCount, 0);
@@ -1101,14 +1105,14 @@ HRESULT STDMETHODCALLTYPE epw_Weather_Initialize(EPWeather* _this, WCHAR wszName
 
     InterlockedExchange64(&_this->dwGeolocationMode, dwGeolocationMode);
 
-    HMODULE hUxtheme = GetModuleHandleW(L"uxtheme.dll");
-    if (hUxtheme)
+    _this->hUxtheme = LoadLibraryW(L"uxtheme.dll");
+    if (_this->hUxtheme)
     {
-        RefreshImmersiveColorPolicyState = GetProcAddress(hUxtheme, (LPCSTR)104);
-        SetPreferredAppMode = GetProcAddress(hUxtheme, (LPCSTR)135);
-        AllowDarkModeForWindow = GetProcAddress(hUxtheme, (LPCSTR)133);
-        ShouldAppsUseDarkMode = GetProcAddress(hUxtheme, (LPCSTR)132);
-        ShouldSystemUseDarkMode = GetProcAddress(hUxtheme, (LPCSTR)138);
+        RefreshImmersiveColorPolicyState = GetProcAddress(_this->hUxtheme, (LPCSTR)104);
+        SetPreferredAppMode = GetProcAddress(_this->hUxtheme, (LPCSTR)135);
+        AllowDarkModeForWindow = GetProcAddress(_this->hUxtheme, (LPCSTR)133);
+        ShouldAppsUseDarkMode = GetProcAddress(_this->hUxtheme, (LPCSTR)132);
+        ShouldSystemUseDarkMode = GetProcAddress(_this->hUxtheme, (LPCSTR)138);
         if (ShouldAppsUseDarkMode &&
             ShouldSystemUseDarkMode &&
             SetPreferredAppMode &&
