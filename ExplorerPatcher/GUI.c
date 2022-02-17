@@ -19,7 +19,8 @@ int GUI_DeleteWeatherFolder()
     WCHAR wszWorkFolder[MAX_PATH + 1];
     ZeroMemory(wszWorkFolder, (MAX_PATH + 1) * sizeof(WCHAR));
     SHGetFolderPathW(NULL, CSIDL_APPDATA, NULL, SHGFP_TYPE_CURRENT, wszWorkFolder);
-    wcscat_s(wszWorkFolder, MAX_PATH, L"\\ExplorerPatcher\\ep_weather_host");
+    wcscat_s(wszWorkFolder, MAX_PATH + 1, L"\\ExplorerPatcher\\ep_weather_host");
+    wszWorkFolder[wcslen(wszWorkFolder) + 1] = 0;
     SHFILEOPSTRUCTW op;
     ZeroMemory(&op, sizeof(SHFILEOPSTRUCTW));
     op.wFunc = FO_DELETE;
