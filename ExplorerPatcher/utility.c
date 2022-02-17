@@ -430,7 +430,7 @@ int ComputeFileHash2(HMODULE hModule, LPCWSTR filename, LPSTR hash, DWORD dwHash
 
     char real_hash[33];
     ComputeFileHash(filename, real_hash, 33);
-    strncpy_s(hash + strlen(hash), dwHash, real_hash, 32 - strlen(hash));
+    strncpy_s(hash + strlen(hash), dwHash - strlen(hash), real_hash, 32 - strlen(hash));
     hash[33] = 0;
 
     return ERROR_SUCCESS;
