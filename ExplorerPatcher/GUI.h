@@ -68,7 +68,7 @@ typedef struct _GUI
 	POINT dpi;
 	MARGINS extent;
 	UINT tabOrder;
-	BOOL bCalcExtent;
+	DWORD bCalcExtent;
 	SIZE_T section;
 	DWORD dwStatusbarY;
 	HICON hIcon;

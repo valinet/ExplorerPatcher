@@ -900,9 +900,9 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
             hdcPaint = GetDC(hwnd);
         }
 
-        if (!IsThemeActive() && hDC)
+        if ((!IsThemeActive() || IsHighContrast()) && hDC)
         {
-            COLORREF oldcr = SetBkColor(hdcPaint, GetSysColor(COLOR_MENU));
+            COLORREF oldcr = SetBkColor(hdcPaint, GetSysColor(COLOR_WINDOW));
             ExtTextOutW(hdcPaint, 0, 0, ETO_OPAQUE, &rc, L"", 0, 0);
             SetBkColor(hdcPaint, oldcr);
             SetTextColor(hdcPaint, GetSysColor(COLOR_WINDOWTEXT));
@@ -933,7 +933,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
             if (strcmp(line, "Windows Registry Editor Version 5.00\r\n") && 
                 strcmp(line, "\r\n") && 
                 (currentSection == -1 || currentSection == _this->section || !strncmp(line, ";T ", 3) || !strncmp(line, ";f", 2) || AuditFile) &&
-                !(!IsThemeActive() && !strncmp(line, ";M ", 3))
+                !((!IsThemeActive() || IsHighContrast()) && !strncmp(line, ";M ", 3))
                 )
             {
 #ifndef USE_PRIVATE_INTERFACES
@@ -1023,7 +1023,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                     }
                     if (hDC)
                     {
-                        if (IsThemeActive())
+                        if (IsThemeActive() && !IsHighContrast())
                         {
                             DrawThemeTextEx(
                                 _this->hTheme,
@@ -1208,9 +1208,9 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                         if (!strncmp(line, ";u ", 3) && tabOrder == _this->tabOrder)
                         {
                             bTabOrderHit = TRUE;
-                            if (!IsThemeActive())
+                            if (!IsThemeActive() || IsHighContrast())
                             {
-                                cr = SetTextColor(hdcPaint, GetSysColor(COLOR_HIGHLIGHTTEXT));
+                                cr = SetTextColor(hdcPaint, GetSysColor(COLOR_HIGHLIGHT));
                             }
                             else
                             {
@@ -1261,7 +1261,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                         {
                             dwMaxWidth = rcNew.right - rcNew.left + 50 * dx;
                         }
-                        if (IsThemeActive())
+                        if (IsThemeActive() && !IsHighContrast())
                         {
                             DrawThemeTextEx(
                                 _this->hTheme,
@@ -1287,7 +1287,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                         }
                         if (!strncmp(line, ";u ", 3) && tabOrder == _this->tabOrder)
                         {
-                            if (!IsThemeActive())
+                            if (!IsThemeActive() || IsHighContrast())
                             {
                                 SetTextColor(hdcPaint, cr);
                             }
@@ -2677,7 +2677,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                         if (tabOrder == _this->tabOrder)
                         {
                             bTabOrderHit = TRUE;
-                            if (!IsThemeActive())
+                            if (!IsThemeActive() || IsHighContrast())
                             {
                                 cr = SetTextColor(hdcPaint, GetSysColor(COLOR_HIGHLIGHT));
                             }
@@ -2801,7 +2801,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                 _this->bShouldAnnounceSelected = FALSE;
                             }
                         }
-                        if (IsThemeActive())
+                        if (IsThemeActive() && !IsHighContrast())
                         {
                             DrawThemeTextEx(
                                 _this->hTheme,
@@ -2827,7 +2827,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                         }
                         if (tabOrder == _this->tabOrder)
                         {
-                            if (!IsThemeActive())
+                            if (!IsThemeActive() || IsHighContrast())
                             {
                                 SetTextColor(hdcPaint, cr);
                             }
@@ -2937,7 +2937,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
         printf("%d %d - %d %d\n", rcWin.right - rcWin.left, rcWin.bottom - rcWin.top, dwMaxWidth, dwMaxHeight);
 
         dwMaxWidth += dwInitialLeftPad + _this->padding.left + _this->padding.right;
-        if (!IsThemeActive())
+        if (!IsThemeActive() || IsHighContrast())
         {
             dwMaxHeight += GUI_LINE_HEIGHT * dy + 20 * dy;
         }
@@ -2957,7 +2957,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
             mi.rcWork.top + ((mi.rcWork.bottom - mi.rcWork.top) / 2 - (dwMaxHeight) / 2),
             dwMaxWidth,
             dwMaxHeight,
-            SWP_NOZORDER | SWP_NOACTIVATE
+            SWP_NOZORDER | SWP_NOACTIVATE | (_this->bCalcExtent == 2 ? SWP_NOMOVE : 0)
         );
 
         DWORD dwReadSection = 0;
@@ -3068,7 +3068,21 @@ static LRESULT CALLBACK GUI_WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
             DwmIsCompositionEnabled(&bIsCompositionEnabled);
             if (bIsCompositionEnabled)
             {
-                MARGINS marGlassInset = { -1, -1, -1, -1 }; // -1 means the whole window
+                MARGINS marGlassInset;
+                if (!IsHighContrast())
+                {
+                    marGlassInset.cxLeftWidth = -1; // -1 means the whole window
+                    marGlassInset.cxRightWidth = -1;
+                    marGlassInset.cyBottomHeight = -1;
+                    marGlassInset.cyTopHeight = -1;
+                }
+                else
+                {
+                    marGlassInset.cxLeftWidth = 0;
+                    marGlassInset.cxRightWidth = 0;
+                    marGlassInset.cyBottomHeight = 0;
+                    marGlassInset.cyTopHeight = 0;
+                }
                 DwmExtendFrameIntoClientArea(hWnd, &marGlassInset);
             }
         }
@@ -3082,7 +3096,7 @@ static LRESULT CALLBACK GUI_WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
             SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED
         );
         SetTimer(hWnd, GUI_TIMER_READ_HELP, GUI_TIMER_READ_HELP_TIMEOUT, NULL);
-        if (IsThemeActive())
+        if (IsThemeActive() && !IsHighContrast())
         {
             RECT rcTitle;
             DwmGetWindowAttribute(hWnd, DWMWA_CAPTION_BUTTON_BOUNDS, &rcTitle, sizeof(RECT));
@@ -3092,13 +3106,13 @@ static LRESULT CALLBACK GUI_WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
         {
             _this->GUI_CAPTION_LINE_HEIGHT = GUI_CAPTION_LINE_HEIGHT_DEFAULT;
         }
-        if (IsThemeActive() && ShouldAppsUseDarkMode)
+        if (IsThemeActive() && ShouldAppsUseDarkMode && !IsHighContrast())
         {
             AllowDarkModeForWindow(hWnd, g_darkModeEnabled);
             BOOL value = g_darkModeEnabled;
             DwmSetWindowAttribute(hWnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &value, sizeof(BOOL));
         }
-        if (!IsThemeActive())
+        if (!IsThemeActive() || IsHighContrast())
         {
             int extendedStyle = GetWindowLong(hWnd, GWL_EXSTYLE);
             SetWindowLong(hWnd, GWL_EXSTYLE, extendedStyle | WS_EX_DLGMODALFRAME);
@@ -3122,11 +3136,41 @@ static LRESULT CALLBACK GUI_WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
     {
         if (IsColorSchemeChangeMessage(lParam))
         {
-            if (IsThemeActive() && ShouldAppsUseDarkMode)
+            if (IsThemeActive())
             {
-                RefreshImmersiveColorPolicyState();
                 BOOL bIsCompositionEnabled = TRUE;
                 DwmIsCompositionEnabled(&bIsCompositionEnabled);
+                if (bIsCompositionEnabled)
+                {
+                    MARGINS marGlassInset;
+                    if (!IsHighContrast())
+                    {
+                        marGlassInset.cxLeftWidth = -1; // -1 means the whole window
+                        marGlassInset.cxRightWidth = -1;
+                        marGlassInset.cyBottomHeight = -1;
+                        marGlassInset.cyTopHeight = -1;
+                    }
+                    else
+                    {
+                        marGlassInset.cxLeftWidth = 0;
+                        marGlassInset.cxRightWidth = 0;
+                        marGlassInset.cyBottomHeight = 0;
+                        marGlassInset.cyTopHeight = 0;
+                    }
+                    DwmExtendFrameIntoClientArea(hWnd, &marGlassInset);
+                }
+            }
+            _this->bCalcExtent = 2;
+            BOOL bIsCompositionEnabled = TRUE;
+            DwmIsCompositionEnabled(&bIsCompositionEnabled);
+            if (bIsCompositionEnabled)
+            {
+                BOOL value = (IsThemeActive() && !IsHighContrast()) ? 1 : 0;
+                DwmSetWindowAttribute(hWnd, DWMWA_MICA_EFFFECT, &value, sizeof(BOOL));
+            }
+            if (IsThemeActive() && ShouldAppsUseDarkMode && !IsHighContrast())
+            {
+                RefreshImmersiveColorPolicyState();
                 BOOL bDarkModeEnabled = IsThemeActive() && bIsCompositionEnabled && ShouldAppsUseDarkMode() && !IsHighContrast();
                 if (bDarkModeEnabled != g_darkModeEnabled)
                 {
@@ -3244,7 +3288,7 @@ static LRESULT CALLBACK GUI_WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
             return 0;
         }
     }
-    else if (uMsg == WM_NCMOUSELEAVE && IsThemeActive())
+    else if (uMsg == WM_NCMOUSELEAVE && IsThemeActive() && !IsHighContrast())
     {
         LRESULT lRes = 0;
         if (DwmDefWindowProc(hWnd, uMsg, wParam, lParam, &lRes))
@@ -3252,7 +3296,7 @@ static LRESULT CALLBACK GUI_WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
             return lRes;
         }
     }
-    else if (uMsg == WM_NCRBUTTONUP && IsThemeActive())
+    else if (uMsg == WM_NCRBUTTONUP && IsThemeActive() && !IsHighContrast())
     {
         HMENU pSysMenu = GetSystemMenu(hWnd, FALSE);
         if (pSysMenu != NULL)
@@ -3270,7 +3314,7 @@ static LRESULT CALLBACK GUI_WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
         }
         return 0;
     }
-    else if ((uMsg == WM_LBUTTONUP || uMsg == WM_RBUTTONUP) && IsThemeActive())
+    else if ((uMsg == WM_LBUTTONUP || uMsg == WM_RBUTTONUP) && IsThemeActive() && !IsHighContrast())
     {
         POINT pt;
         pt.x = GET_X_LPARAM(lParam);
@@ -3326,7 +3370,7 @@ static LRESULT CALLBACK GUI_WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
             return 0;
         }
     }
-    else if (uMsg == WM_NCHITTEST && IsThemeActive())
+    else if (uMsg == WM_NCHITTEST && IsThemeActive() && !IsHighContrast())
     {
         LRESULT lRes = 0;
         if (DwmDefWindowProc(hWnd, uMsg, wParam, lParam, &lRes))
@@ -3353,7 +3397,7 @@ static LRESULT CALLBACK GUI_WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
             return HTCAPTION;
         }
     }
-    else if (uMsg == WM_NCCALCSIZE && wParam == TRUE && IsThemeActive())
+    else if (uMsg == WM_NCCALCSIZE && wParam == TRUE && IsThemeActive() && !IsHighContrast())
     {
         NCCALCSIZE_PARAMS* sz = (NCCALCSIZE_PARAMS*)(lParam);
         sz->rgrc[0].left += _this->border_thickness.left;
@@ -3389,18 +3433,7 @@ static LRESULT CALLBACK GUI_WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
         return 0;
     }
     else if (uMsg == WM_PAINT)
-    {
-        if (IsThemeActive())
-        {
-            BOOL bIsCompositionEnabled = TRUE;
-            DwmIsCompositionEnabled(&bIsCompositionEnabled);
-            if (bIsCompositionEnabled)
-            {
-                MARGINS marGlassInset = { -1, -1, -1, -1 }; // -1 means the whole window
-                DwmExtendFrameIntoClientArea(hWnd, &marGlassInset);
-            }
-        }
-    
+    {    
         PAINTSTRUCT ps;
         HDC hDC = BeginPaint(hWnd, &ps);
 
@@ -3557,7 +3590,7 @@ __declspec(dllexport) int ZZGUI(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLin
     _this.sidebarWidth = GUI_SIDEBAR_WIDTH;
     _this.hTheme = OpenThemeData(NULL, TEXT(GUI_WINDOWSWITCHER_THEME_CLASS));
     _this.tabOrder = 0;
-    _this.bCalcExtent = TRUE;
+    _this.bCalcExtent = 1;
     _this.section = 0;
     _this.dwStatusbarY = 0;
     _this.hIcon = NULL;
@@ -3620,30 +3653,27 @@ __declspec(dllexport) int ZZGUI(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLin
     {
         LoadStringW(hModule, IDS_PRODUCTNAME, GUI_title, 260);
     }
-    HANDLE hUxtheme = NULL;
-    BOOL bHasLoadedUxtheme = FALSE;
     BOOL bIsCompositionEnabled = TRUE;
     DwmIsCompositionEnabled(&bIsCompositionEnabled);
-    if (IsThemeActive() && bIsCompositionEnabled)
+    HANDLE hUxtheme = NULL;
+    BOOL bHasLoadedUxtheme = FALSE;
+    bHasLoadedUxtheme = TRUE;
+    hUxtheme = LoadLibraryW(L"uxtheme.dll");
+    if (hUxtheme)
     {
-        bHasLoadedUxtheme = TRUE;
-        hUxtheme = LoadLibraryW(L"uxtheme.dll");
-        if (hUxtheme)
+        RefreshImmersiveColorPolicyState = GetProcAddress(hUxtheme, (LPCSTR)104);
+        SetPreferredAppMode = GetProcAddress(hUxtheme, (LPCSTR)135);
+        AllowDarkModeForWindow = GetProcAddress(hUxtheme, (LPCSTR)133);
+        ShouldAppsUseDarkMode = GetProcAddress(hUxtheme, (LPCSTR)132);
+        if (ShouldAppsUseDarkMode &&
+            SetPreferredAppMode &&
+            AllowDarkModeForWindow &&
+            RefreshImmersiveColorPolicyState
+            )
         {
-            RefreshImmersiveColorPolicyState = GetProcAddress(hUxtheme, (LPCSTR)104);
-            SetPreferredAppMode = GetProcAddress(hUxtheme, (LPCSTR)135);
-            AllowDarkModeForWindow = GetProcAddress(hUxtheme, (LPCSTR)133);
-            ShouldAppsUseDarkMode = GetProcAddress(hUxtheme, (LPCSTR)132);
-            if (ShouldAppsUseDarkMode &&
-                SetPreferredAppMode &&
-                AllowDarkModeForWindow &&
-                RefreshImmersiveColorPolicyState
-                )
-            {
-                SetPreferredAppMode(TRUE);
-                RefreshImmersiveColorPolicyState();
-                g_darkModeEnabled = IsThemeActive() && bIsCompositionEnabled && ShouldAppsUseDarkMode() && !IsHighContrast();
-            }
+            SetPreferredAppMode(TRUE);
+            RefreshImmersiveColorPolicyState();
+            g_darkModeEnabled = IsThemeActive() && bIsCompositionEnabled && ShouldAppsUseDarkMode() && !IsHighContrast();
         }
     }
     GUI_RegQueryValueExW(NULL, L"Virtualized_" _T(EP_CLSID) L"_TaskbarPosition", NULL, NULL, &dwTaskbarPosition, NULL);
@@ -3700,7 +3730,7 @@ __declspec(dllexport) int ZZGUI(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLin
         );
     }
 
-    if (IsThemeActive())
+    if (IsThemeActive() && !IsHighContrast())
     {
         if (bIsCompositionEnabled)
         {
