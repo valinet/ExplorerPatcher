@@ -23,6 +23,7 @@ Tested on OS build 22000.493.
 * The weather widget supports setting window corner preference (rounded/not rounded) (.8)
 * Option to clear weather widget local data (.10, .11)
 * Installer sets a Start menu shortcut for the "Properties" window (.11)
+* Support for high contrast themes in the "Properties" window and in the weather widget (#885) (.15)
 
 #### Fixes
 
@@ -38,6 +39,8 @@ Tested on OS build 22000.493.
 * Fixed a bug that prevented correct operation on builds without built-in symbols (#783) (.5)
 * Fixed several race conditions that could lead to incorrect operation of the weather widget (for example, `explorer.exe` crashing when disabling or enabling the widget) (.6)
 * The weather widget positions and sizes itself with respect to the text size accessibility setting as well ([#734](https://github.com/valinet/ExplorerPatcher/discussions/734#discussioncomment-2190218)) (.14)
+* Fixed a bug that could lead to a crash when `explorer.exe` starts (#879) (.15)
+* Fixed a bug that could prevent the weather widget from launching under certain conditions (.15)
 
 ## 22000.469.41
 
