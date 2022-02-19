@@ -902,7 +902,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
 
         if ((!IsThemeActive() || IsHighContrast()) && hDC)
         {
-            COLORREF oldcr = SetBkColor(hdcPaint, GetSysColor(COLOR_WINDOW));
+            COLORREF oldcr = SetBkColor(hdcPaint, GetSysColor(COLOR_3DFACE));
             ExtTextOutW(hdcPaint, 0, 0, ETO_OPAQUE, &rc, L"", 0, 0);
             SetBkColor(hdcPaint, oldcr);
             SetTextColor(hdcPaint, GetSysColor(COLOR_WINDOWTEXT));
