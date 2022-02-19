@@ -92,7 +92,7 @@ jobs:
         cd libs/funchook
         md build
         cd build
-        cmake -G "Visual Studio 16 2019" -A x64 ..
+        cmake -G "Visual Studio 17 2022" -A x64 ..
         (gc .\funchook-static.vcxproj) -replace '<RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>', '<RuntimeLibrary>MultiThreaded</RuntimeLibrary>' | Out-File .\funchook-static.vcxproj
         cmake --build . --config Release
         
