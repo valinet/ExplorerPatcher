@@ -1968,7 +1968,7 @@ INT64 Shell_TrayWndSubclassProc(
         ToggleTaskbarAutohide();
         return 0;
     }
-    else if (uMsg == WM_HOTKEY && wParam == 500 && lParam == MAKELPARAM(MOD_WIN, 0x41))
+    else if (uMsg == WM_HOTKEY && wParam == 500 && lParam == MAKELPARAM(MOD_WIN, 0x41) && IsWindows11())
     {
         InvokeActionCenter();
         return 0;
@@ -2279,7 +2279,14 @@ INT64 ClockButtonSubclassProc(
         {
             if (FindWindowW(L"Windows.UI.Core.CoreWindow", NULL))
             {
-                ToggleNotificationsFlyout();
+                if (IsWindows11())
+                {
+                    ToggleNotificationsFlyout();
+                }
+                else
+                {
+                    ToggleActionCenter();
+                }
             }
             return 1;
         }
