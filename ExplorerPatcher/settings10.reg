@@ -466,8 +466,9 @@
 ;e Version %VERSIONINFORMATIONSTRING%
 ;t © 2006-2022 VALINET Solutions SRL. All rights reserved.
 ;e 
-;e This project aims to enhance the working environment on Windows 10.
-;t Proudly engineered by Valentin-Gabriel Radu.
+;e This project aims to enhance the working environment on Windows.
+;e Proudly engineered by Valentin-Gabriel Radu.
+;t Running on Windows 10, OS Build %OSVERSIONSTRING%
 ;y Visit project GitHub (https://github.com/valinet) 🡕
 ;https://github.com/valinet
 ;q

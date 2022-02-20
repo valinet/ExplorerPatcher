@@ -1116,6 +1116,14 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
 #endif
                                 );
                         }
+
+                        p = strstr(line, "%OSVERSIONSTRING%");
+                        if (p)
+                        {
+                            RTL_OSVERSIONINFOW rovi;
+                            DWORD32 ubr = VnGetOSVersionAndUBR(&rovi);
+                            sprintf_s(p, MAX_PATH, "%d.%d.%d.%d.", rovi.dwMajorVersion, rovi.dwMinorVersion, rovi.dwBuildNumber, ubr);
+                        }
                     }
                     ZeroMemory(text, (MAX_LINE_LENGTH + 3) * sizeof(wchar_t));
                     MultiByteToWideChar(
