@@ -3288,6 +3288,11 @@ static LRESULT CALLBACK GUI_WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
             SetTimer(hWnd, GUI_TIMER_READ_HELP, 200, NULL);
             return 0;
         }
+        else if (wParam == VK_F5)
+        {
+            InvalidateRect(hWnd, NULL, FALSE);
+            return 0;
+        }
         else if (wParam == 'Z')
         {
             return 0;
