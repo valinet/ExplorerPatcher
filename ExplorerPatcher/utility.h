@@ -562,4 +562,6 @@ extern BOOL (*PleaseWaitCallbackFunc)(void* data);
 BOOL PleaseWait_UpdateTimeout(int timeout);
 VOID CALLBACK PleaseWait_TimerProc(HWND hWnd, UINT uMsg, UINT idEvent, DWORD dwTime);
 LRESULT CALLBACK PleaseWait_HookProc(int code, WPARAM wParam, LPARAM lParam);
+
+BOOL DownloadAndInstallWebView2Runtime();
 #endif

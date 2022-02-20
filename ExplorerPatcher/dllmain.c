@@ -3964,13 +3964,36 @@ SIZE WINAPI PeopleButton_CalculateMinimumSizeHook(void* _this, SIZE* pSz)
                     rcWeatherFlyoutWindow.top = mi.rcWork.top;
                     rcWeatherFlyoutWindow.right = rcWeatherFlyoutWindow.left + MulDiv(MulDiv(EP_WEATHER_WIDTH, dpiX, 96), dwTextScaleFactor, 100);
                     rcWeatherFlyoutWindow.bottom = rcWeatherFlyoutWindow.top + MulDiv(MulDiv(EP_WEATHER_HEIGHT, dpiX, 96), dwTextScaleFactor, 100);
-                    if (FAILED(epw->lpVtbl->Initialize(epw, wszEPWeatherKillswitch, bAllocConsole, EP_WEATHER_PROVIDER_GOOGLE, rt, rt, dwWeatherTemperatureUnit, dwWeatherUpdateSchedule * 1000, rcWeatherFlyoutWindow, dwWeatherTheme, dwWeatherGeolocationMode, &hWndWeatherFlyout)))
+                    int k = 0;
+                    while (FAILED(hr = epw->lpVtbl->Initialize(epw, wszEPWeatherKillswitch, bAllocConsole, EP_WEATHER_PROVIDER_GOOGLE, rt, rt, dwWeatherTemperatureUnit, dwWeatherUpdateSchedule * 1000, rcWeatherFlyoutWindow, dwWeatherTheme, dwWeatherGeolocationMode, &hWndWeatherFlyout)))
                     {
-                        epw->lpVtbl->Release(epw);
-                        epw = NULL;
-                        prev_total_h = 0;
+                        BOOL bFailed = FALSE;
+                        if (k == 0 && hr == HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND))
+                        {
+                            if (DownloadAndInstallWebView2Runtime())
+                            {
+                                k++;
+                            }
+                            else
+                            {
+                                bFailed = TRUE;
+                            }
+                        }
+                        else
+                        {
+                            bFailed = TRUE;
+                        }
+                        if (bFailed)
+                        {
+                            epw->lpVtbl->Release(epw);
+                            epw = NULL;
+                            prev_total_h = 0;
+                            PostMessageW(FindWindowW(L"Shell_TrayWnd", NULL), WM_COMMAND, 435, 0);
+                            PostMessageW(FindWindowW(L"ExplorerPatcher_GUI_" _T(EP_CLSID), NULL), WM_USER + 1, 0, 0);
+                            break;
+                        }
                     }
-                    else
+                    if (SUCCEEDED(hr))
                     {
                         epw->lpVtbl->SetWindowCornerPreference(epw, dwWeatherWindowCornerPreference);
                     }
