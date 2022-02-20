@@ -210,5 +210,8 @@
     <None Include="settings.reg">
       <Filter>Settings</Filter>
     </None>
+    <None Include="settings10.reg">
+      <Filter>Settings</Filter>
+    </None>
   </ItemGroup>
 </Project>

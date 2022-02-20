@@ -1281,6 +1281,7 @@ LRESULT CALLBACK PleaseWait_HookProc(int code, WPARAM wParam, LPARAM lParam)
         PleaseWaitHook = NULL;
     }
     return result;
+}
 
 BOOL DownloadAndInstallWebView2Runtime()
 {

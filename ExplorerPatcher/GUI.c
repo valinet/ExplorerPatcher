@@ -362,6 +362,12 @@ LSTATUS GUI_Internal_RegSetValueExW(
             return ERROR_SUCCESS;
         }
         PostMessageW(FindWindowW(L"Shell_TrayWnd", NULL), WM_COMMAND, 435, 0);
+        DWORD dwProcessId = 0;
+        GetWindowThreadProcessId(FindWindowW(L"Shell_TrayWnd", NULL), &dwProcessId);
+        if (dwProcessId)
+        {
+            AllowSetForegroundWindow(dwProcessId);
+        }
         return ERROR_SUCCESS;
     }
     else if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_Start_MaximumFrequentApps"))
@@ -827,7 +833,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
     {
         HRSRC hRscr = FindResource(
             hModule,
-            MAKEINTRESOURCE(IDR_REGISTRY1),
+            IsWindows11() ? MAKEINTRESOURCE(IDR_REGISTRY1) : MAKEINTRESOURCE(IDR_REGISTRY2),
             RT_RCDATA
         );
         if (!hRscr)
@@ -3096,11 +3102,11 @@ static LRESULT CALLBACK GUI_WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
             }
         }
         SetWindowPos(
-            hWnd, 
-            hWnd, 
+            hWnd,
+            hWnd,
             mi.rcWork.left + ((mi.rcWork.right - mi.rcWork.left) / 2 - (_this->size.cx * dx) / 2),
             mi.rcWork.top + ((mi.rcWork.bottom - mi.rcWork.top) / 2 - (_this->size.cy * dy) / 2),
-            _this->size.cx * dxp, 
+            _this->size.cx * dxp,
             _this->size.cy * dyp,
             SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED
         );
@@ -3481,6 +3487,17 @@ static LRESULT CALLBACK GUI_WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
         _this->bShouldAnnounceSelected = TRUE;
         InvalidateRect(hWnd, NULL, FALSE);
         KillTimer(hWnd, GUI_TIMER_READ_REPEAT_SELECTION);
+    }
+    else if (uMsg == WM_USER + 1)
+    {
+        SetTimer(hWnd, GUI_TIMER_REFRESH_FOR_PEOPLEBAND, GUI_TIMER_REFRESH_FOR_PEOPLEBAND_TIMEOUT, NULL);
+        return 0;
+    }
+    else if (uMsg == WM_TIMER && wParam == GUI_TIMER_REFRESH_FOR_PEOPLEBAND)
+    {
+        InvalidateRect(hWnd, NULL, FALSE);
+        KillTimer(hWnd, GUI_TIMER_REFRESH_FOR_PEOPLEBAND);
+        return 0;
     }
     return DefWindowProc(hWnd, uMsg, wParam, lParam);
 }

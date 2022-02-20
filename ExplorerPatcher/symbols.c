@@ -234,35 +234,29 @@ DWORD DownloadSymbols(DownloadSymbolsParams* params)
         return 4;
     }
     printf("[Symbols] Reading symbols...\n");
+    if (!IsWindows11())
+    {
+        DWORD flOldProtect = 0;
+        if (VirtualProtect(twinui_pcshell_SN, sizeof(twinui_pcshell_SN), PAGE_EXECUTE_READWRITE, &flOldProtect))
+        {
+            twinui_pcshell_SN[1] = twinui_pcshell_SN[0];
+            VirtualProtect(twinui_pcshell_SN, sizeof(twinui_pcshell_SN), flOldProtect, &flOldProtect);
+        }
+    }
     if (VnGetSymbols(
         szSettingsPath,
         symbols_PTRS.twinui_pcshell_PTRS,
         twinui_pcshell_SN,
-        TWINUI_PCSHELL_SB_CNT
+        IsWindows11() ? TWINUI_PCSHELL_SB_CNT : 4
     ))
     {
-        //printf("[Symbols] Hooking Win+C is not available in this build.\n");
-        DWORD dwZero = 0;
-        RegSetValueExW(
-            hKey,
-            TEXT(TWINUI_PCSHELL_SB_8),
-            0,
-            REG_DWORD,
-            &dwZero,
-            sizeof(DWORD)
-        );
-        if (VnGetSymbols(
-            szSettingsPath,
-            symbols_PTRS.twinui_pcshell_PTRS,
-            twinui_pcshell_SN,
-            TWINUI_PCSHELL_SB_CNT - 1
-        ))
+        if (IsWindows11())
         {
-            printf("[Symbols] Windows 10 window switcher style is not available in this build.\n");
+            //printf("[Symbols] Hooking Win+C is not available in this build.\n");
             DWORD dwZero = 0;
             RegSetValueExW(
                 hKey,
-                TEXT(TWINUI_PCSHELL_SB_7),
+                TEXT(TWINUI_PCSHELL_SB_8),
                 0,
                 REG_DWORD,
                 &dwZero,
@@ -272,20 +266,54 @@ DWORD DownloadSymbols(DownloadSymbolsParams* params)
                 szSettingsPath,
                 symbols_PTRS.twinui_pcshell_PTRS,
                 twinui_pcshell_SN,
-                TWINUI_PCSHELL_SB_CNT - 2
+                TWINUI_PCSHELL_SB_CNT - 1
             ))
             {
-                printf("[Symbols] Failure in reading symbols for \"%s\".\n", twinui_pcshell_sb_dll);
-                if (params->bVerbose)
+                printf("[Symbols] Windows 10 window switcher style is not available in this build.\n");
+                DWORD dwZero = 0;
+                RegSetValueExW(
+                    hKey,
+                    TEXT(TWINUI_PCSHELL_SB_7),
+                    0,
+                    REG_DWORD,
+                    &dwZero,
+                    sizeof(DWORD)
+                );
+                if (VnGetSymbols(
+                    szSettingsPath,
+                    symbols_PTRS.twinui_pcshell_PTRS,
+                    twinui_pcshell_SN,
+                    TWINUI_PCSHELL_SB_CNT - 2
+                ))
                 {
-                    FreeLibraryAndExitThread(
-                        hModule,
-                        5
-                    );
+                    printf("[Symbols] Failure in reading symbols for \"%s\".\n", twinui_pcshell_sb_dll);
+                    if (params->bVerbose)
+                    {
+                        FreeLibraryAndExitThread(
+                            hModule,
+                            5
+                        );
+                    }
+                    return 5;
                 }
-                return 5;
             }
         }
+        else
+        {
+            printf("[Symbols] Failure in reading symbols for \"%s\".\n", twinui_pcshell_sb_dll);
+            if (params->bVerbose)
+            {
+                FreeLibraryAndExitThread(
+                    hModule,
+                    5
+                );
+            }
+            return 5;
+        }
+    }
+    if (!IsWindows11())
+    {
+        symbols_PTRS.twinui_pcshell_PTRS[1] = 0;
     }
     RegSetValueExW(
         hKey,
@@ -363,136 +391,138 @@ DWORD DownloadSymbols(DownloadSymbolsParams* params)
 
 
 
-    ZeroMemory(hash, sizeof(WCHAR) * 100);
-    ZeroMemory(wszPath, sizeof(WCHAR) * 100);
-    char startdocked_sb_dll[MAX_PATH];
-    ZeroMemory(
-        startdocked_sb_dll,
-        (MAX_PATH) * sizeof(char)
-    );
-    GetWindowsDirectoryA(
-        startdocked_sb_dll,
-        MAX_PATH
-    );
-    strcat_s(
-        startdocked_sb_dll,
-        MAX_PATH,
-        "\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\"
-    );
-    strcat_s(
-        startdocked_sb_dll,
-        MAX_PATH,
-        STARTDOCKED_SB_NAME
-    );
-    strcat_s(
-        startdocked_sb_dll,
-        MAX_PATH,
-        ".dll"
-    );
-    GetWindowsDirectoryW(wszPath, MAX_PATH);
-    wcscat_s(wszPath, MAX_PATH, L"\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\" _T(STARTDOCKED_SB_NAME) L".dll");
-    ComputeFileHash(wszPath, hash, 100);
-    printf("[Symbols] Downloading symbols for \"%s\" (\"%s\")...\n", startdocked_sb_dll, hash);
-    if (VnDownloadSymbols(
-        NULL,
-        startdocked_sb_dll,
-        szSettingsPath,
-        MAX_PATH
-    ))
+    if (IsWindows11())
     {
-        printf("[Symbols] Symbols for \"%s\" are not available - unable to download.\n", startdocked_sb_dll);
-        printf("[Symbols] Please refer to \"https://github.com/valinet/ExplorerPatcher/wiki/Symbols\" for more information.\n");
-        if (params->bVerbose)
+        ZeroMemory(hash, sizeof(WCHAR) * 100);
+        ZeroMemory(wszPath, sizeof(WCHAR) * 100);
+        char startdocked_sb_dll[MAX_PATH];
+        ZeroMemory(
+            startdocked_sb_dll,
+            (MAX_PATH) * sizeof(char)
+        );
+        GetWindowsDirectoryA(
+            startdocked_sb_dll,
+            MAX_PATH
+        );
+        strcat_s(
+            startdocked_sb_dll,
+            MAX_PATH,
+            "\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\"
+        );
+        strcat_s(
+            startdocked_sb_dll,
+            MAX_PATH,
+            STARTDOCKED_SB_NAME
+        );
+        strcat_s(
+            startdocked_sb_dll,
+            MAX_PATH,
+            ".dll"
+        );
+        GetWindowsDirectoryW(wszPath, MAX_PATH);
+        wcscat_s(wszPath, MAX_PATH, L"\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\" _T(STARTDOCKED_SB_NAME) L".dll");
+        ComputeFileHash(wszPath, hash, 100);
+        printf("[Symbols] Downloading symbols for \"%s\" (\"%s\")...\n", startdocked_sb_dll, hash);
+        if (VnDownloadSymbols(
+            NULL,
+            startdocked_sb_dll,
+            szSettingsPath,
+            MAX_PATH
+        ))
         {
-            FreeLibraryAndExitThread(
-                hModule,
-                6
-            );
+            printf("[Symbols] Symbols for \"%s\" are not available - unable to download.\n", startdocked_sb_dll);
+            printf("[Symbols] Please refer to \"https://github.com/valinet/ExplorerPatcher/wiki/Symbols\" for more information.\n");
+            if (params->bVerbose)
+            {
+                FreeLibraryAndExitThread(
+                    hModule,
+                    6
+                );
+            }
+            return 6;
         }
-        return 6;
-    }
-    printf("[Symbols] Reading symbols...\n");
-    if (VnGetSymbols(
-        szSettingsPath,
-        symbols_PTRS.startdocked_PTRS,
-        startdocked_SN,
-        STARTDOCKED_SB_CNT
-    ))
-    {
-        printf("[Symbols] Failure in reading symbols for \"%s\".\n", startdocked_sb_dll);
-        if (params->bVerbose)
+        printf("[Symbols] Reading symbols...\n");
+        if (VnGetSymbols(
+            szSettingsPath,
+            symbols_PTRS.startdocked_PTRS,
+            startdocked_SN,
+            STARTDOCKED_SB_CNT
+        ))
         {
-            FreeLibraryAndExitThread(
-                hModule,
-                7
-            );
+            printf("[Symbols] Failure in reading symbols for \"%s\".\n", startdocked_sb_dll);
+            if (params->bVerbose)
+            {
+                FreeLibraryAndExitThread(
+                    hModule,
+                    7
+                );
+            }
+            return 7;
         }
-        return 7;
-    }
-    RegCreateKeyExW(
-        HKEY_CURRENT_USER,
-        TEXT(REGPATH_STARTMENU) L"\\" TEXT(STARTDOCKED_SB_NAME),
-        0,
-        NULL,
-        REG_OPTION_NON_VOLATILE,
-        KEY_WRITE,
-        NULL,
-        &hKey,
-        &dwDisposition
-    );
-    if (!hKey || hKey == INVALID_HANDLE_VALUE)
-    {
-        if (params->bVerbose)
+        RegCreateKeyExW(
+            HKEY_CURRENT_USER,
+            TEXT(REGPATH_STARTMENU) L"\\" TEXT(STARTDOCKED_SB_NAME),
+            0,
+            NULL,
+            REG_OPTION_NON_VOLATILE,
+            KEY_WRITE,
+            NULL,
+            &hKey,
+            &dwDisposition
+        );
+        if (!hKey || hKey == INVALID_HANDLE_VALUE)
         {
-            FreeLibraryAndExitThread(
-                hModule,
-                8
-            );
+            if (params->bVerbose)
+            {
+                FreeLibraryAndExitThread(
+                    hModule,
+                    8
+                );
+            }
+            return 8;
         }
-        return 8;
+        RegSetValueExW(
+            hKey,
+            TEXT(STARTDOCKED_SB_0),
+            0,
+            REG_DWORD,
+            &(symbols_PTRS.startdocked_PTRS[0]),
+            sizeof(DWORD)
+        );
+        RegSetValueExW(
+            hKey,
+            TEXT(STARTDOCKED_SB_1),
+            0,
+            REG_DWORD,
+            &(symbols_PTRS.startdocked_PTRS[1]),
+            sizeof(DWORD)
+        );
+        RegSetValueExW(
+            hKey,
+            TEXT(STARTDOCKED_SB_2),
+            0,
+            REG_DWORD,
+            &(symbols_PTRS.startdocked_PTRS[2]),
+            sizeof(DWORD)
+        );
+        RegSetValueExW(
+            hKey,
+            TEXT(STARTDOCKED_SB_3),
+            0,
+            REG_DWORD,
+            &(symbols_PTRS.startdocked_PTRS[3]),
+            sizeof(DWORD)
+        );
+        RegSetValueExW(
+            hKey,
+            TEXT(STARTDOCKED_SB_4),
+            0,
+            REG_DWORD,
+            &(symbols_PTRS.startdocked_PTRS[4]),
+            sizeof(DWORD)
+        );
+        if (hKey) RegCloseKey(hKey);
     }
-    RegSetValueExW(
-        hKey,
-        TEXT(STARTDOCKED_SB_0),
-        0,
-        REG_DWORD,
-        &(symbols_PTRS.startdocked_PTRS[0]),
-        sizeof(DWORD)
-    );
-    RegSetValueExW(
-        hKey,
-        TEXT(STARTDOCKED_SB_1),
-        0,
-        REG_DWORD,
-        &(symbols_PTRS.startdocked_PTRS[1]),
-        sizeof(DWORD)
-    );
-    RegSetValueExW(
-        hKey,
-        TEXT(STARTDOCKED_SB_2),
-        0,
-        REG_DWORD,
-        &(symbols_PTRS.startdocked_PTRS[2]),
-        sizeof(DWORD)
-    );
-    RegSetValueExW(
-        hKey,
-        TEXT(STARTDOCKED_SB_3),
-        0,
-        REG_DWORD,
-        &(symbols_PTRS.startdocked_PTRS[3]),
-        sizeof(DWORD)
-    );
-    RegSetValueExW(
-        hKey,
-        TEXT(STARTDOCKED_SB_4),
-        0,
-        REG_DWORD,
-        &(symbols_PTRS.startdocked_PTRS[4]),
-        sizeof(DWORD)
-    );
-    if (hKey) RegCloseKey(hKey);
-
 
 
 
@@ -854,67 +884,80 @@ BOOL LoadSymbols(symbols_addr* symbols_PTRS, HMODULE hModule)
         );
         RegCloseKey(hKey);
 
-        RegCreateKeyExW(
-            HKEY_CURRENT_USER,
-            TEXT(REGPATH_STARTMENU) L"\\" TEXT(STARTDOCKED_SB_NAME),
-            0,
-            NULL,
-            REG_OPTION_NON_VOLATILE,
-            KEY_READ,
-            NULL,
-            &hKey,
-            &dwDisposition
-        );
-        RegQueryValueExW(
-            hKey,
-            TEXT(STARTDOCKED_SB_0),
-            0,
-            NULL,
-            &(symbols_PTRS->startdocked_PTRS[0]),
-            &dwSize
-        );
-        RegQueryValueExW(
-            hKey,
-            TEXT(STARTDOCKED_SB_1),
-            0,
-            NULL,
-            &(symbols_PTRS->startdocked_PTRS[1]),
-            &dwSize
-        );
-        RegQueryValueExW(
-            hKey,
-            TEXT(STARTDOCKED_SB_2),
-            0,
-            NULL,
-            &(symbols_PTRS->startdocked_PTRS[2]),
-            &dwSize
-        );
-        RegQueryValueExW(
-            hKey,
-            TEXT(STARTDOCKED_SB_3),
-            0,
-            NULL,
-            &(symbols_PTRS->startdocked_PTRS[3]),
-            &dwSize
-        );
-        RegQueryValueExW(
-            hKey,
-            TEXT(STARTDOCKED_SB_4),
-            0,
-            NULL,
-            &(symbols_PTRS->startdocked_PTRS[4]),
-            &dwSize
-        );
-        if (hKey) RegCloseKey(hKey);
+        if (IsWindows11())
+        {
+            RegCreateKeyExW(
+                HKEY_CURRENT_USER,
+                TEXT(REGPATH_STARTMENU) L"\\" TEXT(STARTDOCKED_SB_NAME),
+                0,
+                NULL,
+                REG_OPTION_NON_VOLATILE,
+                KEY_READ,
+                NULL,
+                &hKey,
+                &dwDisposition
+            );
+            RegQueryValueExW(
+                hKey,
+                TEXT(STARTDOCKED_SB_0),
+                0,
+                NULL,
+                &(symbols_PTRS->startdocked_PTRS[0]),
+                &dwSize
+            );
+            RegQueryValueExW(
+                hKey,
+                TEXT(STARTDOCKED_SB_1),
+                0,
+                NULL,
+                &(symbols_PTRS->startdocked_PTRS[1]),
+                &dwSize
+            );
+            RegQueryValueExW(
+                hKey,
+                TEXT(STARTDOCKED_SB_2),
+                0,
+                NULL,
+                &(symbols_PTRS->startdocked_PTRS[2]),
+                &dwSize
+            );
+            RegQueryValueExW(
+                hKey,
+                TEXT(STARTDOCKED_SB_3),
+                0,
+                NULL,
+                &(symbols_PTRS->startdocked_PTRS[3]),
+                &dwSize
+            );
+            RegQueryValueExW(
+                hKey,
+                TEXT(STARTDOCKED_SB_4),
+                0,
+                NULL,
+                &(symbols_PTRS->startdocked_PTRS[4]),
+                &dwSize
+            );
+            if (hKey) RegCloseKey(hKey);
+        }
     }
 
     BOOL bNeedToDownload = FALSE;
-    for (UINT i = 0; i < sizeof(symbols_addr) / sizeof(DWORD); ++i)
+    if (IsWindows11())
     {
-        if (!((DWORD*)symbols_PTRS)[i] &&
-            (((DWORD*)symbols_PTRS) + i) != symbols_PTRS->twinui_pcshell_PTRS + TWINUI_PCSHELL_SB_CNT - 1 &&
-            (((DWORD*)symbols_PTRS) + i) != symbols_PTRS->twinui_pcshell_PTRS + TWINUI_PCSHELL_SB_CNT - 2
-            )
+        for (UINT i = 0; i < sizeof(symbols_addr) / sizeof(DWORD); ++i)
+        {
+            if (!((DWORD*)symbols_PTRS)[i] &&
+                (((DWORD*)symbols_PTRS) + i) != symbols_PTRS->twinui_pcshell_PTRS + TWINUI_PCSHELL_SB_CNT - 1 &&
+                (((DWORD*)symbols_PTRS) + i) != symbols_PTRS->twinui_pcshell_PTRS + TWINUI_PCSHELL_SB_CNT - 2
+                )
+            {
+                bNeedToDownload = TRUE;
+            }
+        }
+    }
+    else
+    {
+        if (!symbols_PTRS->twinui_pcshell_PTRS[0] || !symbols_PTRS->twinui_pcshell_PTRS[2] || !symbols_PTRS->twinui_pcshell_PTRS[3])
         {
             bNeedToDownload = TRUE;
         }

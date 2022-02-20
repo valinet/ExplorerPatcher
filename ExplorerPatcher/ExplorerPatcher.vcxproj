@@ -330,6 +330,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="settings.reg" />
+    <None Include="settings10.reg" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

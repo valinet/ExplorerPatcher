@@ -19,6 +19,7 @@
 #include "queryversion.h"
 #pragma comment(lib, "Psapi.lib")
 #include <activscp.h>
+#include <valinet/utility/osversion.h>
 
 #include "def.h"
 
@@ -562,6 +563,17 @@ extern BOOL (*PleaseWaitCallbackFunc)(void* data);
 BOOL PleaseWait_UpdateTimeout(int timeout);
 VOID CALLBACK PleaseWait_TimerProc(HWND hWnd, UINT uMsg, UINT idEvent, DWORD dwTime);
 LRESULT CALLBACK PleaseWait_HookProc(int code, WPARAM wParam, LPARAM lParam);
+
+inline BOOL IsWindows11()
+{
+    RTL_OSVERSIONINFOW rovi;
+    DWORD32 ubr = VnGetOSVersionAndUBR(&rovi);
+    if (rovi.dwBuildNumber >= 21996)
+    {
+        return TRUE;
+    }
+    return FALSE;
+}
 
 BOOL DownloadAndInstallWebView2Runtime();
 #endif

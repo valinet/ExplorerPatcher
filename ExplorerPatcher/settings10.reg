@@ -6,11 +6,7 @@
 
 ;T Taskbar
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
-;z 2 Taskbar style *
-;x 0 Windows 11 (default)
-;x 1 Windows 10
-"OldTaskbar"=dword:00000001
-;y More taskbar options in the Settings app 🡕
+;y More taskbar options in the Settings app 🡕                                                       
 ;ms-settings:taskbar
 ;y Customize notification area icons 🡕
 ;shell:::{05d7b0f4-2121-4eff-bf6b-ed3f69b894d9}
@@ -30,11 +26,8 @@
 ;x 2 Right
 ;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_MMTaskbarPosition"=dword:00000003
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
-;c 3 Extra button should be
-;x 0 Hidden (default)
-;x 2 Shown and open Cortana
-;x 1 Shown and open Widgets
-"TaskbarDa"=dword:00000000
+;b Show Cortana button
+"ShowCortanaButton"=dword:00000000
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Search]
 ;b Show Search button
 "SearchboxTaskbarMode"=dword:00000001
@@ -47,29 +40,30 @@
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;b Automatically hide the taskbar
 ;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_AutoHideTaskbar"=dword:00000000
-;t The following settings only apply to the Windows 10 taskbar:                          
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;c 2 Start button style
 ;x 0 Windows 10 (default)
 ;x 1 Windows 11
 "OrbStyle"=dword:00000000
-;c 3 Combine taskbar icons on primary taskbar
-;x 0 Always combine
-;x 1 Combine when taskbar is full
-;x 2 Never combine (default)
-"TaskbarGlomLevel"=dword:00000002
-;c 3 Combine taskbar icons on secondary taskbar(s)
-;x 0 Always combine
-;x 1 Combine when taskbar is full
-;x 2 Never combine (default)
-"MMTaskbarGlomLevel"=dword:00000002
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
+;c 3 Combine taskbar icons on primary taskbar
+;x 0 Always combine (default)
+;x 1 Combine when taskbar is full
+;x 2 Never combine
+"TaskbarGlomLevel"=dword:00000000
+;c 3 Combine taskbar icons on secondary taskbar(s)
+;x 0 Always combine (default)
+;x 1 Combine when taskbar is full
+;x 2 Never combine
+"MMTaskbarGlomLevel"=dword:00000000
 ;c 2 Taskbar icon size
 ;x 1 Small
 ;x 0 Large (default)
 "TaskbarSmallIcons"=dword:00000000
 ;e 
-
+;e 
+;e 
+;e 
 
 ;T System tray
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
@@ -82,7 +76,6 @@
 [HKEY_CURRENT_USER\Software\Microsoft\TabletTip\1.7]
 ;b Show touch keyboard button *
 "TipbandDesiredVisibility"=dword:00000000
-;t The following settings only apply to the Windows 10 taskbar:
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;p 2
 ;b Apply Windows 11 style to system tray icons *
@@ -91,8 +84,6 @@
 ;b Show seconds in the clock
 "ShowSecondsInSystemClock"=dword:00000000
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
-;b Hide Control Center button *
-"HideControlCenterButton"=dword:00000000
 ;a Choosing 'Open Network && Internet settings' when right clicking the
 ;c 3 network icon should open:
 ;x 0 Network section in the Settings app (default)
@@ -100,11 +91,10 @@
 ;x 2 Network Connections in Control Panel
 "ReplaceNetwork"=dword:00000000
 ;q
-;t When clicking a system icon in the Windows 10 taskbar system tray, open:
+;t When clicking a system icon in the system tray, open:
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Control Panel\Settings\Network]
-;c 7 Network
+;c 6 Network
 ;x 6 Control Center
-;x 5 Windows 11 WiFi flyout
 ;x 0 Windows 10 flyout (default)
 ;x 2 Windows 8 flyout
 ;x 1 Network section in the Settings app
@@ -117,8 +107,7 @@
 ;x 0 Windows 7 flyout
 "EnableMtcUvc"=dword:00000001
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\ImmersiveShell]
-;c 3 Clock
-;x 2 Windows 11 flyout
+;c 2 Clock
 ;x 0 Windows 10 flyout (default)
 ;x 1 Windows 7
 "UseWin32TrayClockExperience"=dword:00000000
@@ -127,12 +116,6 @@
 ;x 0 Windows 10 flyout (default)
 ;x 1 Windows 7
 "UseWin32BatteryFlyout"=dword:00000000
-[HKEY_CURRENT_USER\Software\ExplorerPatcher]
-;c 3 Language switcher *
-;x 0 Windows 11 (default)
-;x 1 Windows 10 (with link to "Language Preferences")
-;x 4 Windows 10
-"IMEStyle"=dword:00000000
 
 
 ;T File Explorer
@@ -141,12 +124,6 @@
 ;y Learn more 🡕
 ;https://github.com/valinet/ExplorerPatcher/wiki/Using-ExplorerPatcher-as-shell-extension
 ;q
-[-HKEY_CURRENT_USER\Software\Classes\CLSID\{d93ed569-3b3e-4bff-8355-3c44f6a52bb5}\InprocServer32]
-;d Disable the Windows 11 command bar *
-@=""
-[-HKEY_CURRENT_USER\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32]
-;d Disable the Windows 11 context menu *
-@=""
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;i Use immersive menus when displaying Windows 10 context menus **
 "DisableImmersiveContextMenu"=dword:00000000
@@ -169,43 +146,8 @@
 
 ;T Start menu
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\StartPage]
-;b Open Start at logon
-"OpenAtLogon"=dword:00000000
-;b Open Start in All apps by default
-"MakeAllAppsDefault"=dword:00000000
-[HKEY_CURRENT_USER\Software\ExplorerPatcher]
-;c 22 Maximum number of frequent apps to show
-;x 0 None
-;x 1 1
-;x 2 2
-;x 3 3
-;x 4 4
-;x 5 5
-;x 6 6 (default)
-;x 7 7
-;x 8 8
-;x 9 9
-;x 10 10
-;x 11 11
-;x 12 12
-;x 13 13
-;x 14 14
-;x 15 15
-;x 16 16
-;x 17 17
-;x 18 18
-;x 19 19
-;x 20 20
-;x 99999 Unlimited
-;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_Start_MaximumFrequentApps"=dword:00000006
-[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
-;c 2 Position on screen
-;x 0 Left
-;x 1 Center (default)
-"TaskbarAl"=dword:00000001
-[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\StartPage]
-;a When using multiple displays, open Start on this monitor when invoked using
-;c 10 the keyboard:
+;e When using multiple displays, open Start on this monitor when invoked using
+;z 10 the keyboard:
 ;x 1 Primary monitor (default)
 ;x 0 Monitor on which the cursor is on
 ;x 2 Monitor #2
@@ -217,14 +159,13 @@
 ;x 8 Monitor #8
 ;x 9 Monitor #9
 "MonitorOverride"=dword:00000001
-;a If the selected monitor is not available, Start will open on the primary display.
+;e If the selected monitor is not available, Start will open on the primary display.
 
 
 ;T Window switcher
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer]
-;z 4 Window switcher (Alt+Tab) style *
-;x 0 Windows 11 (default)
-;x 3 Windows 10
+;z 3 Window switcher (Alt+Tab) style *
+;x 0 Windows 10 (default)
 ;x 1 Windows NT
 ;x 2 Simple Window Switcher
 "AltTabSettings"=dword:00000000
@@ -359,7 +300,6 @@
 
 
 ;T Weather
-;t The following settings only apply to the Windows 10 taskbar:
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;b Show Weather on the taskbar
 ;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_PeopleBand"=dword:00000000
@@ -432,14 +372,10 @@
 ;b Show Command Prompt instead of PowerShell in Win+X menu *
 "DontUsePowerShellOnWinX"=dword:00000000
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
-;b Add shortcut to program settings in Win+X menu
-"PropertiesInWinX"=dword:00000000
 ;b Remove shortcut key from program settings item in Win+X menu
 "NoMenuAccelerator"=dword:00000000
 ;b Disable Office hotkeys (Ctrl+Alt+Shift+Windows key combinations) *
 "DisableOfficeHotkeys"=dword:00000000
-;b Disable rounded corners for application windows
-;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_DisableRoundedCorners"=dword:00000000
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
 ;c 6 Default action in the Alt+F4 dialog on the desktop
 ;x 256 Switch user
@@ -449,11 +385,6 @@
 ;x 2 Shut down (default)
 ;x 4 Restart
 "Start_PowerButtonAction"=dword:00000002
-[HKEY_CURRENT_USER\Software\ExplorerPatcher]
-;c 2 Snap Assist style
-;x 0 Windows 11 (default)
-;x 3 Windows 10
-"SnapAssistSettings"=dword:00000000
 ;t Prevent the following Control Panel links from being redirected to the Settings app:
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;b System / About page
@@ -520,21 +451,6 @@
 "NoPropertiesInContextMenu"=dword:00000000
 ;b Enable symbols download *
 "EnableSymbolDownload"=dword:00000001
-;c 12 Supplementary delay at logon *
-;x 0 None (default)
-;x 300 300 ms
-;x 600 600 ms
-;x 1000 1 second
-;x 1500 1.5 seconds
-;x 2000 2 seconds
-;x 3000 3 seconds
-;x 4000 4 seconds
-;x 5000 5 seconds
-;x 6000 6 seconds
-;x 8000 8 seconds
-;x 10000 10 seconds
-"ExplorerReadyDelay"=dword:00000000
-;t The following settings only apply to the Windows 10 taskbar:                          
 ;b Pinned items act as quick launch (don't group pinned items with active apps) *
 "PinnedItemsActAsQuickLaunch"=dword:00000000
 ;b When the taskbar shows button labels, remove the extra gap around pinned items
@@ -546,7 +462,7 @@
 ;e Version %VERSIONINFORMATIONSTRING%
 ;t © 2006-2022 VALINET Solutions SRL. All rights reserved.
 ;e 
-;e This project aims to bring back a productive working environment on Windows 11.
+;e This project aims to enhance the working environment on Windows 10.
 ;t Proudly engineered by Valentin-Gabriel Radu.
 ;y Visit project GitHub (https://github.com/valinet) 🡕
 ;https://github.com/valinet

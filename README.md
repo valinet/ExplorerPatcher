@@ -1,5 +1,5 @@
-# Explorer Patcher for Windows 11
-This project aims to bring back a productive working environment on Windows 11.
+# ExplorerPatcher
+This project aims to enhance the working environment on Windows.
 
 PayPal donations: [here](https://www.paypal.com/donate?business=valentingabrielradu%40gmail.com&no_recurring=0&item_name=ExplorerPatcher&currency_code=EUR) or using e-mail address valentingabrielradu@gmail.com
 
@@ -17,6 +17,8 @@ PayPal donations: [here](https://www.paypal.com/donate?business=valentingabrielr
   * Revert to the Windows 7 search box in File Explorer, or disable Windows Search altogether.
   * Disable immersive menus and use mitigations that help you run the real classic theme without glitches.
   * Learn more about all the functionality offered by this program starting with this article in the wiki, [here](https://github.com/valinet/ExplorerPatcher/wiki/All-features).
+
+Some features may not be available on Windows 10.
 
 ## How to?
 

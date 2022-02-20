@@ -15,6 +15,7 @@
 #define IDS_UNINSTALL_SUCCESS_TEXT      111
 #define IDS_UNINSTALL_ERROR_TEXT        112
 #define IDS_OPERATION_NONE              113
+#define IDR_REGISTRY2                   114
 
 // Next default values for new objects
 // 

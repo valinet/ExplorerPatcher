@@ -3807,6 +3807,10 @@ BOOL explorer_DeleteMenu(HMENU hMenu, UINT uPosition, UINT uFlags)
         DeleteMenu(hMenu, 449, 0); // remove Cortana menu
         DeleteMenu(hMenu, 435, 0); // remove People menu
     }
+    if (!IsWindows11() && uPosition == 445 && uFlags == 0) // when removing Cortana in Windows 10
+    {
+        DeleteMenu(hMenu, 435, 0);
+    }
     return DeleteMenu(hMenu, uPosition, uFlags);
 }
 
@@ -4629,7 +4633,6 @@ INT64 PeopleButton_SubclassProc(
     return DefSubclassProc(hWnd, uMsg, wParam, lParam);
 }
 
-
 static BOOL(*SetChildWindowNoActivateFunc)(HWND);
 BOOL explorer_SetChildWindowNoActivateHook(HWND hWnd)
 {
@@ -4650,11 +4653,20 @@ BOOL explorer_SetChildWindowNoActivateHook(HWND hWnd)
         uintptr_t Instance = *(uintptr_t*)GetWindowLongPtrW(hWnd, 0);
         if (Instance)
         {
-            uintptr_t TrayButton_GetComponentName = *(INT_PTR(WINAPI**)())(Instance + 304);
+            uintptr_t off_TrayButton_GetComponentName = 0;
+            if (IsWindows11())
+            {
+                off_TrayButton_GetComponentName = 304;
+            }
+            else
+            {
+                off_TrayButton_GetComponentName = 280;
+            }
+            uintptr_t TrayButton_GetComponentName = *(INT_PTR(WINAPI**)())(Instance + off_TrayButton_GetComponentName);
             if (!IsBadCodePtr(TrayButton_GetComponentName))
             {
-                wchar_t* wszComponentName = (const WCHAR*)(*(uintptr_t(**)(void))(Instance + 304))();
-                if (!wcscmp(wszComponentName, L"CortanaButton"))
+                wchar_t* wszComponentName = (const WCHAR*)(*(uintptr_t(**)(void))(Instance + off_TrayButton_GetComponentName))();
+                if (!wcscmp(wszComponentName, L"CortanaButton") && IsWindows11())
                 {
                     DWORD dwOldProtect;
                     VirtualProtect(Instance + 160, sizeof(uintptr_t), PAGE_READWRITE, &dwOldProtect);
@@ -4666,7 +4678,7 @@ BOOL explorer_SetChildWindowNoActivateHook(HWND hWnd)
                     *(uintptr_t*)(Instance + 216) = Widgets_GetTooltipTextHook; // OnTooltipShow
                     VirtualProtect(Instance + 216, sizeof(uintptr_t), dwOldProtect, &dwOldProtect);
                 }
-                else if (!wcscmp(wszComponentName, L"MultitaskingButton"))
+                else if (!wcscmp(wszComponentName, L"MultitaskingButton") && IsWindows11())
                 {
                     DWORD dwOldProtect;
                     VirtualProtect(Instance + 160, sizeof(uintptr_t), PAGE_READWRITE, &dwOldProtect);
@@ -4684,15 +4696,33 @@ BOOL explorer_SetChildWindowNoActivateHook(HWND hWnd)
                     *(uintptr_t*)(PeopleButton_Instance + 32) = PeopleButton_CalculateMinimumSizeHook; // CalculateMinimumSize
                     VirtualProtect(PeopleButton_Instance + 32, sizeof(uintptr_t), dwOldProtect, &dwOldProtect);
 
-                    VirtualProtect(Instance + 224, sizeof(uintptr_t), PAGE_READWRITE, &dwOldProtect);
-                    if (!PeopleButton_ShowTooltipFunc) PeopleButton_ShowTooltipFunc = *(uintptr_t*)(Instance + 224);
-                    *(uintptr_t*)(Instance + 224) = PeopleButton_ShowTooltipHook; // OnTooltipShow
-                    VirtualProtect(Instance + 224, sizeof(uintptr_t), dwOldProtect, &dwOldProtect);
+                    uintptr_t off_PeopleButton_ShowTooltip = 0;
+                    if (IsWindows11())
+                    {
+                        off_PeopleButton_ShowTooltip = 224;
+                    }
+                    else
+                    {
+                        off_PeopleButton_ShowTooltip = 200;
+                    }
+                    VirtualProtect(Instance + off_PeopleButton_ShowTooltip, sizeof(uintptr_t), PAGE_READWRITE, &dwOldProtect);
+                    if (!PeopleButton_ShowTooltipFunc) PeopleButton_ShowTooltipFunc = *(uintptr_t*)(Instance + off_PeopleButton_ShowTooltip);
+                    *(uintptr_t*)(Instance + off_PeopleButton_ShowTooltip) = PeopleButton_ShowTooltipHook; // OnTooltipShow
+                    VirtualProtect(Instance + off_PeopleButton_ShowTooltip, sizeof(uintptr_t), dwOldProtect, &dwOldProtect);
 
-                    VirtualProtect(Instance + 160, sizeof(uintptr_t), PAGE_READWRITE, &dwOldProtect);
-                    if (!PeopleButton_OnClickFunc) PeopleButton_OnClickFunc = *(uintptr_t*)(Instance + 160);
-                    *(uintptr_t*)(Instance + 160) = PeopleButton_OnClickHook;    // OnClick
-                    VirtualProtect(Instance + 160, sizeof(uintptr_t), dwOldProtect, &dwOldProtect);
+                    uintptr_t off_PeopleButton_OnClick = 0;
+                    if (IsWindows11())
+                    {
+                        off_PeopleButton_OnClick = 160;
+                    }
+                    else
+                    {
+                        off_PeopleButton_OnClick = 136;
+                    }
+                    VirtualProtect(Instance + off_PeopleButton_OnClick, sizeof(uintptr_t), PAGE_READWRITE, &dwOldProtect);
+                    if (!PeopleButton_OnClickFunc) PeopleButton_OnClickFunc = *(uintptr_t*)(Instance + off_PeopleButton_OnClick);
+                    *(uintptr_t*)(Instance + off_PeopleButton_OnClick) = PeopleButton_OnClickHook;    // OnClick
+                    VirtualProtect(Instance + off_PeopleButton_OnClick, sizeof(uintptr_t), dwOldProtect, &dwOldProtect);
 
                     PeopleButton_LastHWND = hWnd;
                     SetWindowSubclass(hWnd, PeopleButton_SubclassProc, PeopleButton_SubclassProc, 0);
@@ -5041,7 +5071,10 @@ void sws_ReadSettings(sws_WindowSwitcher* sws)
 
 DWORD WindowSwitcher(DWORD unused)
 {
-    WaitForSingleObject(hCanStartSws, INFINITE);
+    if (IsWindows11())
+    {
+        WaitForSingleObject(hCanStartSws, INFINITE);
+    }
     if (!bOldTaskbar)
     {
         WaitForSingleObject(hWin11AltTabInitialized, INFINITE);
@@ -6178,17 +6211,17 @@ void WINAPI LoadSettings(LPARAM lParam)
         {
             // this is mostly a hack...
             DWORD dwGlomLevel = 2, dwSize = sizeof(DWORD), dwNewGlomLevel;
-            RegGetValueW(HKEY_CURRENT_USER, TEXT(REGPATH), L"TaskbarGlomLevel", RRF_RT_DWORD, NULL, &dwGlomLevel, &dwSize);
+            RegGetValueW(HKEY_CURRENT_USER, IsWindows11() ? TEXT(REGPATH) : L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", L"TaskbarGlomLevel", RRF_RT_DWORD, NULL, &dwGlomLevel, &dwSize);
             Sleep(100);
             dwNewGlomLevel = 0;
-            RegSetKeyValueW(HKEY_CURRENT_USER, TEXT(REGPATH), L"TaskbarGlomLevel", REG_DWORD, &dwNewGlomLevel, sizeof(DWORD));
+            RegSetKeyValueW(HKEY_CURRENT_USER, IsWindows11() ? TEXT(REGPATH) : L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", L"TaskbarGlomLevel", REG_DWORD, &dwNewGlomLevel, sizeof(DWORD));
             Explorer_RefreshUI(0);
             Sleep(100);
             dwNewGlomLevel = 2;
-            RegSetKeyValueW(HKEY_CURRENT_USER, TEXT(REGPATH), L"TaskbarGlomLevel", REG_DWORD, &dwNewGlomLevel, sizeof(DWORD));
+            RegSetKeyValueW(HKEY_CURRENT_USER, IsWindows11() ? TEXT(REGPATH) : L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", L"TaskbarGlomLevel", REG_DWORD, &dwNewGlomLevel, sizeof(DWORD));
             Explorer_RefreshUI(0);
             Sleep(100);
-            RegSetKeyValueW(HKEY_CURRENT_USER, TEXT(REGPATH), L"TaskbarGlomLevel", REG_DWORD, &dwGlomLevel, sizeof(DWORD));
+            RegSetKeyValueW(HKEY_CURRENT_USER, IsWindows11() ? TEXT(REGPATH) : L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", L"TaskbarGlomLevel", REG_DWORD, &dwGlomLevel, sizeof(DWORD));
             Explorer_RefreshUI(0);
         }
     }
@@ -7458,7 +7491,7 @@ LSTATUS explorer_RegSetValueExW(
     DWORD      cbData
 )
 {
-    if (!lstrcmpW(lpValueName, L"ShowCortanaButton"))
+    if (IsWindows11() && !lstrcmpW(lpValueName, L"ShowCortanaButton"))
     {
         if (cbData == sizeof(DWORD) && *(DWORD*)lpData == 1)
         {
@@ -7485,7 +7518,7 @@ LSTATUS explorer_RegGetValueW(
     BOOL bShowTaskViewButton = FALSE;
     LSTATUS lRes;
 
-    if (!lstrcmpW(lpValue, L"ShowCortanaButton"))
+    if (IsWindows11() && !lstrcmpW(lpValue, L"ShowCortanaButton"))
     {
         lRes = RegGetValueW(hkey, lpSubKey, L"TaskbarDa", dwFlags, pdwType, pvData, pcbData);
         if (*(DWORD*)pvData == 2)
@@ -7493,7 +7526,7 @@ LSTATUS explorer_RegGetValueW(
             *(DWORD*)pvData = 1;
         }
     }
-    else if (!lstrcmpW(lpValue, L"TaskbarGlomLevel") || !lstrcmpW(lpValue, L"MMTaskbarGlomLevel"))
+    else if (IsWindows11() && (!lstrcmpW(lpValue, L"TaskbarGlomLevel") || !lstrcmpW(lpValue, L"MMTaskbarGlomLevel")))
     {
         lRes = RegGetValueW(HKEY_CURRENT_USER, _T(REGPATH), lpValue, dwFlags, pdwType, pvData, pcbData);
         if (lRes != ERROR_SUCCESS)
@@ -7512,7 +7545,7 @@ LSTATUS explorer_RegGetValueW(
         lRes = RegGetValueW(hkey, lpSubKey, lpValue, dwFlags, pdwType, pvData, pcbData);
     }
 
-    if (!lstrcmpW(lpValue, L"SearchboxTaskbarMode"))
+    if (IsWindows11() && !lstrcmpW(lpValue, L"SearchboxTaskbarMode"))
     {
         if (*(DWORD*)pvData)
         {
@@ -8411,8 +8444,16 @@ DWORD Inject(BOOL bIsExplorer)
     HANDLE hStobject = LoadLibraryW(L"stobject.dll");
     VnPatchIAT(hStobject, "api-ms-win-core-registry-l1-1-0.dll", "RegGetValueW", stobject_RegGetValueW);
     VnPatchIAT(hStobject, "api-ms-win-core-com-l1-1-0.dll", "CoCreateInstance", stobject_CoCreateInstanceHook);
-    VnPatchDelayIAT(hStobject, "user32.dll", "TrackPopupMenu", stobject_TrackPopupMenuHook);
-    VnPatchDelayIAT(hStobject, "user32.dll", "TrackPopupMenuEx", stobject_TrackPopupMenuExHook);
+    if (IsWindows11())
+    {
+        VnPatchDelayIAT(hStobject, "user32.dll", "TrackPopupMenu", stobject_TrackPopupMenuHook);
+        VnPatchDelayIAT(hStobject, "user32.dll", "TrackPopupMenuEx", stobject_TrackPopupMenuExHook);
+    }
+    else
+    {
+        VnPatchIAT(hStobject, "user32.dll", "TrackPopupMenu", stobject_TrackPopupMenuHook);
+        VnPatchIAT(hStobject, "user32.dll", "TrackPopupMenuEx", stobject_TrackPopupMenuExHook);
+    }
 #ifdef USE_PRIVATE_INTERFACES
     if (bSkinIcons)
     {
@@ -8500,12 +8541,15 @@ DWORD Inject(BOOL bIsExplorer)
 
 
 
-    HANDLE hInputSwitch = LoadLibraryW(L"InputSwitch.dll");
-    printf("[IME] Context menu patch status: %d\n", PatchContextMenuOfNewMicrosoftIME(NULL));
-    if (hInputSwitch)
+    if (IsWindows11())
     {
-        VnPatchIAT(hInputSwitch, "user32.dll", "TrackPopupMenuEx", inputswitch_TrackPopupMenuExHook);
-        printf("Setup inputswitch functions done\n");
+        HANDLE hInputSwitch = LoadLibraryW(L"InputSwitch.dll");
+        printf("[IME] Context menu patch status: %d\n", PatchContextMenuOfNewMicrosoftIME(NULL));
+        if (hInputSwitch)
+        {
+            VnPatchIAT(hInputSwitch, "user32.dll", "TrackPopupMenuEx", inputswitch_TrackPopupMenuExHook);
+            printf("Setup inputswitch functions done\n");
+        }
     }
 
 
@@ -8545,29 +8589,35 @@ DWORD Inject(BOOL bIsExplorer)
 
     if (bOldTaskbar)
     {
-        CreateThread(
-            0,
-            0,
-            PlayStartupSound,
-            0,
-            0,
-            0
-        );
-        printf("Play startup sound thread...\n");
+        if (IsWindows11())
+        {
+            CreateThread(
+                0,
+                0,
+                PlayStartupSound,
+                0,
+                0,
+                0
+            );
+            printf("Play startup sound thread...\n");
+        }
     }
 
 
     if (bOldTaskbar)
     {
-        CreateThread(
-            0,
-            0,
-            SignalShellReady,
-            dwExplorerReadyDelay,
-            0,
-            0
-        );
-        printf("Signal shell ready...\n");
+        if (IsWindows11())
+        {
+            CreateThread(
+                0,
+                0,
+                SignalShellReady,
+                dwExplorerReadyDelay,
+                0,
+                0
+            );
+            printf("Signal shell ready...\n");
+        }
     }
     else
     {
@@ -8584,24 +8634,27 @@ DWORD Inject(BOOL bIsExplorer)
     }
 
 
-    DWORD dwSize = 0;
-    if (SHRegGetValueFromHKCUHKLMFunc && SHRegGetValueFromHKCUHKLMFunc(
-        L"Control Panel\\Desktop\\WindowMetrics",
-        L"MinWidth",
-        SRRF_RT_REG_SZ,
-        NULL,
-        NULL,
-        (LPDWORD)(&dwSize)
-    ) != ERROR_SUCCESS)
+    if (IsWindows11())
     {
-        RegSetKeyValueW(
-            HKEY_CURRENT_USER, 
+        DWORD dwSize = 0;
+        if (SHRegGetValueFromHKCUHKLMFunc && SHRegGetValueFromHKCUHKLMFunc(
             L"Control Panel\\Desktop\\WindowMetrics",
             L"MinWidth",
-            REG_SZ,
-            L"38",
-            sizeof(L"38")
-        );
+            SRRF_RT_REG_SZ,
+            NULL,
+            NULL,
+            (LPDWORD)(&dwSize)
+        ) != ERROR_SUCCESS)
+        {
+            RegSetKeyValueW(
+                HKEY_CURRENT_USER,
+                L"Control Panel\\Desktop\\WindowMetrics",
+                L"MinWidth",
+                REG_SZ,
+                L"38",
+                sizeof(L"38")
+            );
+        }
     }
 
 
@@ -9655,13 +9708,19 @@ HRESULT EntryPoint(DWORD dwMethod)
     }
     else if (bIsThisStartMEH)
     {
-        InjectStartMenu();
+        if (IsWindows11())
+        {
+            InjectStartMenu();
+        }
         IncrementDLLReferenceCount(hModule);
         bInstanced = TRUE;
     }
     else if (bIsThisShellEH)
     {
-        InjectShellExperienceHost();
+        if (IsWindows11())
+        {
+            InjectShellExperienceHost();
+        }
         IncrementDLLReferenceCount(hModule);
         bInstanced = TRUE;
     }

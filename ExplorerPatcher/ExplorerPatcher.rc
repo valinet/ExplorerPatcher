@@ -91,6 +91,7 @@ END
 //
 
 IDR_REGISTRY1           RCDATA                  "settings.reg"
+IDR_REGISTRY2           RCDATA                  "settings10.reg"
 
 
 /////////////////////////////////////////////////////////////////////////////
