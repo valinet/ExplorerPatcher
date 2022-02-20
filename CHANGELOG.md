@@ -9,6 +9,7 @@ Tested on OS build 22000.493.
 #### New features
 
 * Built-in support for OS build 22000.493, OS build 22000.527 (Preview).
+* Support for Windows 10 (.16).
 * Implemented Weather widget for the classic taskbar, similar to what is available in the more recent updates to Windows 10. Read more about it [here](https://github.com/valinet/ExplorerPatcher/wiki/Weather).
 * Implemented 2 features that help in replacing the functionality of the quick launch toolbar with pinned taskbar items. Read more about it [here](https://github.com/valinet/ExplorerPatcher/discussions/819) (.7).
 * Implemented option to have Start open on a specific monitor (#821) (.8)
@@ -24,6 +25,7 @@ Tested on OS build 22000.493.
 * Option to clear weather widget local data (.10, .11)
 * Installer sets a Start menu shortcut for the "Properties" window (.11)
 * Support for high contrast themes in the "Properties" window and in the weather widget (#885) (.15)
+* Enabling the weather widget will automatically download and install the Microsoft WebView2 Runtime on computers where it is not installed (.16)
 
 #### Fixes
 
