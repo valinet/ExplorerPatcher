@@ -9,7 +9,7 @@ Tested on OS build 22000.493.
 #### New features
 
 * Built-in support for OS build 22000.493, OS build 22000.527 (Preview).
-* Support for Windows 10 (.16).
+* Support for Windows 10 (.16, .17). Read more about this [here](https://github.com/valinet/ExplorerPatcher/discussions/898).
 * Implemented Weather widget for the classic taskbar, similar to what is available in the more recent updates to Windows 10. Read more about it [here](https://github.com/valinet/ExplorerPatcher/wiki/Weather).
 * Implemented 2 features that help in replacing the functionality of the quick launch toolbar with pinned taskbar items. Read more about it [here](https://github.com/valinet/ExplorerPatcher/discussions/819) (.7).
 * Implemented option to have Start open on a specific monitor (#821) (.8)
@@ -43,6 +43,7 @@ Tested on OS build 22000.493.
 * The weather widget positions and sizes itself with respect to the text size accessibility setting as well ([#734](https://github.com/valinet/ExplorerPatcher/discussions/734#discussioncomment-2190218)) (.14)
 * Fixed a bug that could lead to a crash when `explorer.exe` starts (#879) (.15)
 * Fixed a bug that could prevent the weather widget from launching under certain conditions (.15)
+* Fixed a bug in the Weather widget that could display an erroneous Google search pop-up ([#734](https://github.com/valinet/ExplorerPatcher/discussions/734#discussioncomment-2216475)) (.17)
 
 ## 22000.469.41
 
