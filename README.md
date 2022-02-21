@@ -17,6 +17,8 @@ PayPal donations: [here](https://www.paypal.com/donate?business=valentingabrielr
   * Revert to the Windows 7 search box in File Explorer, or disable Windows Search altogether.
   * Disable immersive menus and use mitigations that help you run the real classic theme without glitches.
   * Learn more about all the functionality offered by this program starting with this article in the wiki, [here](https://github.com/valinet/ExplorerPatcher/wiki/All-features).
+* Compatibility with [TranslucentTB](https://github.com/TranslucentTB/TranslucentTB) out of the box.
+* Compatibility with [Open Shell](https://github.com/Open-Shell/Open-Shell-Menu) out of the box.
 
 Some features may not be available on Windows 10.
 
