@@ -113,6 +113,7 @@ if (document.getElementsByClassName(\"QS5gu sy4vM\").length > 1) { document.getE
 //document.getElementById(\"search\").scrollIntoView(true);\n\
 return ep_result;\n\
 }\n\
+let banner1 = document.getElementById(\"taw\"); if (banner1) { banner1.style = \"display: none\"; }\n\
 scrolldisable();\n\
 ep_weather_part2();\n\
 ";
