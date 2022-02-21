@@ -3806,7 +3806,7 @@ void stub1(void* i)
 }
 
 HWND PeopleButton_LastHWND = NULL;
-
+#define WEATHER_FIXEDSIZE2_MAXWIDTH 192
 BOOL explorer_DeleteMenu(HMENU hMenu, UINT uPosition, UINT uFlags)
 {
     if (uPosition == 621 && uFlags == 0) // when removing News and interests
@@ -3895,6 +3895,7 @@ void RecomputeWeatherFlyoutLocation(HWND hWnd)
 }
 
 int prev_total_h = 0;
+BOOL people_has_ellipsed = FALSE;
 SIZE (*PeopleButton_CalculateMinimumSizeFunc)(void*, SIZE*);
 SIZE WINAPI PeopleButton_CalculateMinimumSizeHook(void* _this, SIZE* pSz)
 {
@@ -3902,7 +3903,7 @@ SIZE WINAPI PeopleButton_CalculateMinimumSizeHook(void* _this, SIZE* pSz)
     AcquireSRWLockShared(&lock_epw);
     if (epw)
     {
-        if (bWeatherFixedSize)
+        if (bWeatherFixedSize == 1)
         {
             int mul = 1;
             switch (dwWeatherViewMode)
@@ -4041,7 +4042,7 @@ int PeopleBand_MulDivHook(int nNumber, int nNumerator, int nDenominator)
     AcquireSRWLockShared(&lock_epw);
     if (epw)
     {
-        if (bWeatherFixedSize)
+        if (bWeatherFixedSize == 1)
         {
             int mul = 1;
             switch (dwWeatherViewMode)
@@ -4120,6 +4121,8 @@ __int64 __fastcall PeopleBand_DrawTextWithGlowHook(
     AcquireSRWLockShared(&lock_epw);
     if (a5 == 0x21 && epw)
     {
+        people_has_ellipsed = FALSE;
+
         BOOL bUseCachedData = InSendMessage();
         BOOL bIsThemeActive = TRUE;
         if (!IsThemeActive() || IsHighContrast())
@@ -4319,12 +4322,13 @@ __int64 __fastcall PeopleBand_DrawTextWithGlowHook(
                                 }
                                 int margin_v = (a4->bottom - rt) / 2;
                                 int total_h = (bIsIconMode ? ((margin_h - p) + rt + (margin_h - p)) : margin_h) + addend;
-                                if (bWeatherFixedSize)
+                                if (bWeatherFixedSize == 1)
                                 {
                                     if (total_h > a4->right)
                                     {
                                         int diff = total_h - a4->right;
                                         rcText2.right -= diff - 2;
+                                        people_has_ellipsed = TRUE;
                                         switch (dwWeatherViewMode)
                                         {
                                         case EP_WEATHER_VIEW_ICONTEXT:
@@ -4343,9 +4347,16 @@ __int64 __fastcall PeopleBand_DrawTextWithGlowHook(
                                     }
                                 }
                                 int start_x = 0; // prev_total_h - total_h;
-                                if (bWeatherFixedSize)
+                                if (bWeatherFixedSize == 1)
                                 {
                                     start_x = (a4->right - total_h) / 2;
+                                }
+                                if (bWeatherFixedSize == 2 && (total_h > MulDiv(192, dpiX, 96)))
+                                {
+                                    int diff = total_h - MulDiv(WEATHER_FIXEDSIZE2_MAXWIDTH, dpiX, 96);
+                                    rcText2.right -= diff - 2;
+                                    total_h = MulDiv(WEATHER_FIXEDSIZE2_MAXWIDTH, dpiX, 96);
+                                    people_has_ellipsed = TRUE;
                                 }
 
                                 HBITMAP hBitmap = NULL, hOldBitmap = NULL;
@@ -4432,7 +4443,7 @@ __int64 __fastcall PeopleBand_DrawTextWithGlowHook(
                                     }
                                 }
 
-                                if (bWeatherFixedSize)
+                                if (bWeatherFixedSize == 1)
                                 {
 
                                 }
@@ -4525,7 +4536,12 @@ void WINAPI PeopleButton_ShowTooltipHook(__int64 _this, unsigned __int8 bShow)
             {
                 WCHAR wszBuffer[MAX_PATH];
                 ZeroMemory(wszBuffer, sizeof(WCHAR) * MAX_PATH);
-                epw->lpVtbl->GetTitle(epw, sizeof(WCHAR) * MAX_PATH, wszBuffer, dwWeatherViewMode);
+                DWORD mode = dwWeatherViewMode;
+                if (bWeatherFixedSize && people_has_ellipsed)
+                {
+                    mode = EP_WEATHER_VIEW_ICONTEMP;
+                }
+                epw->lpVtbl->GetTitle(epw, sizeof(WCHAR) * MAX_PATH, wszBuffer, mode);
                 if (wcsstr(wszBuffer, L"(null)"))
                 {
                     HMODULE hModule = GetModuleHandleW(L"pnidui.dll");
