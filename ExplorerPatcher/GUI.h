@@ -85,6 +85,7 @@ typedef struct _GUI
 	WCHAR sectionNames[20][20];
 	BOOL bRebuildIfTabOrderIsEmpty;
 	int dwPageLocation;
+	DWORD last_section;
 } GUI;
 
 static HRESULT GUI_AboutProc(

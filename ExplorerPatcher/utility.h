@@ -567,8 +567,7 @@ LRESULT CALLBACK PleaseWait_HookProc(int code, WPARAM wParam, LPARAM lParam);
 inline BOOL IsWindows11()
 {
     RTL_OSVERSIONINFOW rovi;
-    DWORD32 ubr = VnGetOSVersionAndUBR(&rovi);
-    if (rovi.dwBuildNumber >= 21996)
+    if (VnGetOSVersion(&rovi) && rovi.dwBuildNumber >= 21996)
     {
         return TRUE;
     }

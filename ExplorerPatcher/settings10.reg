@@ -185,10 +185,9 @@
 "SwitcherIsPerApplication"=dword:00000000
 ;b %PLACEHOLDER_0001%
 "NoPerApplicationList"=dword:00000000
-;c 3 Theme
+;c 2 Theme
 ;x 0 Default
 ;x 1 Acrylic
-;x 2 Mica (always opaque)
 "Theme"=dword:00000000
 [HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\MultitaskingView\AltTabViewHost]
 ;c 19 Opacity

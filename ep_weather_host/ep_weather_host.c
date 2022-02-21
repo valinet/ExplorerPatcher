@@ -846,10 +846,24 @@ LRESULT CALLBACK epw_Weather_WindowProc(_In_ HWND hWnd, _In_ UINT uMsg, _In_ WPA
                 marGlassInset.cyBottomHeight = 0;
                 marGlassInset.cyTopHeight = 0;
             }
-            DwmExtendFrameIntoClientArea(_this->hWnd, &marGlassInset);
-            BOOL value = (IsThemeActive() && !IsHighContrast()) ? 1 : 0;
-            DwmSetWindowAttribute(hWnd, 1029, &value, sizeof(BOOL));
             LONG64 dwDarkMode = InterlockedAdd64(&_this->g_darkModeEnabled, 0);
+            if (IsWindows11())
+            {
+                DwmExtendFrameIntoClientArea(_this->hWnd, &marGlassInset);
+                BOOL value = (IsThemeActive() && !IsHighContrast()) ? 1 : 0;
+                DwmSetWindowAttribute(_this->hWnd, 1029, &value, sizeof(BOOL));
+            }
+            else
+            {
+                RTL_OSVERSIONINFOW rovi;
+                DWORD32 ubr = GetOSVersionAndUBR(&rovi);
+                int s = 0;
+                if (rovi.dwBuildNumber < 18985)
+                {
+                    s = -1;
+                }
+                DwmSetWindowAttribute(_this->hWnd, DWMWA_USE_IMMERSIVE_DARK_MODE + s, &dwDarkMode, sizeof(LONG64));
+            }
             if (!dwDarkMode)
             {
                 epw_Weather_SetDarkMode(_this, dwDarkMode, TRUE);
@@ -865,7 +879,22 @@ LRESULT CALLBACK epw_Weather_WindowProc(_In_ HWND hWnd, _In_ UINT uMsg, _In_ WPA
         SetWindowPos(_this->hWnd, NULL, rc->left, rc->top, w, rc->bottom - rc->top, 0);
         return 0;
     }
-
+    else if (uMsg == WM_PAINT && !IsWindows11())
+    {
+        PAINTSTRUCT ps;
+        HDC hdc = BeginPaint(hWnd, &ps);
+        if (ps.fErase)
+        {
+            LONG64 bEnabled, dwDarkMode;
+            dwDarkMode = InterlockedAdd64(&_this->g_darkModeEnabled, 0);
+            epw_Weather_IsDarkMode(_this, dwDarkMode, &bEnabled);
+            COLORREF oldcr = SetBkColor(hdc, bEnabled ? RGB(0, 0, 0) : RGB(255, 255, 255));
+            ExtTextOutW(hdc, 0, 0, ETO_OPAQUE, &ps.rcPaint, L"", 0, 0);
+            SetBkColor(hdc, oldcr);
+        }
+        EndPaint(hWnd, &ps);
+        return 0;
+    }
     /*BOOL bIsRunningWithoutVisualStyle = !IsThemeActive() || IsHighContrast();
     if (uMsg == WM_CREATE)
     {
@@ -939,7 +968,8 @@ HRESULT STDMETHODCALLTYPE epw_Weather_IsDarkMode(EPWeather* _this, LONG64 dwDark
     DwmIsCompositionEnabled(&bIsCompositionEnabled);
     if (!dwDarkMode)
     {
-        *bEnabled = bIsCompositionEnabled && (ShouldSystemUseDarkMode ? ShouldSystemUseDarkMode() : FALSE) && !IsHighContrast();
+        RTL_OSVERSIONINFOW rovi;
+        *bEnabled = bIsCompositionEnabled && ((GetOSVersion(&rovi) && rovi.dwBuildNumber < 18985) ? TRUE : (ShouldSystemUseDarkMode ? ShouldSystemUseDarkMode() : FALSE)) && !IsHighContrast();
     }
     else
     {
@@ -959,7 +989,14 @@ HRESULT STDMETHODCALLTYPE epw_Weather_SetDarkMode(EPWeather* _this, LONG64 dwDar
         if (_this->hWnd)
         {
             AllowDarkModeForWindow(_this->hWnd, bEnabled);
-            DwmSetWindowAttribute(_this->hWnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &bEnabled, sizeof(BOOL));
+            RTL_OSVERSIONINFOW rovi;
+            DWORD32 ubr = GetOSVersionAndUBR(&rovi);
+            int s = 0;
+            if (rovi.dwBuildNumber < 18985)
+            {
+                s = -1;
+            }
+            DwmSetWindowAttribute(_this->hWnd, DWMWA_USE_IMMERSIVE_DARK_MODE + s, &bEnabled, sizeof(BOOL));
             //InvalidateRect(_this->hWnd, NULL, FALSE);
             PostMessageW(_this->hWnd, EP_WEATHER_WM_SET_BROWSER_THEME, bEnabled, bRefresh);
         }
@@ -1016,7 +1053,7 @@ DWORD WINAPI epw_Weather_MainThread(EPWeather* _this)
     wc.style = CS_DBLCLKS;
     wc.lpfnWndProc = epw_Weather_WindowProc;
     wc.hInstance = epw_hModule;
-    wc.hbrBackground = (HBRUSH)GetStockObject(BLACK_BRUSH);
+    wc.hbrBackground = IsWindows11() ? (HBRUSH)GetStockObject(BLACK_BRUSH) : NULL;
     wc.lpszClassName = _T(EPW_WEATHER_CLASSNAME);
     wc.hCursor = LoadCursorW(NULL, IDC_ARROW);
     if (!RegisterClassW(&wc))
@@ -1051,14 +1088,28 @@ DWORD WINAPI epw_Weather_MainThread(EPWeather* _this)
         goto cleanup;
     }
 
-    if (!IsHighContrast())
-    {
-        MARGINS marGlassInset = { -1, -1, -1, -1 }; // -1 means the whole window
-        DwmExtendFrameIntoClientArea(_this->hWnd, &marGlassInset);
-        BOOL value = 1;
-        DwmSetWindowAttribute(_this->hWnd, 1029, &value, sizeof(BOOL));
-    }
     LONG64 dwDarkMode = InterlockedAdd64(&_this->g_darkModeEnabled, 0);
+    if (IsWindows11())
+    {
+        if (!IsHighContrast())
+        {
+            MARGINS marGlassInset = { -1, -1, -1, -1 }; // -1 means the whole window
+            DwmExtendFrameIntoClientArea(_this->hWnd, &marGlassInset);
+            BOOL value = 1;
+            DwmSetWindowAttribute(_this->hWnd, 1029, &value, sizeof(BOOL));
+        }
+    }
+    else
+    {
+        RTL_OSVERSIONINFOW rovi;
+        DWORD32 ubr = GetOSVersionAndUBR(&rovi);
+        int s = 0;
+        if (rovi.dwBuildNumber < 18985)
+        {
+            s = -1;
+        }
+        DwmSetWindowAttribute(_this->hWnd, DWMWA_USE_IMMERSIVE_DARK_MODE + s, &dwDarkMode, sizeof(LONG64));
+    }
     epw_Weather_SetDarkMode(_this, dwDarkMode, FALSE);
 
     InterlockedExchange64(&_this->bBrowserBusy, TRUE);

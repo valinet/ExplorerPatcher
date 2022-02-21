@@ -805,7 +805,7 @@ int WINAPI wWinMain(
         {
             bOk = GetWindowsDirectoryW(wszPath, MAX_PATH);
         }
-        if (bOk)
+        if (bOk && IsWindows11())
         {
             wcscat_s(wszPath, MAX_PATH, L"\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\dxgi.dll");
             bOk = InstallResource(bInstall, hInstance, IDR_EP_AMD64, wszPath);
@@ -814,7 +814,7 @@ int WINAPI wWinMain(
         {
             bOk = GetWindowsDirectoryW(wszPath, MAX_PATH);
         }
-        if (bOk)
+        if (bOk && IsWindows11())
         {
             wcscat_s(wszPath, MAX_PATH, L"\\SystemApps\\ShellExperienceHost_cw5n1h2txyewy\\dxgi.dll");
             bOk = InstallResource(bInstall, hInstance, IDR_EP_AMD64, wszPath);

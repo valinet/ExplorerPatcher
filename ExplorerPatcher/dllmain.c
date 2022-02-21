@@ -4234,7 +4234,8 @@ __int64 __fastcall PeopleBand_DrawTextWithGlowHook(
                             COLORREF rgbColor = RGB(0, 0, 0);
                             if (bIsThemeActive)
                             {
-                                if (ShouldSystemUseDarkMode && ShouldSystemUseDarkMode())
+                                RTL_OSVERSIONINFOW rovi;
+                                if ((VnGetOSVersion(&rovi) && rovi.dwBuildNumber < 18985) || (ShouldSystemUseDarkMode && ShouldSystemUseDarkMode()))
                                 {
                                     rgbColor = RGB(255, 255, 255);
                                 }
@@ -4660,20 +4661,31 @@ BOOL explorer_SetChildWindowNoActivateHook(HWND hWnd)
         uintptr_t Instance = *(uintptr_t*)GetWindowLongPtrW(hWnd, 0);
         if (Instance)
         {
-            uintptr_t off_TrayButton_GetComponentName = 0;
-            if (IsWindows11())
+            uintptr_t TrayButton_GetComponentName = *(INT_PTR(WINAPI**)())(Instance + 304); // 280 in versions of Windows 10 where this method exists
+            wchar_t* wszComponentName = NULL;
+            if (IsWindows11() && !IsBadCodePtr(TrayButton_GetComponentName))
             {
-                off_TrayButton_GetComponentName = 304;
+                wszComponentName = (const WCHAR*)(*(uintptr_t(**)(void))(Instance + 304))();
             }
             else
             {
-                off_TrayButton_GetComponentName = 280;
+                WCHAR title[MAX_PATH];
+                GetWindowTextW(hWnd, title, MAX_PATH);
+                WCHAR pbtitle[MAX_PATH];
+                HMODULE hPeopleBand = LoadLibraryExW(L"PeopleBand.dll", NULL, LOAD_LIBRARY_AS_DATAFILE);
+                if (hPeopleBand)
+                {
+                    LoadStringW(hPeopleBand, 256, pbtitle, 260);
+                    FreeLibrary(hPeopleBand);
+                }
+                if (!wcscmp(pbtitle, title))
+                {
+                    wszComponentName = L"PeopleButton";
+                }
             }
-            uintptr_t TrayButton_GetComponentName = *(INT_PTR(WINAPI**)())(Instance + off_TrayButton_GetComponentName);
-            if (!IsBadCodePtr(TrayButton_GetComponentName))
+            if (wszComponentName)
             {
-                wchar_t* wszComponentName = (const WCHAR*)(*(uintptr_t(**)(void))(Instance + off_TrayButton_GetComponentName))();
-                if (!wcscmp(wszComponentName, L"CortanaButton") && IsWindows11())
+                if (!wcscmp(wszComponentName, L"CortanaButton"))
                 {
                     DWORD dwOldProtect;
                     VirtualProtect(Instance + 160, sizeof(uintptr_t), PAGE_READWRITE, &dwOldProtect);
@@ -4685,7 +4697,7 @@ BOOL explorer_SetChildWindowNoActivateHook(HWND hWnd)
                     *(uintptr_t*)(Instance + 216) = Widgets_GetTooltipTextHook; // OnTooltipShow
                     VirtualProtect(Instance + 216, sizeof(uintptr_t), dwOldProtect, &dwOldProtect);
                 }
-                else if (!wcscmp(wszComponentName, L"MultitaskingButton") && IsWindows11())
+                else if (!wcscmp(wszComponentName, L"MultitaskingButton"))
                 {
                     DWORD dwOldProtect;
                     VirtualProtect(Instance + 160, sizeof(uintptr_t), PAGE_READWRITE, &dwOldProtect);
@@ -7831,107 +7843,122 @@ DWORD InjectBasicFunctions(BOOL bIsExplorer, BOOL bInstall)
     //Sleep(150);
 
     HMODULE hShlwapi = LoadLibraryW(L"Shlwapi.dll");
-    if (bInstall)
+    if (hShlwapi)
     {
-        SHRegGetValueFromHKCUHKLMFunc = GetProcAddress(hShlwapi, "SHRegGetValueFromHKCUHKLM");
-    }
-    else
-    {
-        FreeLibrary(hShlwapi);
-        FreeLibrary(hShlwapi);
+        if (bInstall)
+        {
+            SHRegGetValueFromHKCUHKLMFunc = GetProcAddress(hShlwapi, "SHRegGetValueFromHKCUHKLM");
+        }
+        else
+        {
+            FreeLibrary(hShlwapi);
+            FreeLibrary(hShlwapi);
+        }
     }
 
     HANDLE hShell32 = LoadLibraryW(L"shell32.dll");
-    if (bInstall)
+    if (hShell32)
     {
-        VnPatchIAT(hShell32, "user32.dll", "TrackPopupMenu", TrackPopupMenuHook);
-        VnPatchIAT(hShell32, "user32.dll", "SystemParametersInfoW", DisableImmersiveMenus_SystemParametersInfoW);
-        if (!bIsExplorer)
+        if (bInstall)
         {
-            CreateWindowExWFunc = CreateWindowExW;
-            VnPatchIAT(hShell32, "user32.dll", "CreateWindowExW", CreateWindowExWHook);
-            SetWindowLongPtrWFunc = SetWindowLongPtrW;
-            VnPatchIAT(hShell32, "user32.dll", "SetWindowLongPtrW", SetWindowLongPtrWHook);
+            VnPatchIAT(hShell32, "user32.dll", "TrackPopupMenu", TrackPopupMenuHook);
+            VnPatchIAT(hShell32, "user32.dll", "SystemParametersInfoW", DisableImmersiveMenus_SystemParametersInfoW);
+            if (!bIsExplorer)
+            {
+                CreateWindowExWFunc = CreateWindowExW;
+                VnPatchIAT(hShell32, "user32.dll", "CreateWindowExW", CreateWindowExWHook);
+                SetWindowLongPtrWFunc = SetWindowLongPtrW;
+                VnPatchIAT(hShell32, "user32.dll", "SetWindowLongPtrW", SetWindowLongPtrWHook);
+            }
         }
-    }
-    else
-    {
-        VnPatchIAT(hShell32, "user32.dll", "TrackPopupMenu", TrackPopupMenu);
-        VnPatchIAT(hShell32, "user32.dll", "SystemParametersInfoW", SystemParametersInfoW);
-        if (!bIsExplorer)
+        else
         {
-            VnPatchIAT(hShell32, "user32.dll", "CreateWindowExW", CreateWindowExW);
-            VnPatchIAT(hShell32, "user32.dll", "SetWindowLongPtrW", SetWindowLongPtrW);
+            VnPatchIAT(hShell32, "user32.dll", "TrackPopupMenu", TrackPopupMenu);
+            VnPatchIAT(hShell32, "user32.dll", "SystemParametersInfoW", SystemParametersInfoW);
+            if (!bIsExplorer)
+            {
+                VnPatchIAT(hShell32, "user32.dll", "CreateWindowExW", CreateWindowExW);
+                VnPatchIAT(hShell32, "user32.dll", "SetWindowLongPtrW", SetWindowLongPtrW);
+            }
+            FreeLibrary(hShell32);
+            FreeLibrary(hShell32);
         }
-        FreeLibrary(hShell32);
-        FreeLibrary(hShell32);
     }
 
     HANDLE hShcore = LoadLibraryW(L"shcore.dll");
-    if (bInstall)
+    if (hShcore)
     {
-        explorerframe_SHCreateWorkerWindowFunc = GetProcAddress(hShcore, (LPCSTR)188);
-    }
-    else
-    {
-        FreeLibrary(hShcore);
-        FreeLibrary(hShcore);
+        if (bInstall)
+        {
+            explorerframe_SHCreateWorkerWindowFunc = GetProcAddress(hShcore, (LPCSTR)188);
+        }
+        else
+        {
+            FreeLibrary(hShcore);
+            FreeLibrary(hShcore);
+        }
     }
 
     HANDLE hExplorerFrame = LoadLibraryW(L"ExplorerFrame.dll");
-    if (bInstall)
+    if (hExplorerFrame)
     {
-        VnPatchIAT(hExplorerFrame, "user32.dll", "TrackPopupMenu", TrackPopupMenuHook);
-        VnPatchIAT(hExplorerFrame, "user32.dll", "SystemParametersInfoW", DisableImmersiveMenus_SystemParametersInfoW);
-        VnPatchIAT(hExplorerFrame, "shcore.dll", (LPCSTR)188, explorerframe_SHCreateWorkerWindowHook);  // <<<SAB>>>
-        if (!bIsExplorer)
+        if (bInstall)
         {
-            CreateWindowExWFunc = CreateWindowExW;
-            VnPatchIAT(hExplorerFrame, "user32.dll", "CreateWindowExW", CreateWindowExWHook);
-            SetWindowLongPtrWFunc = SetWindowLongPtrW;
-            VnPatchIAT(hExplorerFrame, "user32.dll", "SetWindowLongPtrW", SetWindowLongPtrWHook);
+            VnPatchIAT(hExplorerFrame, "user32.dll", "TrackPopupMenu", TrackPopupMenuHook);
+            VnPatchIAT(hExplorerFrame, "user32.dll", "SystemParametersInfoW", DisableImmersiveMenus_SystemParametersInfoW);
+            VnPatchIAT(hExplorerFrame, "shcore.dll", (LPCSTR)188, explorerframe_SHCreateWorkerWindowHook);  // <<<SAB>>>
+            if (!bIsExplorer)
+            {
+                CreateWindowExWFunc = CreateWindowExW;
+                VnPatchIAT(hExplorerFrame, "user32.dll", "CreateWindowExW", CreateWindowExWHook);
+                SetWindowLongPtrWFunc = SetWindowLongPtrW;
+                VnPatchIAT(hExplorerFrame, "user32.dll", "SetWindowLongPtrW", SetWindowLongPtrWHook);
+            }
+            VnPatchIAT(hExplorerFrame, "API-MS-WIN-CORE-STRING-L1-1-0.DLL", "CompareStringOrdinal", ExplorerFrame_CompareStringOrdinal);
         }
-        VnPatchIAT(hExplorerFrame, "API-MS-WIN-CORE-STRING-L1-1-0.DLL", "CompareStringOrdinal", ExplorerFrame_CompareStringOrdinal);
-    }
-    else
-    {
-        VnPatchIAT(hExplorerFrame, "user32.dll", "TrackPopupMenu", TrackPopupMenu);
-        VnPatchIAT(hExplorerFrame, "user32.dll", "SystemParametersInfoW", SystemParametersInfoW);
-        VnPatchIAT(hExplorerFrame, "shcore.dll", (LPCSTR)188, explorerframe_SHCreateWorkerWindowFunc);
-        if (!bIsExplorer)
+        else
         {
-            VnPatchIAT(hExplorerFrame, "user32.dll", "CreateWindowExW", CreateWindowExW);
-            VnPatchIAT(hExplorerFrame, "user32.dll", "SetWindowLongPtrW", SetWindowLongPtrW);
+            VnPatchIAT(hExplorerFrame, "user32.dll", "TrackPopupMenu", TrackPopupMenu);
+            VnPatchIAT(hExplorerFrame, "user32.dll", "SystemParametersInfoW", SystemParametersInfoW);
+            VnPatchIAT(hExplorerFrame, "shcore.dll", (LPCSTR)188, explorerframe_SHCreateWorkerWindowFunc);
+            if (!bIsExplorer)
+            {
+                VnPatchIAT(hExplorerFrame, "user32.dll", "CreateWindowExW", CreateWindowExW);
+                VnPatchIAT(hExplorerFrame, "user32.dll", "SetWindowLongPtrW", SetWindowLongPtrW);
+            }
+            VnPatchIAT(hExplorerFrame, "API-MS-WIN-CORE-STRING-L1-1-0.DLL", "CompareStringOrdinal", CompareStringOrdinal);
+            FreeLibrary(hExplorerFrame);
+            FreeLibrary(hExplorerFrame);
         }
-        VnPatchIAT(hExplorerFrame, "API-MS-WIN-CORE-STRING-L1-1-0.DLL", "CompareStringOrdinal", CompareStringOrdinal);
-        FreeLibrary(hExplorerFrame);
-        FreeLibrary(hExplorerFrame);
     }
 
     HANDLE hWindowsUIFileExplorer = LoadLibraryW(L"Windows.UI.FileExplorer.dll");
     if (hWindowsUIFileExplorer)
     {
-        VnPatchDelayIAT(hWindowsUIFileExplorer, "user32.dll", "TrackPopupMenu", TrackPopupMenuHook);
-        VnPatchDelayIAT(hWindowsUIFileExplorer, "user32.dll", "SystemParametersInfoW", DisableImmersiveMenus_SystemParametersInfoW);
-        if (!bIsExplorer)
+        if (bInstall)
         {
-            CreateWindowExWFunc = CreateWindowExW;
-            VnPatchIAT(hWindowsUIFileExplorer, "user32.dll", "CreateWindowExW", CreateWindowExWHook);
-            SetWindowLongPtrWFunc = SetWindowLongPtrW;
-            VnPatchIAT(hWindowsUIFileExplorer, "user32.dll", "SetWindowLongPtrW", SetWindowLongPtrWHook);
+            VnPatchDelayIAT(hWindowsUIFileExplorer, "user32.dll", "TrackPopupMenu", TrackPopupMenuHook);
+            VnPatchDelayIAT(hWindowsUIFileExplorer, "user32.dll", "SystemParametersInfoW", DisableImmersiveMenus_SystemParametersInfoW);
+            if (!bIsExplorer)
+            {
+                CreateWindowExWFunc = CreateWindowExW;
+                VnPatchIAT(hWindowsUIFileExplorer, "user32.dll", "CreateWindowExW", CreateWindowExWHook);
+                SetWindowLongPtrWFunc = SetWindowLongPtrW;
+                VnPatchIAT(hWindowsUIFileExplorer, "user32.dll", "SetWindowLongPtrW", SetWindowLongPtrWHook);
+            }
         }
-    }
-    else
-    {
-        VnPatchDelayIAT(hWindowsUIFileExplorer, "user32.dll", "TrackPopupMenu", TrackPopupMenu);
-        VnPatchDelayIAT(hWindowsUIFileExplorer, "user32.dll", "SystemParametersInfoW", SystemParametersInfoW);
-        if (!bIsExplorer)
+        else
         {
-            VnPatchIAT(hWindowsUIFileExplorer, "user32.dll", "CreateWindowExW", CreateWindowExW);
-            VnPatchIAT(hWindowsUIFileExplorer, "user32.dll", "SetWindowLongPtrW", SetWindowLongPtrW);
+            VnPatchDelayIAT(hWindowsUIFileExplorer, "user32.dll", "TrackPopupMenu", TrackPopupMenu);
+            VnPatchDelayIAT(hWindowsUIFileExplorer, "user32.dll", "SystemParametersInfoW", SystemParametersInfoW);
+            if (!bIsExplorer)
+            {
+                VnPatchIAT(hWindowsUIFileExplorer, "user32.dll", "CreateWindowExW", CreateWindowExW);
+                VnPatchIAT(hWindowsUIFileExplorer, "user32.dll", "SetWindowLongPtrW", SetWindowLongPtrW);
+            }
+            FreeLibrary(hWindowsUIFileExplorer);
+            FreeLibrary(hWindowsUIFileExplorer);
         }
-        FreeLibrary(hWindowsUIFileExplorer);
-        FreeLibrary(hWindowsUIFileExplorer);
     }
 }
 
