@@ -114,6 +114,7 @@ if (document.getElementsByClassName(\"QS5gu sy4vM\").length > 1) { document.getE
 return ep_result;\n\
 }\n\
 let banner1 = document.getElementById(\"taw\"); if (banner1) { banner1.style = \"display: none\"; }\n\
+let wob_gsp = document.getElementById(\"wob_gsp\"); if (wob_gsp) { wob_gsp.style = \"width: 648.04px\"; }\n\
 scrolldisable();\n\
 ep_weather_part2();\n\
 ";
