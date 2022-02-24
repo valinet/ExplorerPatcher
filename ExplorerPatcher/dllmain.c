@@ -1526,7 +1526,7 @@ LONG_PTR __stdcall CTaskBtnGroup_GetIdealSpanHook(ITaskBtnGroup* _this, LONG_PTR
 void explorer_QISearch(void* that, LPCQITAB pqit, REFIID riid, void** ppv)
 {
     HRESULT hr = QISearch(that, pqit, riid, ppv);
-    if (SUCCEEDED(hr) && IsEqualGUID(pqit[0].piid, &IID_ITaskGroup))
+    if (SUCCEEDED(hr) && IsEqualGUID(pqit[0].piid, &IID_ITaskGroup) && bPinnedItemsActAsQuickLaunch)
     {
         ITaskGroup* pTaskGroup = (char*)that + pqit[0].dwOffset;
         DWORD flOldProtect = 0;
@@ -1540,7 +1540,7 @@ void explorer_QISearch(void* that, LPCQITAB pqit, REFIID riid, void** ppv)
             VirtualProtect(pTaskGroup->lpVtbl, sizeof(ITaskGroupVtbl), flOldProtect, &flOldProtect);
         }
     }
-    else if (SUCCEEDED(hr) && IsEqualGUID(pqit[0].piid, &IID_ITaskBtnGroup))
+    else if (SUCCEEDED(hr) && IsEqualGUID(pqit[0].piid, &IID_ITaskBtnGroup) && bRemoveExtraGapAroundPinnedItems)
     {
         ITaskBtnGroup* pTaskBtnGroup = (char*)that + pqit[0].dwOffset;
         DWORD flOldProtect = 0;
@@ -6245,7 +6245,7 @@ void WINAPI LoadSettings(LPARAM lParam)
         if (dwRefreshUIMask & REFRESHUI_TASKBAR)
         {
             // this is mostly a hack...
-            DWORD dwGlomLevel = 2, dwSize = sizeof(DWORD), dwNewGlomLevel;
+            /*DWORD dwGlomLevel = 2, dwSize = sizeof(DWORD), dwNewGlomLevel;
             RegGetValueW(HKEY_CURRENT_USER, IsWindows11() ? TEXT(REGPATH) : L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", L"TaskbarGlomLevel", RRF_RT_DWORD, NULL, &dwGlomLevel, &dwSize);
             Sleep(100);
             dwNewGlomLevel = 0;
@@ -6257,7 +6257,7 @@ void WINAPI LoadSettings(LPARAM lParam)
             Explorer_RefreshUI(0);
             Sleep(100);
             RegSetKeyValueW(HKEY_CURRENT_USER, IsWindows11() ? TEXT(REGPATH) : L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", L"TaskbarGlomLevel", REG_DWORD, &dwGlomLevel, sizeof(DWORD));
-            Explorer_RefreshUI(0);
+            Explorer_RefreshUI(0);*/
         }
     }
 }
