@@ -909,7 +909,7 @@ BOOL LoadSymbols(symbols_addr* symbols_PTRS, HMODULE hModule)
     GetWindowsDirectoryW(wszPath, MAX_PATH);
     wcscat_s(wszPath, MAX_PATH, L"\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\" TEXT(STARTUI_SB_NAME) L".dll");
     ComputeFileHash(wszPath, hash, 100);
-    if (!_stricmp(hash, "2768cc6cc7f686b2aa084cb5c8cce65d")) // 493
+    if (!_stricmp(hash, "2768cc6cc7f686b2aa084cb5c8cce65d") || !_stricmp(hash, "a7c82cb9a9fd6f87897fc8a737d6b4d7")) // 493, 527
     {
         symbols_PTRS->startui_PTRS[0] = 0x37180;
         bIsStartHardcoded = TRUE;
