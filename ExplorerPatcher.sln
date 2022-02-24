@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.0.31903.59
+VisualStudioVersion = 17.0.32126.317
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ExplorerPatcher", "ExplorerPatcher\ExplorerPatcher.vcxproj", "{DB3E4319-2969-42B6-B7E8-BB57AA8C9FA9}"
 	ProjectSection(ProjectDependencies) = postProject
@@ -18,6 +18,7 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ep_setup", "ep_setup\ep_set
 		{DB3E4319-2969-42B6-B7E8-BB57AA8C9FA9} = {DB3E4319-2969-42B6-B7E8-BB57AA8C9FA9}
 		{1ECCAB38-61B6-4C85-BBB5-2E2232DA3A87} = {1ECCAB38-61B6-4C85-BBB5-2E2232DA3A87}
 		{314A50C1-F0A0-4D0C-89E1-AD8F3951043E} = {314A50C1-F0A0-4D0C-89E1-AD8F3951043E}
+		{6BF03EEA-200A-4698-9555-057DD52B0C78} = {6BF03EEA-200A-4698-9555-057DD52B0C78}
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ep_setup_patch", "ep_setup_patch\ep_setup_patch.vcxproj", "{0C13E5F3-106B-4836-A7C2-8E5808A6ED78}"
@@ -33,6 +34,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ep_weather_host", "ep_weath
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ep_weather_host_stub", "ep_weather_host_stub\ep_weather_host_stub.vcxproj", "{AF02ABAC-EAEB-471C-9957-73D430B8B4DE}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ep_startmenu", "ep_startmenu\ep_startmenu.vcxproj", "{6BF03EEA-200A-4698-9555-057DD52B0C78}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -92,6 +95,12 @@ Global
 		{AF02ABAC-EAEB-471C-9957-73D430B8B4DE}.Release|amd64.ActiveCfg = Release|x64
 		{AF02ABAC-EAEB-471C-9957-73D430B8B4DE}.Release|amd64.Build.0 = Release|x64
 		{AF02ABAC-EAEB-471C-9957-73D430B8B4DE}.Release|IA-32.ActiveCfg = Release|Win32
+		{6BF03EEA-200A-4698-9555-057DD52B0C78}.Debug|amd64.ActiveCfg = Debug|x64
+		{6BF03EEA-200A-4698-9555-057DD52B0C78}.Debug|amd64.Build.0 = Debug|x64
+		{6BF03EEA-200A-4698-9555-057DD52B0C78}.Debug|IA-32.ActiveCfg = Debug|Win32
+		{6BF03EEA-200A-4698-9555-057DD52B0C78}.Release|amd64.ActiveCfg = Release|x64
+		{6BF03EEA-200A-4698-9555-057DD52B0C78}.Release|amd64.Build.0 = Release|x64
+		{6BF03EEA-200A-4698-9555-057DD52B0C78}.Release|IA-32.ActiveCfg = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

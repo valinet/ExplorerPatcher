@@ -8,6 +8,38 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #include "resource.h"
 #include "../ExplorerPatcher/utility.h"
 
+BOOL ShouldDownloadOrDelete(BOOL bInstall, HINSTANCE hInstance, LPCWSTR wszPath, LPCSTR chash)
+{
+    if (FileExistsW(wszPath))
+    {
+        WCHAR hash[100];
+        ZeroMemory(hash, sizeof(WCHAR) * 100);
+        ComputeFileHash(wszPath, hash, 100);
+        if (_stricmp(hash, chash))
+        {
+            if (bInstall)
+            {
+                return TRUE;
+            }
+        }
+        else
+        {
+            if (!bInstall)
+            {
+                return InstallResource(FALSE, hInstance, 0, wszPath); // Delete
+            }
+        }
+    }
+    else
+    {
+        if (bInstall)
+        {
+            return TRUE;
+        }
+    }
+    return FALSE;
+}
+
 BOOL SetupShortcut(BOOL bInstall, WCHAR* wszPath, WCHAR* wszArguments)
 {
     WCHAR wszTitle[MAX_PATH];
@@ -809,6 +841,74 @@ int WINAPI wWinMain(
         {
             wcscat_s(wszPath, MAX_PATH, L"\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\dxgi.dll");
             bOk = InstallResource(bInstall, hInstance, IDR_EP_AMD64, wszPath);
+        }
+        if (bOk)
+        {
+            bOk = GetWindowsDirectoryW(wszPath, MAX_PATH);
+        }
+        if (bOk && IsWindows11())
+        {
+            wcscat_s(wszPath, MAX_PATH, L"\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\wincorlib.dll");
+            bOk = InstallResource(bInstall, hInstance, IDR_EP_STARTMENU, wszPath);
+        }
+        if (bOk)
+        {
+            bOk = GetWindowsDirectoryW(wszPath, MAX_PATH);
+        }
+        if (bOk && IsWindows11())
+        {
+            wcscat_s(wszPath, MAX_PATH, L"\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\wincorlib_orig.dll");
+            bOk = InstallResource(FALSE, hInstance, 0, wszPath); // Delete
+        }
+        if (bOk && IsWindows11())
+        {
+            if (bInstall)
+            {
+                WCHAR wszOrigPath[MAX_PATH];
+                GetSystemDirectoryW(wszOrigPath, MAX_PATH);
+                wcscat_s(wszOrigPath, MAX_PATH, L"\\wincorlib.dll");
+                bOk = CreateSymbolicLinkW(wszPath, wszOrigPath, 0);
+            }
+        }
+        if (bOk && IsWindows11())
+        {
+            GetWindowsDirectoryW(wszPath, MAX_PATH);
+            wcscat_s(wszPath, MAX_PATH, L"\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\StartTileDataLegacy.dll");
+            if (ShouldDownloadOrDelete(bInstall, hInstance, wszPath, "aa36a082e3b33297b6930eea6e98f8cf") && IsConnectedToInternet() == TRUE)
+            {
+                DownloadFile(L"https://github.com/valinet/ExplorerPatcher/files/8136435/StartTileDataLegacy.pri.txt", 10 * 1024 * 1024, wszPath);
+            }
+        }
+        if (bOk && IsWindows11())
+        {
+            GetWindowsDirectoryW(wszPath, MAX_PATH);
+            wcscat_s(wszPath, MAX_PATH, L"\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\Windows.UI.ShellCommon.pri");
+            if (ShouldDownloadOrDelete(bInstall, hInstance, wszPath, "95b41e1a2661501036198d8225aaa605") && IsConnectedToInternet() == TRUE)
+            {
+                DownloadFile(L"https://github.com/valinet/ExplorerPatcher/files/8136442/Windows.UI.ShellCommon.pri.txt", 10 * 1024 * 1024, wszPath);
+            }
+        }
+        if (bOk && IsWindows11())
+        {
+            GetWindowsDirectoryW(wszPath, MAX_PATH);
+            wcscat_s(wszPath, MAX_PATH, L"\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\en-US");
+            CreateDirectoryW(wszPath, NULL);
+            wcscat_s(wszPath, MAX_PATH, L"\\StartTileDataLegacy.dll.mui");
+            if (ShouldDownloadOrDelete(bInstall, hInstance, wszPath, "0ed61f384c39116f424eb2fa6b3b9ef8") && IsConnectedToInternet() == TRUE)
+            {
+                DownloadFile(L"https://github.com/valinet/ExplorerPatcher/files/8136433/StartTileDataLegacy.dll.mui.txt", 10 * 1024 * 1024, wszPath);
+            }
+        }
+        if (bOk && IsWindows11())
+        {
+            GetWindowsDirectoryW(wszPath, MAX_PATH);
+            wcscat_s(wszPath, MAX_PATH, L"\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\pris2");
+            CreateDirectoryW(wszPath, NULL);
+            wcscat_s(wszPath, MAX_PATH, L"\\Windows.UI.ShellCommon.en-US.pri");
+            if (ShouldDownloadOrDelete(bInstall, hInstance, wszPath, "12d7b85cd1b995698b23e5d41fab60ec") && IsConnectedToInternet() == TRUE)
+            {
+                DownloadFile(L"https://github.com/valinet/ExplorerPatcher/files/8136451/Windows.UI.ShellCommon.en-US.pri.txt", 10 * 1024 * 1024, wszPath);
+            }
         }
         if (bOk)
         {

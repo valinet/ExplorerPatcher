@@ -8863,6 +8863,7 @@ char VisibilityChangedEventArguments_GetVisible(__int64 a1)
     return v3[0];
 }
 
+DWORD StartMenu_ShowClassicMode = 0;
 DWORD StartMenu_maximumFreqApps = 6;
 DWORD StartMenu_ShowAllApps = 0;
 
@@ -8933,6 +8934,41 @@ void StartMenu_LoadSettings(BOOL bRestartIfChanged)
         StartMenu_maximumFreqApps = dwVal;
         RegCloseKey(hKey);
     }
+
+    RegCreateKeyExW(
+        HKEY_CURRENT_USER,
+        L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
+        0,
+        NULL,
+        REG_OPTION_NON_VOLATILE,
+        KEY_READ,
+        NULL,
+        &hKey,
+        NULL
+    );
+    if (hKey == NULL || hKey == INVALID_HANDLE_VALUE)
+    {
+        hKey = NULL;
+    }
+    if (hKey)
+    {
+        dwSize = sizeof(DWORD);
+        dwVal = 0;
+        RegQueryValueExW(
+            hKey,
+            TEXT("Start_ShowClassicMode"),
+            0,
+            NULL,
+            &dwVal,
+            &dwSize
+        );
+        if (bRestartIfChanged && dwVal != StartMenu_ShowClassicMode)
+        {
+            exit(0);
+        }
+        StartMenu_ShowClassicMode = dwVal;
+        RegCloseKey(hKey);
+    }
 }
 
 static INT64(*StartDocked_LauncherFrame_OnVisibilityChangedFunc)(void*, INT64, void*) = NULL;
@@ -8966,6 +9002,13 @@ INT64 StartDocked_SystemListPolicyProvider_GetMaximumFrequentAppsHook(void* _thi
     return StartMenu_maximumFreqApps;
 }
 
+INT64(*StartUI_SystemListPolicyProvider_GetMaximumFrequentAppsFunc)(void*) = NULL;
+
+INT64 StartUI_SystemListPolicyProvider_GetMaximumFrequentAppsHook(void* _this)
+{
+    return StartMenu_maximumFreqApps;
+}
+
 INT64(*StartDocked_StartSizingFrame_StartSizingFrameFunc)(void* _this) = NULL;
 
 INT64 StartDocked_StartSizingFrame_StartSizingFrameHook(void* _this)
@@ -8991,6 +9034,110 @@ INT64 StartDocked_StartSizingFrame_StartSizingFrameHook(void* _this)
         *(((char*)_this + 387)) = dwStatus;
     }
     return rv;
+}
+
+HANDLE start_CreateFileW(LPCWSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode, LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition, DWORD dwFlagsAndAttributes, HANDLE hTemplateFile)
+{
+    WCHAR path[MAX_PATH];
+    GetWindowsDirectoryW(path, MAX_PATH);
+    wcscat_s(path, MAX_PATH, L"\\SystemResources\\Windows.UI.ShellCommon\\Windows.UI.ShellCommon.pri");
+    if (!_wcsicmp(path, lpFileName))
+    {
+        GetWindowsDirectoryW(path, MAX_PATH);
+        wcscat_s(path, MAX_PATH, L"\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\Windows.UI.ShellCommon.pri");
+        return CreateFileW(path, dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
+    }
+    GetWindowsDirectoryW(path, MAX_PATH);
+    wcscat_s(path, MAX_PATH, L"\\SystemResources\\Windows.UI.ShellCommon\\pris");
+    int len = wcslen(path);
+    if (!_wcsnicmp(path, lpFileName, len))
+    {
+        GetWindowsDirectoryW(path, MAX_PATH);
+        wcscat_s(path, MAX_PATH, L"\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\pris2");
+        wcscat_s(path, MAX_PATH, lpFileName + len);
+        return CreateFileW(path, dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
+    }
+    return CreateFileW(lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
+}
+
+BOOL start_GetFileAttributesExW(LPCWSTR lpFileName, GET_FILEEX_INFO_LEVELS fInfoLevelId, LPVOID lpFileInformation)
+{
+    WCHAR path[MAX_PATH];
+    GetWindowsDirectoryW(path, MAX_PATH);
+    wcscat_s(path, MAX_PATH, L"\\SystemResources\\Windows.UI.ShellCommon\\Windows.UI.ShellCommon.pri");
+    if (!_wcsicmp(path, lpFileName))
+    {
+        GetWindowsDirectoryW(path, MAX_PATH);
+        wcscat_s(path, MAX_PATH, L"\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\Windows.UI.ShellCommon.pri");
+        return GetFileAttributesExW(path, fInfoLevelId, lpFileInformation);
+    }
+    GetWindowsDirectoryW(path, MAX_PATH);
+    wcscat_s(path, MAX_PATH, L"\\SystemResources\\Windows.UI.ShellCommon\\pris");
+    int len = wcslen(path);
+    if (!_wcsnicmp(path, lpFileName, len))
+    {
+        GetWindowsDirectoryW(path, MAX_PATH);
+        wcscat_s(path, MAX_PATH, L"\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\pris2");
+        wcscat_s(path, MAX_PATH, lpFileName + len);
+        return GetFileAttributesExW(path, fInfoLevelId, lpFileInformation);
+    }
+    return GetFileAttributesExW(lpFileName, fInfoLevelId, lpFileInformation);
+}
+
+HANDLE start_FindFirstFileW(LPCWSTR lpFileName, LPWIN32_FIND_DATAW lpFindFileData)
+{
+    WCHAR path[MAX_PATH];
+    GetWindowsDirectoryW(path, MAX_PATH);
+    wcscat_s(path, MAX_PATH, L"\\SystemResources\\Windows.UI.ShellCommon\\Windows.UI.ShellCommon.pri");
+    if (!_wcsicmp(path, lpFileName))
+    {
+        GetWindowsDirectoryW(path, MAX_PATH);
+        wcscat_s(path, MAX_PATH, L"\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\Windows.UI.ShellCommon.pri");
+        return FindFirstFileW(path, lpFindFileData);
+    }
+    GetWindowsDirectoryW(path, MAX_PATH);
+    wcscat_s(path, MAX_PATH, L"\\SystemResources\\Windows.UI.ShellCommon\\pris");
+    int len = wcslen(path);
+    if (!_wcsnicmp(path, lpFileName, len))
+    {
+        GetWindowsDirectoryW(path, MAX_PATH);
+        wcscat_s(path, MAX_PATH, L"\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\pris2");
+        wcscat_s(path, MAX_PATH, lpFileName + len);
+        return FindFirstFileW(path, lpFindFileData);
+    }
+    return FindFirstFileW(lpFileName, lpFindFileData);
+}
+
+LSTATUS start_RegGetValueW(HKEY hkey, LPCWSTR lpSubKey, LPCWSTR lpValue, DWORD dwFlags, LPDWORD pdwType, PVOID pvData, LPDWORD pcbData)
+{
+    if (hkey == HKEY_LOCAL_MACHINE && !_wcsicmp(lpSubKey, L"Software\\Microsoft\\Windows\\CurrentVersion\\Mrt\\_Merged") && !_wcsicmp(lpValue, L"ShouldMergeInProc"))
+    {
+        *(DWORD*)pvData = 1;
+        return ERROR_SUCCESS;
+    }
+    return RegGetValueW(hkey, lpSubKey, lpValue, dwFlags, pdwType, pvData, pcbData);
+}
+
+int start_SetWindowRgn(HWND hWnd, HRGN hRgn, BOOL bRedraw)
+{
+    DWORD dwThisPID = GetCurrentProcessId(), dwForeignPID = 0;
+    GetWindowThreadProcessId(GetForegroundWindow(), &dwForeignPID);
+    ShowWindow(hWnd, (!hRgn && dwThisPID != dwForeignPID) ? SW_HIDE : SW_SHOW);
+    return SetWindowRgn(hWnd, hRgn, bRedraw);
+}
+
+HMODULE start_LoadLibraryExW(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlags)
+{
+    WCHAR path[MAX_PATH];
+    GetSystemDirectoryW(path, MAX_PATH);
+    wcscat_s(path, MAX_PATH, L"\\StartTileData.dll");
+    if (!_wcsicmp(path, lpLibFileName))
+    {
+        GetWindowsDirectoryW(path, MAX_PATH);
+        wcscat_s(path, MAX_PATH, L"\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\StartTileDataLegacy.dll");
+        return LoadLibraryExW(path, hFile, dwFlags);
+    }
+    return LoadLibraryExW(lpLibFileName, hFile, dwFlags);
 }
 
 int WINAPI SetupMessage(HWND hWnd, LPCWSTR lpText, LPCWSTR lpCaption, UINT uType)
@@ -9407,9 +9554,33 @@ void InjectStartMenu()
 #ifdef _WIN64
     funchook = funchook_create();
 
+    LoadLibraryW(L"StartDocked.dll");
+    HANDLE hStartDocked = GetModuleHandleW(L"StartDocked.dll");
+    LoadLibraryW(L"StartUI.dll");
+    HANDLE hStartUI = GetModuleHandleW(L"StartUI.dll");
+
     StartMenu_LoadSettings(FALSE);
 
-    Setting* settings = calloc(3, sizeof(Setting));
+    if (StartMenu_ShowClassicMode)
+    {
+        // Fixes hang when Start menu closes
+        VnPatchDelayIAT(hStartUI, "ext-ms-win-ntuser-draw-l1-1-0.dll", "SetWindowRgn", start_SetWindowRgn);
+
+        // Redirects to StartTileData from 22000.51 which works with the legacy menu
+        LoadLibraryW(L"combase.dll");
+        HANDLE hCombase = GetModuleHandleW(L"combase.dll");
+        VnPatchIAT(hCombase, "api-ms-win-core-libraryloader-l1-2-0.dll", "LoadLibraryExW", start_LoadLibraryExW);
+
+        // Redirects to pri files from 22000.51 which work with the legacy menu
+        LoadLibraryW(L"MrmCoreR.dll");
+        HANDLE hMrmCoreR = GetModuleHandleW(L"MrmCoreR.dll");
+        VnPatchIAT(hMrmCoreR, "api-ms-win-core-file-l1-1-0.dll", "CreateFileW", start_CreateFileW);
+        VnPatchIAT(hMrmCoreR, "api-ms-win-core-file-l1-1-0.dll", "GetFileAttributesExW", start_GetFileAttributesExW);
+        VnPatchIAT(hMrmCoreR, "api-ms-win-core-file-l1-1-0.dll", "FindFirstFileW", start_FindFirstFileW);
+        VnPatchIAT(hMrmCoreR, "api-ms-win-core-registry-l1-1-0.dll", "RegGetValueW", start_RegGetValueW);
+    }
+
+    Setting* settings = calloc(4, sizeof(Setting));
     settings[0].callback = NULL;
     settings[0].data = NULL;
     settings[0].hEvent = CreateEventW(NULL, FALSE, FALSE, NULL);
@@ -9428,10 +9599,16 @@ void InjectStartMenu()
     settings[2].hKey = NULL;
     wcscpy_s(settings[2].name, MAX_PATH, TEXT(REGPATH_STARTMENU));
     settings[2].origin = HKEY_CURRENT_USER;
+    settings[3].callback = StartMenu_LoadSettings;
+    settings[3].data = TRUE;
+    settings[3].hEvent = NULL;
+    settings[3].hKey = NULL;
+    wcscpy_s(settings[3].name, MAX_PATH, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced");
+    settings[3].origin = HKEY_CURRENT_USER;
 
     SettingsChangeParameters* params = calloc(1, sizeof(SettingsChangeParameters));
     params->settings = settings;
-    params->size = 3;
+    params->size = 4;
     CreateThread(
         0,
         0,
@@ -9442,8 +9619,7 @@ void InjectStartMenu()
     );
 
     int rv;
-
-    DWORD dwVal0 = 0x62254, dwVal1 = 0x188EBC, dwVal2 = 0x187120, dwVal3 = 0x3C10, dwVal4 = 0x160AEC;
+    DWORD dwVal0 = 0x62254, dwVal1 = 0x188EBC, dwVal2 = 0x187120, dwVal3 = 0x3C10, dwVal4 = 0;
 
     HMODULE hModule = LoadLibraryW(L"Shlwapi.dll");
     if (hModule)
@@ -9453,7 +9629,6 @@ void InjectStartMenu()
 
         if (SHRegGetValueFromHKCUHKLMFunc)
         {
-
             dwSize = sizeof(DWORD);
             SHRegGetValueFromHKCUHKLMFunc(
                 TEXT(REGPATH_STARTMENU) TEXT("\\") TEXT(STARTDOCKED_SB_NAME),
@@ -9488,20 +9663,17 @@ void InjectStartMenu()
                 (LPDWORD)(&dwSize)
             );
             SHRegGetValueFromHKCUHKLMFunc(
-                TEXT(REGPATH_STARTMENU) TEXT("\\") TEXT(STARTDOCKED_SB_NAME),
-                TEXT(STARTDOCKED_SB_4),
+                TEXT(REGPATH_STARTMENU) TEXT("\\") TEXT(STARTUI_SB_NAME),
+                TEXT(STARTUI_SB_0),
                 SRRF_RT_REG_DWORD,
                 NULL,
                 &dwVal4,
                 (LPDWORD)(&dwSize)
             );
-
         }
         FreeLibrary(hModule);
     }
 
-    LoadLibraryW(L"StartDocked.dll");
-    HANDLE hStartDocked = GetModuleHandle(L"StartDocked.dll");
     if (dwVal1 && dwVal1 != 0xFFFFFFFF)
     {
         StartDocked_LauncherFrame_ShowAllAppsFunc = (INT64(*)(void*))
@@ -9539,18 +9711,18 @@ void InjectStartMenu()
     }
     if (dwVal4 && dwVal4 != 0xFFFFFFFF)
     {
-        /*StartDocked_StartSizingFrame_StartSizingFrameFunc = (INT64(*)(void*, INT64, void*))
-            ((uintptr_t)hStartDocked + dwVal4);
+        StartUI_SystemListPolicyProvider_GetMaximumFrequentAppsFunc = (INT64(*)(void*, INT64, void*))
+            ((uintptr_t)hStartUI + dwVal4);
         rv = funchook_prepare(
             funchook,
-            (void**)&StartDocked_StartSizingFrame_StartSizingFrameFunc,
-            StartDocked_StartSizingFrame_StartSizingFrameHook
+            (void**)&StartUI_SystemListPolicyProvider_GetMaximumFrequentAppsFunc,
+            StartUI_SystemListPolicyProvider_GetMaximumFrequentAppsHook
         );
         if (rv != 0)
         {
             FreeLibraryAndExitThread(hModule, rv);
             return rv;
-        }*/
+        }
     }
 
     rv = funchook_install(funchook, 0);

@@ -8,6 +8,8 @@
 #define IDR_EP_WEATHER                  106
 #define IDR_EP_WEATHER_STUB             107
 #define IDR_MS_WEBVIEW2_LOADER          201
+#define IDR_EP_STARTMENU                108
+
 
 // Next default values for new objects
 // 

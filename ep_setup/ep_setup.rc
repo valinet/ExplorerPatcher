@@ -102,6 +102,8 @@ IDR_EP_WEATHER_STUB     RCDATA             "..\\build\\Release\\ep_weather_host_
 
 IDR_MS_WEBVIEW2_LOADER  RCDATA             "..\\build\\Release\\WebView2Loader.dll"
 
+IDR_EP_STARTMENU        RCDATA             "..\\build\\Release\\ep_startmenu.dll"
+
 #endif    // English (United States) resources
 /////////////////////////////////////////////////////////////////////////////
 
