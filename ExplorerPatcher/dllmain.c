@@ -48,6 +48,7 @@ SRWLOCK lock_epw = { .Ptr = SRWLOCK_INIT };
 #define POPUPMENU_PNIDUI_TIMEOUT 300
 #define POPUPMENU_SNDVOLSSO_TIMEOUT 300
 #define POPUPMENU_INPUTSWITCH_TIMEOUT 700
+#define POPUPMENU_WINX_TIMEOUT 700
 #define POPUPMENU_EX_ELAPSED 300
 
 BOOL bIsExplorerProcess = FALSE;
@@ -3100,6 +3101,62 @@ BOOL inputswitch_TrackPopupMenuExHook(
             lptpm
         );
         inputswitch_TrackPopupMenuExElapsed = milliseconds_now();
+    }
+    return b;
+}
+long long twinui_TrackPopupMenuElapsed = 0;
+BOOL twinui_TrackPopupMenuHook(
+    HMENU       hMenu,
+    UINT        uFlags,
+    int         x,
+    int         y,
+    int         nReserved,
+    HWND        hWnd,
+    const RECT* prcRect
+)
+{
+    //long long elapsed = milliseconds_now() - twinui_TrackPopupMenuElapsed;
+    BOOL b = FALSE;
+    if (1 /*elapsed > POPUPMENU_WINX_TIMEOUT || !bFlyoutMenus*/)
+    {
+        if (bCenterMenus)
+        {
+            //PopupMenuAdjustCoordinatesAndFlags(&x, &y, &uFlags);
+        }
+        IsImmersiveMenu = FALSE;
+        if (!bSkinMenus)
+        {
+            EnumPropsA(hWnd, CheckIfImmersiveContextMenu);
+            if (IsImmersiveMenu)
+            {
+                if (ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc)
+                {
+                    POINT pt;
+                    pt.x = x;
+                    pt.y = y;
+                    ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc(
+                        hMenu,
+                        hWnd,
+                        &(pt)
+                    );
+                }
+                else
+                {
+                    RemoveOwnerDrawFromMenu(0, hMenu);
+                }
+            }
+            IsImmersiveMenu = FALSE;
+        }
+        b = TrackPopupMenu(
+            hMenu,
+            uFlags | TPM_RIGHTBUTTON,
+            x,
+            y,
+            0,
+            hWnd,
+            prcRect
+        );
+        //twinui_TrackPopupMenuElapsed = milliseconds_now();
     }
     return b;
 }
@@ -8489,6 +8546,13 @@ DWORD Inject(BOOL bIsExplorer)
     //VnPatchIAT(hTwinuiPcshell, "api-ms-win-core-debug-l1-1-0.dll", "IsDebuggerPresent", IsDebuggerPresentHook);
     printf("Setup twinui.pcshell functions done\n");
 
+
+    if (!IsWindows11())
+    {
+        HANDLE hTwinui = LoadLibraryW(L"twinui.dll");
+        VnPatchIAT(hTwinui, "user32.dll", "TrackPopupMenu", twinui_TrackPopupMenuHook);
+        printf("Setup twinui functions done\n");
+    }
 
 
     HANDLE hStobject = LoadLibraryW(L"stobject.dll");
