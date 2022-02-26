@@ -64,4 +64,6 @@ import "unknwn.idl";
 	HRESULT SetGeolocationMode([in] LONG64 dwGeolocationMode);
 
 	HRESULT SetWindowCornerPreference([in] LONG64 dwWindowCornerPreference);
+
+	HRESULT SetDevMode([in] LONG64 dwDevMode);
 };

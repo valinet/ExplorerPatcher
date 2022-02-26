@@ -114,6 +114,7 @@ DWORD bWeatherFixedSize = FALSE;
 DWORD dwWeatherTheme = 0;
 DWORD dwWeatherGeolocationMode = 0;
 DWORD dwWeatherWindowCornerPreference = DWMWCP_ROUND;
+DWORD dwWeatherDevMode = FALSE;
 WCHAR* wszWeatherTerm = NULL;
 WCHAR* wszWeatherLanguage = NULL;
 WCHAR* wszEPWeatherKillswitch = NULL;
@@ -4065,6 +4066,7 @@ SIZE WINAPI PeopleButton_CalculateMinimumSizeHook(void* _this, SIZE* pSz)
                     if (SUCCEEDED(hr))
                     {
                         epw->lpVtbl->SetWindowCornerPreference(epw, dwWeatherWindowCornerPreference);
+                        epw->lpVtbl->SetDevMode(epw, dwWeatherDevMode);
                     }
                 }
                 ReleaseSRWLockExclusive(&lock_epw);
@@ -6052,6 +6054,24 @@ void WINAPI LoadSettings(LPARAM lParam)
             if (epw)
             {
                 epw->lpVtbl->SetWindowCornerPreference(epw, (LONG64)dwWeatherWindowCornerPreference);
+            }
+        }
+
+        DWORD dwOldWeatherDevMode = dwWeatherDevMode;
+        dwSize = sizeof(DWORD);
+        RegQueryValueExW(
+            hKey,
+            TEXT("WeatherDevMode"),
+            0,
+            NULL,
+            &dwWeatherDevMode,
+            &dwSize
+        );
+        if (dwWeatherDevMode != dwOldWeatherDevMode && PeopleButton_LastHWND)
+        {
+            if (epw)
+            {
+                epw->lpVtbl->SetDevMode(epw, (LONG64)dwWeatherDevMode);
             }
         }
 
