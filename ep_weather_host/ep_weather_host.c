@@ -156,9 +156,10 @@ HRESULT STDMETHODCALLTYPE _epw_Weather_NavigateToError(EPWeather* _this)
     int ch = MulDiv(MulDiv(305, dpi, 96), epw_Weather_GetTextScaleFactor(_this), 100);
     RECT rc;
     GetWindowRect(_this->hWnd, &rc);
-    if (rc.bottom - rc.top != ch)
+    int w = MulDiv(MulDiv(EP_WEATHER_WIDTH, GetDpiForWindow(_this->hWnd), 96), epw_Weather_GetTextScaleFactor(_this), 100);
+    if ((rc.bottom - rc.top != ch) || (rc.right - rc.left != w))
     {
-        SetWindowPos(_this->hWnd, NULL, 0, 0, rc.right - rc.left, ch, SWP_NOMOVE | SWP_NOSENDCHANGING);
+        SetWindowPos(_this->hWnd, NULL, 0, 0, w, ch, SWP_NOMOVE | SWP_NOSENDCHANGING);
         HWND hNotifyWnd = InterlockedAdd64(&_this->hNotifyWnd, 0);
         if (hNotifyWnd)
         {
@@ -254,7 +255,8 @@ HRESULT STDMETHODCALLTYPE _ep_weather_ReboundBrowser(EPWeather* _this, LONG64 dw
 {
     UINT dpi = GetDpiForWindow(_this->hWnd);
     RECT bounds;
-    if (dwType)
+    DWORD dwDevMode = InterlockedAdd64(&_this->dwDevMode, 0);
+    if (dwType || dwDevMode)
     {
         GetClientRect(_this->hWnd, &bounds);
     }
@@ -511,9 +513,10 @@ HRESULT STDMETHODCALLTYPE ICoreWebView2_ExecuteScriptCompleted(ICoreWebView2Exec
                                             ch = MulDiv(MulDiv(ch, dpi, 96), epw_Weather_GetTextScaleFactor(_this), 100);
                                             RECT rc;
                                             GetWindowRect(_this->hWnd, &rc);
-                                            if (rc.bottom - rc.top != ch)
+                                            int w = MulDiv(MulDiv(EP_WEATHER_WIDTH, GetDpiForWindow(_this->hWnd), 96), epw_Weather_GetTextScaleFactor(_this), 100);
+                                            if ((rc.bottom - rc.top != ch) || (rc.right - rc.left != w))
                                             {
-                                                SetWindowPos(_this->hWnd, NULL, 0, 0, rc.right - rc.left, ch, SWP_NOMOVE | SWP_NOSENDCHANGING);
+                                                SetWindowPos(_this->hWnd, NULL, 0, 0, w, ch, SWP_NOMOVE | SWP_NOSENDCHANGING);
                                                 _ep_weather_ReboundBrowser(_this, FALSE);
                                                 HWND hNotifyWnd = InterlockedAdd64(&_this->hNotifyWnd, 0);
                                                 if (hNotifyWnd)
@@ -831,6 +834,14 @@ LRESULT CALLBACK epw_Weather_WindowProc(_In_ HWND hWnd, _In_ UINT uMsg, _In_ WPA
                     pCoreWebView2Settings6->lpVtbl->put_AreBrowserAcceleratorKeysEnabled(pCoreWebView2Settings6, wParam);
                     pCoreWebView2Settings6->lpVtbl->put_AreDefaultScriptDialogsEnabled(pCoreWebView2Settings6, wParam);
                     pCoreWebView2Settings6->lpVtbl->Release(pCoreWebView2Settings6);
+                    SetLastError(0);
+                    LONG dwStyle = GetWindowLongW(_this->hWnd, GWL_STYLE);
+                    if (!GetLastError())
+                    {
+                        if (wParam) dwStyle |= WS_SIZEBOX;
+                        else dwStyle &= ~WS_SIZEBOX;
+                        SetWindowLong(_this->hWnd, GWL_STYLE, dwStyle);
+                    }
                     PostMessageW(_this->hWnd, EP_WEATHER_WM_FETCH_DATA, 0, 0);
                 }
                 pCoreWebView2Settings->lpVtbl->Release(pCoreWebView2Settings);
@@ -846,8 +857,13 @@ LRESULT CALLBACK epw_Weather_WindowProc(_In_ HWND hWnd, _In_ UINT uMsg, _In_ WPA
     {
         if (IsWindowVisible(hWnd))
         {
+            LONG64 dwDevMode = InterlockedAdd64(&_this->dwDevMode, 0);
             WINDOWPOS* pwp = (WINDOWPOS*)lParam;
-            pwp->flags |= SWP_NOMOVE | SWP_NOSIZE;
+            pwp->flags |= (!dwDevMode ? (SWP_NOMOVE | SWP_NOSIZE) : 0);
+            if (dwDevMode)
+            {
+                _ep_weather_ReboundBrowser(_this, TRUE);
+            }
         }
         return 0;
     }
@@ -1047,10 +1063,13 @@ HRESULT STDMETHODCALLTYPE epw_Weather_SetWindowCornerPreference(EPWeather* _this
     return S_OK;
 }
 
-HRESULT STDMETHODCALLTYPE epw_Weather_SetDevMode(EPWeather* _this, LONG64 dwDevMode)
+HRESULT STDMETHODCALLTYPE epw_Weather_SetDevMode(EPWeather* _this, LONG64 dwDevMode, LONG64 bRefresh)
 {
     InterlockedExchange64(&_this->dwDevMode, dwDevMode);
-    PostMessageW(_this->hWnd, EP_WEATHER_WM_SETDEVMODE, dwDevMode, 0);
+    if (bRefresh)
+    {
+        PostMessageW(_this->hWnd, EP_WEATHER_WM_SETDEVMODE, dwDevMode, 0);
+    }
     return S_OK;
 }
 
@@ -1093,7 +1112,8 @@ DWORD WINAPI epw_Weather_MainThread(EPWeather* _this)
         //goto cleanup;
     }
 
-    _this->hWnd = CreateWindowExW(0, _T(EPW_WEATHER_CLASSNAME), L"", WS_OVERLAPPED | WS_CAPTION, _this->rc.left, _this->rc.top, _this->rc.right - _this->rc.left, _this->rc.bottom - _this->rc.top, NULL, NULL, epw_hModule, _this); // 1030, 630
+    DWORD dwDevMode = InterlockedAdd64(&_this->dwDevMode, 0);
+    _this->hWnd = CreateWindowExW(0, _T(EPW_WEATHER_CLASSNAME), L"", WS_OVERLAPPED | WS_CAPTION | (dwDevMode ? WS_SIZEBOX : 0), _this->rc.left, _this->rc.top, _this->rc.right - _this->rc.left, _this->rc.bottom - _this->rc.top, NULL, NULL, epw_hModule, _this); // 1030, 630
     if (!_this->hWnd)
     {
         _this->hrLastError = HRESULT_FROM_WIN32(GetLastError());

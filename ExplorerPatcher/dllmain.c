@@ -4008,6 +4008,7 @@ SIZE WINAPI PeopleButton_CalculateMinimumSizeHook(void* _this, SIZE* pSz)
                 AcquireSRWLockExclusive(&lock_epw);
                 epw->lpVtbl->SetTerm(epw, MAX_PATH * sizeof(WCHAR), wszWeatherTerm);
                 epw->lpVtbl->SetLanguage(epw, MAX_PATH * sizeof(WCHAR), wszWeatherLanguage);
+                epw->lpVtbl->SetDevMode(epw, dwWeatherDevMode, FALSE);
                 UINT dpiX = 0, dpiY = 0;
                 HMONITOR hMonitor = MonitorFromWindow(PeopleButton_LastHWND, MONITOR_DEFAULTTOPRIMARY);
                 HRESULT hr = GetDpiForMonitor(hMonitor, MDT_DEFAULT, &dpiX, &dpiY);
@@ -4066,7 +4067,6 @@ SIZE WINAPI PeopleButton_CalculateMinimumSizeHook(void* _this, SIZE* pSz)
                     if (SUCCEEDED(hr))
                     {
                         epw->lpVtbl->SetWindowCornerPreference(epw, dwWeatherWindowCornerPreference);
-                        epw->lpVtbl->SetDevMode(epw, dwWeatherDevMode);
                     }
                 }
                 ReleaseSRWLockExclusive(&lock_epw);
@@ -6071,7 +6071,7 @@ void WINAPI LoadSettings(LPARAM lParam)
         {
             if (epw)
             {
-                epw->lpVtbl->SetDevMode(epw, (LONG64)dwWeatherDevMode);
+                epw->lpVtbl->SetDevMode(epw, (LONG64)dwWeatherDevMode, TRUE);
             }
         }
 
