@@ -28,7 +28,7 @@ void Init()
     bInstanced = TRUE;
 }
 
-#pragma comment(linker, "/export:?GetCmdArguments@Details@Platform@@YAPEAPEA_WPEAH@Z=GetCmdArguments")
+#pragma comment(linker, "/export:?GetCmdArguments@Details@Platform@@YAPEAPEA_WPEAH@Z=GetCmdArguments,@130")
 wchar_t* GetCmdArguments(int* a1)
 {
     AcquireSRWLockExclusive(&lockInstanced);
