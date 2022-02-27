@@ -29,7 +29,7 @@ Please make sure you are connected to the Internet while installing, the applica
 * Installer sets a Start menu shortcut for the "Properties" window (.11)
 * Support for high contrast themes in the "Properties" window and in the weather widget (#885) (.15)
 * Enabling the weather widget will automatically download and install the Microsoft WebView2 Runtime on computers where it is not installed (.16)
-* Option to enable dev tools for weather widget debugging (#934) (.19)
+* Option to enable dev tools for weather widget debugging (#934) (.19, .20)
 
 #### Fixes
 
@@ -50,6 +50,7 @@ Please make sure you are connected to the Internet while installing, the applica
 * Fixed a bug in the Weather widget that could display an erroneous Google search pop-up (thanks @plofhaan) ([#734](https://github.com/valinet/ExplorerPatcher/discussions/734#discussioncomment-2216475)) (.17)
 * Fixed a bug that resulted in an access violation on log off when EP runs alongside 7+TT (#894) (.18)
 * Fixed a bug that prevented the "Skin menus" setting from working in the `Win`+`X` menu on Windows 10 (.19)
+* Fixed a bug that would display an information banner that obscured the weather widget in some occasions when displaying the widget in German (#934) (thanks @frederic2de) (.20)
 
 ## 22000.469.41
 
