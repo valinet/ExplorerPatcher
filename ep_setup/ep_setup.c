@@ -873,6 +873,15 @@ int WINAPI wWinMain(
         if (bOk && IsWindows11())
         {
             GetWindowsDirectoryW(wszPath, MAX_PATH);
+            wcscat_s(wszPath, MAX_PATH, L"\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\AppResolverLegacy.dll");
+            if (ShouldDownloadOrDelete(bInstall, hInstance, wszPath, "BAD744C69B92BBD508D3950B41822683") && IsConnectedToInternet() == TRUE)
+            {
+                DownloadFile(L"https://github.com/valinet/ExplorerPatcher/files/8148997/AppResolverLegacy.dll.txt", 10 * 1024 * 1024, wszPath);
+            }
+        }
+        if (bOk && IsWindows11())
+        {
+            GetWindowsDirectoryW(wszPath, MAX_PATH);
             wcscat_s(wszPath, MAX_PATH, L"\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\StartTileDataLegacy.dll");
             if (ShouldDownloadOrDelete(bInstall, hInstance, wszPath, "aa36a082e3b33297b6930eea6e98f8cf") && IsConnectedToInternet() == TRUE)
             {

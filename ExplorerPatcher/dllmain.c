@@ -85,6 +85,7 @@ DWORD dwOrbStyle = 0;
 DWORD bEnableSymbolDownload = TRUE;
 DWORD dwAltTabSettings = 0;
 DWORD dwSnapAssistSettings = 0;
+DWORD dwStartShowClassicMode = 0;
 BOOL bDoNotRedirectSystemToSettingsApp = FALSE;
 BOOL bDoNotRedirectProgramsAndFeaturesToSettingsApp = FALSE;
 BOOL bDoNotRedirectDateAndTimeToSettingsApp = FALSE;
@@ -7931,6 +7932,31 @@ BOOL explorer_RegisterHotkeyHook(HWND hWnd, int id, UINT fsModifiers, UINT vk)
 #pragma endregion
 
 
+#pragma region "Redirect certain library loads to other versions"
+HMODULE patched_LoadLibraryExW(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlags)
+{
+    WCHAR path[MAX_PATH];
+    GetSystemDirectoryW(path, MAX_PATH);
+    wcscat_s(path, MAX_PATH, L"\\StartTileData.dll");
+    if (!_wcsicmp(path, lpLibFileName))
+    {
+        GetWindowsDirectoryW(path, MAX_PATH);
+        wcscat_s(path, MAX_PATH, L"\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\StartTileDataLegacy.dll");
+        return LoadLibraryExW(path, hFile, dwFlags);
+    }
+    GetSystemDirectoryW(path, MAX_PATH);
+    wcscat_s(path, MAX_PATH, L"\\AppResolver.dll");
+    if (!_wcsicmp(path, lpLibFileName))
+    {
+        GetWindowsDirectoryW(path, MAX_PATH);
+        wcscat_s(path, MAX_PATH, L"\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\AppResolverLegacy.dll");
+        return LoadLibraryExW(path, hFile, dwFlags);
+    }
+    return LoadLibraryExW(lpLibFileName, hFile, dwFlags);
+}
+#pragma endregion
+
+
 DWORD InjectBasicFunctions(BOOL bIsExplorer, BOOL bInstall)
 {
     //Sleep(150);
@@ -8051,6 +8077,29 @@ DWORD InjectBasicFunctions(BOOL bIsExplorer, BOOL bInstall)
             }
             FreeLibrary(hWindowsUIFileExplorer);
             FreeLibrary(hWindowsUIFileExplorer);
+        }
+    }
+
+    if (bInstall)
+    {
+        DWORD dwSize = sizeof(DWORD);
+        RegGetValueW(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", L"Start_ShowClassicMode", RRF_RT_DWORD, NULL, &dwStartShowClassicMode, &dwSize);
+    }
+    if (dwStartShowClassicMode)
+    {
+        HANDLE hCombase = LoadLibraryW(L"combase.dll");
+        if (hCombase)
+        {
+            if (bInstall)
+            {
+                VnPatchIAT(hCombase, "api-ms-win-core-libraryloader-l1-2-0.dll", "LoadLibraryExW", patched_LoadLibraryExW);
+            }
+            else
+            {
+                VnPatchIAT(hCombase, "api-ms-win-core-libraryloader-l1-2-0.dll", "LoadLibraryExW", LoadLibraryExW);
+                FreeLibrary(hCombase);
+                FreeLibrary(hCombase);
+            }
         }
     }
 }
@@ -8947,7 +8996,6 @@ char VisibilityChangedEventArguments_GetVisible(__int64 a1)
     return v3[0];
 }
 
-DWORD StartMenu_ShowClassicMode = 0;
 DWORD StartMenu_maximumFreqApps = 6;
 DWORD StartMenu_ShowAllApps = 0;
 
@@ -9046,11 +9094,11 @@ void StartMenu_LoadSettings(BOOL bRestartIfChanged)
             &dwVal,
             &dwSize
         );
-        if (bRestartIfChanged && dwVal != StartMenu_ShowClassicMode)
+        if (bRestartIfChanged && dwVal != dwStartShowClassicMode)
         {
             exit(0);
         }
-        StartMenu_ShowClassicMode = dwVal;
+        dwStartShowClassicMode = dwVal;
         RegCloseKey(hKey);
     }
 }
@@ -9208,20 +9256,6 @@ int start_SetWindowRgn(HWND hWnd, HRGN hRgn, BOOL bRedraw)
     GetWindowThreadProcessId(GetForegroundWindow(), &dwForeignPID);
     ShowWindow(hWnd, (!hRgn && dwThisPID != dwForeignPID) ? SW_HIDE : SW_SHOW);
     return SetWindowRgn(hWnd, hRgn, bRedraw);
-}
-
-HMODULE start_LoadLibraryExW(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlags)
-{
-    WCHAR path[MAX_PATH];
-    GetSystemDirectoryW(path, MAX_PATH);
-    wcscat_s(path, MAX_PATH, L"\\StartTileData.dll");
-    if (!_wcsicmp(path, lpLibFileName))
-    {
-        GetWindowsDirectoryW(path, MAX_PATH);
-        wcscat_s(path, MAX_PATH, L"\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\StartTileDataLegacy.dll");
-        return LoadLibraryExW(path, hFile, dwFlags);
-    }
-    return LoadLibraryExW(lpLibFileName, hFile, dwFlags);
 }
 
 int WINAPI SetupMessage(HWND hWnd, LPCWSTR lpText, LPCWSTR lpCaption, UINT uType)
@@ -9645,7 +9679,7 @@ void InjectStartMenu()
 
     StartMenu_LoadSettings(FALSE);
 
-    if (StartMenu_ShowClassicMode)
+    if (dwStartShowClassicMode)
     {
         // Fixes hang when Start menu closes
         VnPatchDelayIAT(hStartUI, "ext-ms-win-ntuser-draw-l1-1-0.dll", "SetWindowRgn", start_SetWindowRgn);
@@ -9653,7 +9687,7 @@ void InjectStartMenu()
         // Redirects to StartTileData from 22000.51 which works with the legacy menu
         LoadLibraryW(L"combase.dll");
         HANDLE hCombase = GetModuleHandleW(L"combase.dll");
-        VnPatchIAT(hCombase, "api-ms-win-core-libraryloader-l1-2-0.dll", "LoadLibraryExW", start_LoadLibraryExW);
+        VnPatchIAT(hCombase, "api-ms-win-core-libraryloader-l1-2-0.dll", "LoadLibraryExW", patched_LoadLibraryExW);
 
         // Redirects to pri files from 22000.51 which work with the legacy menu
         LoadLibraryW(L"MrmCoreR.dll");
