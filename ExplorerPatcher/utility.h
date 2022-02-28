@@ -586,4 +586,28 @@ BOOL DownloadAndInstallWebView2Runtime();
 BOOL DownloadFile(LPCWSTR wszURL, DWORD dwSize, LPCWSTR wszPath);
 
 BOOL IsConnectedToInternet();
+
+inline BOOL IsDwmExtendFrameIntoClientAreaBrokenInThisBuild()
+{
+    if (!IsWindows11())
+    {
+        return FALSE;
+    }
+    RTL_OSVERSIONINFOW rovi;
+    DWORD32 ubr = VnGetOSVersionAndUBR(&rovi);
+    if ((rovi.dwBuildNumber >= 21996 && rovi.dwBuildNumber < 22000) || (rovi.dwBuildNumber == 22000 && (ubr >= 1 && ubr <= 51)))
+    {
+        return TRUE;
+    }
+    return FALSE;
+}
+
+inline BOOL IsMicaMaterialSupportedInThisBuild()
+{
+    if (!IsWindows11())
+    {
+        return FALSE;
+    }
+    return !IsDwmExtendFrameIntoClientAreaBrokenInThisBuild();
+}
 #endif

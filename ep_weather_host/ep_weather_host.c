@@ -889,9 +889,15 @@ LRESULT CALLBACK epw_Weather_WindowProc(_In_ HWND hWnd, _In_ UINT uMsg, _In_ WPA
             LONG64 dwDarkMode = InterlockedAdd64(&_this->g_darkModeEnabled, 0);
             if (IsWindows11())
             {
-                DwmExtendFrameIntoClientArea(_this->hWnd, &marGlassInset);
-                BOOL value = (IsThemeActive() && !IsHighContrast()) ? 1 : 0;
-                DwmSetWindowAttribute(_this->hWnd, 1029, &value, sizeof(BOOL));
+                if (!IsDwmExtendFrameIntoClientAreaBrokenInThisBuild())
+                {
+                    DwmExtendFrameIntoClientArea(_this->hWnd, &marGlassInset);
+                }
+                if (IsMicaMaterialSupportedInThisBuild())
+                {
+                    BOOL value = (IsThemeActive() && !IsHighContrast()) ? 1 : 0;
+                    DwmSetWindowAttribute(_this->hWnd, 1029, &value, sizeof(BOOL));
+                }
             }
             else
             {
@@ -1144,10 +1150,16 @@ DWORD WINAPI epw_Weather_MainThread(EPWeather* _this)
     {
         if (!IsHighContrast())
         {
-            MARGINS marGlassInset = { -1, -1, -1, -1 }; // -1 means the whole window
-            DwmExtendFrameIntoClientArea(_this->hWnd, &marGlassInset);
-            BOOL value = 1;
-            DwmSetWindowAttribute(_this->hWnd, 1029, &value, sizeof(BOOL));
+            if (!IsDwmExtendFrameIntoClientAreaBrokenInThisBuild())
+            {
+                MARGINS marGlassInset = { -1, -1, -1, -1 }; // -1 means the whole window
+                DwmExtendFrameIntoClientArea(_this->hWnd, &marGlassInset);
+            }
+            if (IsMicaMaterialSupportedInThisBuild())
+            {
+                BOOL value = 1;
+                DwmSetWindowAttribute(_this->hWnd, 1029, &value, sizeof(BOOL));
+            }
         }
     }
     else

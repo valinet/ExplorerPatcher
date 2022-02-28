@@ -914,7 +914,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
             SetTextColor(hdcPaint, GetSysColor(COLOR_WINDOWTEXT));
             SetBkMode(hdcPaint, TRANSPARENT);
         }
-        else if (!IsWindows11() && hDC)
+        else if ((!IsWindows11() || IsDwmExtendFrameIntoClientAreaBrokenInThisBuild()) && hDC)
         {
             COLORREF oldcr = SetBkColor(hdcPaint, g_darkModeEnabled ? RGB(0, 0, 0) : RGB(255, 255, 255));
             ExtTextOutW(hdcPaint, 0, 0, ETO_OPAQUE, &rc, L"", 0, 0);
@@ -945,7 +945,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
             if (strcmp(line, "Windows Registry Editor Version 5.00\r\n") && 
                 strcmp(line, "\r\n") && 
                 (currentSection == -1 || currentSection == _this->section || !strncmp(line, ";T ", 3) || !strncmp(line, ";f", 2) || AuditFile) &&
-                !((!IsThemeActive() || IsHighContrast() || !IsWindows11()) && !strncmp(line, ";M ", 3))
+                !((!IsThemeActive() || IsHighContrast() || !IsWindows11() || IsDwmExtendFrameIntoClientAreaBrokenInThisBuild()) && !strncmp(line, ";M ", 3))
                 )
             {
 #ifndef USE_PRIVATE_INTERFACES
@@ -2966,7 +2966,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
         printf("%d %d - %d %d\n", rcWin.right - rcWin.left, rcWin.bottom - rcWin.top, dwMaxWidth, dwMaxHeight);
 
         dwMaxWidth += dwInitialLeftPad + _this->padding.left + _this->padding.right;
-        if (!IsThemeActive() || IsHighContrast() || !IsWindows11())
+        if (!IsThemeActive() || IsHighContrast() || !IsWindows11() || IsDwmExtendFrameIntoClientAreaBrokenInThisBuild())
         {
             dwMaxHeight += GUI_LINE_HEIGHT * dy + 20 * dy;
         }
@@ -3098,7 +3098,7 @@ static LRESULT CALLBACK GUI_WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
         _this->dpi.x = dpiX;
         _this->dpi.y = dpiY;
         SetRect(&_this->border_thickness, 2, 2, 2, 2);
-        if (IsThemeActive() && IsWindows11())
+        if (IsThemeActive() && IsWindows11() && !IsDwmExtendFrameIntoClientAreaBrokenInThisBuild())
         {
             BOOL bIsCompositionEnabled = TRUE;
             DwmIsCompositionEnabled(&bIsCompositionEnabled);
@@ -3132,7 +3132,7 @@ static LRESULT CALLBACK GUI_WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
             SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED
         );
         SetTimer(hWnd, GUI_TIMER_READ_HELP, GUI_TIMER_READ_HELP_TIMEOUT, NULL);
-        if (IsThemeActive() && !IsHighContrast() && IsWindows11())
+        if (IsThemeActive() && !IsHighContrast() && IsWindows11() && !IsDwmExtendFrameIntoClientAreaBrokenInThisBuild())
         {
             RECT rcTitle;
             DwmGetWindowAttribute(hWnd, DWMWA_CAPTION_BUTTON_BOUNDS, &rcTitle, sizeof(RECT));
@@ -3155,7 +3155,7 @@ static LRESULT CALLBACK GUI_WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
             }
             DwmSetWindowAttribute(hWnd, DWMWA_USE_IMMERSIVE_DARK_MODE + s, &value, sizeof(BOOL));
         }
-        if (!IsThemeActive() || IsHighContrast() || !IsWindows11())
+        if (!IsThemeActive() || IsHighContrast() || !IsWindows11() || IsDwmExtendFrameIntoClientAreaBrokenInThisBuild())
         {
             int extendedStyle = GetWindowLong(hWnd, GWL_EXSTYLE);
             SetWindowLong(hWnd, GWL_EXSTYLE, extendedStyle | WS_EX_DLGMODALFRAME);
@@ -3179,7 +3179,7 @@ static LRESULT CALLBACK GUI_WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
     {
         if (IsColorSchemeChangeMessage(lParam))
         {
-            if (IsThemeActive() && IsWindows11())
+            if (IsThemeActive() && IsWindows11() && !IsDwmExtendFrameIntoClientAreaBrokenInThisBuild())
             {
                 BOOL bIsCompositionEnabled = TRUE;
                 DwmIsCompositionEnabled(&bIsCompositionEnabled);
@@ -3208,7 +3208,10 @@ static LRESULT CALLBACK GUI_WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
             if (bIsCompositionEnabled)
             {
                 BOOL value = (IsThemeActive() && !IsHighContrast() && IsWindows11()) ? 1 : 0;
-                DwmSetWindowAttribute(hWnd, DWMWA_MICA_EFFFECT, &value, sizeof(BOOL));
+                if (IsMicaMaterialSupportedInThisBuild())
+                {
+                    DwmSetWindowAttribute(hWnd, DWMWA_MICA_EFFFECT, &value, sizeof(BOOL));
+                }
             }
             if (IsThemeActive() && ShouldAppsUseDarkMode && !IsHighContrast())
             {
@@ -3348,7 +3351,7 @@ static LRESULT CALLBACK GUI_WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
             return 0;
         }
     }
-    else if (uMsg == WM_NCMOUSELEAVE && IsThemeActive() && !IsHighContrast() && IsWindows11())
+    else if (uMsg == WM_NCMOUSELEAVE && IsThemeActive() && !IsHighContrast() && IsWindows11() && !IsDwmExtendFrameIntoClientAreaBrokenInThisBuild())
     {
         LRESULT lRes = 0;
         if (DwmDefWindowProc(hWnd, uMsg, wParam, lParam, &lRes))
@@ -3356,7 +3359,7 @@ static LRESULT CALLBACK GUI_WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
             return lRes;
         }
     }
-    else if (uMsg == WM_NCRBUTTONUP && IsThemeActive() && !IsHighContrast() && IsWindows11())
+    else if (uMsg == WM_NCRBUTTONUP && IsThemeActive() && !IsHighContrast() && IsWindows11() && !IsDwmExtendFrameIntoClientAreaBrokenInThisBuild())
     {
         HMENU pSysMenu = GetSystemMenu(hWnd, FALSE);
         if (pSysMenu != NULL)
@@ -3374,7 +3377,7 @@ static LRESULT CALLBACK GUI_WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
         }
         return 0;
     }
-    else if ((uMsg == WM_LBUTTONUP || uMsg == WM_RBUTTONUP) && IsThemeActive() && !IsHighContrast() && IsWindows11())
+    else if ((uMsg == WM_LBUTTONUP || uMsg == WM_RBUTTONUP) && IsThemeActive() && !IsHighContrast() && IsWindows11() && !IsDwmExtendFrameIntoClientAreaBrokenInThisBuild())
     {
         POINT pt;
         pt.x = GET_X_LPARAM(lParam);
@@ -3430,7 +3433,7 @@ static LRESULT CALLBACK GUI_WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
             return 0;
         }
     }
-    else if (uMsg == WM_NCHITTEST && IsThemeActive() && !IsHighContrast() && IsWindows11())
+    else if (uMsg == WM_NCHITTEST && IsThemeActive() && !IsHighContrast() && IsWindows11() && !IsDwmExtendFrameIntoClientAreaBrokenInThisBuild())
     {
         LRESULT lRes = 0;
         if (DwmDefWindowProc(hWnd, uMsg, wParam, lParam, &lRes))
@@ -3457,7 +3460,7 @@ static LRESULT CALLBACK GUI_WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
             return HTCAPTION;
         }
     }
-    else if (uMsg == WM_NCCALCSIZE && wParam == TRUE && IsThemeActive() && !IsHighContrast() && IsWindows11())
+    else if (uMsg == WM_NCCALCSIZE && wParam == TRUE && IsThemeActive() && !IsHighContrast() && IsWindows11() && !IsDwmExtendFrameIntoClientAreaBrokenInThisBuild())
     {
         NCCALCSIZE_PARAMS* sz = (NCCALCSIZE_PARAMS*)(lParam);
         sz->rgrc[0].left += _this->border_thickness.left;
@@ -3806,7 +3809,10 @@ __declspec(dllexport) int ZZGUI(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLin
         if (bIsCompositionEnabled)
         {
             BOOL value = 1;
-            DwmSetWindowAttribute(hwnd, DWMWA_MICA_EFFFECT, &value, sizeof(BOOL));
+            if (IsMicaMaterialSupportedInThisBuild())
+            {
+                DwmSetWindowAttribute(hwnd, DWMWA_MICA_EFFFECT, &value, sizeof(BOOL));
+            }
             /*WTA_OPTIONS ops;
             ops.dwFlags = WTNCA_NODRAWCAPTION | WTNCA_NODRAWICON;
             ops.dwMask = WTNCA_NODRAWCAPTION | WTNCA_NODRAWICON;
