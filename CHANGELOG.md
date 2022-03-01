@@ -35,6 +35,7 @@ Please make sure you are connected to the Internet while installing, the applica
 * Added option to enable rounded corners on the Windows 10 Start menu (#937) (.22)
 * Support for full screen Windows 10 Start menu (.23)
 * Support for "Show more tiles" option in the Windows 10 Start menu (#933) (.24)
+* Implemented floating/docked rounded corners Windows 10 Start menu (.25)
 
 #### Fixes
 
