@@ -92,7 +92,7 @@ Windows_UI_Xaml_IDependencyObject* LVT_FindChildByName(Windows_UI_Xaml_IDependen
 }
 
 // Referenece: https://www.reddit.com/r/Windows10/comments/nvcrie/windows_11_start_menu_how_to_temporary_make_your/
-void LVT_StartUI_EnableRoundedCorners(HWND hWnd, BOOL bApply)
+void LVT_StartUI_EnableRoundedCorners(HWND hWnd, DWORD dwReceipe)
 {
     WCHAR wszDebug[MAX_PATH];
     HRESULT hr = S_OK;
@@ -159,7 +159,7 @@ void LVT_StartUI_EnableRoundedCorners(HWND hWnd, BOOL bApply)
                 {
                     int location = LVT_LOC_NONE;
 
-                    if (bApply)
+                    if (dwReceipe)
                     {
                         Windows_UI_Xaml_Thickness drc;
                         drc.Left = 0.0; drc.Right = 0.0; drc.Top = 0.0; drc.Bottom = 0.0;
@@ -228,7 +228,7 @@ void LVT_StartUI_EnableRoundedCorners(HWND hWnd, BOOL bApply)
                             pDropShadow->lpVtbl->QueryInterface(pDropShadow, &IID_Windows_UI_Xaml_IUIElement, &pIUIElement);
                             if (pIUIElement)
                             {
-                                if (bApply)
+                                if (dwReceipe)
                                 {
                                     pIUIElement->lpVtbl->put_Visibility(pIUIElement, Windows_UI_Xaml_Visibility_Collapsed);
                                 }
@@ -253,28 +253,28 @@ void LVT_StartUI_EnableRoundedCorners(HWND hWnd, BOOL bApply)
                                 {
                                     double pad = 12.0;
                                     Windows_UI_Xaml_Thickness th;
-                                    if (location)
+                                    if (location && dwReceipe == 1)
                                     {
                                         if (location == LVT_LOC_BOTTOMLEFT)
                                         {
-                                            th.Left = bApply ? pad : 0.0;
-                                            th.Bottom = bApply ? pad : 0.0;
+                                            th.Left = dwReceipe ? pad : 0.0;
+                                            th.Bottom = dwReceipe ? pad : 0.0;
                                             th.Right = 0.0;
                                             th.Top = 0.0;
                                         }
                                         else if (location == LVT_LOC_TOPLEFT)
                                         {
-                                            th.Left = bApply ? pad : 0.0;
+                                            th.Left = dwReceipe ? pad : 0.0;
                                             th.Bottom = 0.0;
                                             th.Right = 0.0;
-                                            th.Top = bApply ? pad : 0.0;
+                                            th.Top = dwReceipe ? pad : 0.0;
                                         }
                                         else if (location == LVT_LOC_TOPRIGHT)
                                         {
                                             th.Left = 0.0;
                                             th.Bottom = 0.0;
-                                            th.Right = bApply ? pad : 0.0;
-                                            th.Top = bApply ? pad : 0.0;
+                                            th.Right = dwReceipe ? pad : 0.0;
+                                            th.Top = dwReceipe ? pad : 0.0;
                                         }
                                     }
                                     else
@@ -304,11 +304,39 @@ void LVT_StartUI_EnableRoundedCorners(HWND hWnd, BOOL bApply)
                                                 pAcrylicBorder->lpVtbl->QueryInterface(pAcrylicBorder, &IID_Windows_UI_Xaml_Controls_IBorder, &pIBorder);
                                                 if (pIBorder)
                                                 {
+                                                    double pad = 10.0;
                                                     Windows_UI_Xaml_CornerRadius cr;
-                                                    cr.BottomLeft = (bApply ? 10.0 : 0.0);
-                                                    cr.BottomRight = cr.BottomLeft;
-                                                    cr.TopLeft = cr.BottomLeft;
-                                                    cr.TopRight = cr.BottomLeft;
+                                                    if (location && dwReceipe == 2)
+                                                    {
+                                                        if (location == LVT_LOC_BOTTOMLEFT)
+                                                        {
+                                                            cr.BottomLeft = 0.0;
+                                                            cr.BottomRight = 0.0;
+                                                            cr.TopLeft = 0.0;
+                                                            cr.TopRight = dwReceipe ? pad : 0.0;
+                                                        }
+                                                        else if (location == LVT_LOC_TOPLEFT)
+                                                        {
+                                                            cr.BottomLeft = 0.0;
+                                                            cr.BottomRight = dwReceipe ? pad : 0.0;
+                                                            cr.TopLeft = 0.0;
+                                                            cr.TopRight = 0.0;
+                                                        }
+                                                        else if (location == LVT_LOC_TOPRIGHT)
+                                                        {
+                                                            cr.BottomLeft = dwReceipe ? pad : 0.0;
+                                                            cr.BottomRight = 0.0;
+                                                            cr.TopLeft = 0.0;
+                                                            cr.TopRight = 0.0;
+                                                        }
+                                                    }
+                                                    else
+                                                    {
+                                                        cr.BottomLeft = (dwReceipe ? 10.0 : 0.0);
+                                                        cr.BottomRight = cr.BottomLeft;
+                                                        cr.TopLeft = cr.BottomLeft;
+                                                        cr.TopRight = cr.BottomLeft;
+                                                    }
                                                     pIBorder->lpVtbl->put_CornerRadius(pIBorder, cr);
                                                     pIBorder->lpVtbl->Release(pIBorder);
                                                 }
@@ -409,7 +437,7 @@ void LVT_StartUI_EnableRoundedCorners(HWND hWnd, BOOL bApply)
                                                                                                                                             if (pIGrid2)
                                                                                                                                             {
                                                                                                                                                 Windows_UI_Xaml_CornerRadius cr;
-                                                                                                                                                cr.BottomLeft = (bApply ? 5.0 : 0.0);
+                                                                                                                                                cr.BottomLeft = (dwReceipe ? 5.0 : 0.0);
                                                                                                                                                 cr.BottomRight = cr.BottomLeft;
                                                                                                                                                 cr.TopLeft = cr.BottomLeft;
                                                                                                                                                 cr.TopRight = cr.BottomLeft;
