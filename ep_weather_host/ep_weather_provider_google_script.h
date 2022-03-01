@@ -63,6 +63,7 @@ function ep_weather_getData(imageBitmap, ch) {\n\
     }\n\
   }\n\
   let res = (\n\
+    document.documentElement.getAttribute(\"dir\") + \"#\" + \n\
     document.getElementsByClassName(\"ULSxyf\")[0].offsetHeight + \"#\" + \n\
     document.getElementById(ch.includes('x') ? \"wob_ttm\" : \"wob_tm\").innerText + \"#\" + \n\
     Array.from(document.getElementsByClassName('wob-unit')[0].getElementsByTagName('span')).filter(e => e.className == 'wob_t').filter(e => !e.style.display.toString().includes(\"none\"))[0].innerText + \"#\" + \n\

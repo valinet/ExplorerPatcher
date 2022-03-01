@@ -52,6 +52,7 @@ typedef interface EPWeather
     LONG64 dwGeolocationMode;
     LONG64 dwWindowCornerPreference;
     LONG64 dwDevMode;
+    LONG64 dwTextDir;
 
     HANDLE hMutexData; // protects the following:
     DWORD cbTemperature;

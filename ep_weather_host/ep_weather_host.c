@@ -265,7 +265,7 @@ HRESULT STDMETHODCALLTYPE _ep_weather_ReboundBrowser(EPWeather* _this, LONG64 dw
         DWORD dwTextScaleFactor = epw_Weather_GetTextScaleFactor(_this);
         bounds.left = 0 - MulDiv(MulDiv(167, dpi, 96), dwTextScaleFactor, 100);
         bounds.top = 0 - MulDiv(MulDiv(178, dpi, 96), dwTextScaleFactor, 100);
-        bounds.right = MulDiv(MulDiv(1333, dpi, 96), dwTextScaleFactor, 100);// 5560;
+        bounds.right = MulDiv(MulDiv((!InterlockedAdd64(&_this->dwTextDir, 0) ? 1333 : 705), dpi, 96), dwTextScaleFactor, 100);// 5560;
         bounds.bottom = MulDiv(MulDiv(600, dpi, 96), dwTextScaleFactor, 100);// 15600;
     }
     if (_this->pCoreWebView2Controller)
@@ -427,101 +427,108 @@ HRESULT STDMETHODCALLTYPE ICoreWebView2_ExecuteScriptCompleted(ICoreWebView2Exec
 
                 epw_Weather_LockData(_this);
 
-                WCHAR* wszHeight = pResultObjectAsJson + 1;
-                if (wszHeight)
+                WCHAR* wszTextDir = pResultObjectAsJson + 1;
+                if (wszTextDir)
                 {
-                    WCHAR* wszTemperature = wcschr(wszHeight, L'#');
-                    if (wszTemperature)
+                    WCHAR* wszHeight = wcschr(wszTextDir, L'#');
+                    if (wszHeight)
                     {
-                        wszTemperature[0] = 0;
-                        wszTemperature++;
-                        WCHAR* wszUnit = wcschr(wszTemperature, L'#');
-                        if (wszUnit)
+                        wszHeight[0] = 0;
+                        wszHeight++;
+                        InterlockedExchange64(&_this->dwTextDir, wcsstr(wszTextDir, L"rtl"));
+                        WCHAR* wszTemperature = wcschr(wszHeight, L'#');
+                        if (wszTemperature)
                         {
-                            wszUnit[0] = 0;
-                            wszUnit++;
-                            WCHAR* wszCondition = wcschr(wszUnit, L'#');
-                            if (wszCondition)
+                            wszTemperature[0] = 0;
+                            wszTemperature++;
+                            WCHAR* wszUnit = wcschr(wszTemperature, L'#');
+                            if (wszUnit)
                             {
-                                wszCondition[0] = 0;
-                                wszCondition++;
-                                WCHAR* wszLocation = wcschr(wszCondition, L'#');
-                                if (wszLocation)
+                                wszUnit[0] = 0;
+                                wszUnit++;
+                                WCHAR* wszCondition = wcschr(wszUnit, L'#');
+                                if (wszCondition)
                                 {
-                                    wszLocation[0] = 0;
-                                    wszLocation++;
-                                    WCHAR* pImage = wcschr(wszLocation, L'#');
-                                    if (pImage)
+                                    wszCondition[0] = 0;
+                                    wszCondition++;
+                                    WCHAR* wszLocation = wcschr(wszCondition, L'#');
+                                    if (wszLocation)
                                     {
-                                        pImage[0] = 0;
-                                        pImage++;
-                                        WCHAR* pTerm = wcschr(pImage, L'"');
-                                        if (pTerm)
+                                        wszLocation[0] = 0;
+                                        wszLocation++;
+                                        WCHAR* pImage = wcschr(wszLocation, L'#');
+                                        if (pImage)
                                         {
-                                            pTerm[0] = 0;
-                                            if (_this->wszTemperature)
+                                            pImage[0] = 0;
+                                            pImage++;
+                                            WCHAR* pTerm = wcschr(pImage, L'"');
+                                            if (pTerm)
                                             {
-                                                free(_this->wszTemperature);
-                                            }
-                                            if (_this->wszUnit)
-                                            {
-                                                free(_this->wszUnit);
-                                            }
-                                            if (_this->wszCondition)
-                                            {
-                                                free(_this->wszCondition);
-                                            }
-                                            if (_this->pImage)
-                                            {
-                                                free(_this->pImage);
-                                            }
-                                            if (_this->wszLocation)
-                                            {
-                                                free(_this->wszLocation);
-                                            }
-                                            _this->cbTemperature = (wcslen(wszTemperature) + 1) * sizeof(WCHAR);
-                                            _this->wszTemperature = malloc(_this->cbTemperature);
-                                            _this->cbUnit = (wcslen(wszUnit) + 1) * sizeof(WCHAR);
-                                            _this->wszUnit = malloc(_this->cbUnit);
-                                            _this->cbCondition = (wcslen(wszCondition) + 1) * sizeof(WCHAR);
-                                            _this->wszCondition = malloc(_this->cbCondition);
-                                            _this->cbImage = wcslen(pImage) / 2;
-                                            _this->pImage = malloc(_this->cbImage);
-                                            _this->cbLocation = (wcslen(wszLocation) + 1) * sizeof(WCHAR);
-                                            _this->wszLocation = malloc(_this->cbLocation);
-                                            if (_this->wszTemperature && _this->wszUnit && _this->wszCondition && _this->pImage && _this->wszLocation)
-                                            {
-                                                wcscpy_s(_this->wszTemperature, _this->cbTemperature / 2, wszTemperature);
-                                                wcscpy_s(_this->wszUnit, _this->cbUnit / 2, wszUnit);
-                                                wcscpy_s(_this->wszCondition, _this->cbCondition / 2, wszCondition);
-                                                wcscpy_s(_this->wszLocation, _this->cbLocation / 2, wszLocation);
-
-                                                for (unsigned int i = 0; i < _this->cbImage * 2; i = i + 2)
+                                                pTerm[0] = 0;
+                                                if (_this->wszTemperature)
                                                 {
-                                                    WCHAR tmp[3];
-                                                    tmp[0] = pImage[i];
-                                                    tmp[1] = pImage[i + 1];
-                                                    tmp[2] = 0;
-                                                    _this->pImage[i / 2] = wcstol(tmp, NULL, 16);
+                                                    free(_this->wszTemperature);
                                                 }
-
-                                                bOk = TRUE;
-                                            }
-                                            int h = _wtoi(wszHeight);
-                                            int ch = MulDiv(h, EP_WEATHER_HEIGHT, 367);
-                                            UINT dpi = GetDpiForWindow(_this->hWnd);
-                                            ch = MulDiv(MulDiv(ch, dpi, 96), epw_Weather_GetTextScaleFactor(_this), 100);
-                                            RECT rc;
-                                            GetWindowRect(_this->hWnd, &rc);
-                                            int w = MulDiv(MulDiv(EP_WEATHER_WIDTH, GetDpiForWindow(_this->hWnd), 96), epw_Weather_GetTextScaleFactor(_this), 100);
-                                            if ((rc.bottom - rc.top != ch) || (rc.right - rc.left != w))
-                                            {
-                                                SetWindowPos(_this->hWnd, NULL, 0, 0, w, ch, SWP_NOMOVE | SWP_NOSENDCHANGING);
-                                                _ep_weather_ReboundBrowser(_this, FALSE);
-                                                HWND hNotifyWnd = InterlockedAdd64(&_this->hNotifyWnd, 0);
-                                                if (hNotifyWnd)
+                                                if (_this->wszUnit)
                                                 {
-                                                    InvalidateRect(hNotifyWnd, NULL, TRUE);
+                                                    free(_this->wszUnit);
+                                                }
+                                                if (_this->wszCondition)
+                                                {
+                                                    free(_this->wszCondition);
+                                                }
+                                                if (_this->pImage)
+                                                {
+                                                    free(_this->pImage);
+                                                }
+                                                if (_this->wszLocation)
+                                                {
+                                                    free(_this->wszLocation);
+                                                }
+                                                _this->cbTemperature = (wcslen(wszTemperature) + 1) * sizeof(WCHAR);
+                                                _this->wszTemperature = malloc(_this->cbTemperature);
+                                                _this->cbUnit = (wcslen(wszUnit) + 1) * sizeof(WCHAR);
+                                                _this->wszUnit = malloc(_this->cbUnit);
+                                                _this->cbCondition = (wcslen(wszCondition) + 1) * sizeof(WCHAR);
+                                                _this->wszCondition = malloc(_this->cbCondition);
+                                                _this->cbImage = wcslen(pImage) / 2;
+                                                _this->pImage = malloc(_this->cbImage);
+                                                _this->cbLocation = (wcslen(wszLocation) + 1) * sizeof(WCHAR);
+                                                _this->wszLocation = malloc(_this->cbLocation);
+                                                if (_this->wszTemperature && _this->wszUnit && _this->wszCondition && _this->pImage && _this->wszLocation)
+                                                {
+                                                    wcscpy_s(_this->wszTemperature, _this->cbTemperature / 2, wszTemperature);
+                                                    wcscpy_s(_this->wszUnit, _this->cbUnit / 2, wszUnit);
+                                                    wcscpy_s(_this->wszCondition, _this->cbCondition / 2, wszCondition);
+                                                    wcscpy_s(_this->wszLocation, _this->cbLocation / 2, wszLocation);
+
+                                                    for (unsigned int i = 0; i < _this->cbImage * 2; i = i + 2)
+                                                    {
+                                                        WCHAR tmp[3];
+                                                        tmp[0] = pImage[i];
+                                                        tmp[1] = pImage[i + 1];
+                                                        tmp[2] = 0;
+                                                        _this->pImage[i / 2] = wcstol(tmp, NULL, 16);
+                                                    }
+
+                                                    bOk = TRUE;
+                                                }
+                                                int h = _wtoi(wszHeight);
+                                                int ch = MulDiv(h, EP_WEATHER_HEIGHT, 367);
+                                                UINT dpi = GetDpiForWindow(_this->hWnd);
+                                                ch = MulDiv(MulDiv(ch, dpi, 96), epw_Weather_GetTextScaleFactor(_this), 100);
+                                                RECT rc;
+                                                GetWindowRect(_this->hWnd, &rc);
+                                                int w = MulDiv(MulDiv(EP_WEATHER_WIDTH, GetDpiForWindow(_this->hWnd), 96), epw_Weather_GetTextScaleFactor(_this), 100);
+                                                if ((rc.bottom - rc.top != ch) || (rc.right - rc.left != w))
+                                                {
+                                                    SetWindowPos(_this->hWnd, NULL, 0, 0, w, ch, SWP_NOMOVE | SWP_NOSENDCHANGING);
+                                                    _ep_weather_ReboundBrowser(_this, FALSE);
+                                                    HWND hNotifyWnd = InterlockedAdd64(&_this->hNotifyWnd, 0);
+                                                    if (hNotifyWnd)
+                                                    {
+                                                        InvalidateRect(hNotifyWnd, NULL, TRUE);
+                                                    }
                                                 }
                                             }
                                         }
