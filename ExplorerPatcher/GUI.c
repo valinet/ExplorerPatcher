@@ -382,6 +382,30 @@ LSTATUS GUI_Internal_RegSetValueExW(
         );
         return RegSetValueExW(hKey, L"Start_MaximumFrequentApps", 0, dwType, lpData, cbData);
     }
+    else if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_StartDocked_DisableRecommendedSection"))
+    {
+        RegSetKeyValueW(
+            HKEY_CURRENT_USER,
+            TEXT(REGPATH_OLD),
+            L"StartDocked_DisableRecommendedSection",
+            dwType,
+            lpData,
+            cbData
+        );
+        return RegSetValueExW(hKey, L"StartDocked_DisableRecommendedSection", 0, dwType, lpData, cbData);
+    }
+    else if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_StartUI_EnableRoundedCorners"))
+    {
+        RegSetKeyValueW(
+            HKEY_CURRENT_USER,
+            TEXT(REGPATH_OLD),
+            L"StartUI_EnableRoundedCorners",
+            dwType,
+            lpData,
+            cbData
+        );
+        return RegSetValueExW(hKey, L"StartUI_EnableRoundedCorners", 0, dwType, lpData, cbData);
+    }
     else if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_DisableRoundedCorners"))
     {
         return RegisterDWMService(*(DWORD*)lpData, 0);
@@ -572,6 +596,14 @@ LSTATUS GUI_Internal_RegQueryValueExW(
     else if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_Start_MaximumFrequentApps"))
     {
         return RegQueryValueExW(hKey, L"Start_MaximumFrequentApps", lpReserved, lpType, lpData, lpcbData);
+    }
+    else if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_StartDocked_DisableRecommendedSection"))
+    {
+        return RegQueryValueExW(hKey, L"StartDocked_DisableRecommendedSection", lpReserved, lpType, lpData, lpcbData);
+    }
+    else if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_StartUI_EnableRoundedCorners"))
+    {
+        return RegQueryValueExW(hKey, L"StartUI_EnableRoundedCorners", lpReserved, lpType, lpData, lpcbData);
     }
     else if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_DisableRoundedCorners"))
     {
