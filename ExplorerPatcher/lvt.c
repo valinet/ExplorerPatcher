@@ -157,6 +157,47 @@ void LVT_StartUI_EnableRoundedCorners(HWND hWnd, BOOL bApply)
                 Windows_UI_Xaml_IDependencyObject* pStartSizingFrame = LVT_FindChildByClassName(pRootDependencyObject, pVisualTreeHelperStatics, L"StartUI.StartSizingFrame", NULL);
                 if (pStartSizingFrame)
                 {
+                    BOOL bApplyPadding = bApply;
+
+                    if (bApply)
+                    {
+                        Windows_UI_Xaml_Thickness drc;
+                        drc.Left = 0.0; drc.Right = 0.0; drc.Top = 0.0; drc.Bottom = 0.0;
+                        Windows_UI_Xaml_IUIElement* pIUIElement = NULL;
+                        Windows_UI_Xaml_IFrameworkElement* pFrameworkElement = NULL;
+                        pStartSizingFrame->lpVtbl->QueryInterface(pStartSizingFrame, &IID_Windows_UI_Xaml_IUIElement, &pIUIElement);
+                        if (pIUIElement)
+                        {
+                            pCanvasStatics->lpVtbl->GetLeft(pCanvasStatics, pIUIElement, &(drc.Left));
+                            pCanvasStatics->lpVtbl->GetTop(pCanvasStatics, pIUIElement, &(drc.Top));
+                        }
+                        pStartSizingFrame->lpVtbl->QueryInterface(pStartSizingFrame, &IID_Windows_UI_Xaml_IFrameworkElement, &pFrameworkElement);
+                        if (pFrameworkElement)
+                        {
+                            pFrameworkElement->lpVtbl->get_ActualWidth(pFrameworkElement, &(drc.Right));
+                            pFrameworkElement->lpVtbl->get_ActualHeight(pFrameworkElement, &(drc.Bottom));
+                        }
+                        UINT dpi = GetDpiForWindow(hWnd);
+                        RECT rc;
+                        SetRect(&rc, drc.Left, drc.Top, drc.Right, drc.Bottom);
+                        SetRect(&rc, MulDiv(rc.left, dpi, 96), MulDiv(rc.top, dpi, 96), MulDiv(rc.right, dpi, 96), MulDiv(rc.bottom, dpi, 96));
+                        HMONITOR hMonitor = MonitorFromWindow(hWnd, MONITOR_DEFAULTTOPRIMARY);
+                        MONITORINFO mi;
+                        ZeroMemory(&mi, sizeof(MONITORINFO));
+                        mi.cbSize = sizeof(MONITORINFO);
+                        GetMonitorInfoW(hMonitor, &mi);
+                        //swprintf(wszDebug, MAX_PATH, L"RECT %d %d %d %d - %d %d %d %d\n", rc.left, rc.top, rc.right, rc.bottom, 0, 0, mi.rcWork.right - mi.rcWork.left, mi.rcWork.bottom - mi.rcWork.top);
+                        //OutputDebugStringW(wszDebug);
+                        bApplyPadding = !(rc.left == 0 && rc.top == 0 && abs(mi.rcWork.right - mi.rcWork.left - rc.right) < 5 && abs(mi.rcWork.bottom - mi.rcWork.top - rc.bottom) < 5);
+                        if (pFrameworkElement)
+                        {
+                            pFrameworkElement->lpVtbl->Release(pFrameworkElement);
+                        }
+                        if (pIUIElement)
+                        {
+                            pIUIElement->lpVtbl->Release(pIUIElement);
+                        }
+                    }
                     Windows_UI_Xaml_IDependencyObject* pStartSizingFramePanel = LVT_FindChildByClassName(pStartSizingFrame, pVisualTreeHelperStatics, L"StartUI.StartSizingFramePanel", NULL);
                     if (pStartSizingFramePanel)
                     {
@@ -192,7 +233,7 @@ void LVT_StartUI_EnableRoundedCorners(HWND hWnd, BOOL bApply)
                                 if (pIBorder)
                                 {
                                     Windows_UI_Xaml_Thickness th;
-                                    th.Left = (bApply ? 10.0 : 0.0);
+                                    th.Left = (bApplyPadding ? 10.0 : 0.0);
                                     th.Bottom = th.Left;
                                     th.Right = th.Left;
                                     th.Top = th.Left;
@@ -567,4 +608,39 @@ void LVT_StartDocked_DisableRecommendedSection(HWND hWnd, BOOL bApply)
         }
         pRootDependencyObject->lpVtbl->Release(pRootDependencyObject);
     }
+}
+
+HRESULT IsThreadCoreWindowVisible(BOOL* bIsVisible)
+{
+    HRESULT hr = S_OK;
+    if (SUCCEEDED(hr))
+    {
+        HSTRING_HEADER hshWindowStatics;
+        HSTRING hsWindowStatics = NULL;
+        hr = WindowsCreateStringReference(L"Windows.UI.Xaml.Window", 22, &hshWindowStatics, &hsWindowStatics);
+        if (SUCCEEDED(hr) && hsWindowStatics)
+        {
+            Windows_UI_Xaml_IWindowStatics* pWindowStatics = NULL;
+            hr = RoGetActivationFactory(hsWindowStatics, &IID_Windows_UI_Xaml_IWindowStatics, &pWindowStatics);
+            if (SUCCEEDED(hr))
+            {
+                Windows_UI_Xaml_IWindow* pWindow = NULL;
+                hr = pWindowStatics->lpVtbl->get_Current(pWindowStatics, &pWindow);
+                if (SUCCEEDED(hr))
+                {
+                    Windows_UI_Xaml_Core_ICoreWindow* pCoreWindow = NULL;
+                    hr = pWindow->lpVtbl->get_CoreWindow(pWindow, &pCoreWindow);
+                    if (SUCCEEDED(hr))
+                    {
+                        hr = pCoreWindow->lpVtbl->get_Visible(pCoreWindow, bIsVisible);
+                        pCoreWindow->lpVtbl->Release(pCoreWindow);
+                    }
+                    pWindow->lpVtbl->Release(pWindow);
+                }
+                pWindowStatics->lpVtbl->Release(pWindowStatics);
+            }
+            WindowsDeleteString(hsWindowStatics);
+        }
+    }
+    return hr;
 }

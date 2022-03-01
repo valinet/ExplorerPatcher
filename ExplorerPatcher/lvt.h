@@ -79,6 +79,88 @@ interface Windows_UI_Xaml_IWindowStatics // : IInspectable
 };
 #pragma endregion
 
+#pragma region "Windows.UI.Xaml.Core.CoreWindow"
+
+typedef interface Windows_UI_Xaml_Core_ICoreWindow Windows_UI_Xaml_Core_ICoreWindow;
+
+typedef struct Windows_UI_Xaml_Core_ICoreWindow_Vtbl
+{
+    BEGIN_INTERFACE
+
+    HRESULT(STDMETHODCALLTYPE* QueryInterface)(
+        __RPC__in Windows_UI_Xaml_Core_ICoreWindow* This,
+        /* [in] */ __RPC__in REFIID riid,
+        /* [annotation][iid_is][out] */
+        _COM_Outptr_  void** ppvObject);
+
+    ULONG(STDMETHODCALLTYPE* AddRef)(
+        __RPC__in Windows_UI_Xaml_Core_ICoreWindow* This);
+
+    ULONG(STDMETHODCALLTYPE* Release)(
+        __RPC__in Windows_UI_Xaml_Core_ICoreWindow* This);
+
+    HRESULT(STDMETHODCALLTYPE* GetIids)(
+        __RPC__in Windows_UI_Xaml_Core_ICoreWindow* This,
+        /* [out] */ __RPC__out ULONG* iidCount,
+        /* [size_is][size_is][out] */ __RPC__deref_out_ecount_full_opt(*iidCount) IID** iids);
+
+    HRESULT(STDMETHODCALLTYPE* GetRuntimeClassName)(
+        __RPC__in Windows_UI_Xaml_Core_ICoreWindow* This,
+        /* [out] */ __RPC__deref_out_opt HSTRING* className);
+
+    HRESULT(STDMETHODCALLTYPE* GetTrustLevel)(
+        __RPC__in Windows_UI_Xaml_Core_ICoreWindow* This,
+        /* [out] */ __RPC__out TrustLevel* trustLevel);
+
+    HRESULT(STDMETHODCALLTYPE* get_AutomationHostProvider)(
+        __RPC__in Windows_UI_Xaml_Core_ICoreWindow* This);
+
+    HRESULT(STDMETHODCALLTYPE* get_Bounds)(
+        __RPC__in Windows_UI_Xaml_Core_ICoreWindow* This,
+        /* [out] */ __RPC__out RECT* value);
+
+    HRESULT(STDMETHODCALLTYPE* get_CustomProperties)(
+        __RPC__in Windows_UI_Xaml_Core_ICoreWindow* This);
+
+    HRESULT(STDMETHODCALLTYPE* get_Dispatcher)(
+        __RPC__in Windows_UI_Xaml_Core_ICoreWindow* This);
+
+    HRESULT(STDMETHODCALLTYPE* get_FlowDirection)(
+        __RPC__in Windows_UI_Xaml_Core_ICoreWindow* This);
+
+    HRESULT(STDMETHODCALLTYPE* put_FlowDirection)(
+        __RPC__in Windows_UI_Xaml_Core_ICoreWindow* This);
+
+    HRESULT(STDMETHODCALLTYPE* get_IsInputEnabled)(
+        __RPC__in Windows_UI_Xaml_Core_ICoreWindow* This);
+
+    HRESULT(STDMETHODCALLTYPE* put_IsInputEnabled)(
+        __RPC__in Windows_UI_Xaml_Core_ICoreWindow* This);
+
+    HRESULT(STDMETHODCALLTYPE* get_PointerCursor)(
+        __RPC__in Windows_UI_Xaml_Core_ICoreWindow* This);
+
+    HRESULT(STDMETHODCALLTYPE* put_PointerCursor)(
+        __RPC__in Windows_UI_Xaml_Core_ICoreWindow* This);
+
+    HRESULT(STDMETHODCALLTYPE* get_PointerPosition)(
+        __RPC__in Windows_UI_Xaml_Core_ICoreWindow* This);
+
+    HRESULT(STDMETHODCALLTYPE* get_Visible)(
+        __RPC__in Windows_UI_Xaml_Core_ICoreWindow* This,
+        /* [out] */ __RPC__out BOOL* value);
+
+    // ...
+
+    END_INTERFACE
+} Windows_UI_Xaml_Core_ICoreWindow_Vtbl;
+
+interface Windows_UI_Xaml_Core_ICoreWindow // : IInspectable
+{
+    CONST_VTBL struct Windows_UI_Xaml_Core_ICoreWindow_Vtbl* lpVtbl;
+};
+#pragma endregion
+
 #pragma region "Windows.UI.Xaml.IWindow"
 
 typedef interface Windows_UI_Xaml_IWindow Windows_UI_Xaml_IWindow;
@@ -114,18 +196,24 @@ typedef struct Windows_UI_Xaml_IWindow_Vtbl
 
     HRESULT(STDMETHODCALLTYPE* get_Bounds)(
         __RPC__in Windows_UI_Xaml_IWindow* This,
-        /* [out] */ __RPC__out RECT* value
-        );
+        /* [out] */ __RPC__out RECT* value);
 
     HRESULT(STDMETHODCALLTYPE* get_Visible)(
         __RPC__in Windows_UI_Xaml_IWindow* This,
-        /* [out] */ __RPC__out BOOL* value
-        );
+        /* [out] */ __RPC__out BOOL* value);
 
     HRESULT(STDMETHODCALLTYPE* get_Content)(
         __RPC__in Windows_UI_Xaml_IWindow* This,
-        /* [out] */ __RPC__out IInspectable** value
-        );
+        /* [out] */ __RPC__out IInspectable** value);
+
+    HRESULT(STDMETHODCALLTYPE* put_Content)(
+        __RPC__in Windows_UI_Xaml_IWindow* This);
+
+    HRESULT(STDMETHODCALLTYPE* get_CoreWindow)(
+        __RPC__in Windows_UI_Xaml_IWindow* This,
+        /* [out] */ __RPC__out Windows_UI_Xaml_Core_ICoreWindow** value);
+
+    // ...
 
     END_INTERFACE
 } Windows_UI_Xaml_IWindow_Vtbl;
@@ -932,4 +1020,6 @@ Windows_UI_Xaml_IDependencyObject* LVT_FindChildByName(Windows_UI_Xaml_IDependen
 void LVT_StartUI_EnableRoundedCorners(HWND, BOOL);
 
 void LVT_StartDocked_DisableRecommendedSection(HWND, BOOL);
+
+HRESULT IsThreadCoreWindowVisible(BOOL*);
 #endif

@@ -8997,6 +8997,7 @@ char VisibilityChangedEventArguments_GetVisible(__int64 a1)
     return v3[0];
 }
 
+DWORD Start_ForceStartSize = 0;
 DWORD StartMenu_maximumFreqApps = 6;
 DWORD StartMenu_ShowAllApps = 0;
 DWORD StartDocked_DisableRecommendedSection = FALSE;
@@ -9137,6 +9138,41 @@ void StartMenu_LoadSettings(BOOL bRestartIfChanged)
             exit(0);
         }
         dwStartShowClassicMode = dwVal;
+        RegCloseKey(hKey);
+    }
+
+    RegCreateKeyExW(
+        HKEY_CURRENT_USER,
+        L"SOFTWARE\\Policies\\Microsoft\\Windows\\Explorer",
+        0,
+        NULL,
+        REG_OPTION_NON_VOLATILE,
+        KEY_READ,
+        NULL,
+        &hKey,
+        NULL
+    );
+    if (hKey == NULL || hKey == INVALID_HANDLE_VALUE)
+    {
+        hKey = NULL;
+    }
+    if (hKey)
+    {
+        dwSize = sizeof(DWORD);
+        dwVal = 0;
+        RegQueryValueExW(
+            hKey,
+            TEXT("ForceStartSize"),
+            0,
+            NULL,
+            &dwVal,
+            &dwSize
+        );
+        if (bRestartIfChanged && dwVal != Start_ForceStartSize)
+        {
+            exit(0);
+        }
+        Start_ForceStartSize = dwVal;
         RegCloseKey(hKey);
     }
 }
@@ -9290,16 +9326,18 @@ LSTATUS StartUI_RegGetValueW(HKEY hkey, LPCWSTR lpSubKey, LPCWSTR lpValue, DWORD
 
 int StartUI_SetWindowRgn(HWND hWnd, HRGN hRgn, BOOL bRedraw)
 {
-    DWORD dwThisPID = GetCurrentProcessId(), dwForeignPID = 0;
-    GetWindowThreadProcessId(GetForegroundWindow(), &dwForeignPID);
-    BOOL bStartIsHiding = (!hRgn && dwThisPID != dwForeignPID);
-    ShowWindow(hWnd, bStartIsHiding ? SW_HIDE : SW_SHOW);
-    if (!bStartIsHiding && StartUI_EnableRoundedCornersApply)
+    BOOL bIsWindowVisible = FALSE;
+    HRESULT hr = IsThreadCoreWindowVisible(&bIsWindowVisible);
+    if (SUCCEEDED(hr))
     {
-        LVT_StartUI_EnableRoundedCorners(hWnd, StartUI_EnableRoundedCorners);
-        if (!StartUI_EnableRoundedCorners)
+        ShowWindow(hWnd, bIsWindowVisible ? SW_SHOW : SW_HIDE);
+        if (bIsWindowVisible && StartUI_EnableRoundedCornersApply)
         {
-            StartUI_EnableRoundedCornersApply = FALSE;
+            LVT_StartUI_EnableRoundedCorners(hWnd, StartUI_EnableRoundedCorners);
+            if (!StartUI_EnableRoundedCorners)
+            {
+                StartUI_EnableRoundedCornersApply = FALSE;
+            }
         }
     }
     return SetWindowRgn(hWnd, hRgn, bRedraw);
@@ -9307,13 +9345,15 @@ int StartUI_SetWindowRgn(HWND hWnd, HRGN hRgn, BOOL bRedraw)
 
 int StartDocked_SetWindowRgn(HWND hWnd, HRGN hRgn, BOOL bRedraw)
 {
-    DWORD dwThisPID = GetCurrentProcessId(), dwForeignPID = 0;
-    GetWindowThreadProcessId(GetForegroundWindow(), &dwForeignPID);
-    BOOL bStartIsHiding = (!hRgn && dwThisPID != dwForeignPID);
-    if (!bStartIsHiding && StartDocked_DisableRecommendedSectionApply)
+    BOOL bIsWindowVisible = FALSE;
+    HRESULT hr = IsThreadCoreWindowVisible(&bIsWindowVisible);
+    if (SUCCEEDED(hr))
     {
-        LVT_StartDocked_DisableRecommendedSection(hWnd, StartDocked_DisableRecommendedSection);
-        StartDocked_DisableRecommendedSectionApply = FALSE;
+        if (bIsWindowVisible && StartUI_EnableRoundedCornersApply)
+        {
+            LVT_StartDocked_DisableRecommendedSection(hWnd, StartDocked_DisableRecommendedSection);
+            StartDocked_DisableRecommendedSectionApply = FALSE;
+        }
     }
     return SetWindowRgn(hWnd, hRgn, bRedraw);
 }
@@ -9762,7 +9802,7 @@ void InjectStartMenu()
         VnPatchDelayIAT(hStartDocked, "ext-ms-win-ntuser-draw-l1-1-0.dll", "SetWindowRgn", StartDocked_SetWindowRgn);
     }
 
-    Setting* settings = calloc(4, sizeof(Setting));
+    Setting* settings = calloc(5, sizeof(Setting));
     settings[0].callback = NULL;
     settings[0].data = NULL;
     settings[0].hEvent = CreateEventW(NULL, FALSE, FALSE, NULL);
@@ -9787,10 +9827,16 @@ void InjectStartMenu()
     settings[3].hKey = NULL;
     wcscpy_s(settings[3].name, MAX_PATH, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced");
     settings[3].origin = HKEY_CURRENT_USER;
+    settings[4].callback = StartMenu_LoadSettings;
+    settings[4].data = TRUE;
+    settings[4].hEvent = NULL;
+    settings[4].hKey = NULL;
+    wcscpy_s(settings[4].name, MAX_PATH, L"SOFTWARE\\Policies\\Microsoft\\Windows\\Explorer");
+    settings[4].origin = HKEY_CURRENT_USER;
 
     SettingsChangeParameters* params = calloc(1, sizeof(SettingsChangeParameters));
     params->settings = settings;
-    params->size = 4;
+    params->size = 5;
     CreateThread(
         0,
         0,

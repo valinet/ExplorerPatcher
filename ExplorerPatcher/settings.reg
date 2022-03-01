@@ -230,7 +230,12 @@
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;b Enable rounded corners
 ;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_StartUI_EnableRoundedCorners"=dword:00000000
-
+[HKEY_CURRENT_USER\Software\ExplorerPatcher]
+;c 3 Display mode
+;x 0 Default
+;x 1 Start menu
+;x 2 Full screen Start
+;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_ForceStartSize"=dword:00000000
 
 
 ;T Window switcher

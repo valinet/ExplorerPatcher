@@ -406,6 +406,39 @@ LSTATUS GUI_Internal_RegSetValueExW(
         );
         return RegSetValueExW(hKey, L"StartUI_EnableRoundedCorners", 0, dwType, lpData, cbData);
     }
+    else if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_ForceStartSize"))
+    {
+        WCHAR wszPath[MAX_PATH];
+        GetSystemDirectoryW(wszPath, MAX_PATH);
+        wcscat_s(wszPath, MAX_PATH, L"\\reg.exe");
+        WCHAR wszArguments[MAX_PATH];
+        if (*(DWORD*)lpData)
+        {
+            swprintf_s(wszArguments, MAX_PATH, L"ADD \"HKCU\\Software\\Policies\\Microsoft\\Windows\\Explorer\" /V ForceStartSize /T REG_DWORD /D %d /F", *(DWORD*)lpData);
+        }
+        else
+        {
+            swprintf_s(wszArguments, MAX_PATH, L"DELETE \"HKCU\\Software\\Policies\\Microsoft\\Windows\\Explorer\" /V ForceStartSize /F");
+        }
+        SHELLEXECUTEINFO ShExecInfo = { 0 };
+        ShExecInfo.cbSize = sizeof(SHELLEXECUTEINFO);
+        ShExecInfo.fMask = SEE_MASK_NOCLOSEPROCESS;
+        ShExecInfo.hwnd = NULL;
+        ShExecInfo.lpVerb = L"runas";
+        ShExecInfo.lpFile = wszPath;
+        ShExecInfo.lpParameters = wszArguments;
+        ShExecInfo.lpDirectory = NULL;
+        ShExecInfo.nShow = SW_HIDE;
+        ShExecInfo.hInstApp = NULL;
+        if (ShellExecuteExW(&ShExecInfo) && ShExecInfo.hProcess)
+        {
+            WaitForSingleObject(ShExecInfo.hProcess, INFINITE);
+            DWORD dwExitCode = 0;
+            GetExitCodeProcess(ShExecInfo.hProcess, &dwExitCode);
+            CloseHandle(ShExecInfo.hProcess);
+        }
+        return ERROR_SUCCESS;
+    }
     else if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_DisableRoundedCorners"))
     {
         return RegisterDWMService(*(DWORD*)lpData, 0);
@@ -604,6 +637,10 @@ LSTATUS GUI_Internal_RegQueryValueExW(
     else if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_StartUI_EnableRoundedCorners"))
     {
         return RegQueryValueExW(hKey, L"StartUI_EnableRoundedCorners", lpReserved, lpType, lpData, lpcbData);
+    }
+    else if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_ForceStartSize"))
+    {
+        return RegGetValueW(HKEY_CURRENT_USER, L"SOFTWARE\\Policies\\Microsoft\\Windows\\Explorer", L"ForceStartSize", RRF_RT_DWORD, NULL, lpData, lpcbData);
     }
     else if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_DisableRoundedCorners"))
     {
