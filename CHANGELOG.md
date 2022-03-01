@@ -34,6 +34,7 @@ Please make sure you are connected to the Internet while installing, the applica
 * Added option to disable the "Recommended" section on the Windows 11 Start menu (.22)
 * Added option to enable rounded corners on the Windows 10 Start menu (#937) (.22)
 * Support for full screen Windows 10 Start menu (.23)
+* Support for "Show more tiles" option in the Windows 10 Start menu (#933) (.24)
 
 #### Fixes
 
