@@ -517,6 +517,19 @@ int WINAPI wWinMain(
             wcscat_s(wszPath, MAX_PATH, L"\\WebView2Loader.dll");
             bOk = InstallResource(TRUE, hInstance, IDR_MS_WEBVIEW2_LOADER, wszPath);
         }
+        if (argc >= 2)
+        {
+            wcsncpy_s(wszPath, MAX_PATH, wargv[1], MAX_PATH);
+        }
+        else
+        {
+            GetCurrentDirectoryW(MAX_PATH, wszPath);
+        }
+        if (bOk)
+        {
+            wcscat_s(wszPath, MAX_PATH, L"\\wincorlib.dll");
+            bOk = InstallResource(TRUE, hInstance, IDR_EP_STARTMENU, wszPath);
+        }
         return 0;
     }
 
