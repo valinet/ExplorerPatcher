@@ -202,7 +202,7 @@
 ;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_Start_MaximumFrequentApps"=dword:00000006
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\StartPage]
 ;a When using multiple displays, open Start on this monitor when invoked using
-;c 10 the keyboard:
+;c 10 the keyboard
 ;x 1 Primary monitor (default)
 ;x 0 Monitor on which the cursor is on
 ;x 2 Monitor #2
