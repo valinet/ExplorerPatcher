@@ -24,6 +24,7 @@
 #include <tlhelp32.h>
 #include <UIAutomationClient.h>
 #include <math.h>
+#include "lvt.h"
 #ifdef _WIN64
 #include <valinet/pdb/pdb.h>
 #endif
@@ -8998,6 +8999,10 @@ char VisibilityChangedEventArguments_GetVisible(__int64 a1)
 
 DWORD StartMenu_maximumFreqApps = 6;
 DWORD StartMenu_ShowAllApps = 0;
+DWORD StartDocked_DisableRecommendedSection = FALSE;
+DWORD StartDocked_DisableRecommendedSectionApply = TRUE;
+DWORD StartUI_EnableRoundedCorners = FALSE;
+DWORD StartUI_EnableRoundedCornersApply = TRUE;
 
 void StartMenu_LoadSettings(BOOL bRestartIfChanged)
 {
@@ -9064,6 +9069,39 @@ void StartMenu_LoadSettings(BOOL bRestartIfChanged)
             exit(0);
         }
         StartMenu_maximumFreqApps = dwVal;
+
+        dwSize = sizeof(DWORD);
+        dwVal = FALSE;
+        RegQueryValueExW(
+            hKey,
+            TEXT("StartDocked_DisableRecommendedSection"),
+            0,
+            NULL,
+            &dwVal,
+            &dwSize
+        );
+        if (dwVal != StartDocked_DisableRecommendedSection)
+        {
+            StartDocked_DisableRecommendedSection = dwVal;
+            StartDocked_DisableRecommendedSectionApply = TRUE;
+        }
+
+        dwSize = sizeof(DWORD);
+        dwVal = FALSE;
+        RegQueryValueExW(
+            hKey,
+            TEXT("StartUI_EnableRoundedCorners"),
+            0,
+            NULL,
+            &dwVal,
+            &dwSize
+        );
+        if (dwVal != StartUI_EnableRoundedCorners)
+        {
+            StartUI_EnableRoundedCorners = dwVal;
+            StartUI_EnableRoundedCornersApply = TRUE;
+        }
+
         RegCloseKey(hKey);
     }
 
@@ -9168,7 +9206,7 @@ INT64 StartDocked_StartSizingFrame_StartSizingFrameHook(void* _this)
     return rv;
 }
 
-HANDLE start_CreateFileW(LPCWSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode, LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition, DWORD dwFlagsAndAttributes, HANDLE hTemplateFile)
+HANDLE StartUI_CreateFileW(LPCWSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode, LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition, DWORD dwFlagsAndAttributes, HANDLE hTemplateFile)
 {
     WCHAR path[MAX_PATH];
     GetWindowsDirectoryW(path, MAX_PATH);
@@ -9192,7 +9230,7 @@ HANDLE start_CreateFileW(LPCWSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShar
     return CreateFileW(lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
 }
 
-BOOL start_GetFileAttributesExW(LPCWSTR lpFileName, GET_FILEEX_INFO_LEVELS fInfoLevelId, LPVOID lpFileInformation)
+BOOL StartUI_GetFileAttributesExW(LPCWSTR lpFileName, GET_FILEEX_INFO_LEVELS fInfoLevelId, LPVOID lpFileInformation)
 {
     WCHAR path[MAX_PATH];
     GetWindowsDirectoryW(path, MAX_PATH);
@@ -9216,7 +9254,7 @@ BOOL start_GetFileAttributesExW(LPCWSTR lpFileName, GET_FILEEX_INFO_LEVELS fInfo
     return GetFileAttributesExW(lpFileName, fInfoLevelId, lpFileInformation);
 }
 
-HANDLE start_FindFirstFileW(LPCWSTR lpFileName, LPWIN32_FIND_DATAW lpFindFileData)
+HANDLE StartUI_FindFirstFileW(LPCWSTR lpFileName, LPWIN32_FIND_DATAW lpFindFileData)
 {
     WCHAR path[MAX_PATH];
     GetWindowsDirectoryW(path, MAX_PATH);
@@ -9240,7 +9278,7 @@ HANDLE start_FindFirstFileW(LPCWSTR lpFileName, LPWIN32_FIND_DATAW lpFindFileDat
     return FindFirstFileW(lpFileName, lpFindFileData);
 }
 
-LSTATUS start_RegGetValueW(HKEY hkey, LPCWSTR lpSubKey, LPCWSTR lpValue, DWORD dwFlags, LPDWORD pdwType, PVOID pvData, LPDWORD pcbData)
+LSTATUS StartUI_RegGetValueW(HKEY hkey, LPCWSTR lpSubKey, LPCWSTR lpValue, DWORD dwFlags, LPDWORD pdwType, PVOID pvData, LPDWORD pcbData)
 {
     if (hkey == HKEY_LOCAL_MACHINE && !_wcsicmp(lpSubKey, L"Software\\Microsoft\\Windows\\CurrentVersion\\Mrt\\_Merged") && !_wcsicmp(lpValue, L"ShouldMergeInProc"))
     {
@@ -9250,11 +9288,33 @@ LSTATUS start_RegGetValueW(HKEY hkey, LPCWSTR lpSubKey, LPCWSTR lpValue, DWORD d
     return RegGetValueW(hkey, lpSubKey, lpValue, dwFlags, pdwType, pvData, pcbData);
 }
 
-int start_SetWindowRgn(HWND hWnd, HRGN hRgn, BOOL bRedraw)
+int StartUI_SetWindowRgn(HWND hWnd, HRGN hRgn, BOOL bRedraw)
 {
     DWORD dwThisPID = GetCurrentProcessId(), dwForeignPID = 0;
     GetWindowThreadProcessId(GetForegroundWindow(), &dwForeignPID);
-    ShowWindow(hWnd, (!hRgn && dwThisPID != dwForeignPID) ? SW_HIDE : SW_SHOW);
+    BOOL bStartIsHiding = (!hRgn && dwThisPID != dwForeignPID);
+    ShowWindow(hWnd, bStartIsHiding ? SW_HIDE : SW_SHOW);
+    if (!bStartIsHiding && StartUI_EnableRoundedCornersApply)
+    {
+        LVT_StartUI_EnableRoundedCorners(hWnd, StartUI_EnableRoundedCorners);
+        if (!StartUI_EnableRoundedCorners)
+        {
+            StartUI_EnableRoundedCornersApply = FALSE;
+        }
+    }
+    return SetWindowRgn(hWnd, hRgn, bRedraw);
+}
+
+int StartDocked_SetWindowRgn(HWND hWnd, HRGN hRgn, BOOL bRedraw)
+{
+    DWORD dwThisPID = GetCurrentProcessId(), dwForeignPID = 0;
+    GetWindowThreadProcessId(GetForegroundWindow(), &dwForeignPID);
+    BOOL bStartIsHiding = (!hRgn && dwThisPID != dwForeignPID);
+    if (!bStartIsHiding && StartDocked_DisableRecommendedSectionApply)
+    {
+        LVT_StartDocked_DisableRecommendedSection(hWnd, StartDocked_DisableRecommendedSection);
+        StartDocked_DisableRecommendedSectionApply = FALSE;
+    }
     return SetWindowRgn(hWnd, hRgn, bRedraw);
 }
 
@@ -9682,7 +9742,7 @@ void InjectStartMenu()
     if (dwStartShowClassicMode)
     {
         // Fixes hang when Start menu closes
-        VnPatchDelayIAT(hStartUI, "ext-ms-win-ntuser-draw-l1-1-0.dll", "SetWindowRgn", start_SetWindowRgn);
+        VnPatchDelayIAT(hStartUI, "ext-ms-win-ntuser-draw-l1-1-0.dll", "SetWindowRgn", StartUI_SetWindowRgn);
 
         // Redirects to StartTileData from 22000.51 which works with the legacy menu
         LoadLibraryW(L"combase.dll");
@@ -9692,10 +9752,14 @@ void InjectStartMenu()
         // Redirects to pri files from 22000.51 which work with the legacy menu
         LoadLibraryW(L"MrmCoreR.dll");
         HANDLE hMrmCoreR = GetModuleHandleW(L"MrmCoreR.dll");
-        VnPatchIAT(hMrmCoreR, "api-ms-win-core-file-l1-1-0.dll", "CreateFileW", start_CreateFileW);
-        VnPatchIAT(hMrmCoreR, "api-ms-win-core-file-l1-1-0.dll", "GetFileAttributesExW", start_GetFileAttributesExW);
-        VnPatchIAT(hMrmCoreR, "api-ms-win-core-file-l1-1-0.dll", "FindFirstFileW", start_FindFirstFileW);
-        VnPatchIAT(hMrmCoreR, "api-ms-win-core-registry-l1-1-0.dll", "RegGetValueW", start_RegGetValueW);
+        VnPatchIAT(hMrmCoreR, "api-ms-win-core-file-l1-1-0.dll", "CreateFileW", StartUI_CreateFileW);
+        VnPatchIAT(hMrmCoreR, "api-ms-win-core-file-l1-1-0.dll", "GetFileAttributesExW", StartUI_GetFileAttributesExW);
+        VnPatchIAT(hMrmCoreR, "api-ms-win-core-file-l1-1-0.dll", "FindFirstFileW", StartUI_FindFirstFileW);
+        VnPatchIAT(hMrmCoreR, "api-ms-win-core-registry-l1-1-0.dll", "RegGetValueW", StartUI_RegGetValueW);
+    }
+    else
+    {
+        VnPatchDelayIAT(hStartDocked, "ext-ms-win-ntuser-draw-l1-1-0.dll", "SetWindowRgn", StartDocked_SetWindowRgn);
     }
 
     Setting* settings = calloc(4, sizeof(Setting));

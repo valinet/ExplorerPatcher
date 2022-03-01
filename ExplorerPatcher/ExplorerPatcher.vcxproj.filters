@@ -126,6 +126,9 @@
     <ClInclude Include="def.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="lvt.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="ExplorerPatcher.rc">
@@ -204,6 +207,9 @@
     </ClCompile>
     <ClCompile Include="..\libs\sws\SimpleWindowSwitcher\sws_tshwnd.c">
       <Filter>Source Files\sws</Filter>
+    </ClCompile>
+    <ClCompile Include="lvt.c">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

@@ -149,6 +149,8 @@
 
 
 ;T Start menu
+;y More Start menu options in the Settings app 🡕
+;ms-settings:personalization-start
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\StartPage]
 ;e When using multiple displays, open Start on this monitor when invoked using
 ;z 10 the keyboard:
@@ -163,8 +165,6 @@
 ;x 8 Monitor #8
 ;x 9 Monitor #9
 "MonitorOverride"=dword:00000001
-;e If the selected monitor is not available, Start will open on the primary display.
-
 
 ;T Window switcher
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer]
