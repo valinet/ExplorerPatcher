@@ -31,6 +31,8 @@ Please make sure you are connected to the Internet while installing, the applica
 * Enabling the weather widget will automatically download and install the Microsoft WebView2 Runtime on computers where it is not installed (.16)
 * Option to enable dev tools for weather widget debugging (#934) (.19, .20)
 * Pinning items to the Windows 10 Start menu works from File Explorer windows (.21)
+* Added option to disable the "Recommended" section on the Windows 11 Start menu (.22)
+* Added option to enable rounded corners on the Windows 10 Start menu (#937) (.22)
 
 #### Fixes
 
@@ -53,6 +55,7 @@ Please make sure you are connected to the Internet while installing, the applica
 * Fixed a bug that prevented the "Skin menus" setting from working in the `Win`+`X` menu on Windows 10 (.19)
 * Fixed a bug that would display an information banner that obscured the weather widget in some occasions when displaying the widget in German (#934) (thanks @frederic2de) (.20)
 * Fixed program windows in older 22000-based OS builds (.21)
+* Fixed a bug that prevented correct displaying of the weather widget contents when using a right-to-left language (#954) (.22)
 
 ## 22000.469.41
 
