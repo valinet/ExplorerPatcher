@@ -157,7 +157,7 @@ void LVT_StartUI_EnableRoundedCorners(HWND hWnd, BOOL bApply)
                 Windows_UI_Xaml_IDependencyObject* pStartSizingFrame = LVT_FindChildByClassName(pRootDependencyObject, pVisualTreeHelperStatics, L"StartUI.StartSizingFrame", NULL);
                 if (pStartSizingFrame)
                 {
-                    BOOL bApplyPadding = bApply;
+                    int location = LVT_LOC_NONE;
 
                     if (bApply)
                     {
@@ -188,7 +188,26 @@ void LVT_StartUI_EnableRoundedCorners(HWND hWnd, BOOL bApply)
                         GetMonitorInfoW(hMonitor, &mi);
                         //swprintf(wszDebug, MAX_PATH, L"RECT %d %d %d %d - %d %d %d %d\n", rc.left, rc.top, rc.right, rc.bottom, 0, 0, mi.rcWork.right - mi.rcWork.left, mi.rcWork.bottom - mi.rcWork.top);
                         //OutputDebugStringW(wszDebug);
-                        bApplyPadding = !(rc.left == 0 && rc.top == 0 && abs(mi.rcWork.right - mi.rcWork.left - rc.right) < 5 && abs(mi.rcWork.bottom - mi.rcWork.top - rc.bottom) < 5);
+                        if (!(rc.left == 0 && rc.top == 0 && abs(mi.rcWork.right - mi.rcWork.left - rc.right) < 5 && abs(mi.rcWork.bottom - mi.rcWork.top - rc.bottom) < 5))
+                        {
+                            if (rc.left == 0)
+                            {
+                                if (rc.top == 0)
+                                {
+                                    location = LVT_LOC_TOPLEFT;
+                                }
+                                else
+                                {
+                                    location = LVT_LOC_BOTTOMLEFT;
+                                }
+                            }
+                            else
+                            {
+                                location = LVT_LOC_TOPRIGHT;
+                            }
+                        }
+                        //swprintf_s(wszDebug, MAX_PATH, L"Location: %d\n", location);
+                        //OutputDebugStringW(wszDebug);
                         if (pFrameworkElement)
                         {
                             pFrameworkElement->lpVtbl->Release(pFrameworkElement);
@@ -232,11 +251,39 @@ void LVT_StartUI_EnableRoundedCorners(HWND hWnd, BOOL bApply)
                                 pFrame->lpVtbl->QueryInterface(pFrame, &IID_Windows_UI_Xaml_Controls_IControl, &pIBorder);
                                 if (pIBorder)
                                 {
+                                    double pad = 12.0;
                                     Windows_UI_Xaml_Thickness th;
-                                    th.Left = (bApplyPadding ? 10.0 : 0.0);
-                                    th.Bottom = th.Left;
-                                    th.Right = th.Left;
-                                    th.Top = th.Left;
+                                    if (location)
+                                    {
+                                        if (location == LVT_LOC_BOTTOMLEFT)
+                                        {
+                                            th.Left = bApply ? pad : 0.0;
+                                            th.Bottom = bApply ? pad : 0.0;
+                                            th.Right = 0.0;
+                                            th.Top = 0.0;
+                                        }
+                                        else if (location == LVT_LOC_TOPLEFT)
+                                        {
+                                            th.Left = bApply ? pad : 0.0;
+                                            th.Bottom = 0.0;
+                                            th.Right = 0.0;
+                                            th.Top = bApply ? pad : 0.0;
+                                        }
+                                        else if (location == LVT_LOC_TOPRIGHT)
+                                        {
+                                            th.Left = 0.0;
+                                            th.Bottom = 0.0;
+                                            th.Right = bApply ? pad : 0.0;
+                                            th.Top = bApply ? pad : 0.0;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        th.Left = 0.0;
+                                        th.Bottom = 0.0;
+                                        th.Right = 0.0;
+                                        th.Top = 0.0;
+                                    }
                                     pIBorder->lpVtbl->put_Padding(pIBorder, th);
                                     pIBorder->lpVtbl->Release(pIBorder);
                                 }

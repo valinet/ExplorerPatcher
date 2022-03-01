@@ -7,6 +7,11 @@
 #include <winstring.h>
 #include <stdio.h>
 
+#define LVT_LOC_NONE 0
+#define LVT_LOC_BOTTOMLEFT 1
+#define LVT_LOC_TOPLEFT 2
+#define LVT_LOC_TOPRIGHT 3
+
 typedef struct _Windows_UI_Xaml_CornerRadius
 {
     double TopLeft;
