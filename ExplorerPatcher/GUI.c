@@ -406,6 +406,18 @@ LSTATUS GUI_Internal_RegSetValueExW(
         );
         return RegSetValueExW(hKey, L"StartUI_EnableRoundedCorners", 0, dwType, lpData, cbData);
     }
+    else if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_StartUI_ShowMoreTiles"))
+    {
+        RegSetKeyValueW(
+            HKEY_CURRENT_USER,
+            TEXT(REGPATH_OLD),
+            L"StartUI_ShowMoreTiles",
+            dwType,
+            lpData,
+            cbData
+        );
+        return RegSetValueExW(hKey, L"StartUI_ShowMoreTiles", 0, dwType, lpData, cbData);
+    }
     else if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_ForceStartSize"))
     {
         WCHAR wszPath[MAX_PATH];
@@ -637,6 +649,10 @@ LSTATUS GUI_Internal_RegQueryValueExW(
     else if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_StartUI_EnableRoundedCorners"))
     {
         return RegQueryValueExW(hKey, L"StartUI_EnableRoundedCorners", lpReserved, lpType, lpData, lpcbData);
+    }
+    else if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_StartUI_ShowMoreTiles"))
+    {
+        return RegQueryValueExW(hKey, L"StartUI_ShowMoreTiles", lpReserved, lpType, lpData, lpcbData);
     }
     else if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_ForceStartSize"))
     {

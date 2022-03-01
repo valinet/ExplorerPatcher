@@ -9004,6 +9004,8 @@ DWORD StartDocked_DisableRecommendedSection = FALSE;
 DWORD StartDocked_DisableRecommendedSectionApply = TRUE;
 DWORD StartUI_EnableRoundedCorners = FALSE;
 DWORD StartUI_EnableRoundedCornersApply = TRUE;
+DWORD StartUI_ShowMoreTiles = FALSE;
+HKEY hKey_StartUI_TileGrid = NULL;
 
 void StartMenu_LoadSettings(BOOL bRestartIfChanged)
 {
@@ -9083,9 +9085,9 @@ void StartMenu_LoadSettings(BOOL bRestartIfChanged)
         );
         if (dwVal != StartDocked_DisableRecommendedSection)
         {
-            StartDocked_DisableRecommendedSection = dwVal;
             StartDocked_DisableRecommendedSectionApply = TRUE;
         }
+        StartDocked_DisableRecommendedSection = dwVal;
 
         dwSize = sizeof(DWORD);
         dwVal = FALSE;
@@ -9099,9 +9101,25 @@ void StartMenu_LoadSettings(BOOL bRestartIfChanged)
         );
         if (dwVal != StartUI_EnableRoundedCorners)
         {
-            StartUI_EnableRoundedCorners = dwVal;
             StartUI_EnableRoundedCornersApply = TRUE;
         }
+        StartUI_EnableRoundedCorners = dwVal;
+
+        dwSize = sizeof(DWORD);
+        dwVal = FALSE;
+        RegQueryValueExW(
+            hKey,
+            TEXT("StartUI_ShowMoreTiles"),
+            0,
+            NULL,
+            &dwVal,
+            &dwSize
+        );
+        if (bRestartIfChanged && dwStartShowClassicMode && dwVal != StartUI_ShowMoreTiles)
+        {
+            exit(0);
+        }
+        StartUI_ShowMoreTiles = dwVal;
 
         RegCloseKey(hKey);
     }
@@ -9322,6 +9340,46 @@ LSTATUS StartUI_RegGetValueW(HKEY hkey, LPCWSTR lpSubKey, LPCWSTR lpValue, DWORD
         return ERROR_SUCCESS;
     }
     return RegGetValueW(hkey, lpSubKey, lpValue, dwFlags, pdwType, pvData, pcbData);
+}
+
+LSTATUS StartUI_RegOpenKeyExW(HKEY hKey, LPCWSTR lpSubKey, DWORD ulOptions, REGSAM samDesired, PHKEY phkResult)
+{
+    if (wcsstr(lpSubKey, L"$start.tilegrid$windows.data.curatedtilecollection.tilecollection\\Current"))
+    {
+        LSTATUS lRes = RegOpenKeyExW(hKey, lpSubKey, ulOptions, samDesired, phkResult);
+        if (lRes == ERROR_SUCCESS)
+        {
+            hKey_StartUI_TileGrid = *phkResult;
+        }
+        return lRes;
+    }
+    return RegOpenKeyExW(hKey, lpSubKey, ulOptions, samDesired, phkResult);
+}
+
+LSTATUS StartUI_RegQueryValueExW(HKEY hKey, LPCWSTR lpValueName, LPDWORD lpReserved, LPDWORD lpType, LPBYTE lpData, LPDWORD lpcbData)
+{
+    if (hKey == hKey_StartUI_TileGrid)
+    {
+        if (!_wcsicmp(lpValueName, L"Data"))
+        {
+            LSTATUS lRes = RegQueryValueExW(hKey, lpValueName, lpReserved, lpType, lpData, lpcbData);
+            if (lRes == ERROR_SUCCESS && lpData && *lpcbData >= 26)
+            {
+                lpData[25] = (StartUI_ShowMoreTiles ? 16 : 12);
+            }
+            return lRes;
+        }
+    }
+    return RegQueryValueExW(hKey, lpValueName, lpReserved, lpType, lpData, lpcbData);
+}
+
+LSTATUS StartUI_RegCloseKey(HKEY hKey)
+{
+    if (hKey == hKey_StartUI_TileGrid)
+    {
+        hKey_StartUI_TileGrid = NULL;
+    }
+    return RegCloseKey(hKey);
 }
 
 int StartUI_SetWindowRgn(HWND hWnd, HRGN hRgn, BOOL bRedraw)
@@ -9772,15 +9830,16 @@ void InjectStartMenu()
 #ifdef _WIN64
     funchook = funchook_create();
 
-    LoadLibraryW(L"StartDocked.dll");
-    HANDLE hStartDocked = GetModuleHandleW(L"StartDocked.dll");
-    LoadLibraryW(L"StartUI.dll");
-    HANDLE hStartUI = GetModuleHandleW(L"StartUI.dll");
+    HANDLE hStartDocked = NULL;
+    HANDLE hStartUI = NULL;
 
     StartMenu_LoadSettings(FALSE);
 
     if (dwStartShowClassicMode)
     {
+        LoadLibraryW(L"StartUI.dll");
+        hStartUI = GetModuleHandleW(L"StartUI.dll");
+
         // Fixes hang when Start menu closes
         VnPatchDelayIAT(hStartUI, "ext-ms-win-ntuser-draw-l1-1-0.dll", "SetWindowRgn", StartUI_SetWindowRgn);
 
@@ -9796,9 +9855,19 @@ void InjectStartMenu()
         VnPatchIAT(hMrmCoreR, "api-ms-win-core-file-l1-1-0.dll", "GetFileAttributesExW", StartUI_GetFileAttributesExW);
         VnPatchIAT(hMrmCoreR, "api-ms-win-core-file-l1-1-0.dll", "FindFirstFileW", StartUI_FindFirstFileW);
         VnPatchIAT(hMrmCoreR, "api-ms-win-core-registry-l1-1-0.dll", "RegGetValueW", StartUI_RegGetValueW);
+
+        // Enables "Show more tiles" setting
+        LoadLibraryW(L"Windows.CloudStore.dll");
+        HANDLE hWindowsCloudStore = GetModuleHandleW(L"Windows.CloudStore.dll");
+        VnPatchIAT(hWindowsCloudStore, "api-ms-win-core-registry-l1-1-0.dll", "RegOpenKeyExW", StartUI_RegOpenKeyExW);
+        VnPatchIAT(hWindowsCloudStore, "api-ms-win-core-registry-l1-1-0.dll", "RegQueryValueExW", StartUI_RegQueryValueExW);
+        VnPatchIAT(hWindowsCloudStore, "api-ms-win-core-registry-l1-1-0.dll", "RegCloseKey", StartUI_RegCloseKey);
     }
     else
     {
+        LoadLibraryW(L"StartDocked.dll");
+        hStartDocked = GetModuleHandleW(L"StartDocked.dll");
+
         VnPatchDelayIAT(hStartDocked, "ext-ms-win-ntuser-draw-l1-1-0.dll", "SetWindowRgn", StartDocked_SetWindowRgn);
     }
 
@@ -9902,12 +9971,12 @@ void InjectStartMenu()
         FreeLibrary(hModule);
     }
 
-    if (dwVal1 && dwVal1 != 0xFFFFFFFF)
+    if (dwVal1 && dwVal1 != 0xFFFFFFFF && hStartDocked)
     {
         StartDocked_LauncherFrame_ShowAllAppsFunc = (INT64(*)(void*))
             ((uintptr_t)hStartDocked + dwVal1);
     }
-    if (dwVal2 && dwVal2 != 0xFFFFFFFF)
+    if (dwVal2 && dwVal2 != 0xFFFFFFFF && hStartDocked)
     {
         StartDocked_LauncherFrame_OnVisibilityChangedFunc = (INT64(*)(void*, INT64, void*))
             ((uintptr_t)hStartDocked + dwVal2);
@@ -9922,7 +9991,7 @@ void InjectStartMenu()
             return rv;
         }
     }
-    if (dwVal3 && dwVal3 != 0xFFFFFFFF)
+    if (dwVal3 && dwVal3 != 0xFFFFFFFF && hStartDocked)
     {
         StartDocked_SystemListPolicyProvider_GetMaximumFrequentAppsFunc = (INT64(*)(void*, INT64, void*))
             ((uintptr_t)hStartDocked + dwVal3);
@@ -9937,7 +10006,7 @@ void InjectStartMenu()
             return rv;
         }
     }
-    if (dwVal4 && dwVal4 != 0xFFFFFFFF)
+    if (dwVal4 && dwVal4 != 0xFFFFFFFF && hStartUI)
     {
         StartUI_SystemListPolicyProvider_GetMaximumFrequentAppsFunc = (INT64(*)(void*, INT64, void*))
             ((uintptr_t)hStartUI + dwVal4);
