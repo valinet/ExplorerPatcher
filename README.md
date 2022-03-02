@@ -30,7 +30,7 @@ Windows 10では一部の機能が使用できない場合があります。
 
 ## 次はどうする？
 
-* wiki](https://github.com/valinet/ExplorerPatcher/wiki)を参照することを強くお勧めします。そこには、このパッチャーが提供する、より高度なタスク、操作モード、 機能に関する情報があります。
+* [wiki](https://github.com/valinet/ExplorerPatcher/wiki)を参照することを強くお勧めします。そこには、このパッチャーが提供する、より高度なタスク、操作モード、 機能に関する情報があります。
 * このパッチャーが提供する機能のほとんどに精通する [ここ](https://github.com/valinet/ExplorerPatcher/wiki/All-features)。
 * アップデートを管理する方法と、新しいバージョンと新しいWindowsビルドから何を期待するかを学びます[ここ](https://github.com/valinet/ExplorerPatcher/wiki/Configure-updates)。
 * 質問がありますか？よくある質問](https://github.com/valinet/ExplorerPatcher/wiki/Frequently-asked-questions)を参照してください。
