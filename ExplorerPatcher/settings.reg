@@ -439,7 +439,7 @@ Windows Registry Editor Version 5.00
 ;https://github.com/valinet/ExplorerPatcher/wiki/Weather
 ;u 今すぐ天気予報を更新する
 ;update_weather
-;u Clear weather widget local data
+;u ウィジェット ローカルデータ リセット
 ;clear_data_weather
 
 
@@ -514,7 +514,7 @@ Windows Registry Editor Version 5.00
 ;;;EP_INSTALL_UPDATES
 ;y 最新リリースの変更点について読む 🡕
 ;https://github.com/valinet/ExplorerPatcher/blob/master/CHANGELOG.md
-;y Learn more 🡕
+;y 詳細はこちら 🡕
 ;https://github.com/valinet/ExplorerPatcher/wiki/Configure-updates
 
 
