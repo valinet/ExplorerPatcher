@@ -33,14 +33,14 @@ Windows 10では一部の機能が使用できない場合があります。
 * [wiki](https://github.com/valinet/ExplorerPatcher/wiki)を参照することを強くお勧めします。そこには、このパッチャーが提供する、より高度なタスク、操作モード、 機能に関する情報があります。
 * このパッチャーが提供する機能のほとんどに精通する [ここ](https://github.com/valinet/ExplorerPatcher/wiki/All-features)。
 * アップデートを管理する方法と、新しいバージョンと新しいWindowsビルドから何を期待するかを学びます[ここ](https://github.com/valinet/ExplorerPatcher/wiki/Configure-updates)。
-* 質問がありますか？よくある質問](https://github.com/valinet/ExplorerPatcher/wiki/Frequently-asked-questions)を参照してください。
-* いくつかの他の質問か。Discussions](https://github.com/valinet/ExplorerPatcher/discussions)でスレッドを開いてください。
-* バグを見つけた、問題がある、アプリケーションに問題がある？ここで](https://github.com/valinet/ExplorerPatcher/wiki/Reporting-problems)次に何をすべきかをお読みください。
+* 質問がありますか？[よくある質問](https://github.com/valinet/ExplorerPatcher/wiki/Frequently-asked-questions)を参照してください。
+* いくつかの他の質問か。[Discussions](https://github.com/valinet/ExplorerPatcher/discussions)でスレッドを開いてください。
+* バグを見つけた、問題がある、アプリケーションに問題がある？[ここで](https://github.com/valinet/ExplorerPatcher/wiki/Reporting-problems)次に何をすべきかをお読みください。
 * 私は非常にあなたが[ソースコード](https://github.com/valinet/ExplorerPatcher/tree/master)をチェックアウトし、それをいじることをお勧めします。私は新しい機能、拡張、修正をマージすることに前向きです。また、この分野で関心のあるトピックについて良い洞察が得られると思います。
 
 ## 既知の問題
 
-バグ」と表示されている項目で、まだ「オープン」になっていないものは、既知の問題であることを示しています。さらに「調査中」となっている項目については、活発な作業が行われています。特に「ヘルプ募集中」となっている項目は、ヘルプが必要です。問題](https://github.com/valinet/ExplorerPatcher/issues) のリストを参照してください。
+バグと表示されている項目で、まだ「オープン」になっていないものは、既知の問題であることを示しています。さらに「調査中」となっている項目については、活発な作業が行われています。特に「ヘルプ募集中」となっている項目は、ヘルプが必要です。[問題](https://github.com/valinet/ExplorerPatcher/issues) のリストを参照してください。
 
 ## アンインストール
 
@@ -50,7 +50,7 @@ Windows 10では一部の機能が使用できない場合があります。
 
 ## アップデート
 
-* プログラムはビルトインアップデート機能を備えています。「プロパティ」-「アップデート」で、最新のアップデートを設定、チェック、インストールできます。詳しくはこちら](https://github.com/valinet/ExplorerPatcher/wiki/Configure-updates)をご覧ください。
+* プログラムはビルトインアップデート機能を備えています。「プロパティ」-「アップデート」で、最新のアップデートを設定、チェック、インストールできます。[詳しくはこちら](https://github.com/valinet/ExplorerPatcher/wiki/Configure-updates)をご覧ください。
 * 最新版のセットアップファイルをダウンロードし、実行するだけです。
 
 ## 詳細情報
