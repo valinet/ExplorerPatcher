@@ -23,7 +23,7 @@ Windows Registry Editor Version 5.00
 ;x 0 左
 ;x 2 右
 ;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_TaskbarPosition"=dword:00000003
-;c 4 画面上のセカンダリータスクバー（複数可）の位置
+;c 4 画面上のセカンダリータスクバー(複数可)の位置
 ;x 3 下 (デフォルト)
 ;x 1 上
 ;x 0 左
@@ -33,7 +33,7 @@ Windows Registry Editor Version 5.00
 ;c 3 追加ボタンは
 ;x 0 非表示 (デフォルト)
 ;x 2 表示され、Cortanaを開く
-;x 1 S表示され、Widgetsを開く
+;x 1 表示され、Widgetsを開く
 "TaskbarDa"=dword:00000000
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Search]
 ;b 検索ボタンを表示する
@@ -58,7 +58,7 @@ Windows Registry Editor Version 5.00
 ;x 1 タスクバーが一杯のときに結合する
 ;x 2 絶対に組み合わせない (デフォルト)
 "TaskbarGlomLevel"=dword:00000002
-;c 3 Combine taskbar icons on secondary taskbar(s)
+;c 3 セカンダリータスクバーにタスクバーアイコンを配置する。
 ;x 0 常に組み合わせる
 ;x 1 タスクバーが一杯のときに結合する
 ;x 2 絶対に組み合わせない (デフォルト)
@@ -93,8 +93,8 @@ Windows Registry Editor Version 5.00
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;b コントロールセンターボタンの非表示 *
 "HideControlCenterButton"=dword:00000000
-;a 右クリックで「ネットワークとインターネットの設定を開く」を選択する。
-;c 3 ネットワークアイコンを押したら:
+;a ネットワークアイコンのポップアップメニュー
+;c 3 ネットワークアイコンを右クリックで「ネットワークとインターネットの設定を開く」を選択したら
 ;x 0 設定アプリの「ネットワーク」セクション (デフォルト)
 ;x 1 コントロールパネルの「ネットワークと共有センター
 ;x 2 コントロールパネルのネットワーク接続
@@ -259,7 +259,7 @@ Windows Registry Editor Version 5.00
 "PrimaryOnly"=dword:00000000
 ;b 現在のモニターからのウィンドウのみを表示する
 "PerMonitor"=dword:00000000
-;b 直近のウィンドウのみ表示（アプリケーションスイッチャーごと）
+;b 直近のウィンドウのみ表示(アプリケーションスイッチャーごと)
 "SwitcherIsPerApplication"=dword:00000000
 ;b %PLACEHOLDER_0001%
 "NoPerApplicationList"=dword:00000000
@@ -325,7 +325,7 @@ Windows Registry Editor Version 5.00
 ;x 150 150 pt
 ;x 140 140 pt
 "RowHeight"=dword:000000e6
-;c 10 最大幅（画面幅に対する割合）
+;c 10 最大幅(画面幅に対する割合)
 ;x 100 100 % (非推奨)
 ;x 95 95 %
 ;x 90 90 %
@@ -337,7 +337,7 @@ Windows Registry Editor Version 5.00
 ;x 60 60 %
 ;x 55 55 %
 "MaxWidth"=dword:00000050
-;c 10 最大高さ（画面の高さに対する割合）
+;c 10 最大高さ(画面の高さに対する割合)
 ;x 100 100 % (非推奨)
 ;x 95 95 %
 ;x 90 90 %
@@ -412,7 +412,7 @@ Windows Registry Editor Version 5.00
 ;x 1 華氏
 "WeatherTemperatureUnit"=dword:00000000
 ;w 所在地
-;都市または郵便番号を検索します。プログラムはGoogleで「/*あなたが入力したもの*/の天気」を検索します。デフォルト値（現在地）は空白のままにしておきます。
+;都市または郵便番号を検索します。プログラムはGoogleで「/*あなたが入力したもの*/の天気」を検索します。デフォルト値(現在地)は空白のままにしておきます。
 ;現在の場所 (デフォルト)
 "WeatherLocation"=""
 ;;;c 2 位置精度
@@ -420,7 +420,7 @@ Windows Registry Editor Version 5.00
 ;;;x 1 正確 (ジオロケーション)
 ;;"WeatherLocationType"=dword:00000000
 ;w 言語
-;天気データを表示させたい言語のショートコードを入力します。例えば、"en", "ro", "de", "fr "などで試してみてください。デフォルト値（Windows OSの言語）は空白にしてください。
+;天気データを表示させたい言語のショートコードを入力します。例えば、"en", "ro", "de", "fr "などで試してみてください。デフォルト値(Windows OSの言語)は空白にしてください。
 ;システム言語 (デフォルト)
 "WeatherLanguage"=""
 ;c 3 カラースキーム
@@ -460,7 +460,7 @@ Windows Registry Editor Version 5.00
 "PropertiesInWinX"=dword:00000000
 ;b Win+Xメニューのプログラム設定項目からショートカットキーを削除する。
 "NoMenuAccelerator"=dword:00000000
-;b Office ホットキー（Ctrl+Alt+Shift+Windowsキーの組み合わせ）を無効にする。 *
+;b Office ホットキー(Ctrl+Alt+Shift+Windowsキーの組み合わせ)を無効にする。 *
 "DisableOfficeHotkeys"=dword:00000000
 ;b アプリケーションウィンドウの角丸を無効にする
 ;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_DisableRoundedCorners"=dword:00000000
@@ -528,7 +528,7 @@ Windows Registry Editor Version 5.00
 "AllocConsole"=dword:00000000
 ;b メモリリークをダンプする
 "Memcheck"=dword:00000000
-;b タスクバーのダブルクリックで自動非表示を切り替え（タスクバーがロックされている時のみ有効） 
+;b タスクバーのダブルクリックで自動非表示を切り替え(タスクバーがロックされている時のみ有効) 
 "TaskbarAutohideOnDoubleClick"=dword:00000000
 [HKEY_CURRENT_USER\Control Panel\Desktop]
 ;b Windowsのビルド情報をデスクトップに表示 *
@@ -540,7 +540,7 @@ Windows Registry Editor Version 5.00
 ;d エクスプローラのビューでSysListView32を有効にする *
 @=""
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
-;b タスクバーのコンテキストメニューからプログラムの設定項目（「プロパティ」）を非表示にする
+;b タスクバーのコンテキストメニューからプログラムの設定項目(プロパティ)を非表示にする
 "NoPropertiesInContextMenu"=dword:00000000
 ;b シンボルダウンロードを有効にする *
 "EnableSymbolDownload"=dword:00000001
@@ -559,7 +559,7 @@ Windows Registry Editor Version 5.00
 ;x 10000 10 秒
 "ExplorerReadyDelay"=dword:00000000
 ;t 以下の設定は、Windows 10のタスクバーだけに適用されます。:                          
-;b ピン留めされたアイテムはクイック起動として機能します（ピン留めされたアイテムをアクティブなアプリと一緒にしないでください）。 *
+;b ピン留めされたアイテムはクイック起動として機能します(ピン留めされたアイテムをアクティブなアプリと一緒にしないでください)。 *
 "PinnedItemsActAsQuickLaunch"=dword:00000000
 ;b タスクバーにボタンラベルが表示されている場合、ピン留めされているアイテムの周りの余分な隙間をなくす *
 "RemoveExtraGapAroundPinnedItems"=dword:00000000
@@ -596,9 +596,9 @@ Windows Registry Editor Version 5.00
 
 
 ;f
-;u Restart File Explorer (*)
+;u ファイルエクスプローラを再起動する (*)
 ;restart
-;;u Restore default settings
+;;u 初期設定に戻す
 ;;reset
-;;u About ExplorerPatcher
+;;u ExplorerPatcherについて
 ;;about
