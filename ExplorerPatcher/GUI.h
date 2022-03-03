@@ -25,6 +25,8 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #include "fmemopen.h"
 #include "utility.h"
 #include "../ep_weather_host/ep_weather.h"
+#include <ExDisp.h>
+#include <ShlGuid.h>
 
 #define MAX_LINE_LENGTH 2000
 extern HMODULE hModule;

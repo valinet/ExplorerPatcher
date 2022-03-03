@@ -8152,25 +8152,49 @@ DWORD InjectBasicFunctions(BOOL bIsExplorer, BOOL bInstall)
         }
     }
 
+    DWORD dwPermitOldStartTileData = FALSE;
+    DWORD dwSize = sizeof(DWORD);
     if (bInstall)
     {
-        DWORD dwSize = sizeof(DWORD);
+        dwSize = sizeof(DWORD);
         RegGetValueW(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", L"Start_ShowClassicMode", RRF_RT_DWORD, NULL, &dwStartShowClassicMode, &dwSize);
+        dwSize = sizeof(DWORD);
+        RegGetValueW(HKEY_CURRENT_USER, L"Software\\ExplorerPatcher", L"PermitOldStartTileDataOneShot", RRF_RT_DWORD, NULL, &dwPermitOldStartTileData, &dwSize);
     }
-    if (dwStartShowClassicMode)
+    if (dwStartShowClassicMode && dwPermitOldStartTileData)
     {
         HANDLE hCombase = LoadLibraryW(L"combase.dll");
         if (hCombase)
         {
             if (bInstall)
             {
-                VnPatchIAT(hCombase, "api-ms-win-core-libraryloader-l1-2-0.dll", "LoadLibraryExW", patched_LoadLibraryExW);
-            }
-            else
-            {
-                VnPatchIAT(hCombase, "api-ms-win-core-libraryloader-l1-2-0.dll", "LoadLibraryExW", LoadLibraryExW);
-                FreeLibrary(hCombase);
-                FreeLibrary(hCombase);
+                WCHAR wszPath[MAX_PATH], wszExpectedPath[MAX_PATH];
+                ZeroMemory(wszPath, MAX_PATH);
+                ZeroMemory(wszExpectedPath, MAX_PATH);
+                DWORD dwLength = MAX_PATH;
+                HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, GetCurrentProcessId());
+                if (hProcess)
+                {
+                    QueryFullProcessImageNameW(hProcess, 0, wszPath, &dwLength);
+                    CloseHandle(hProcess);
+                }
+                if (GetWindowsDirectoryW(wszExpectedPath, MAX_PATH))
+                {
+                    wcscat_s(wszExpectedPath, MAX_PATH, L"\\explorer.exe");
+                    if (!_wcsicmp(wszPath, wszExpectedPath))
+                    {
+                        dwPermitOldStartTileData = FALSE;
+                        dwSize = sizeof(DWORD);
+                        RegDeleteKeyValueW(HKEY_CURRENT_USER, L"Software\\ExplorerPatcher", L"PermitOldStartTileDataOneShot");
+                        VnPatchIAT(hCombase, "api-ms-win-core-libraryloader-l1-2-0.dll", "LoadLibraryExW", patched_LoadLibraryExW);
+                    }
+                }
+                else
+                {
+                    VnPatchIAT(hCombase, "api-ms-win-core-libraryloader-l1-2-0.dll", "LoadLibraryExW", LoadLibraryExW);
+                    FreeLibrary(hCombase);
+                    FreeLibrary(hCombase);
+                }
             }
         }
     }
