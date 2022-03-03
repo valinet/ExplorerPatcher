@@ -159,64 +159,61 @@ void LVT_StartUI_EnableRoundedCorners(HWND hWnd, DWORD dwReceipe, DWORD dwPos, H
                 {
                     int location = LVT_LOC_NONE;
 
-                    if (dwReceipe)
+                    Windows_UI_Xaml_Thickness drc;
+                    drc.Left = 0.0; drc.Right = 0.0; drc.Top = 0.0; drc.Bottom = 0.0;
+                    Windows_UI_Xaml_IUIElement* pIUIElement = NULL;
+                    Windows_UI_Xaml_IFrameworkElement* pFrameworkElement = NULL;
+                    pStartSizingFrame->lpVtbl->QueryInterface(pStartSizingFrame, &IID_Windows_UI_Xaml_IUIElement, &pIUIElement);
+                    if (pIUIElement)
                     {
-                        Windows_UI_Xaml_Thickness drc;
-                        drc.Left = 0.0; drc.Right = 0.0; drc.Top = 0.0; drc.Bottom = 0.0;
-                        Windows_UI_Xaml_IUIElement* pIUIElement = NULL;
-                        Windows_UI_Xaml_IFrameworkElement* pFrameworkElement = NULL;
-                        pStartSizingFrame->lpVtbl->QueryInterface(pStartSizingFrame, &IID_Windows_UI_Xaml_IUIElement, &pIUIElement);
-                        if (pIUIElement)
+                        pCanvasStatics->lpVtbl->GetLeft(pCanvasStatics, pIUIElement, &(drc.Left));
+                        pCanvasStatics->lpVtbl->GetTop(pCanvasStatics, pIUIElement, &(drc.Top));
+                    }
+                    pStartSizingFrame->lpVtbl->QueryInterface(pStartSizingFrame, &IID_Windows_UI_Xaml_IFrameworkElement, &pFrameworkElement);
+                    if (pFrameworkElement)
+                    {
+                        pFrameworkElement->lpVtbl->get_ActualWidth(pFrameworkElement, &(drc.Right));
+                        pFrameworkElement->lpVtbl->get_ActualHeight(pFrameworkElement, &(drc.Bottom));
+                    }
+                    UINT dpi = GetDpiForWindow(hWnd);
+                    RECT rc;
+                    SetRect(&rc, drc.Left, drc.Top, drc.Right, drc.Bottom);
+                    SetRect(&rc, MulDiv(rc.left, dpi, 96), MulDiv(rc.top, dpi, 96), MulDiv(rc.right, dpi, 96), MulDiv(rc.bottom, dpi, 96));
+                    *rect = rc;
+                    HMONITOR hMonitor = MonitorFromWindow(hWnd, MONITOR_DEFAULTTOPRIMARY);
+                    MONITORINFO mi;
+                    ZeroMemory(&mi, sizeof(MONITORINFO));
+                    mi.cbSize = sizeof(MONITORINFO);
+                    GetMonitorInfoW(hMonitor, &mi);
+                    //swprintf(wszDebug, MAX_PATH, L"RECT %d %d %d %d - %d %d %d %d\n", rc.left, rc.top, rc.right, rc.bottom, 0, 0, mi.rcWork.right - mi.rcWork.left, mi.rcWork.bottom - mi.rcWork.top);
+                    //OutputDebugStringW(wszDebug);
+                    if (!(rc.left == 0 && rc.top == 0 && abs(mi.rcWork.right - mi.rcWork.left - rc.right) < 5 && abs(mi.rcWork.bottom - mi.rcWork.top - rc.bottom) < 5))
+                    {
+                        if (rc.left == 0)
                         {
-                            pCanvasStatics->lpVtbl->GetLeft(pCanvasStatics, pIUIElement, &(drc.Left));
-                            pCanvasStatics->lpVtbl->GetTop(pCanvasStatics, pIUIElement, &(drc.Top));
-                        }
-                        pStartSizingFrame->lpVtbl->QueryInterface(pStartSizingFrame, &IID_Windows_UI_Xaml_IFrameworkElement, &pFrameworkElement);
-                        if (pFrameworkElement)
-                        {
-                            pFrameworkElement->lpVtbl->get_ActualWidth(pFrameworkElement, &(drc.Right));
-                            pFrameworkElement->lpVtbl->get_ActualHeight(pFrameworkElement, &(drc.Bottom));
-                        }
-                        UINT dpi = GetDpiForWindow(hWnd);
-                        RECT rc;
-                        SetRect(&rc, drc.Left, drc.Top, drc.Right, drc.Bottom);
-                        SetRect(&rc, MulDiv(rc.left, dpi, 96), MulDiv(rc.top, dpi, 96), MulDiv(rc.right, dpi, 96), MulDiv(rc.bottom, dpi, 96));
-                        *rect = rc;
-                        HMONITOR hMonitor = MonitorFromWindow(hWnd, MONITOR_DEFAULTTOPRIMARY);
-                        MONITORINFO mi;
-                        ZeroMemory(&mi, sizeof(MONITORINFO));
-                        mi.cbSize = sizeof(MONITORINFO);
-                        GetMonitorInfoW(hMonitor, &mi);
-                        //swprintf(wszDebug, MAX_PATH, L"RECT %d %d %d %d - %d %d %d %d\n", rc.left, rc.top, rc.right, rc.bottom, 0, 0, mi.rcWork.right - mi.rcWork.left, mi.rcWork.bottom - mi.rcWork.top);
-                        //OutputDebugStringW(wszDebug);
-                        if (!(rc.left == 0 && rc.top == 0 && abs(mi.rcWork.right - mi.rcWork.left - rc.right) < 5 && abs(mi.rcWork.bottom - mi.rcWork.top - rc.bottom) < 5))
-                        {
-                            if (rc.left == 0)
+                            if (rc.top == 0)
                             {
-                                if (rc.top == 0)
-                                {
-                                    location = LVT_LOC_TOPLEFT;
-                                }
-                                else
-                                {
-                                    location = LVT_LOC_BOTTOMLEFT;
-                                }
+                                location = LVT_LOC_TOPLEFT;
                             }
                             else
                             {
-                                location = LVT_LOC_TOPRIGHT;
+                                location = LVT_LOC_BOTTOMLEFT;
                             }
                         }
-                        //swprintf_s(wszDebug, MAX_PATH, L"Location: %d\n", location);
-                        //OutputDebugStringW(wszDebug);
-                        if (pFrameworkElement)
+                        else
                         {
-                            pFrameworkElement->lpVtbl->Release(pFrameworkElement);
+                            location = LVT_LOC_TOPRIGHT;
                         }
-                        if (pIUIElement)
-                        {
-                            pIUIElement->lpVtbl->Release(pIUIElement);
-                        }
+                    }
+                    //swprintf_s(wszDebug, MAX_PATH, L"Location: %d\n", location);
+                    //OutputDebugStringW(wszDebug);
+                    if (pFrameworkElement)
+                    {
+                        pFrameworkElement->lpVtbl->Release(pFrameworkElement);
+                    }
+                    if (pIUIElement)
+                    {
+                        pIUIElement->lpVtbl->Release(pIUIElement);
                     }
                     Windows_UI_Xaml_IDependencyObject* pStartSizingFramePanel = LVT_FindChildByClassName(pStartSizingFrame, pVisualTreeHelperStatics, L"StartUI.StartSizingFramePanel", NULL);
                     if (pStartSizingFramePanel)
