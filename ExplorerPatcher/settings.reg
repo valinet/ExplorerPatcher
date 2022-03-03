@@ -47,12 +47,26 @@
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;b Automatically hide the taskbar
 ;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_AutoHideTaskbar"=dword:00000000
-;t The following settings only apply to the Windows 10 taskbar:                          
+;t The following settings only apply to the Windows 10 taskbar:                                
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;c 2 Start button style
 ;x 0 Windows 10 (default)
 ;x 1 Windows 11
 "OrbStyle"=dword:00000000
+;c 5 Primary taskbar alignment
+;x 0 At screen edge (default)
+;x 1 Centered
+;x 5 Centered, at screen edge when full
+;x 3 Centered with Start button
+;x 7 Centered with Start button, at screen edge when full
+"OldTaskbarAl"=dword:00000000
+;c 5 Secondary taskbar(s) alignment
+;x 0 At screen edge (default)
+;x 1 Centered
+;x 5 Centered, at screen edge when full
+;x 3 Centered with Start button
+;x 7 Centered with Start button, at screen edge when full
+"MMOldTaskbarAl"=dword:00000000
 ;c 3 Combine taskbar icons on primary taskbar
 ;x 0 Always combine
 ;x 1 Combine when taskbar is full
@@ -223,7 +237,7 @@
 "MakeAllAppsDefault"=dword:00000000
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
 ;c 2 Position on screen
-;x 0 Left
+;x 0 At screen edge
 ;x 1 Center (default)
 "TaskbarAl"=dword:00000001
 ;t The following settings only apply to the Windows 10 Start menu:

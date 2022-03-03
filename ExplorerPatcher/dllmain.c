@@ -125,6 +125,8 @@ DWORD bWasPinnedItemsActAsQuickLaunch = FALSE;
 DWORD bPinnedItemsActAsQuickLaunch = FALSE;
 DWORD bWasRemoveExtraGapAroundPinnedItems = FALSE;
 DWORD bRemoveExtraGapAroundPinnedItems = FALSE;
+DWORD dwOldTaskbarAl = 0b110;
+DWORD dwMMOldTaskbarAl = 0b110;
 int Code = 0;
 HRESULT InjectStartFromExplorer();
 void InvokeClockFlyout();
@@ -179,6 +181,7 @@ DWORD S_Icon_Dark_Widgets = 0;
 #include "ImmersiveFlyouts.h"
 #include "updates.h"
 DWORD dwUpdatePolicy = UPDATE_POLICY_DEFAULT;
+wchar_t* EP_TASKBAR_LENGTH_PROP_NAME = _T("ExplorerPatcher_") _T(EP_CLSID) _T("_Length");
 
 HRESULT WINAPI _DllRegisterServer();
 HRESULT WINAPI _DllUnregisterServer();
@@ -744,6 +747,19 @@ LRESULT CALLBACK EP_Service_Window_WndProc(
         InvokeClockFlyout();
         return 0;
     }
+    else if (uMsg == WM_TIMER && wParam == 1)
+    {
+        SendNotifyMessageW(HWND_BROADCAST, WM_WININICHANGE, 0, (LPARAM)L"ConvertibleSlateMode");
+        SetTimer(hWnd, 2, 1000, NULL);
+        KillTimer(hWnd, 1);
+        return 0;
+    }
+    else if (uMsg == WM_TIMER && wParam == 2)
+    {
+        SendNotifyMessageW(HWND_BROADCAST, WM_WININICHANGE, 0, (LPARAM)L"ConvertibleSlateMode");
+        KillTimer(hWnd, 2);
+        return 0;
+    }
 
     return DefWindowProcW(hWnd, uMsg, wParam, lParam);
 }
@@ -779,6 +795,10 @@ DWORD EP_ServiceWindowThread(DWORD unused)
             RegisterHotKey(hWnd, 1, MOD_WIN | MOD_NOREPEAT, 'C');
         }
         RegisterHotKey(hWnd, 2, MOD_WIN | MOD_ALT, 'D');
+        if (bOldTaskbar && (dwOldTaskbarAl || dwMMOldTaskbarAl))
+        {
+            SetTimer(hWnd, 1, 5000, NULL);
+        }
         MSG msg;
         BOOL bRet;
         while ((bRet = GetMessageW(&msg, NULL, 0, 0)) != 0)
@@ -5274,11 +5294,12 @@ DWORD WindowSwitcher(DWORD unused)
 
 
 #pragma region "Load Settings from registry"
-#define REFRESHUI_NONE    0b0000
-#define REFRESHUI_GLOM    0b0001
-#define REFRESHUI_ORB     0b0010
-#define REFRESHUI_PEOPLE  0b0100
-#define REFRESHUI_TASKBAR 0b1000
+#define REFRESHUI_NONE    0b00000
+#define REFRESHUI_GLOM    0b00001
+#define REFRESHUI_ORB     0b00010
+#define REFRESHUI_PEOPLE  0b00100
+#define REFRESHUI_TASKBAR 0b01000
+#define REFRESHUI_CENTER  0b10000
 void WINAPI LoadSettings(LPARAM lParam)
 {
     BOOL bIsExplorer = LOWORD(lParam);
@@ -5469,6 +5490,36 @@ void WINAPI LoadSettings(LPARAM lParam)
                 &dwTemp,
                 sizeof(DWORD)
             );
+        }
+        dwSize = sizeof(DWORD);
+        dwTemp = 0;
+        RegQueryValueExW(
+            hKey,
+            TEXT("OldTaskbarAl"),
+            0,
+            NULL,
+            &dwTemp,
+            &dwSize
+        );
+        if (dwTemp != dwOldTaskbarAl)
+        {
+            dwOldTaskbarAl = dwTemp;
+            dwRefreshUIMask |= REFRESHUI_CENTER;
+        }
+        dwSize = sizeof(DWORD);
+        dwTemp = 0;
+        RegQueryValueExW(
+            hKey,
+            TEXT("MMOldTaskbarAl"),
+            0,
+            NULL,
+            &dwTemp,
+            &dwSize
+        );
+        if (dwTemp != dwMMOldTaskbarAl)
+        {
+            dwMMOldTaskbarAl = dwTemp;
+            dwRefreshUIMask |= REFRESHUI_CENTER;
         }
         dwSize = sizeof(DWORD);
         RegQueryValueExW(
@@ -6096,6 +6147,10 @@ void WINAPI LoadSettings(LPARAM lParam)
         if (bOldTaskbar && (dwTemp != dwTaskbarGlomLevel))
         {
             dwRefreshUIMask = REFRESHUI_GLOM;
+            if (dwOldTaskbarAl)
+            {
+                dwRefreshUIMask = REFRESHUI_CENTER;
+            }
         }
         dwTaskbarGlomLevel = dwTemp;
         dwTemp = MMTASKBARGLOMLEVEL_DEFAULT;
@@ -6111,6 +6166,10 @@ void WINAPI LoadSettings(LPARAM lParam)
         if (bOldTaskbar && (dwTemp != dwMMTaskbarGlomLevel))
         {
             dwRefreshUIMask = REFRESHUI_GLOM;
+            if (dwMMOldTaskbarAl)
+            {
+                dwRefreshUIMask = REFRESHUI_CENTER;
+            }
         }
         dwMMTaskbarGlomLevel = dwTemp;
         RegCloseKey(hKey);
@@ -6340,6 +6399,15 @@ void WINAPI LoadSettings(LPARAM lParam)
             Sleep(100);
             RegSetKeyValueW(HKEY_CURRENT_USER, IsWindows11() ? TEXT(REGPATH) : L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", L"TaskbarGlomLevel", REG_DWORD, &dwGlomLevel, sizeof(DWORD));
             Explorer_RefreshUI(0);*/
+        }
+        if (dwRefreshUIMask & REFRESHUI_CENTER)
+        {
+#ifdef _WIN64
+            //SendNotifyMessageW(HWND_BROADCAST, WM_WININICHANGE, 0, (LPARAM)L"ConvertibleSlateMode");
+            ToggleTaskbarAutohide();
+            Sleep(1000);
+            ToggleTaskbarAutohide();
+#endif
         }
     }
 }
@@ -8938,15 +9006,15 @@ DWORD Inject(BOOL bIsExplorer)
 
 
 
-    // This notifies applications when the taskbar has recomputed its layout
-    /*if (SUCCEEDED(TaskbarCenter_Initialize(hExplorer)))
+
+    if (VnPatchDelayIAT(hExplorer, "ext-ms-win-rtcore-ntuser-window-ext-l1-1-0.dll", "GetClientRect", TaskbarCenter_GetClientRectHook))
     {
-        printf("Initialized taskbar update notification.\n");
+        printf("Initialized taskbar centering module.\n");
     }
     else
     {
-        printf("Failed to register taskbar update notification.\n");
-    }*/
+        printf("Failed to initialize taskbar centering module.\n");
+    }
 
 
 

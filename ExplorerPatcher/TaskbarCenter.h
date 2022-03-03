@@ -3,10 +3,9 @@
 #include <initguid.h>
 #include <Windows.h>
 #include <oleacc.h>
+#include <tchar.h>
 #pragma comment(lib, "Oleacc.lib")
 #include <valinet/hooking/iatpatch.h>
 
-#define TASKBAR_CHANGED_NOTIFICATION L"Global\\ExplorerPatcher_TaskbarChangedNotification_{B37553B7-425C-44F6-A04A-126849EE59CB}"
-
-HRESULT TaskbarCenter_Initialize(HMODULE);
+BOOL TaskbarCenter_GetClientRectHook(HWND hWnd, LPRECT lpRect);
 #endif
