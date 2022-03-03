@@ -2885,6 +2885,19 @@ BOOL sndvolsso_TrackPopupMenuExHook(
     }
     return b;
 }
+void PatchSndvolsso()
+{
+    HANDLE hSndvolsso = LoadLibraryW(L"sndvolsso.dll");
+    VnPatchIAT(hSndvolsso, "user32.dll", "TrackPopupMenuEx", sndvolsso_TrackPopupMenuExHook);
+    VnPatchIAT(hSndvolsso, "api-ms-win-core-registry-l1-1-0.dll", "RegGetValueW", sndvolsso_RegGetValueW);
+#ifdef USE_PRIVATE_INTERFACES
+    if (bSkinIcons)
+    {
+        VnPatchIAT(hSndvolsso, "user32.dll", "LoadImageW", SystemTray_LoadImageWHook);
+    }
+#endif
+    printf("Setup sndvolsso functions done\n");
+}
 long long stobject_TrackPopupMenuExElapsed = 0;
 BOOL stobject_TrackPopupMenuExHook(
     HMENU       hMenu,
@@ -4922,6 +4935,10 @@ DWORD SignalShellReady(DWORD wait)
     printf("Started \"Signal shell ready\" thread.\n");
     //UpdateStartMenuPositioning(MAKELPARAM(TRUE, TRUE));
 
+    RTL_OSVERSIONINFOW rovi;
+    ZeroMemory(&rovi, sizeof(RTL_OSVERSIONINFOW));
+    VnGetOSVersion(&rovi);
+
     while (!wait && TRUE)
     {
         HWND hShell_TrayWnd = FindWindowEx(
@@ -4966,6 +4983,10 @@ DWORD SignalShellReady(DWORD wait)
         SetEvent(hEvent);
     }
     SetEvent(hCanStartSws);
+    if (bOldTaskbar && rovi.dwBuildNumber >= 22567)
+    {
+        PatchSndvolsso();
+    }
 
     printf("Ended \"Signal shell ready\" thread.\n");
     return 0;
@@ -8238,6 +8259,10 @@ DWORD Inject(BOOL bIsExplorer)
     );
 #endif
 
+    RTL_OSVERSIONINFOW rovi;
+    ZeroMemory(&rovi, sizeof(RTL_OSVERSIONINFOW));
+    VnGetOSVersion(&rovi);
+
     int rv;
 
     if (bIsExplorer)
@@ -8768,16 +8793,10 @@ DWORD Inject(BOOL bIsExplorer)
 
 
 
-    HANDLE hSndvolsso = LoadLibraryW(L"sndvolsso.dll");
-    VnPatchIAT(hSndvolsso, "user32.dll", "TrackPopupMenuEx", sndvolsso_TrackPopupMenuExHook);
-    VnPatchIAT(hSndvolsso, "api-ms-win-core-registry-l1-1-0.dll", "RegGetValueW", sndvolsso_RegGetValueW);
-#ifdef USE_PRIVATE_INTERFACES
-    if (bSkinIcons)
+    if (rovi.dwBuildNumber < 22567)
     {
-        VnPatchIAT(hSndvolsso, "user32.dll", "LoadImageW", SystemTray_LoadImageWHook);
+        PatchSndvolsso();
     }
-#endif
-    printf("Setup sndvolsso functions done\n");
 
 
 
