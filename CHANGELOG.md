@@ -17,7 +17,7 @@ Please make sure you are connected to the Internet while installing, the applica
 * Implemented 2 features that help in replacing the functionality of the quick launch toolbar with pinned taskbar items. Read more about it [here](https://github.com/valinet/ExplorerPatcher/discussions/819) (.7).
 * Implemented option to have the Start menu open on a specific monitor (#821) (.8)
 * Options to center Windows 10 taskbar (.26)
-* Option to hide app list (.26)
+* Option to hide the app list in the Windows 10 Start menu (.26)
 * Option to center Windows 10 Start menu (.27)
 
 #### Feature enhancements
@@ -38,7 +38,7 @@ Please make sure you are connected to the Internet while installing, the applica
 * Added option to enable rounded corners on the Windows 10 Start menu (#937) (.22)
 * Support for full screen Windows 10 Start menu (.23)
 * Support for "Show more tiles" option in the Windows 10 Start menu (#933) (.24)
-* Implemented floating/docked rounded corners Windows 10 Start menu (.25)
+* Implemented floating/docked rounded corners in the Windows 10 Start menu (.25)
 
 #### Fixes
 
@@ -65,6 +65,10 @@ Please make sure you are connected to the Internet while installing, the applica
 * Fixed a bug that prevented the Windows 10 Start menu from working in full screen mode (.23)
 * Fixed a bug that presented the weather widget with a wrong height when using the taskbar vertically (.26)
 * Fixed a bug that prevented the taskbar from displaying UWP icons when using the Windows 10 Start menu on newer Windows builds (#973) (.27)
+* Fixed a bug in the Windows 10 Start menu that prevented the menu from displaying when not using rounded corners (.28)
+* Fixed a bug in the Windows 10 Start menu that prevented the menu from updating its position when the settings changed (.28)
+* Fixed a bug in the Start menu that prevented the app from receiving settings change notifications when some registry keys were not available on the system (.28)
+* Fixed a crash at startup in `explorer.exe` (in module `sndvolsso.dll`) on OS build 22567+ (.28)
 
 ## 22000.469.41
 
