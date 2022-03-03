@@ -9252,6 +9252,17 @@ void StartMenu_LoadSettings(BOOL bRestartIfChanged)
             exit(0);
         }
         dwStartShowClassicMode = dwVal;
+
+        dwSize = sizeof(DWORD);
+        RegQueryValueExW(
+            hKey,
+            TEXT("TaskbarAl"),
+            0,
+            NULL,
+            &dwTaskbarAl,
+            &dwSize
+        );
+
         RegCloseKey(hKey);
     }
 
@@ -9517,6 +9528,7 @@ LSTATUS StartUI_RegCloseKey(HKEY hKey)
 
 int StartUI_SetWindowRgn(HWND hWnd, HRGN hRgn, BOOL bRedraw)
 {
+    WCHAR wszDebug[MAX_PATH];
     BOOL bIsWindowVisible = FALSE;
     HRESULT hr = IsThreadCoreWindowVisible(&bIsWindowVisible);
     if (SUCCEEDED(hr))
@@ -9524,10 +9536,98 @@ int StartUI_SetWindowRgn(HWND hWnd, HRGN hRgn, BOOL bRedraw)
         ShowWindow(hWnd, bIsWindowVisible ? SW_SHOW : SW_HIDE);
         if (bIsWindowVisible && StartUI_EnableRoundedCornersApply)
         {
-            LVT_StartUI_EnableRoundedCorners(hWnd, StartUI_EnableRoundedCorners);
+            HWND hWndTaskbar = NULL;
+            if (InterlockedAdd(&dwTaskbarAl, 0))
+            {
+                HWND hWndTemp = NULL;
+
+                HWND hShellTray_Wnd = FindWindowExW(NULL, NULL, L"Shell_TrayWnd", NULL);
+                if (hShellTray_Wnd && !hWndTaskbar && MonitorFromWindow(hWnd, MONITOR_DEFAULTTOPRIMARY) == MonitorFromWindow(hShellTray_Wnd, MONITOR_DEFAULTTOPRIMARY) && dwOldTaskbarAl)
+                {
+                    hWndTaskbar = hShellTray_Wnd;
+                }
+
+                if (!hWndTaskbar)
+                {
+                    do
+                    {
+                        hWndTemp = FindWindowExW(
+                            NULL,
+                            hWndTemp,
+                            L"Shell_SecondaryTrayWnd",
+                            NULL
+                        );
+                        if (hWndTemp && !hWndTaskbar && MonitorFromWindow(hWnd, MONITOR_DEFAULTTOPRIMARY) == MonitorFromWindow(hWndTemp, MONITOR_DEFAULTTOPRIMARY) && dwMMOldTaskbarAl)
+                        {
+                            hWndTaskbar = hWndTemp;
+                            break;
+                        }
+                    } while (hWndTemp);
+                }
+
+                if(!hWndTaskbar)
+                {
+                    hWndTaskbar = hShellTray_Wnd;
+                }
+            }
+            MONITORINFO mi;
+            ZeroMemory(&mi, sizeof(MONITORINFO));
+            mi.cbSize = sizeof(MONITORINFO);
+            GetMonitorInfoW(MonitorFromWindow(hWndTaskbar ? hWndTaskbar : hWnd, MONITOR_DEFAULTTOPRIMARY), &mi);
+            DWORD dwPos = 0;
+            RECT rcC;
+            if (hWndTaskbar)
+            {
+                GetWindowRect(hWndTaskbar, &rcC);
+                rcC.left -= mi.rcMonitor.left;
+                rcC.right -= mi.rcMonitor.left;
+                rcC.top -= mi.rcMonitor.top;
+                rcC.bottom -= mi.rcMonitor.top;
+                if (rcC.left < 5 && rcC.top > 5)
+                {
+                    dwPos = TB_POS_BOTTOM;
+                }
+                else if (rcC.left < 5 && rcC.top < 5 && rcC.right > rcC.bottom)
+                {
+                    dwPos = TB_POS_TOP;
+                }
+                else if (rcC.left < 5 && rcC.top < 5 && rcC.right < rcC.bottom)
+                {
+                    dwPos = TB_POS_LEFT;
+                }
+                else if (rcC.left > 5 && rcC.top < 5)
+                {
+                    dwPos = TB_POS_RIGHT;
+                }
+            }
+            RECT rc;
+            LVT_StartUI_EnableRoundedCorners(hWnd, StartUI_EnableRoundedCorners, dwPos, hWndTaskbar, &rc);
             if (!StartUI_EnableRoundedCorners)
             {
                 StartUI_EnableRoundedCornersApply = FALSE;
+            }
+            if (hWndTaskbar)
+            {
+                if (rcC.left < 5 && rcC.top > 5)
+                {
+                    SetWindowPos(hWnd, NULL, mi.rcMonitor.left + (((mi.rcMonitor.right - mi.rcMonitor.left) - (rc.right - rc.left)) / 2), mi.rcMonitor.top, 0, 0, SWP_NOSIZE | SWP_FRAMECHANGED | SWP_ASYNCWINDOWPOS);
+                }
+                else if (rcC.left < 5 && rcC.top < 5 && rcC.right > rcC.bottom)
+                {
+                    SetWindowPos(hWnd, NULL, mi.rcMonitor.left + (((mi.rcMonitor.right - mi.rcMonitor.left) - (rc.right - rc.left)) / 2), mi.rcMonitor.top + (rcC.bottom - rcC.top), 0, 0, SWP_NOSIZE | SWP_FRAMECHANGED | SWP_ASYNCWINDOWPOS);
+                }
+                else if (rcC.left < 5 && rcC.top < 5 && rcC.right < rcC.bottom)
+                {
+                    SetWindowPos(hWnd, NULL, mi.rcMonitor.left + (rcC.right - rcC.left), mi.rcMonitor.top + (((mi.rcMonitor.bottom - mi.rcMonitor.top) - (rc.bottom - rc.top)) / 2), 0, 0, SWP_NOSIZE | SWP_FRAMECHANGED | SWP_ASYNCWINDOWPOS);
+                }
+                else if (rcC.left > 5 && rcC.top < 5)
+                {
+                    SetWindowPos(hWnd, NULL, mi.rcMonitor.left, mi.rcMonitor.top + (((mi.rcMonitor.bottom - mi.rcMonitor.top) - (rc.bottom - rc.top)) / 2), 0, 0, SWP_NOSIZE | SWP_FRAMECHANGED | SWP_ASYNCWINDOWPOS);
+                }
+            }
+            else
+            {
+                SetWindowPos(hWnd, NULL, mi.rcWork.left, mi.rcWork.top, 0, 0, SWP_NOSIZE | SWP_FRAMECHANGED | SWP_ASYNCWINDOWPOS);
             }
         }
     }

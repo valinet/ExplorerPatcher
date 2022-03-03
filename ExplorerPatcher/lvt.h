@@ -1022,7 +1022,7 @@ Windows_UI_Xaml_IDependencyObject* LVT_FindChildByClassName(Windows_UI_Xaml_IDep
 
 Windows_UI_Xaml_IDependencyObject* LVT_FindChildByName(Windows_UI_Xaml_IDependencyObject* pRootDependencyObject, Windows_UI_Xaml_IVisualTreeHelperStatics* pVisualTreeHelperStatics, LPCWSTR pwszRefName);
 
-void LVT_StartUI_EnableRoundedCorners(HWND, DWORD);
+void LVT_StartUI_EnableRoundedCorners(HWND, DWORD, DWORD, HWND, RECT*);
 
 void LVT_StartDocked_DisableRecommendedSection(HWND, BOOL);
 
