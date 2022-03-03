@@ -9000,6 +9000,7 @@ char VisibilityChangedEventArguments_GetVisible(__int64 a1)
     return v3[0];
 }
 
+DWORD Start_NoStartMenuMorePrograms = 0;
 DWORD Start_ForceStartSize = 0;
 DWORD StartMenu_maximumFreqApps = 6;
 DWORD StartMenu_ShowAllApps = 0;
@@ -9194,6 +9195,43 @@ void StartMenu_LoadSettings(BOOL bRestartIfChanged)
             exit(0);
         }
         Start_ForceStartSize = dwVal;
+
+        RegCloseKey(hKey);
+    }
+
+    RegCreateKeyExW(
+        HKEY_CURRENT_USER,
+        L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer",
+        0,
+        NULL,
+        REG_OPTION_NON_VOLATILE,
+        KEY_READ,
+        NULL,
+        &hKey,
+        NULL
+    );
+    if (hKey == NULL || hKey == INVALID_HANDLE_VALUE)
+    {
+        hKey = NULL;
+    }
+    if (hKey)
+    {
+        dwSize = sizeof(DWORD);
+        dwVal = 0;
+        RegQueryValueExW(
+            hKey,
+            TEXT("NoStartMenuMorePrograms"),
+            0,
+            NULL,
+            &dwVal,
+            &dwSize
+        );
+        if (bRestartIfChanged && dwVal != Start_NoStartMenuMorePrograms)
+        {
+            exit(0);
+        }
+        Start_NoStartMenuMorePrograms = dwVal;
+
         RegCloseKey(hKey);
     }
 }
@@ -9874,7 +9912,7 @@ void InjectStartMenu()
         VnPatchDelayIAT(hStartDocked, "ext-ms-win-ntuser-draw-l1-1-0.dll", "SetWindowRgn", StartDocked_SetWindowRgn);
     }
 
-    Setting* settings = calloc(5, sizeof(Setting));
+    Setting* settings = calloc(6, sizeof(Setting));
     settings[0].callback = NULL;
     settings[0].data = NULL;
     settings[0].hEvent = CreateEventW(NULL, FALSE, FALSE, NULL);
@@ -9905,10 +9943,16 @@ void InjectStartMenu()
     settings[4].hKey = NULL;
     wcscpy_s(settings[4].name, MAX_PATH, L"SOFTWARE\\Policies\\Microsoft\\Windows\\Explorer");
     settings[4].origin = HKEY_CURRENT_USER;
+    settings[5].callback = StartMenu_LoadSettings;
+    settings[5].data = TRUE;
+    settings[5].hEvent = NULL;
+    settings[5].hKey = NULL;
+    wcscpy_s(settings[5].name, MAX_PATH, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer");
+    settings[5].origin = HKEY_CURRENT_USER;
 
     SettingsChangeParameters* params = calloc(1, sizeof(SettingsChangeParameters));
     params->settings = settings;
-    params->size = 5;
+    params->size = 6;
     CreateThread(
         0,
         0,
