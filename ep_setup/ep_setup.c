@@ -1052,6 +1052,20 @@ int WINAPI wWinMain(
                 CloseHandle(sei.hProcess);
             }
         }
+        if (bOk && bInstall)
+        {
+            HKEY hKey = NULL;
+            RegCreateKeyExW(HKEY_CURRENT_USER, L"SOFTWARE\\Policies\\Microsoft\\Windows\\Explorer", 0, NULL, REG_OPTION_NON_VOLATILE, KEY_READ, NULL, &hKey, NULL);
+            if (hKey && hKey != INVALID_HANDLE_VALUE)
+            {
+                RegCloseKey(hKey);
+            }
+            RegCreateKeyExW(HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer", 0, NULL, REG_OPTION_NON_VOLATILE, KEY_READ, NULL, &hKey, NULL);
+            if (hKey && hKey != INVALID_HANDLE_VALUE)
+            {
+                RegCloseKey(hKey);
+            }
+        }
         if (!bInstall)
         {
             if (bOk)
