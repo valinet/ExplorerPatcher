@@ -9254,14 +9254,19 @@ void StartMenu_LoadSettings(BOOL bRestartIfChanged)
         dwStartShowClassicMode = dwVal;
 
         dwSize = sizeof(DWORD);
+        dwVal = 0;
         RegQueryValueExW(
             hKey,
             TEXT("TaskbarAl"),
             0,
             NULL,
-            &dwTaskbarAl,
+            &dwVal,
             &dwSize
         );
+        if (InterlockedExchange64(&dwTaskbarAl, dwVal) != dwVal)
+        {
+            StartUI_EnableRoundedCornersApply = TRUE;
+        }
 
         RegCloseKey(hKey);
     }
@@ -9534,10 +9539,11 @@ int StartUI_SetWindowRgn(HWND hWnd, HRGN hRgn, BOOL bRedraw)
     if (SUCCEEDED(hr))
     {
         ShowWindow(hWnd, bIsWindowVisible ? SW_SHOW : SW_HIDE);
-        if (bIsWindowVisible && StartUI_EnableRoundedCornersApply)
+        DWORD TaskbarAl = InterlockedAdd(&dwTaskbarAl, 0);
+        if (bIsWindowVisible && (!TaskbarAl ? StartUI_EnableRoundedCornersApply : 1))
         {
             HWND hWndTaskbar = NULL;
-            if (InterlockedAdd(&dwTaskbarAl, 0))
+            if (TaskbarAl)
             {
                 HWND hWndTemp = NULL;
 
