@@ -4099,48 +4099,51 @@ SIZE WINAPI PeopleButton_CalculateMinimumSizeHook(void* _this, SIZE* pSz)
 
 int PeopleBand_MulDivHook(int nNumber, int nNumerator, int nDenominator)
 {
-    //printf("[MulDivHook] %d %d %d\n", nNumber, nNumerator, nDenominator);
-    AcquireSRWLockShared(&lock_epw);
-    if (epw)
+    if (nNumber != 46) // 46 = vertical taskbar, 48 = horizontal taskbar
     {
-        if (bWeatherFixedSize == 1)
+        //printf("[MulDivHook] %d %d %d\n", nNumber, nNumerator, nDenominator);
+        AcquireSRWLockShared(&lock_epw);
+        if (epw)
         {
-            int mul = 1;
-            switch (dwWeatherViewMode)
+            if (bWeatherFixedSize == 1)
             {
-            case EP_WEATHER_VIEW_ICONTEXT:
-                mul = 4;
-                break;
-            case EP_WEATHER_VIEW_TEXTONLY:
-                mul = 3;
-                break;
-            case EP_WEATHER_VIEW_ICONTEMP:
-                mul = 2;
-                break;
-            case EP_WEATHER_VIEW_ICONONLY:
-            case EP_WEATHER_VIEW_TEMPONLY:
-                mul = 1;
-                break;
-            }
-            ReleaseSRWLockShared(&lock_epw);
-            return MulDiv(nNumber * mul, nNumerator, nDenominator);
-        }
-        else
-        {
-            if (prev_total_h)
-            {
+                int mul = 1;
+                switch (dwWeatherViewMode)
+                {
+                case EP_WEATHER_VIEW_ICONTEXT:
+                    mul = 4;
+                    break;
+                case EP_WEATHER_VIEW_TEXTONLY:
+                    mul = 3;
+                    break;
+                case EP_WEATHER_VIEW_ICONTEMP:
+                    mul = 2;
+                    break;
+                case EP_WEATHER_VIEW_ICONONLY:
+                case EP_WEATHER_VIEW_TEMPONLY:
+                    mul = 1;
+                    break;
+                }
                 ReleaseSRWLockShared(&lock_epw);
-                return prev_total_h;
+                return MulDiv(nNumber * mul, nNumerator, nDenominator);
             }
             else
             {
-                prev_total_h = MulDiv(nNumber, nNumerator, nDenominator);
-                ReleaseSRWLockShared(&lock_epw);
-                return prev_total_h;
+                if (prev_total_h)
+                {
+                    ReleaseSRWLockShared(&lock_epw);
+                    return prev_total_h;
+                }
+                else
+                {
+                    prev_total_h = MulDiv(nNumber, nNumerator, nDenominator);
+                    ReleaseSRWLockShared(&lock_epw);
+                    return prev_total_h;
+                }
             }
         }
+        ReleaseSRWLockShared(&lock_epw);
     }
-    ReleaseSRWLockShared(&lock_epw);
     return MulDiv(nNumber, nNumerator, nDenominator);
 }
 
