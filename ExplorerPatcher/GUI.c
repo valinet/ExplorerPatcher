@@ -14,6 +14,40 @@ static BOOL(*ShouldAppsUseDarkMode)() = NULL;
 DWORD dwTaskbarPosition = 3;
 BOOL gui_bOldTaskbar = TRUE;
 
+LSTATUS SetPolicy(HKEY hKey, LPCWSTR wszPolicyPath, LPCWSTR wszPolicyName, DWORD dwVal)
+{
+    WCHAR wszPath[MAX_PATH];
+    GetSystemDirectoryW(wszPath, MAX_PATH);
+    wcscat_s(wszPath, MAX_PATH, L"\\reg.exe");
+    WCHAR wszArguments[MAX_PATH];
+    if (dwVal)
+    {
+        swprintf_s(wszArguments, MAX_PATH, L"ADD \"%s\\%s\" /V %s /T REG_DWORD /D %d /F", (hKey == HKEY_LOCAL_MACHINE ? L"HKLM" : L"HKCU"), wszPolicyPath, wszPolicyName, dwVal);
+    }
+    else
+    {
+        swprintf_s(wszArguments, MAX_PATH, L"DELETE \"%s\\%s\" /V %s /F", (hKey == HKEY_LOCAL_MACHINE ? L"HKLM" : L"HKCU"), wszPolicyPath, wszPolicyName);
+    }
+    SHELLEXECUTEINFO ShExecInfo = { 0 };
+    ShExecInfo.cbSize = sizeof(SHELLEXECUTEINFO);
+    ShExecInfo.fMask = SEE_MASK_NOCLOSEPROCESS;
+    ShExecInfo.hwnd = NULL;
+    ShExecInfo.lpVerb = L"runas";
+    ShExecInfo.lpFile = wszPath;
+    ShExecInfo.lpParameters = wszArguments;
+    ShExecInfo.lpDirectory = NULL;
+    ShExecInfo.nShow = SW_HIDE;
+    ShExecInfo.hInstApp = NULL;
+    if (ShellExecuteExW(&ShExecInfo) && ShExecInfo.hProcess)
+    {
+        WaitForSingleObject(ShExecInfo.hProcess, INFINITE);
+        DWORD dwExitCode = 0;
+        GetExitCodeProcess(ShExecInfo.hProcess, &dwExitCode);
+        CloseHandle(ShExecInfo.hProcess);
+    }
+    return ERROR_SUCCESS;
+}
+
 int GUI_DeleteWeatherFolder()
 {
     WCHAR wszWorkFolder[MAX_PATH + 1];
@@ -420,36 +454,11 @@ LSTATUS GUI_Internal_RegSetValueExW(
     }
     else if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_ForceStartSize"))
     {
-        WCHAR wszPath[MAX_PATH];
-        GetSystemDirectoryW(wszPath, MAX_PATH);
-        wcscat_s(wszPath, MAX_PATH, L"\\reg.exe");
-        WCHAR wszArguments[MAX_PATH];
-        if (*(DWORD*)lpData)
-        {
-            swprintf_s(wszArguments, MAX_PATH, L"ADD \"HKCU\\Software\\Policies\\Microsoft\\Windows\\Explorer\" /V ForceStartSize /T REG_DWORD /D %d /F", *(DWORD*)lpData);
-        }
-        else
-        {
-            swprintf_s(wszArguments, MAX_PATH, L"DELETE \"HKCU\\Software\\Policies\\Microsoft\\Windows\\Explorer\" /V ForceStartSize /F");
-        }
-        SHELLEXECUTEINFO ShExecInfo = { 0 };
-        ShExecInfo.cbSize = sizeof(SHELLEXECUTEINFO);
-        ShExecInfo.fMask = SEE_MASK_NOCLOSEPROCESS;
-        ShExecInfo.hwnd = NULL;
-        ShExecInfo.lpVerb = L"runas";
-        ShExecInfo.lpFile = wszPath;
-        ShExecInfo.lpParameters = wszArguments;
-        ShExecInfo.lpDirectory = NULL;
-        ShExecInfo.nShow = SW_HIDE;
-        ShExecInfo.hInstApp = NULL;
-        if (ShellExecuteExW(&ShExecInfo) && ShExecInfo.hProcess)
-        {
-            WaitForSingleObject(ShExecInfo.hProcess, INFINITE);
-            DWORD dwExitCode = 0;
-            GetExitCodeProcess(ShExecInfo.hProcess, &dwExitCode);
-            CloseHandle(ShExecInfo.hProcess);
-        }
-        return ERROR_SUCCESS;
+        return SetPolicy(HKEY_CURRENT_USER, L"SOFTWARE\\Policies\\Microsoft\\Windows\\Explorer", L"ForceStartSize", *(DWORD*)lpData);
+    }
+    else if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_NoStartMenuMorePrograms"))
+    {
+        return SetPolicy(HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer", L"NoStartMenuMorePrograms", *(DWORD*)lpData);
     }
     else if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_DisableRoundedCorners"))
     {
@@ -657,6 +666,10 @@ LSTATUS GUI_Internal_RegQueryValueExW(
     else if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_ForceStartSize"))
     {
         return RegGetValueW(HKEY_CURRENT_USER, L"SOFTWARE\\Policies\\Microsoft\\Windows\\Explorer", L"ForceStartSize", RRF_RT_DWORD, NULL, lpData, lpcbData);
+    }
+    else if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_NoStartMenuMorePrograms"))
+    {
+        return RegGetValueW(HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer", L"NoStartMenuMorePrograms", RRF_RT_DWORD, NULL, lpData, lpcbData);
     }
     else if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_DisableRoundedCorners"))
     {

@@ -47,16 +47,30 @@ Windows Registry Editor Version 5.00
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;b タスクバーを自動で隠す
 ;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_AutoHideTaskbar"=dword:00000000
-;t 以下の設定は、Windows 10のタスクバーだけに適用されます。:                          
+;t The following settings only apply to the Windows 10 taskbar:                                
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;c 2 スタートボタンスタイル
 ;x 0 Windows 10 (デフォルト)
 ;x 1 Windows 11
 "OrbStyle"=dword:00000000
-;c 3 プライマリタスクバーにタスクバーアイコンをまとめる
-;x 0 常に組み合わせる
-;x 1 タスクバーが一杯のときに結合する
-;x 2 絶対に組み合わせない (デフォルト)
+;c 5 Primary taskbar alignment
+;x 0 At screen edge (default)
+;x 1 Centered
+;x 5 Centered, at screen edge when full
+;x 3 Centered with Start button
+;x 7 Centered with Start button, at screen edge when full
+"OldTaskbarAl"=dword:00000000
+;c 5 Secondary taskbar(s) alignment
+;x 0 At screen edge (default)
+;x 1 Centered
+;x 5 Centered, at screen edge when full
+;x 3 Centered with Start button
+;x 7 Centered with Start button, at screen edge when full
+"MMOldTaskbarAl"=dword:00000000
+;c 3 Combine taskbar icons on primary taskbar
+;x 0 Always combine
+;x 1 Combine when taskbar is full
+;x 2 Never combine (default)
 "TaskbarGlomLevel"=dword:00000002
 ;c 3 セカンダリータスクバーにタスクバーアイコンを配置する。
 ;x 0 常に組み合わせる
@@ -222,9 +236,9 @@ Windows Registry Editor Version 5.00
 ;b デフォルトで「すべてのアプリ」で「スタート」を開く
 "MakeAllAppsDefault"=dword:00000000
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
-;c 2 画面上の位置
-;x 0 左
-;x 1 中央 (デフォルト)
+;c 2 Position on screen
+;x 0 At screen edge
+;x 1 Center (default)
 "TaskbarAl"=dword:00000001
 ;t 以下の設定は、Windows 10のスタートメニューにのみ適用されます。:
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
@@ -241,6 +255,11 @@ Windows Registry Editor Version 5.00
 ;x 1 スタートメニュー
 ;x 2 フルスクリーン起動
 ;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_ForceStartSize"=dword:00000000
+;c 3 App list
+;x 0 Display
+;x 3 Hide
+;x 1 Disable 
+;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_NoStartMenuMorePrograms"=dword:00000000
 
 
 ;T ウインドウスイッチャー

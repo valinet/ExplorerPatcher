@@ -125,6 +125,8 @@ DWORD bWasPinnedItemsActAsQuickLaunch = FALSE;
 DWORD bPinnedItemsActAsQuickLaunch = FALSE;
 DWORD bWasRemoveExtraGapAroundPinnedItems = FALSE;
 DWORD bRemoveExtraGapAroundPinnedItems = FALSE;
+DWORD dwOldTaskbarAl = 0b110;
+DWORD dwMMOldTaskbarAl = 0b110;
 int Code = 0;
 HRESULT InjectStartFromExplorer();
 void InvokeClockFlyout();
@@ -179,6 +181,7 @@ DWORD S_Icon_Dark_Widgets = 0;
 #include "ImmersiveFlyouts.h"
 #include "updates.h"
 DWORD dwUpdatePolicy = UPDATE_POLICY_DEFAULT;
+wchar_t* EP_TASKBAR_LENGTH_PROP_NAME = _T("ExplorerPatcher_") _T(EP_CLSID) _T("_Length");
 
 HRESULT WINAPI _DllRegisterServer();
 HRESULT WINAPI _DllUnregisterServer();
@@ -744,6 +747,19 @@ LRESULT CALLBACK EP_Service_Window_WndProc(
         InvokeClockFlyout();
         return 0;
     }
+    else if (uMsg == WM_TIMER && wParam == 1)
+    {
+        SendNotifyMessageW(HWND_BROADCAST, WM_WININICHANGE, 0, (LPARAM)L"ConvertibleSlateMode");
+        SetTimer(hWnd, 2, 1000, NULL);
+        KillTimer(hWnd, 1);
+        return 0;
+    }
+    else if (uMsg == WM_TIMER && wParam == 2)
+    {
+        SendNotifyMessageW(HWND_BROADCAST, WM_WININICHANGE, 0, (LPARAM)L"ConvertibleSlateMode");
+        KillTimer(hWnd, 2);
+        return 0;
+    }
 
     return DefWindowProcW(hWnd, uMsg, wParam, lParam);
 }
@@ -779,6 +795,10 @@ DWORD EP_ServiceWindowThread(DWORD unused)
             RegisterHotKey(hWnd, 1, MOD_WIN | MOD_NOREPEAT, 'C');
         }
         RegisterHotKey(hWnd, 2, MOD_WIN | MOD_ALT, 'D');
+        if (bOldTaskbar && (dwOldTaskbarAl || dwMMOldTaskbarAl))
+        {
+            SetTimer(hWnd, 1, 5000, NULL);
+        }
         MSG msg;
         BOOL bRet;
         while ((bRet = GetMessageW(&msg, NULL, 0, 0)) != 0)
@@ -4099,48 +4119,51 @@ SIZE WINAPI PeopleButton_CalculateMinimumSizeHook(void* _this, SIZE* pSz)
 
 int PeopleBand_MulDivHook(int nNumber, int nNumerator, int nDenominator)
 {
-    //printf("[MulDivHook] %d %d %d\n", nNumber, nNumerator, nDenominator);
-    AcquireSRWLockShared(&lock_epw);
-    if (epw)
+    if (nNumber != 46) // 46 = vertical taskbar, 48 = horizontal taskbar
     {
-        if (bWeatherFixedSize == 1)
+        //printf("[MulDivHook] %d %d %d\n", nNumber, nNumerator, nDenominator);
+        AcquireSRWLockShared(&lock_epw);
+        if (epw)
         {
-            int mul = 1;
-            switch (dwWeatherViewMode)
+            if (bWeatherFixedSize == 1)
             {
-            case EP_WEATHER_VIEW_ICONTEXT:
-                mul = 4;
-                break;
-            case EP_WEATHER_VIEW_TEXTONLY:
-                mul = 3;
-                break;
-            case EP_WEATHER_VIEW_ICONTEMP:
-                mul = 2;
-                break;
-            case EP_WEATHER_VIEW_ICONONLY:
-            case EP_WEATHER_VIEW_TEMPONLY:
-                mul = 1;
-                break;
-            }
-            ReleaseSRWLockShared(&lock_epw);
-            return MulDiv(nNumber * mul, nNumerator, nDenominator);
-        }
-        else
-        {
-            if (prev_total_h)
-            {
+                int mul = 1;
+                switch (dwWeatherViewMode)
+                {
+                case EP_WEATHER_VIEW_ICONTEXT:
+                    mul = 4;
+                    break;
+                case EP_WEATHER_VIEW_TEXTONLY:
+                    mul = 3;
+                    break;
+                case EP_WEATHER_VIEW_ICONTEMP:
+                    mul = 2;
+                    break;
+                case EP_WEATHER_VIEW_ICONONLY:
+                case EP_WEATHER_VIEW_TEMPONLY:
+                    mul = 1;
+                    break;
+                }
                 ReleaseSRWLockShared(&lock_epw);
-                return prev_total_h;
+                return MulDiv(nNumber * mul, nNumerator, nDenominator);
             }
             else
             {
-                prev_total_h = MulDiv(nNumber, nNumerator, nDenominator);
-                ReleaseSRWLockShared(&lock_epw);
-                return prev_total_h;
+                if (prev_total_h)
+                {
+                    ReleaseSRWLockShared(&lock_epw);
+                    return prev_total_h;
+                }
+                else
+                {
+                    prev_total_h = MulDiv(nNumber, nNumerator, nDenominator);
+                    ReleaseSRWLockShared(&lock_epw);
+                    return prev_total_h;
+                }
             }
         }
+        ReleaseSRWLockShared(&lock_epw);
     }
-    ReleaseSRWLockShared(&lock_epw);
     return MulDiv(nNumber, nNumerator, nDenominator);
 }
 
@@ -5271,11 +5294,12 @@ DWORD WindowSwitcher(DWORD unused)
 
 
 #pragma region "Load Settings from registry"
-#define REFRESHUI_NONE    0b0000
-#define REFRESHUI_GLOM    0b0001
-#define REFRESHUI_ORB     0b0010
-#define REFRESHUI_PEOPLE  0b0100
-#define REFRESHUI_TASKBAR 0b1000
+#define REFRESHUI_NONE    0b00000
+#define REFRESHUI_GLOM    0b00001
+#define REFRESHUI_ORB     0b00010
+#define REFRESHUI_PEOPLE  0b00100
+#define REFRESHUI_TASKBAR 0b01000
+#define REFRESHUI_CENTER  0b10000
 void WINAPI LoadSettings(LPARAM lParam)
 {
     BOOL bIsExplorer = LOWORD(lParam);
@@ -5466,6 +5490,36 @@ void WINAPI LoadSettings(LPARAM lParam)
                 &dwTemp,
                 sizeof(DWORD)
             );
+        }
+        dwSize = sizeof(DWORD);
+        dwTemp = 0;
+        RegQueryValueExW(
+            hKey,
+            TEXT("OldTaskbarAl"),
+            0,
+            NULL,
+            &dwTemp,
+            &dwSize
+        );
+        if (dwTemp != dwOldTaskbarAl)
+        {
+            dwOldTaskbarAl = dwTemp;
+            dwRefreshUIMask |= REFRESHUI_CENTER;
+        }
+        dwSize = sizeof(DWORD);
+        dwTemp = 0;
+        RegQueryValueExW(
+            hKey,
+            TEXT("MMOldTaskbarAl"),
+            0,
+            NULL,
+            &dwTemp,
+            &dwSize
+        );
+        if (dwTemp != dwMMOldTaskbarAl)
+        {
+            dwMMOldTaskbarAl = dwTemp;
+            dwRefreshUIMask |= REFRESHUI_CENTER;
         }
         dwSize = sizeof(DWORD);
         RegQueryValueExW(
@@ -6093,6 +6147,10 @@ void WINAPI LoadSettings(LPARAM lParam)
         if (bOldTaskbar && (dwTemp != dwTaskbarGlomLevel))
         {
             dwRefreshUIMask = REFRESHUI_GLOM;
+            if (dwOldTaskbarAl)
+            {
+                dwRefreshUIMask = REFRESHUI_CENTER;
+            }
         }
         dwTaskbarGlomLevel = dwTemp;
         dwTemp = MMTASKBARGLOMLEVEL_DEFAULT;
@@ -6108,6 +6166,10 @@ void WINAPI LoadSettings(LPARAM lParam)
         if (bOldTaskbar && (dwTemp != dwMMTaskbarGlomLevel))
         {
             dwRefreshUIMask = REFRESHUI_GLOM;
+            if (dwMMOldTaskbarAl)
+            {
+                dwRefreshUIMask = REFRESHUI_CENTER;
+            }
         }
         dwMMTaskbarGlomLevel = dwTemp;
         RegCloseKey(hKey);
@@ -6337,6 +6399,15 @@ void WINAPI LoadSettings(LPARAM lParam)
             Sleep(100);
             RegSetKeyValueW(HKEY_CURRENT_USER, IsWindows11() ? TEXT(REGPATH) : L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", L"TaskbarGlomLevel", REG_DWORD, &dwGlomLevel, sizeof(DWORD));
             Explorer_RefreshUI(0);*/
+        }
+        if (dwRefreshUIMask & REFRESHUI_CENTER)
+        {
+#ifdef _WIN64
+            //SendNotifyMessageW(HWND_BROADCAST, WM_WININICHANGE, 0, (LPARAM)L"ConvertibleSlateMode");
+            ToggleTaskbarAutohide();
+            Sleep(1000);
+            ToggleTaskbarAutohide();
+#endif
         }
     }
 }
@@ -8935,15 +9006,15 @@ DWORD Inject(BOOL bIsExplorer)
 
 
 
-    // This notifies applications when the taskbar has recomputed its layout
-    /*if (SUCCEEDED(TaskbarCenter_Initialize(hExplorer)))
+
+    if (VnPatchDelayIAT(hExplorer, "ext-ms-win-rtcore-ntuser-window-ext-l1-1-0.dll", "GetClientRect", TaskbarCenter_GetClientRectHook))
     {
-        printf("Initialized taskbar update notification.\n");
+        printf("Initialized taskbar centering module.\n");
     }
     else
     {
-        printf("Failed to register taskbar update notification.\n");
-    }*/
+        printf("Failed to initialize taskbar centering module.\n");
+    }
 
 
 
@@ -8997,6 +9068,7 @@ char VisibilityChangedEventArguments_GetVisible(__int64 a1)
     return v3[0];
 }
 
+DWORD Start_NoStartMenuMorePrograms = 0;
 DWORD Start_ForceStartSize = 0;
 DWORD StartMenu_maximumFreqApps = 6;
 DWORD StartMenu_ShowAllApps = 0;
@@ -9191,6 +9263,43 @@ void StartMenu_LoadSettings(BOOL bRestartIfChanged)
             exit(0);
         }
         Start_ForceStartSize = dwVal;
+
+        RegCloseKey(hKey);
+    }
+
+    RegCreateKeyExW(
+        HKEY_CURRENT_USER,
+        L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer",
+        0,
+        NULL,
+        REG_OPTION_NON_VOLATILE,
+        KEY_READ,
+        NULL,
+        &hKey,
+        NULL
+    );
+    if (hKey == NULL || hKey == INVALID_HANDLE_VALUE)
+    {
+        hKey = NULL;
+    }
+    if (hKey)
+    {
+        dwSize = sizeof(DWORD);
+        dwVal = 0;
+        RegQueryValueExW(
+            hKey,
+            TEXT("NoStartMenuMorePrograms"),
+            0,
+            NULL,
+            &dwVal,
+            &dwSize
+        );
+        if (bRestartIfChanged && dwVal != Start_NoStartMenuMorePrograms)
+        {
+            exit(0);
+        }
+        Start_NoStartMenuMorePrograms = dwVal;
+
         RegCloseKey(hKey);
     }
 }
@@ -9871,7 +9980,7 @@ void InjectStartMenu()
         VnPatchDelayIAT(hStartDocked, "ext-ms-win-ntuser-draw-l1-1-0.dll", "SetWindowRgn", StartDocked_SetWindowRgn);
     }
 
-    Setting* settings = calloc(5, sizeof(Setting));
+    Setting* settings = calloc(6, sizeof(Setting));
     settings[0].callback = NULL;
     settings[0].data = NULL;
     settings[0].hEvent = CreateEventW(NULL, FALSE, FALSE, NULL);
@@ -9902,10 +10011,16 @@ void InjectStartMenu()
     settings[4].hKey = NULL;
     wcscpy_s(settings[4].name, MAX_PATH, L"SOFTWARE\\Policies\\Microsoft\\Windows\\Explorer");
     settings[4].origin = HKEY_CURRENT_USER;
+    settings[5].callback = StartMenu_LoadSettings;
+    settings[5].data = TRUE;
+    settings[5].hEvent = NULL;
+    settings[5].hKey = NULL;
+    wcscpy_s(settings[5].name, MAX_PATH, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer");
+    settings[5].origin = HKEY_CURRENT_USER;
 
     SettingsChangeParameters* params = calloc(1, sizeof(SettingsChangeParameters));
     params->settings = settings;
-    params->size = 5;
+    params->size = 6;
     CreateThread(
         0,
         0,
