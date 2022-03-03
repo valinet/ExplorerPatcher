@@ -16,6 +16,7 @@ Please make sure you are connected to the Internet while installing, the applica
 * Implemented Weather widget for the classic taskbar, similar to what is available in the more recent updates to Windows 10. Read more about it [here](https://github.com/valinet/ExplorerPatcher/wiki/Weather).
 * Implemented 2 features that help in replacing the functionality of the quick launch toolbar with pinned taskbar items. Read more about it [here](https://github.com/valinet/ExplorerPatcher/discussions/819) (.7).
 * Implemented option to have the Start menu open on a specific monitor (#821) (.8)
+* Options to center Windows 10 taskbar (.26)
 
 #### Feature enhancements
 
@@ -60,6 +61,7 @@ Please make sure you are connected to the Internet while installing, the applica
 * Fixed program windows in older 22000-based OS builds (.21)
 * Fixed a bug that prevented correct displaying of the weather widget contents when using a right-to-left language (#954) (.22)
 * Fixed a bug that prevented the Windows 10 Start menu from working in full screen mode (.23)
+* Fixed a bug that presented the weather widget with a wrong height when using the taskbar vertically (.26)
 
 ## 22000.469.41
 
