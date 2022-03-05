@@ -154,13 +154,17 @@
 ;e this utility as shell extension using the option below.
 ;y Learn more 🡕
 ;https://github.com/valinet/ExplorerPatcher/wiki/Using-ExplorerPatcher-as-shell-extension
+[HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;q
+;b Register as shell extension
+;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_RegisterAsShellExtension"=dword:00000000
 [-HKEY_CURRENT_USER\Software\Classes\CLSID\{d93ed569-3b3e-4bff-8355-3c44f6a52bb5}\InprocServer32]
 ;d Disable the Windows 11 command bar *
 @=""
 [-HKEY_CURRENT_USER\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32]
 ;d Disable the Windows 11 context menu *
 @=""
+;t The following settings take effect on newly created File Explorer windows:
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;i Use immersive menus when displaying Windows 10 context menus **
 "DisableImmersiveContextMenu"=dword:00000000
@@ -173,12 +177,18 @@
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;b Hide search bar completely **
 "HideExplorerSearchBar"=dword:00000000
-;p 2
-;b Mica effect on title bar
-"MicaEffectOnTitlebar"=dword:00000000
+;c 4 Title bar
+;x 0 Show icon and title (default)
+;x 1 Hide title, show icon
+;x 2 Hide icon, show title
+;x 3 Hide icon and title
+"HideIconAndTitleInExplorer"=dword:00000000
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
-;b Register as shell extension
-;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_RegisterAsShellExtension"=dword:00000000
+;c 3 Apply Mica effect on these areas
+;x 0 Let File Explorer decide (default)
+;x 1 Title bar, command bar and navigation bar
+;x 2 Nowhere
+"MicaEffectOnTitlebar"=dword:00000000
 
 
 ;T Start menu

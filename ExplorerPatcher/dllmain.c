@@ -66,6 +66,7 @@ DWORD bWasOldTaskbarSet = FALSE;
 DWORD bAllocConsole = FALSE;
 DWORD bHideExplorerSearchBar = FALSE;
 DWORD bMicaEffectOnTitlebar = FALSE;
+DWORD bHideIconAndTitleInExplorer = FALSE;
 DWORD bHideControlCenterButton = FALSE;
 DWORD bFlyoutMenus = TRUE;
 DWORD bCenterMenus = TRUE;
@@ -3225,7 +3226,128 @@ BOOL WINAPI DisableImmersiveMenus_SystemParametersInfoW(
 #pragma endregion
 
 
-#pragma region "Explorer: Hide search bar, Mica effect (private), hide navigation bar"
+#pragma region "Explorer: Hide search bar, hide icon and/or title, Mica effect, hide navigation bar"
+inline BOOL IsRibbonEnabled(HWND hWnd)
+{
+    return GetPropW(hWnd, (LPCWSTR)0xA91C);
+}
+
+inline BOOL ShouldApplyMica(HWND hWnd)
+{
+    if (!IsRibbonEnabled(hWnd)) return TRUE;
+    return FindWindowExW(hWnd, NULL, L"Windows.UI.Composition.DesktopWindowContentBridge", NULL);
+}
+
+HRESULT ApplyMicaToExplorerTitlebar(HWND hWnd, DWORD_PTR bMicaEffectOnTitleBarOrig)
+{
+    RECT Rect;
+    GetWindowRect(hWnd, &Rect);
+    HWND hWndRoot = GetAncestor(hWnd, GA_ROOT);
+    MapWindowPoints(NULL, hWndRoot, (LPPOINT)&Rect, 2);
+    MARGINS pMarInset;
+    ZeroMemory(&pMarInset, sizeof(MARGINS));
+    pMarInset.cyTopHeight = Rect.bottom;
+    wchar_t wszParentText[100];
+    GetWindowTextW(GetParent(hWnd), wszParentText, 100);
+    if (!_wcsicmp(wszParentText, L"FloatingWindow")) pMarInset.cyTopHeight = 0;
+    BOOL bShouldApplyMica;
+    if (bMicaEffectOnTitleBarOrig == 2) bShouldApplyMica = FALSE;
+    else bShouldApplyMica = ShouldApplyMica(GetAncestor(hWnd, GA_ROOT));
+    if (bShouldApplyMica)
+    {
+        DwmExtendFrameIntoClientArea(hWndRoot, &pMarInset);
+        SetPropW(hWndRoot, L"EP_METB", TRUE);
+    }
+    else
+    {
+        RemovePropW(hWndRoot, L"EP_METB");
+    }
+    return SetMicaMaterialForThisWindow(hWndRoot, bShouldApplyMica);
+}
+
+LRESULT RebarWindow32MicaTitlebarSubclassproc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData)
+{
+    if (uMsg == RB_SETWINDOWTHEME && !wcsncmp(lParam, L"DarkMode", 8) && dwRefData != 2 && ShouldApplyMica(GetAncestor(hWnd, GA_ROOT)))
+    {
+        lParam = wcsstr(lParam, L"NavbarComposited");
+    }
+    else if (uMsg == WM_DESTROY)
+    {
+        RemoveWindowSubclass(hWnd, RebarWindow32MicaTitlebarSubclassproc, RebarWindow32MicaTitlebarSubclassproc);
+    }
+    return DefSubclassProc(hWnd, uMsg, wParam, lParam);
+}
+
+LRESULT ExplorerMicaTitlebarSubclassProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData)
+{
+    if (uMsg == WM_DESTROY)
+    {
+        RemoveWindowSubclass(hWnd, ExplorerMicaTitlebarSubclassProc, ExplorerMicaTitlebarSubclassProc);
+    }
+    if (uMsg == WM_ERASEBKGND)
+    {
+        wchar_t wszParentText[100];
+        GetWindowTextW(GetParent(hWnd), wszParentText, 100);
+        if (_wcsicmp(wszParentText, L"FloatingWindow") && dwRefData != 2 && ShouldApplyMica(GetAncestor(hWnd, GA_ROOT))) return TRUE;
+    }
+    else if (uMsg == WM_WINDOWPOSCHANGED)
+    {
+        WINDOWPOS* lpWp = (WINDOWPOS*)lParam;
+        if (lpWp->flags & SWP_NOMOVE)
+        {
+            ApplyMicaToExplorerTitlebar(hWnd, dwRefData);
+        }
+        else
+        {
+            PostMessageW(hWnd, WM_APP, 0, 0);
+        }
+    }
+    else if (uMsg == WM_APP)
+    {
+        ApplyMicaToExplorerTitlebar(hWnd, dwRefData);
+    }
+    else if (uMsg == WM_PARENTNOTIFY)
+    {
+        if (LOWORD(wParam) == WM_CREATE)
+        {
+            ATOM atom = GetClassWord(lParam, GCW_ATOM);
+            if (atom == RegisterWindowMessageW(L"ReBarWindow32"))
+            {
+                SetWindowSubclass(lParam, RebarWindow32MicaTitlebarSubclassproc, RebarWindow32MicaTitlebarSubclassproc, dwRefData);
+            }
+        }
+    }
+    return DefSubclassProc(hWnd, uMsg, wParam, lParam);
+}
+
+LRESULT CALLBACK HideIconAndTitleInExplorerSubClass(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData)
+{
+    if (uMsg == WM_DESTROY)
+    {
+        RemoveWindowSubclass(hWnd, HideIconAndTitleInExplorerSubClass, HideIconAndTitleInExplorerSubClass);
+    }
+    else if (uMsg == WM_PARENTNOTIFY)
+    {
+        if (LOWORD(wParam) == WM_CREATE)
+        {
+            WTA_OPTIONS ops;
+            ops.dwFlags = bHideIconAndTitleInExplorer;
+            ops.dwMask = WTNCA_NODRAWCAPTION | WTNCA_NODRAWICON;
+            SetWindowThemeAttribute(hWnd, WTA_NONCLIENT, &ops, sizeof(WTA_OPTIONS));
+        }
+    }
+    return DefSubclassProc(hWnd, uMsg, wParam, lParam);
+}
+
+HRESULT uxtheme_DwmExtendFrameIntoClientAreaHook(HWND hWnd, MARGINS* m)
+{
+    if (GetPropW(hWnd, L"EP_METB"))
+    {
+        return S_OK;
+    }
+    return DwmExtendFrameIntoClientArea(hWnd, m);
+}
+
 static HWND(__stdcall *explorerframe_SHCreateWorkerWindowFunc)(
     WNDPROC  	wndProc,
     HWND  	hWndParent,
@@ -3271,19 +3393,17 @@ HWND WINAPI explorerframe_SHCreateWorkerWindowHook(
             wnd_extra
         );
     }
-    if (dwExStyle == 0x10000 && dwStyle == 0x46000000)
+    if (dwExStyle == 0x10000 && dwStyle == 0x46000000 && result)
     {
-#ifdef USE_PRIVATE_INTERFACES
-        if (bMicaEffectOnTitlebar && result)
+        if (bHideIconAndTitleInExplorer)
         {
-            BOOL value = TRUE;
-            SetPropW(hWndParent, L"NavBarGlass", HANDLE_FLAG_INHERIT);
-            DwmSetWindowAttribute(hWndParent, DWMWA_MICA_EFFFECT, &value, sizeof(BOOL));
-            if (result) SetWindowSubclass(result, ExplorerMicaTitlebarSubclassProc, ExplorerMicaTitlebarSubclassProc, 0);
+            SetWindowSubclass(hWndParent, HideIconAndTitleInExplorerSubClass, HideIconAndTitleInExplorerSubClass, 0);
         }
-#endif
-
-        if (bHideExplorerSearchBar && result)
+        if (bMicaEffectOnTitlebar)
+        {
+            SetWindowSubclass(result, ExplorerMicaTitlebarSubclassProc, ExplorerMicaTitlebarSubclassProc, bMicaEffectOnTitlebar);
+        }
+        if (bHideExplorerSearchBar)
         {
             SetWindowSubclass(hWndParent, HideExplorerSearchBarSubClass, HideExplorerSearchBarSubClass, 0);
         }
@@ -5642,12 +5762,38 @@ void WINAPI LoadSettings(LPARAM lParam)
             bWasOldTaskbarSet = TRUE;
         }
         dwSize = sizeof(DWORD);
+        dwTemp = 0;
         RegQueryValueExW(
             hKey,
             TEXT("MicaEffectOnTitlebar"),
             0,
             NULL,
-            &bMicaEffectOnTitlebar,
+            &dwTemp,
+            &dwSize
+        );
+        if (dwTemp != bMicaEffectOnTitlebar)
+        {
+            bMicaEffectOnTitlebar = dwTemp;
+            HMODULE hUxtheme = GetModuleHandleW(L"uxtheme.dll");
+            if (hUxtheme)
+            {
+                if (bMicaEffectOnTitlebar)
+                {
+                    VnPatchDelayIAT(hUxtheme, "dwmapi.dll", "DwmExtendFrameIntoClientArea", uxtheme_DwmExtendFrameIntoClientAreaHook);
+                }
+                else
+                {
+                    //VnPatchDelayIAT(hUxtheme, "dwmapi.dll", "DwmExtendFrameIntoClientArea", DwmExtendFrameIntoClientArea);
+                }
+            }
+        }
+        dwSize = sizeof(DWORD);
+        RegQueryValueExW(
+            hKey,
+            TEXT("HideIconAndTitleInExplorer"),
+            0,
+            NULL,
+            &bHideIconAndTitleInExplorer,
             &dwSize
         );
         dwSize = sizeof(DWORD);
@@ -8676,6 +8822,7 @@ DWORD Inject(BOOL bIsExplorer)
     {
         VnPatchIAT(hExplorer, "uxtheme.dll", (LPCSTR)0x7E, PeopleBand_DrawTextWithGlowHook);
     }
+    // DwmExtendFrameIntoClientArea hooked in LoadSettings
     printf("Setup uxtheme functions done\n");
 
 
