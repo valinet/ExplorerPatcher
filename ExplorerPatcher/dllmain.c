@@ -40,6 +40,10 @@ IEPWeather* epw = NULL;
 SRWLOCK lock_epw = { .Ptr = SRWLOCK_INIT };
 #endif
 
+#ifndef _WIN64
+RTL_OSVERSIONINFOW global_rovi;
+#endif
+
 #define WINX_ADJUST_X 5
 #define WINX_ADJUST_Y 5
 
