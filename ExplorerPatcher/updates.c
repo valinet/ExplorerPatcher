@@ -456,7 +456,40 @@ BOOL IsUpdateAvailableHelper(
                                 &dwData,
                                 &dwSize
                             );
-                            if (!bIsUACEnabled || !dwData)
+                            LPWSTR wszSID = NULL;
+                            HANDLE hMyToken = NULL;
+                            if (OpenProcessToken(GetCurrentProcess(), TOKEN_READ, &hMyToken))
+                            {
+                                PTOKEN_USER ptu = NULL;
+                                DWORD dwSize = 0;
+                                if (!GetTokenInformation(hMyToken, TokenUser, NULL, 0, &dwSize)
+                                    && ERROR_INSUFFICIENT_BUFFER == GetLastError())
+                                {
+                                    if (NULL != (ptu = (PTOKEN_USER)LocalAlloc(LPTR, dwSize)))
+                                    {
+                                        if (!GetTokenInformation(hMyToken, TokenUser, ptu, dwSize, &dwSize))
+                                        {
+                                            LocalFree((HLOCAL)ptu);
+                                            return FALSE;
+                                        }
+                                        ConvertSidToStringSidW(ptu->User.Sid, &wszSID);
+                                        LocalFree((HLOCAL)ptu);
+                                    }
+                                }
+                                CloseHandle(hMyToken);
+                            }
+                            int lnSID = (wszSID ? wcslen(wszSID) : 0);
+                            DWORD bIsBuiltInAdministratorInApprovalMode = FALSE;
+                            BOOL bIsBuiltInAdministratorAccount =
+                                IsUserAnAdmin() &&
+                                lnSID && !_wcsnicmp(wszSID, L"S-1-5-", 6) && wszSID[lnSID - 4] == L'-' && wszSID[lnSID - 3] == L'5' && wszSID[lnSID - 2] == L'0' && wszSID[lnSID - 1] == L'0';
+                            if (bIsBuiltInAdministratorAccount)
+                            {
+                                DWORD dwSSize = sizeof(DWORD);
+                                RegGetValueW(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System", L"FilterAdministratorToken", RRF_RT_DWORD, NULL, &bIsBuiltInAdministratorInApprovalMode, &dwSSize);
+                            }
+                            LocalFree(wszSID);
+                            if (!bIsUACEnabled || !dwData || (bIsBuiltInAdministratorAccount && !bIsBuiltInAdministratorInApprovalMode))
                             {
                                 WCHAR wszURL2[MAX_PATH];
                                 ZeroMemory(wszURL2, MAX_PATH * sizeof(WCHAR));
