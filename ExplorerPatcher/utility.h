@@ -571,10 +571,11 @@ BOOL PleaseWait_UpdateTimeout(int timeout);
 VOID CALLBACK PleaseWait_TimerProc(HWND hWnd, UINT uMsg, UINT idEvent, DWORD dwTime);
 LRESULT CALLBACK PleaseWait_HookProc(int code, WPARAM wParam, LPARAM lParam);
 
+extern RTL_OSVERSIONINFOW global_rovi;
 inline BOOL IsWindows11()
 {
-    RTL_OSVERSIONINFOW rovi;
-    if (VnGetOSVersion(&rovi) && rovi.dwBuildNumber >= 21996)
+    if (!global_rovi.dwMajorVersion) VnGetOSVersion(&global_rovi);
+    if (global_rovi.dwBuildNumber >= 21996)
     {
         return TRUE;
     }

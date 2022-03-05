@@ -2,6 +2,8 @@
 #include <Wininet.h>
 #pragma comment(lib, "Wininet.lib")
 
+RTL_OSVERSIONINFOW global_rovi;
+
 #pragma region "Weird stuff"
 INT64 STDMETHODCALLTYPE nimpl4_1(INT64 a1, DWORD* a2)
 {
