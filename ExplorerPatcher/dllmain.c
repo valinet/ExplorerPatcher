@@ -39,9 +39,11 @@
 IEPWeather* epw = NULL;
 SRWLOCK lock_epw = { .Ptr = SRWLOCK_INIT };
 #endif
+#include "osutility.h"
 
 #ifndef _WIN64
 RTL_OSVERSIONINFOW global_rovi;
+DWORD32 global_ubr;
 #endif
 
 #define WINX_ADJUST_X 5
@@ -4338,8 +4340,7 @@ __int64 __fastcall PeopleBand_DrawTextWithGlowHook(
                             COLORREF rgbColor = RGB(0, 0, 0);
                             if (bIsThemeActive)
                             {
-                                RTL_OSVERSIONINFOW rovi;
-                                if ((VnGetOSVersion(&rovi) && rovi.dwBuildNumber < 18985) || (ShouldSystemUseDarkMode && ShouldSystemUseDarkMode()))
+                                if ((global_rovi.dwBuildNumber < 18985) || (ShouldSystemUseDarkMode && ShouldSystemUseDarkMode()))
                                 {
                                     rgbColor = RGB(255, 255, 255);
                                 }
@@ -4939,10 +4940,6 @@ DWORD SignalShellReady(DWORD wait)
     printf("Started \"Signal shell ready\" thread.\n");
     //UpdateStartMenuPositioning(MAKELPARAM(TRUE, TRUE));
 
-    RTL_OSVERSIONINFOW rovi;
-    ZeroMemory(&rovi, sizeof(RTL_OSVERSIONINFOW));
-    VnGetOSVersion(&rovi);
-
     while (!wait && TRUE)
     {
         HWND hShell_TrayWnd = FindWindowEx(
@@ -4987,7 +4984,7 @@ DWORD SignalShellReady(DWORD wait)
         SetEvent(hEvent);
     }
     SetEvent(hCanStartSws);
-    if (bOldTaskbar && rovi.dwBuildNumber >= 22567)
+    if (bOldTaskbar && (global_rovi.dwBuildNumber >= 22567))
     {
         PatchSndvolsso();
     }
@@ -8293,10 +8290,6 @@ DWORD Inject(BOOL bIsExplorer)
     );
 #endif
 
-    RTL_OSVERSIONINFOW rovi;
-    ZeroMemory(&rovi, sizeof(RTL_OSVERSIONINFOW));
-    VnGetOSVersion(&rovi);
-
     int rv;
 
     if (bIsExplorer)
@@ -8494,6 +8487,10 @@ DWORD Inject(BOOL bIsExplorer)
     {
         return;
     }
+
+#ifdef _WIN64
+    wprintf(L"Running on Windows %d, OS Build %d.%d.%d.%d.\n", IsWindows11() ? 11 : 10, global_rovi.dwMajorVersion, global_rovi.dwMinorVersion, global_rovi.dwBuildNumber, global_ubr);
+#endif
 
 #ifdef _WIN64
     wszEPWeatherKillswitch = calloc(sizeof(WCHAR), MAX_PATH);
@@ -8827,12 +8824,12 @@ DWORD Inject(BOOL bIsExplorer)
     printf("Setup pnidui functions done\n");
 
 
-
-    if (rovi.dwBuildNumber < 22567)
+#ifdef _WIN64
+    if (global_rovi.dwBuildNumber < 22567)
     {
         PatchSndvolsso();
     }
-
+#endif
 
 
     HANDLE hShell32 = GetModuleHandleW(L"shell32.dll");
@@ -10448,6 +10445,8 @@ HRESULT EntryPoint(DWORD dwMethod)
     {
         return E_NOINTERFACE;
     }
+
+    InitializeGlobalVersionAndUBR();
 
     TCHAR exePath[MAX_PATH], dllName[MAX_PATH];
     GetModuleFileNameW(hModule, dllName, MAX_PATH);

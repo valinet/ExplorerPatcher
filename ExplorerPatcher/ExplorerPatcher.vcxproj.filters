@@ -129,6 +129,9 @@
     <ClInclude Include="lvt.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="osutility.h">
+      <Filter>Header Files\internal</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="ExplorerPatcher.rc">

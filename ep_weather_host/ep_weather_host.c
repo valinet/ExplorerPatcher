@@ -3,6 +3,8 @@
 #include "ep_weather_provider_google_script.h"
 #include "ep_weather_error_html.h"
 
+RTL_OSVERSIONINFOW global_rovi;
+DWORD32 global_ubr;
 EPWeather* EPWeather_Instance = NULL;
 SRWLOCK Lock_EPWeather_Instance = { .Ptr = SRWLOCK_INIT };
 FARPROC SHRegGetValueFromHKCUHKLMFunc;
@@ -900,18 +902,13 @@ LRESULT CALLBACK epw_Weather_WindowProc(_In_ HWND hWnd, _In_ UINT uMsg, _In_ WPA
                 {
                     DwmExtendFrameIntoClientArea(_this->hWnd, &marGlassInset);
                 }
-                if (IsMicaMaterialSupportedInThisBuild())
-                {
-                    BOOL value = (IsThemeActive() && !IsHighContrast()) ? 1 : 0;
-                    DwmSetWindowAttribute(_this->hWnd, 1029, &value, sizeof(BOOL));
-                }
+                BOOL value = (IsThemeActive() && !IsHighContrast()) ? 1 : 0;
+                SetMicaMaterialForThisWindow(_this->hWnd, value);
             }
             else
             {
-                RTL_OSVERSIONINFOW rovi;
-                DWORD32 ubr = GetOSVersionAndUBR(&rovi);
                 int s = 0;
-                if (rovi.dwBuildNumber < 18985)
+                if (global_rovi.dwBuildNumber < 18985)
                 {
                     s = -1;
                 }
@@ -1022,7 +1019,7 @@ HRESULT STDMETHODCALLTYPE epw_Weather_IsDarkMode(EPWeather* _this, LONG64 dwDark
     if (!dwDarkMode)
     {
         RTL_OSVERSIONINFOW rovi;
-        *bEnabled = bIsCompositionEnabled && ((GetOSVersion(&rovi) && rovi.dwBuildNumber < 18985) ? TRUE : (ShouldSystemUseDarkMode ? ShouldSystemUseDarkMode() : FALSE)) && !IsHighContrast();
+        *bEnabled = bIsCompositionEnabled && ((global_rovi.dwBuildNumber < 18985) ? TRUE : (ShouldSystemUseDarkMode ? ShouldSystemUseDarkMode() : FALSE)) && !IsHighContrast();
     }
     else
     {
@@ -1042,10 +1039,8 @@ HRESULT STDMETHODCALLTYPE epw_Weather_SetDarkMode(EPWeather* _this, LONG64 dwDar
         if (_this->hWnd)
         {
             AllowDarkModeForWindow(_this->hWnd, bEnabled);
-            RTL_OSVERSIONINFOW rovi;
-            DWORD32 ubr = GetOSVersionAndUBR(&rovi);
             int s = 0;
-            if (rovi.dwBuildNumber < 18985)
+            if (global_rovi.dwBuildNumber < 18985)
             {
                 s = -1;
             }
@@ -1162,19 +1157,14 @@ DWORD WINAPI epw_Weather_MainThread(EPWeather* _this)
                 MARGINS marGlassInset = { -1, -1, -1, -1 }; // -1 means the whole window
                 DwmExtendFrameIntoClientArea(_this->hWnd, &marGlassInset);
             }
-            if (IsMicaMaterialSupportedInThisBuild())
-            {
-                BOOL value = 1;
-                DwmSetWindowAttribute(_this->hWnd, 1029, &value, sizeof(BOOL));
-            }
+            BOOL value = 1;
+            SetMicaMaterialForThisWindow(_this->hWnd, TRUE);
         }
     }
     else
     {
-        RTL_OSVERSIONINFOW rovi;
-        DWORD32 ubr = GetOSVersionAndUBR(&rovi);
         int s = 0;
-        if (rovi.dwBuildNumber < 18985)
+        if (global_rovi.dwBuildNumber < 18985)
         {
             s = -1;
         }
@@ -1344,6 +1334,8 @@ DWORD WINAPI epw_Weather_MainThread(EPWeather* _this)
 
 HRESULT STDMETHODCALLTYPE epw_Weather_Initialize(EPWeather* _this, WCHAR wszName[MAX_PATH], BOOL bAllocConsole, LONG64 dwProvider, LONG64 cbx, LONG64 cby, LONG64 dwTemperatureUnit, LONG64 dwUpdateSchedule, RECT rc, LONG64 dwDarkMode, LONG64 dwGeolocationMode, HWND* hWnd)
 {
+    InitializeGlobalVersionAndUBR();
+
     if (bAllocConsole)
     {
         FILE* conout;

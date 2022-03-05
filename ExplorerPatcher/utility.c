@@ -3,6 +3,7 @@
 #pragma comment(lib, "Wininet.lib")
 
 RTL_OSVERSIONINFOW global_rovi;
+DWORD32 global_ubr;
 
 #pragma region "Weird stuff"
 INT64 STDMETHODCALLTYPE nimpl4_1(INT64 a1, DWORD* a2)

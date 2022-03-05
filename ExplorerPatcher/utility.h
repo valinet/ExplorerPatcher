@@ -16,32 +16,16 @@
 #pragma comment(lib, "Rstrtmgr.lib")
 #define _LIBVALINET_INCLUDE_UNIVERSAL
 #include <valinet/universal/toast/toast.h>
+#include "osutility.h"
 #include "queryversion.h"
 #pragma comment(lib, "Psapi.lib")
 #include <activscp.h>
 #include <netlistmgr.h>
-#include <valinet/utility/osversion.h>
 
 #include "def.h"
 
 #define WM_MSG_GUI_SECTION WM_USER + 1
 #define WM_MSG_GUI_SECTION_GET 1
-
-// This allows compiling with older Windows SDKs as well
-#ifndef NTDDI_WIN10_CO
-#define DWMWA_USE_HOSTBACKDROPBRUSH 17            // [set] BOOL, Allows the use of host backdrop brushes for the window.
-#define DWMWA_USE_IMMERSIVE_DARK_MODE 20          // [set] BOOL, Allows a window to either use the accent color, or dark, according to the user Color Mode preferences.
-#define DWMWA_WINDOW_CORNER_PREFERENCE 33         // [set] WINDOW_CORNER_PREFERENCE, Controls the policy that rounds top-level window corners
-#define DWMWA_BORDER_COLOR 34                     // [set] COLORREF, The color of the thin border around a top-level window
-#define DWMWA_CAPTION_COLOR 35                    // [set] COLORREF, The color of the caption
-#define DWMWA_TEXT_COLOR 36                       // [set] COLORREF, The color of the caption text
-#define DWMWA_VISIBLE_FRAME_BORDER_THICKNESS 37   // [get] UINT, width of the visible border around a thick frame window
-#define DWMWCP_DEFAULT 0
-#define DWMWCP_DONOTROUND 1
-#define DWMWCP_ROUND 2
-#define DWMWCP_ROUNDSMALL 3
-#endif
-#define DWMWA_MICA_EFFFECT 1029
 
 DEFINE_GUID(CLSID_ImmersiveShell,
     0xc2f03a33,
@@ -571,44 +555,9 @@ BOOL PleaseWait_UpdateTimeout(int timeout);
 VOID CALLBACK PleaseWait_TimerProc(HWND hWnd, UINT uMsg, UINT idEvent, DWORD dwTime);
 LRESULT CALLBACK PleaseWait_HookProc(int code, WPARAM wParam, LPARAM lParam);
 
-extern RTL_OSVERSIONINFOW global_rovi;
-inline BOOL IsWindows11()
-{
-    if (!global_rovi.dwMajorVersion) VnGetOSVersion(&global_rovi);
-    if (global_rovi.dwBuildNumber >= 21996)
-    {
-        return TRUE;
-    }
-    return FALSE;
-}
-
 BOOL DownloadAndInstallWebView2Runtime();
 
 BOOL DownloadFile(LPCWSTR wszURL, DWORD dwSize, LPCWSTR wszPath);
 
 BOOL IsConnectedToInternet();
-
-inline BOOL IsDwmExtendFrameIntoClientAreaBrokenInThisBuild()
-{
-    if (!IsWindows11())
-    {
-        return FALSE;
-    }
-    RTL_OSVERSIONINFOW rovi;
-    DWORD32 ubr = VnGetOSVersionAndUBR(&rovi);
-    if ((rovi.dwBuildNumber >= 21996 && rovi.dwBuildNumber < 22000) || (rovi.dwBuildNumber == 22000 && (ubr >= 1 && ubr <= 51)))
-    {
-        return TRUE;
-    }
-    return FALSE;
-}
-
-inline BOOL IsMicaMaterialSupportedInThisBuild()
-{
-    if (!IsWindows11())
-    {
-        return FALSE;
-    }
-    return !IsDwmExtendFrameIntoClientAreaBrokenInThisBuild();
-}
 #endif

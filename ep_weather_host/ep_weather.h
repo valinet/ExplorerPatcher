@@ -21,7 +21,6 @@
 #define DWMWCP_ROUND 2
 #define DWMWCP_ROUNDSMALL 3
 #endif
-#define DWMWA_MICA_EFFFECT 1029
 
 #define ALLOC(x) calloc(1, x)
 #define FREE(x) free(x)

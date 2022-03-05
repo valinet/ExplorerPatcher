@@ -1224,9 +1224,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                         p = strstr(line, "%OSVERSIONSTRING%");
                         if (p)
                         {
-                            RTL_OSVERSIONINFOW rovi;
-                            DWORD32 ubr = VnGetOSVersionAndUBR(&rovi);
-                            sprintf_s(p, MAX_PATH, "%d.%d.%d.%d.", rovi.dwMajorVersion, rovi.dwMinorVersion, rovi.dwBuildNumber, ubr);
+                            sprintf_s(p, MAX_PATH, "%d.%d.%d.%d.", global_rovi.dwMajorVersion, global_rovi.dwMinorVersion, global_rovi.dwBuildNumber, global_ubr);
                         }
                     }
                     ZeroMemory(text, (MAX_LINE_LENGTH + 3) * sizeof(wchar_t));
@@ -3364,10 +3362,8 @@ static LRESULT CALLBACK GUI_WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
         {
             AllowDarkModeForWindow(hWnd, g_darkModeEnabled);
             BOOL value = g_darkModeEnabled;
-            RTL_OSVERSIONINFOW rovi;
-            DWORD32 ubr = VnGetOSVersionAndUBR(&rovi);
             int s = 0;
-            if (rovi.dwBuildNumber < 18985)
+            if (global_rovi.dwBuildNumber < 18985)
             {
                 s = -1;
             }
@@ -3426,10 +3422,7 @@ static LRESULT CALLBACK GUI_WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
             if (bIsCompositionEnabled)
             {
                 BOOL value = (IsThemeActive() && !IsHighContrast() && IsWindows11()) ? 1 : 0;
-                if (IsMicaMaterialSupportedInThisBuild())
-                {
-                    DwmSetWindowAttribute(hWnd, DWMWA_MICA_EFFFECT, &value, sizeof(BOOL));
-                }
+                SetMicaMaterialForThisWindow(hWnd, value);
             }
             if (IsThemeActive() && ShouldAppsUseDarkMode && !IsHighContrast())
             {
@@ -3440,10 +3433,8 @@ static LRESULT CALLBACK GUI_WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
                     g_darkModeEnabled = bDarkModeEnabled;
                     AllowDarkModeForWindow(hWnd, g_darkModeEnabled);
                     BOOL value = g_darkModeEnabled;
-                    RTL_OSVERSIONINFOW rovi;
-                    DWORD32 ubr = VnGetOSVersionAndUBR(&rovi);
                     int s = 0;
-                    if (rovi.dwBuildNumber < 18985)
+                    if (global_rovi.dwBuildNumber < 18985)
                     {
                         s = -1;
                     }
@@ -3815,6 +3806,9 @@ __declspec(dllexport) int ZZGUI(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLin
             );
         }
     }
+
+    wprintf(L"Running on Windows %d, OS Build %d.%d.%d.%d.\n", IsWindows11() ? 11 : 10, global_rovi.dwMajorVersion, global_rovi.dwMinorVersion, global_rovi.dwBuildNumber, global_ubr);
+
     locale = GetUserDefaultUILanguage();
     dwSize = LOCALE_NAME_MAX_LENGTH;
     if (hKey)
@@ -4026,11 +4020,7 @@ __declspec(dllexport) int ZZGUI(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLin
     {
         if (bIsCompositionEnabled)
         {
-            BOOL value = 1;
-            if (IsMicaMaterialSupportedInThisBuild())
-            {
-                DwmSetWindowAttribute(hwnd, DWMWA_MICA_EFFFECT, &value, sizeof(BOOL));
-            }
+            SetMicaMaterialForThisWindow(hwnd, TRUE);
             /*WTA_OPTIONS ops;
             ops.dwFlags = WTNCA_NODRAWCAPTION | WTNCA_NODRAWICON;
             ops.dwMask = WTNCA_NODRAWCAPTION | WTNCA_NODRAWICON;

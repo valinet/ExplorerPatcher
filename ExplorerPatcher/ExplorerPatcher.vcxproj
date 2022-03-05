@@ -317,6 +317,7 @@
     <ClInclude Include="ep_private.h" />
     <ClInclude Include="ImmersiveFlyouts.h" />
     <ClInclude Include="lvt.h" />
+    <ClInclude Include="osutility.h" />
     <ClInclude Include="queryversion.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="SettingsMonitor.h" />
