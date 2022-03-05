@@ -48,6 +48,20 @@
 ;x 0 Windows 10 (default)
 ;x 1 Windows 11
 "OrbStyle"=dword:00000000
+;c 5 Primary taskbar alignment
+;x 0 At screen edge (default)
+;x 1 Centered
+;x 5 Centered, at screen edge when full
+;x 3 Centered with Start button
+;x 7 Centered with Start button, at screen edge when full
+"OldTaskbarAl"=dword:00000000
+;c 5 Secondary taskbar(s) alignment
+;x 0 At screen edge (default)
+;x 1 Centered
+;x 5 Centered, at screen edge when full
+;x 3 Centered with Start button
+;x 7 Centered with Start button, at screen edge when full
+"MMOldTaskbarAl"=dword:00000000
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
 ;c 3 Combine taskbar icons on primary taskbar
 ;x 0 Always combine (default)
@@ -151,9 +165,39 @@
 ;T Start menu
 ;y More Start menu options in the Settings app 🡕
 ;ms-settings:personalization-start
+[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
+;z 2 Position on screen
+;x 0 At screen edge (default)
+;x 1 Center
+"TaskbarAl"=dword:00000000
+[HKEY_CURRENT_USER\Software\ExplorerPatcher]
+;z 22 Maximum number of frequent apps to show
+;x 0 None
+;x 1 1
+;x 2 2
+;x 3 3
+;x 4 4
+;x 5 5
+;x 6 6 (default)
+;x 7 7
+;x 8 8
+;x 9 9
+;x 10 10
+;x 11 11
+;x 12 12
+;x 13 13
+;x 14 14
+;x 15 15
+;x 16 16
+;x 17 17
+;x 18 18
+;x 19 19
+;x 20 20
+;x 99999 Unlimited
+;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_Start_MaximumFrequentApps"=dword:00000006
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\StartPage]
 ;e When using multiple displays, open Start on this monitor when invoked using
-;z 10 the keyboard:
+;z 10 the keyboard
 ;x 1 Primary monitor (default)
 ;x 0 Monitor on which the cursor is on
 ;x 2 Monitor #2
@@ -165,6 +209,25 @@
 ;x 8 Monitor #8
 ;x 9 Monitor #9
 "MonitorOverride"=dword:00000001
+[HKEY_CURRENT_USER\Software\ExplorerPatcher]
+;z 3 Corner preference
+;x 1 Rounded corners, floating menu
+;x 2 Rounded corners, docked menu
+;x 0 Not rounded
+;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_StartUI_EnableRoundedCorners"=dword:00000000
+[HKEY_CURRENT_USER\Software\ExplorerPatcher]
+;z 3 Display mode
+;x 0 Default
+;x 1 Start menu
+;x 2 Full screen Start
+;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_ForceStartSize"=dword:00000000
+;z 3 App list
+;x 0 Display
+;x 3 Hide
+;x 1 Disable 
+;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_NoStartMenuMorePrograms"=dword:00000000
+;t Some settings might not be available in older Windows 10 versions.
+
 
 ;T Window switcher
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer]
@@ -217,12 +280,6 @@
 ;x 1 Light
 ;x 2 Dark
 "ColorScheme"=dword:00000000
-[HKEY_CURRENT_USER\Software\ExplorerPatcher\sws]
-;c 3 Corner preference
-;x 2 Rounded (default)
-;x 3 Small rounded
-;x 1 Not rounded
-"CornerPreference"=dword:00000002
 [HKEY_CURRENT_USER\Software\ExplorerPatcher\sws]
 ;c 20 Row height
 ;x 330 330 pt
@@ -299,7 +356,7 @@
 ;q
 ;y Learn more about Simple Window Switcher 🡕
 ;https://github.com/valinet/ExplorerPatcher/wiki/Simple-Window-Switcher
-
+;t Some settings might not be available in older Windows 10 versions.
 
 
 ;T Weather
@@ -348,11 +405,6 @@
 ;x 1 Light
 ;x 2 Dark
 "WeatherTheme"=dword:00000000
-;c 3 Corner preference
-;x 2 Rounded (default)
-;x 3 Small rounded
-;x 1 Not rounded
-"WeatherWindowCornerPreference"=dword:00000002
 ;q
 ;t Weather data courtesy of Google, and weather.com.
 ;y Learn more about the Weather taskbar widget 🡕

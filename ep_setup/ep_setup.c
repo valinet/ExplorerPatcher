@@ -423,6 +423,9 @@ int WINAPI wWinMain(
     _In_ int nShowCmd
 )
 {
+    RTL_OSVERSIONINFOW rovi;
+    DWORD32 ubr = VnGetOSVersionAndUBR(&rovi);
+
     BOOL bOk = TRUE, bInstall = TRUE, bWasShellExt = FALSE, bIsUpdate = FALSE, bForcePromptForUninstall = FALSE;
 
     SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
@@ -850,7 +853,7 @@ int WINAPI wWinMain(
         {
             bOk = GetWindowsDirectoryW(wszPath, MAX_PATH);
         }
-        if (bOk && IsWindows11())
+        if (bOk && rovi.dwBuildNumber >= 18362)
         {
             wcscat_s(wszPath, MAX_PATH, L"\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\dxgi.dll");
             bOk = InstallResource(bInstall, hInstance, IDR_EP_AMD64, wszPath);

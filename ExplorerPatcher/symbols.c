@@ -530,7 +530,7 @@ DWORD DownloadSymbols(DownloadSymbolsParams* params)
 
 
 
-    if (IsWindows11())
+    if (rovi.dwBuildNumber >= 18362)
     {
         ZeroMemory(hash, sizeof(WCHAR) * 100);
         ZeroMemory(wszPath, sizeof(WCHAR) * 100);
@@ -1085,7 +1085,8 @@ BOOL LoadSymbols(symbols_addr* symbols_PTRS, HMODULE hModule)
             if (hKey) RegCloseKey(hKey);
         }
 
-        if (IsWindows11())
+        RTL_OSVERSIONINFOW rovi;
+        if (VnGetOSVersion(&rovi) && rovi.dwBuildNumber >= 18362)
         {
             RegCreateKeyExW(
                 HKEY_CURRENT_USER,

@@ -9589,7 +9589,7 @@ int StartUI_SetWindowRgn(HWND hWnd, HRGN hRgn, BOOL bRedraw)
     HRESULT hr = IsThreadCoreWindowVisible(&bIsWindowVisible);
     if (SUCCEEDED(hr))
     {
-        ShowWindow(hWnd, bIsWindowVisible ? SW_SHOW : SW_HIDE);
+        if (IsWindows11()) ShowWindow(hWnd, bIsWindowVisible ? SW_SHOW : SW_HIDE);
         DWORD TaskbarAl = InterlockedAdd(&dwTaskbarAl, 0);
         if (bIsWindowVisible && (!TaskbarAl ? StartUI_EnableRoundedCornersApply : 1))
         {
@@ -10125,7 +10125,7 @@ void InjectStartMenu()
 
     StartMenu_LoadSettings(FALSE);
 
-    if (dwStartShowClassicMode)
+    if (dwStartShowClassicMode || !IsWindows11())
     {
         LoadLibraryW(L"StartUI.dll");
         hStartUI = GetModuleHandleW(L"StartUI.dll");
@@ -10133,25 +10133,28 @@ void InjectStartMenu()
         // Fixes hang when Start menu closes
         VnPatchDelayIAT(hStartUI, "ext-ms-win-ntuser-draw-l1-1-0.dll", "SetWindowRgn", StartUI_SetWindowRgn);
 
-        // Redirects to StartTileData from 22000.51 which works with the legacy menu
-        LoadLibraryW(L"combase.dll");
-        HANDLE hCombase = GetModuleHandleW(L"combase.dll");
-        VnPatchIAT(hCombase, "api-ms-win-core-libraryloader-l1-2-0.dll", "LoadLibraryExW", patched_LoadLibraryExW);
+        if (IsWindows11())
+        {
+            // Redirects to StartTileData from 22000.51 which works with the legacy menu
+            LoadLibraryW(L"combase.dll");
+            HANDLE hCombase = GetModuleHandleW(L"combase.dll");
+            VnPatchIAT(hCombase, "api-ms-win-core-libraryloader-l1-2-0.dll", "LoadLibraryExW", patched_LoadLibraryExW);
 
-        // Redirects to pri files from 22000.51 which work with the legacy menu
-        LoadLibraryW(L"MrmCoreR.dll");
-        HANDLE hMrmCoreR = GetModuleHandleW(L"MrmCoreR.dll");
-        VnPatchIAT(hMrmCoreR, "api-ms-win-core-file-l1-1-0.dll", "CreateFileW", StartUI_CreateFileW);
-        VnPatchIAT(hMrmCoreR, "api-ms-win-core-file-l1-1-0.dll", "GetFileAttributesExW", StartUI_GetFileAttributesExW);
-        VnPatchIAT(hMrmCoreR, "api-ms-win-core-file-l1-1-0.dll", "FindFirstFileW", StartUI_FindFirstFileW);
-        VnPatchIAT(hMrmCoreR, "api-ms-win-core-registry-l1-1-0.dll", "RegGetValueW", StartUI_RegGetValueW);
+            // Redirects to pri files from 22000.51 which work with the legacy menu
+            LoadLibraryW(L"MrmCoreR.dll");
+            HANDLE hMrmCoreR = GetModuleHandleW(L"MrmCoreR.dll");
+            VnPatchIAT(hMrmCoreR, "api-ms-win-core-file-l1-1-0.dll", "CreateFileW", StartUI_CreateFileW);
+            VnPatchIAT(hMrmCoreR, "api-ms-win-core-file-l1-1-0.dll", "GetFileAttributesExW", StartUI_GetFileAttributesExW);
+            VnPatchIAT(hMrmCoreR, "api-ms-win-core-file-l1-1-0.dll", "FindFirstFileW", StartUI_FindFirstFileW);
+            VnPatchIAT(hMrmCoreR, "api-ms-win-core-registry-l1-1-0.dll", "RegGetValueW", StartUI_RegGetValueW);
 
-        // Enables "Show more tiles" setting
-        LoadLibraryW(L"Windows.CloudStore.dll");
-        HANDLE hWindowsCloudStore = GetModuleHandleW(L"Windows.CloudStore.dll");
-        VnPatchIAT(hWindowsCloudStore, "api-ms-win-core-registry-l1-1-0.dll", "RegOpenKeyExW", StartUI_RegOpenKeyExW);
-        VnPatchIAT(hWindowsCloudStore, "api-ms-win-core-registry-l1-1-0.dll", "RegQueryValueExW", StartUI_RegQueryValueExW);
-        VnPatchIAT(hWindowsCloudStore, "api-ms-win-core-registry-l1-1-0.dll", "RegCloseKey", StartUI_RegCloseKey);
+            // Enables "Show more tiles" setting
+            LoadLibraryW(L"Windows.CloudStore.dll");
+            HANDLE hWindowsCloudStore = GetModuleHandleW(L"Windows.CloudStore.dll");
+            VnPatchIAT(hWindowsCloudStore, "api-ms-win-core-registry-l1-1-0.dll", "RegOpenKeyExW", StartUI_RegOpenKeyExW);
+            VnPatchIAT(hWindowsCloudStore, "api-ms-win-core-registry-l1-1-0.dll", "RegQueryValueExW", StartUI_RegQueryValueExW);
+            VnPatchIAT(hWindowsCloudStore, "api-ms-win-core-registry-l1-1-0.dll", "RegCloseKey", StartUI_RegCloseKey);
+        }
     }
     else
     {
@@ -10523,10 +10526,7 @@ HRESULT EntryPoint(DWORD dwMethod)
     }
     else if (bIsThisStartMEH)
     {
-        if (IsWindows11())
-        {
-            InjectStartMenu();
-        }
+        InjectStartMenu();
         IncrementDLLReferenceCount(hModule);
         bInstanced = TRUE;
     }
