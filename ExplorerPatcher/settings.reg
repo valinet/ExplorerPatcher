@@ -374,16 +374,16 @@
 ;c 11 Window padding
 ;x 50 50 pt
 ;x 45 45 pt
-;x 40 40 pt (default)
+;x 40 40 pt
 ;x 35 30 pt
 ;x 30 30 pt
 ;x 25 25 pt
-;x 20 20 pt
+;x 20 20 pt (default)
 ;x 15 15 pt
 ;x 10 10 pt
 ;x 5 5 pt
 ;x 0 None
-"MasterPadding"=dword:00000028
+"MasterPadding"=dword:00000014
 ;c 11 Show delay
 ;x 0 None
 ;x 25 25 ms
