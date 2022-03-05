@@ -173,7 +173,6 @@
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;b Hide search bar completely **
 "HideExplorerSearchBar"=dword:00000000
-;p 2
 ;b Mica effect on title bar
 "MicaEffectOnTitlebar"=dword:00000000
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
