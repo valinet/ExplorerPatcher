@@ -8,67 +8,145 @@ Tested on OS build 22000.493.
 
 Please make sure you are connected to the Internet while installing, the application might need to perform one-time downloads for several resources in order to enable full functionality.
 
-#### New features
+#### Highlights
 
-* Built-in support for OS build 22000.493, OS build 22000.527 (Preview).
-* Support for Windows 10 (.16, .17). Read more about this [here](https://github.com/valinet/ExplorerPatcher/discussions/898).
-* Support for the Windows 10 Start menu. Read more about this [here](https://github.com/valinet/ExplorerPatcher/discussions/920).
 * Implemented Weather widget for the classic taskbar, similar to what is available in the more recent updates to Windows 10. Read more about it [here](https://github.com/valinet/ExplorerPatcher/wiki/Weather).
-* Implemented 2 features that help in replacing the functionality of the quick launch toolbar with pinned taskbar items. Read more about it [here](https://github.com/valinet/ExplorerPatcher/discussions/819) (.7).
-* Implemented option to have the Start menu open on a specific monitor (#821) (.8)
-* Options to center Windows 10 taskbar (.26)
-* Option to hide the app list in the Windows 10 Start menu (.26)
-* Option to center Windows 10 Start menu (.27)
+* Support for the Windows 10 Start menu in Windows 11. Read more about this [here](https://github.com/valinet/ExplorerPatcher/discussions/920).
+* Option to center Windows 10 Start menu and Windows 10 taskbar.
+* Support for Windows 10. Read more about this [here](https://github.com/valinet/ExplorerPatcher/discussions/898).
 
-#### Feature enhancements
+#### Details
 
-* The weather widget recomputes its area automatically, by default, in order to fit its contents, instead of remaining at a fixed size; there is also an option to choose between the two behaviors (.1)
-* Possibility to disable the icon in the weather widget (.1)
-* The weather widget defaults to showing in the preferred language set in Windows, instead of English (#734) (.2)
-* The weather widget shows an error screen when an error happens (like, using an incorrect location, or the network not working etc) (.3)
-* The weather widget supports dark mode (thanks @krlvm) (#755) (.4)
-* The weather widget supports setting window corner preference (rounded/not rounded) (.8)
-* Option to clear weather widget local data (.10, .11)
-* Installer sets a Start menu shortcut for the "Properties" window (.11)
-* Support for high contrast themes in the "Properties" window and in the weather widget (#885) (.15)
-* Enabling the weather widget will automatically download and install the Microsoft WebView2 Runtime on computers where it is not installed (.16)
-* Option to enable dev tools for weather widget debugging (#934) (.19, .20)
-* Pinning items to the Windows 10 Start menu works from File Explorer windows (.21)
-* Added option to disable the "Recommended" section on the Windows 11 Start menu (.22)
-* Added option to enable rounded corners on the Windows 10 Start menu (#937) (.22)
-* Support for full screen Windows 10 Start menu (.23)
-* Support for "Show more tiles" option in the Windows 10 Start menu (#933) (.24)
-* Implemented floating/docked rounded corners in the Windows 10 Start menu (.25)
+##### 1
 
-#### Fixes
+* The weather widget recomputes its area automatically, by default, in order to fit its contents, instead of remaining at a fixed size; there is also an option to choose between the two behavior
+* Possibility to disable the icon in the weather widget
+* Fixed a bug that prevented the weather widget flyout from displaying correctly when the taskbar was using small icons (#741)
+* Fixed inconsistencies when displaying the weather widget and the system themes are disabled (aka the classic theme is used)
+* Screen readers now read the weather data when requested for the weather widget
+* Changing the Start button style or weather widget layout does not toggle taskbar auto-hide now; instead, the settings take effect immediately
 
-* Fixed a bug that prevented the weather widget flyout from displaying correctly when the taskbar was using small icons (#741) (.1)
-* Fixed inconsistencies when displaying the weather widget and the system themes are disabled (aka the classic theme is used) (.1)
-* Screen readers now read the weather data when requested for the weather widget (.1)
-* Changing the Start button style or weather widget layout does not toggle taskbar auto-hide now; instead, the settings take effect immediately (.1)
-* Fixed a bug that could corrupt registry entries of type REG_SZ set via the Properties UI (#734) (.2)
-* Fixed a bug that reset the setting when pressing "Cancel" in an input box in the Properties UI (#734) (.2)
-* The weather widget adjusts its size vertically to accommodate the entire contents (#734) (.3)
-* Fixed a bug that prevented correct registration of the weather flyout on certain systems (26b6646) (.5)
-* Fixed a bug that made the weather flyout open with noticeable delay under certain circumstances (.5)
-* Fixed a bug that prevented correct operation on builds without built-in symbols (#783) (.5)
-* Fixed several race conditions that could lead to incorrect operation of the weather widget (for example, `explorer.exe` crashing when disabling or enabling the widget) (.6)
-* The weather widget positions and sizes itself with respect to the text size accessibility setting as well ([#734](https://github.com/valinet/ExplorerPatcher/discussions/734#discussioncomment-2190218)) (.14)
-* Fixed a bug that could lead to a crash when `explorer.exe` starts (#879) (.15)
-* Fixed a bug that could prevent the weather widget from launching under certain conditions (.15)
-* Fixed a bug in the Weather widget that could display an erroneous Google search pop-up (thanks @plofhaan) ([#734](https://github.com/valinet/ExplorerPatcher/discussions/734#discussioncomment-2216475)) (.17)
-* Fixed a bug that resulted in an access violation on log off when EP runs alongside 7+TT (#894) (.18)
-* Fixed a bug that prevented the "Skin menus" setting from working in the `Win`+`X` menu on Windows 10 (.19)
-* Fixed a bug that would display an information banner that obscured the weather widget in some occasions when displaying the widget in German (#934) (thanks @frederic2de) (.20)
-* Fixed program windows in older 22000-based OS builds (.21)
-* Fixed a bug that prevented correct displaying of the weather widget contents when using a right-to-left language (#954) (.22)
-* Fixed a bug that prevented the Windows 10 Start menu from working in full screen mode (.23)
-* Fixed a bug that presented the weather widget with a wrong height when using the taskbar vertically (.26)
-* Fixed a bug that prevented the taskbar from displaying UWP icons when using the Windows 10 Start menu on newer Windows builds (#973) (.27)
-* Fixed a bug in the Windows 10 Start menu that prevented the menu from displaying when not using rounded corners (.28)
-* Fixed a bug in the Windows 10 Start menu that prevented the menu from updating its position when the settings changed (.28)
-* Fixed a bug in the Start menu that prevented the app from receiving settings change notifications when some registry keys were not available on the system (.28)
-* Fixed a crash at startup in `explorer.exe` (in module `sndvolsso.dll`) on OS build 22567+ (.28)
+##### 2
+
+* The weather widget defaults to showing in the preferred language set in Windows, instead of English (#734)
+* Fixed a bug that could corrupt registry entries of type REG_SZ set via the Properties UI (#734)
+* Fixed a bug that reset the setting when pressing "Cancel" in an input box in the Properties UI (#734)
+
+##### 3
+
+* The weather widget shows an error screen when an error happens (like, using an incorrect location, or the network not working etc)
+* The weather widget adjusts its size vertically to accommodate the entire contents (#734)
+
+##### 4
+
+* The weather widget supports dark mode (thanks @krlvm) (#755)
+
+##### 5
+
+* Fixed a bug that prevented correct registration of the weather flyout on certain systems (26b6646)
+* Fixed a bug that made the weather flyout open with noticeable delay under certain circumstances
+* Fixed a bug that prevented correct operation on builds without built-in symbols (#783)
+
+##### 6
+
+* Fixed several race conditions that could lead to incorrect operation of the weather widget (for example, `explorer.exe` crashing when disabling or enabling the widget)
+
+##### 7
+
+* Implemented 2 features that help in replacing the functionality of the quick launch toolbar with pinned taskbar items. Read more about it [here](https://github.com/valinet/ExplorerPatcher/discussions/819)
+
+##### 8
+
+* Implemented option to have the Start menu open on a specific monitor (#821)
+* The weather widget supports setting window corner preference (rounded/not rounded)
+
+##### 10
+
+* Option to clear weather widget local data
+
+##### 11
+
+* Installer sets a Start menu shortcut for the "Properties" window
+
+##### 14
+
+* The weather widget positions and sizes itself with respect to the text size accessibility setting as well ([#734](https://github.com/valinet/ExplorerPatcher/discussions/734#discussioncomment-2190218))
+
+##### 15
+
+* Support for high contrast themes in the "Properties" window and in the weather widget (#885)
+* Fixed a bug that could lead to a crash when `explorer.exe` starts (#879)
+* Fixed a bug that could prevent the weather widget from launching under certain conditions
+
+##### 16
+
+* Initial support for Windows 10
+* Enabling the weather widget will automatically download and install the Microsoft WebView2 Runtime on computers where it is not installed
+
+##### 17
+
+* Fixed a bug in the Weather widget that could display an erroneous Google search pop-up (thanks @plofhaan) ([#734](https://github.com/valinet/ExplorerPatcher/discussions/734#discussioncomment-2216475))
+
+##### 18
+
+* Fixed a bug that resulted in an access violation on log off when EP runs alongside 7+TT (#894)
+
+##### 19
+
+* Option to enable dev tools for weather widget debugging (#934)
+* Fixed a bug that prevented the "Skin menus" setting from working in the `Win`+`X` menu on Windows 10
+
+##### 20
+
+* Fixed a bug that would display an information banner that obscured the weather widget in some occasions when displaying the widget in German (#934) (thanks @frederic2de)
+
+##### 21
+
+* Fixed program windows in older 22000-based OS builds
+
+##### 22
+
+* Added option to enable rounded corners on the Windows 10 Start menu (#937)
+* Added option to disable the "Recommended" section on the Windows 11 Start menu
+* Fixed a bug that prevented correct displaying of the weather widget contents when using a right-to-left language (#954)
+
+##### 23
+
+* Support for full screen Windows 10 Start menu
+
+##### 24
+
+* Support for "Show more tiles" option in the Windows 10 Start menu (#933)
+* Fixed a bug that prevented extraction of all files when running `ep_setup.exe /extract`
+
+##### 25
+
+* Implemented floating/docked rounded corners in the Windows 10 Start menu
+
+##### 26
+
+* Implemented centered Windows 10 taskbar
+* Option to hide the app list in the Windows 10 Start menu
+* Fixed a bug that presented the weather widget with a wrong height when using the taskbar vertically
+
+##### 27
+
+* Implemented centered Windows 10 Start menu
+* Fixed a bug that prevented the taskbar from displaying UWP icons when using the Windows 10 Start menu on newer Windows builds (#973)
+
+##### 28
+
+* Fixed a bug in the Windows 10 Start menu that prevented the menu from displaying when not using rounded corners
+* Fixed a bug in the Windows 10 Start menu that prevented the menu from updating its position when the settings changed
+* Fixed a bug in the Start menu that prevented the app from receiving settings change notifications when some registry keys were not available on the system
+* Fixed a crash at startup in `explorer.exe` (in module `sndvolsso.dll`) on OS build 22567+
+
+##### 29
+
+* Fixed a bug that prevented the weather widget from working on OS server SKUs
+* Enabled centered Start menu and taskbar in Windows 10
+* Prompt before updating when running on the built-in Administrator account and the `FilterAdministratorToken` policy ("User Account Control: Use Admin Approval Mode for the built-in Administrator account") is disabled or not configured
+* Reworked CHANGELOG format
 
 ## 22000.469.41
 
