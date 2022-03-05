@@ -3225,36 +3225,6 @@ BOOL WINAPI DisableImmersiveMenus_SystemParametersInfoW(
 
 #pragma region "Explorer: Hide search bar, Mica effect (private), hide navigation bar"
 
-typedef void (WINAPI* RtlGetVersion_FUNC) (OSVERSIONINFOEXW*);
-bool CheckIfBuild22523OrHigher()
-{
-    RtlGetVersion_FUNC func;
-    HMODULE hMod = LoadLibrary(TEXT("ntdll.dll"));
-    OSVERSIONINFOEX os;
-#ifdef UNICODE
-    OSVERSIONINFOEXW* osw = &os;
-#else
-    OSVERSIONINFOEXW o;
-    OSVERSIONINFOEXW* osw = &o;
-#endif
-    if (hMod) {
-        func = (RtlGetVersion_FUNC)GetProcAddress(hMod, "RtlGetVersion");
-        if (func == 0) {
-            FreeLibrary(hMod);
-            return FALSE;
-        }
-
-        ZeroMemory(osw, sizeof(*osw));
-        osw->dwOSVersionInfoSize = sizeof(*osw);
-        func(osw);
-
-        return osw->dwBuildNumber > 22492;
-    }
-    else {
-        return FALSE;
-    }
-}
-
 void ApplyMicaToExplorerTitlebar(HWND navBar)
 {
     HWND root = GetAncestor(navBar, GA_ROOT); //handle to entire explorer window
@@ -3407,9 +3377,14 @@ HWND WINAPI explorerframe_SHCreateWorkerWindowHook(
         {
             SetPropW(hWndParent, L"NavBarGlass", HANDLE_FLAG_INHERIT);
 
-            int prop = CheckIfBuild22523OrHigher() ? 0xFFFFFC21 : 0;
+            RTL_OSVERSIONINFOW rovi;
+            VnGetOSVersion(&rovi);
+            BOOL Build225230OrHigher = rovi.dwBuildNumber >= 22523;
+
+            int prop = Build225230OrHigher ? 0xFFFFFC21 : 0;
+
             //(Mica: 2, if build 22523 or higher, 1 if lower)
-            int value = CheckIfBuild22523OrHigher() + 1;
+            int value = Build225230OrHigher + 1;
 
             HRESULT hr = DwmSetWindowAttribute(hWndParent, prop + 1029, &value, sizeof(value));
             if (hr != 0)
