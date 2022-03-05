@@ -8246,6 +8246,36 @@ BOOL IsDebuggerPresentHook()
     return FALSE;
 }
 
+BOOL PeopleBand_IsOS(DWORD dwOS)
+{
+    if (dwOS == OS_ANYSERVER) return FALSE;
+    return IsOS(dwOS);
+}
+
+BOOL explorer_IsOS(DWORD dwOS)
+{
+    if (dwOS == OS_ANYSERVER)
+    {
+        unsigned char buf[16];
+        memcpy(buf, (uintptr_t)_ReturnAddress() - 16, 16);
+        // check if call is made from explorer!PeopleBarPolicy::IsPeopleBarDisabled
+        if (buf[0] == 0x48 && buf[1] == 0x83 && buf[2] == 0xec && buf[3] == 0x28 && buf[4] == 0xb9 &&
+            buf[5] == 0x1d && buf[6] == 0x00 && buf[7] == 0x00 && buf[8] == 0x00) // sub rsp, 28h; mov ecx, 1dh
+        {
+            buf[0] = 0x48; buf[1] = 0x31; buf[2] = 0xc0; buf[3] = 0xc3; // xor rax, rax; ret
+            DWORD flOldProtect = 0;
+            if (VirtualProtect((uintptr_t)_ReturnAddress() - 16, 4, PAGE_EXECUTE_READWRITE, &flOldProtect))
+            {
+                memcpy((uintptr_t)_ReturnAddress() - 16, buf, 4);
+                VirtualProtect((uintptr_t)_ReturnAddress() - 16, 4, flOldProtect, &flOldProtect);
+                VnPatchIAT(GetModuleHandleW(NULL), "api-ms-win-shcore-sysinfo-l1-1-0.dll", "IsOS", IsOS);
+                return FALSE;
+            }
+        }
+    }
+    return IsOS(dwOS);
+}
+
 DWORD Inject(BOOL bIsExplorer)
 {
 #if defined(DEBUG) | defined(_DEBUG)
@@ -8553,6 +8583,7 @@ DWORD Inject(BOOL bIsExplorer)
         VnPatchIAT(hExplorer, "API-MS-WIN-SHCORE-REGISTRY-L1-1-0.DLL", "SHGetValueW", explorer_SHGetValueW);
         VnPatchIAT(hExplorer, "user32.dll", "LoadMenuW", explorer_LoadMenuW);
         VnPatchIAT(hExplorer, "api-ms-win-core-shlwapi-obsolete-l1-1-0.dll", "QISearch", explorer_QISearch);
+        if (IsOS(OS_ANYSERVER)) VnPatchIAT(hExplorer, "api-ms-win-shcore-sysinfo-l1-1-0.dll", "IsOS", explorer_IsOS);
     }
     VnPatchIAT(hExplorer, "API-MS-WIN-CORE-REGISTRY-L1-1-0.DLL", "RegOpenKeyExW", explorer_RegOpenKeyExW);
     VnPatchIAT(hExplorer, "shell32.dll", (LPCSTR)85, explorer_OpenRegStream);
@@ -8855,6 +8886,7 @@ DWORD Inject(BOOL bIsExplorer)
     HANDLE hPeopleBand = LoadLibraryW(L"PeopleBand.dll");
     if (hPeopleBand)
     {
+        if (IsOS(OS_ANYSERVER)) VnPatchIAT(hPeopleBand, "SHLWAPI.dll", (LPCSTR)437, PeopleBand_IsOS);
         VnPatchIAT(hPeopleBand, "api-ms-win-core-largeinteger-l1-1-0.dll", "MulDiv", PeopleBand_MulDivHook);
         printf("Setup peopleband functions done\n");
     }
