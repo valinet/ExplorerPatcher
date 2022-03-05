@@ -3381,16 +3381,26 @@ HWND WINAPI explorerframe_SHCreateWorkerWindowHook(
             VnGetOSVersion(&rovi);
             BOOL Build225230OrHigher = rovi.dwBuildNumber >= 22523;
 
-            int prop = Build225230OrHigher ? 0xFFFFFC21 : 0;
+            if (Build225230OrHigher) {
+                //38 = DWMWA_SYSTEMBACKDROP_TYPE
+                int value = 2; //Mica
 
-            //(Mica: 2, if build 22523 or higher, 1 if lower)
-            int value = Build225230OrHigher + 1;
-
-            HRESULT hr = DwmSetWindowAttribute(hWndParent, prop + 1029, &value, sizeof(value));
-            if (hr != 0)
-            {
-                printf("DwmSetWindowAttribute() failure: %d\n", hr);
+                HRESULT hr = DwmSetWindowAttribute(hWndParent, 38, &value, sizeof(value));
+                if (hr != 0)
+                {
+                    printf("DwmSetWindowAttribute() failure: %d\n", hr);
+                }
             }
+            else {
+                //1029 = DWMWA_MICA_EFFECT
+                int value = 1;
+                HRESULT hr = DwmSetWindowAttribute(hWndParent, 1029, &value, sizeof(value));
+                if (hr != 0)
+                {
+                    printf("DwmSetWindowAttribute() failure: %d\n", hr);
+                }
+            }
+
             if (result) SetWindowSubclass(result, ExplorerMicaTitlebarSubclassProc, ExplorerMicaTitlebarSubclassProc, 0);
         }
 
