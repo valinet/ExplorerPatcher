@@ -146,6 +146,14 @@ BOOL TaskbarCenter_GetClientRectHook(HWND hWnd, LPRECT lpRect)
 			if (TaskbarCenter_ShouldStartBeCentered(dwSetting) && hWndStart)
 			{
 				GetClientRect(hWndStart, &rcStart);
+				HWND hTrayButton = NULL;
+				while (hTrayButton = FindWindowExW(hWndTaskbar, hTrayButton, L"TrayButton", NULL))
+				{
+					if (!IsWindowVisible(hTrayButton)) continue;
+					RECT rcTrayButton;
+					GetClientRect(hTrayButton, &rcTrayButton);
+					rcStart.right += (rcTrayButton.right - rcTrayButton.left);
+				}
 			}
 			RECT rc;
 			GetWindowRect(hWnd, &rc);
@@ -164,10 +172,34 @@ BOOL TaskbarCenter_GetClientRectHook(HWND hWnd, LPRECT lpRect)
 						if (bIsTaskbarHorizontal)
 						{
 							SetWindowPos(hWndStart, NULL, ((mi.rcMonitor.right - mi.rcMonitor.left) - (rcStart.right - rcStart.left)) / 2, rcStart.top, 0, 0, SWP_NOSIZE | SWP_FRAMECHANGED | SWP_ASYNCWINDOWPOS);
+							RECT rcTrayButton;
+							GetClientRect(hWndStart, &rcTrayButton);
+							DWORD dwDim = (rcTrayButton.right - rcTrayButton.left);
+							HWND hTrayButton = NULL;
+							while (hTrayButton = FindWindowExW(hWndTaskbar, hTrayButton, L"TrayButton", NULL))
+							{
+								if (!IsWindowVisible(hTrayButton)) continue;
+								GetClientRect(hTrayButton, &rcTrayButton);
+								MoveWindow(hTrayButton, ((mi.rcMonitor.right - mi.rcMonitor.left) - (rcStart.right - rcStart.left)) / 2 + dwDim, rcStart.top, rcTrayButton.right, rcTrayButton.bottom, TRUE);
+								if (!bIsPrimaryTaskbar) InvalidateRect(hTrayButton, NULL, TRUE);
+								dwDim += (rcTrayButton.right - rcTrayButton.left);
+							}
 						}
 						else
 						{
 							SetWindowPos(hWndStart, NULL, rcStart.left, ((mi.rcMonitor.bottom - mi.rcMonitor.top) - (rcStart.bottom - rcStart.top)) / 2, 0, 0, SWP_NOSIZE | SWP_FRAMECHANGED | SWP_ASYNCWINDOWPOS);
+							RECT rcTrayButton;
+							GetClientRect(hWndStart, &rcTrayButton);
+							DWORD dwDim = (rcTrayButton.right - rcTrayButton.left);
+							HWND hTrayButton = NULL;
+							while (hTrayButton = FindWindowExW(hWndTaskbar, hTrayButton, L"TrayButton", NULL))
+							{
+								if (!IsWindowVisible(hTrayButton)) continue;
+								GetClientRect(hTrayButton, &rcTrayButton);
+								MoveWindow(hTrayButton, rcStart.left, ((mi.rcMonitor.bottom - mi.rcMonitor.top) - (rcStart.bottom - rcStart.top)) / 2 + dwDim, rcTrayButton.right, rcTrayButton.bottom, TRUE);
+								if (!bIsPrimaryTaskbar) InvalidateRect(hTrayButton, NULL, TRUE);
+								dwDim += (rcTrayButton.right - rcTrayButton.left);
+							}
 						}
 						if (!bIsPrimaryTaskbar) InvalidateRect(hWndStart, NULL, TRUE);
 					}
@@ -215,10 +247,34 @@ BOOL TaskbarCenter_GetClientRectHook(HWND hWnd, LPRECT lpRect)
 						if (bIsTaskbarHorizontal)
 						{
 							SetWindowPos(hWndStart, NULL, (rc.left - mi.rcMonitor.left) + lpRect->left - (rcStart.right - rcStart.left), rcStart.top, 0, 0, SWP_NOSIZE | SWP_FRAMECHANGED | SWP_ASYNCWINDOWPOS);
+							RECT rcTrayButton;
+							GetClientRect(hWndStart, &rcTrayButton);
+							DWORD dwDim = (rcTrayButton.right - rcTrayButton.left);
+							HWND hTrayButton = NULL;
+							while (hTrayButton = FindWindowExW(hWndTaskbar, hTrayButton, L"TrayButton", NULL))
+							{
+								if (!IsWindowVisible(hTrayButton)) continue;
+								GetClientRect(hTrayButton, &rcTrayButton);
+								MoveWindow(hTrayButton, (rc.left - mi.rcMonitor.left) + lpRect->left - (rcStart.right - rcStart.left) + dwDim, rcStart.top, rcTrayButton.right, rcTrayButton.bottom, TRUE);
+								if (!bIsPrimaryTaskbar) InvalidateRect(hTrayButton, NULL, TRUE);
+								dwDim += (rcTrayButton.right - rcTrayButton.left);
+							}
 						}
 						else
 						{
 							SetWindowPos(hWndStart, NULL, rcStart.left, (rc.top - mi.rcMonitor.top) + lpRect->top - (rcStart.bottom - rcStart.top), 0, 0, SWP_NOSIZE | SWP_FRAMECHANGED | SWP_ASYNCWINDOWPOS);
+							RECT rcTrayButton;
+							GetClientRect(hWndStart, &rcTrayButton);
+							DWORD dwDim = (rcTrayButton.right - rcTrayButton.left);
+							HWND hTrayButton = NULL;
+							while (hTrayButton = FindWindowExW(hWndTaskbar, hTrayButton, L"TrayButton", NULL))
+							{
+								if (!IsWindowVisible(hTrayButton)) continue;
+								GetClientRect(hTrayButton, &rcTrayButton);
+								MoveWindow(hTrayButton, rcStart.left, (rc.top - mi.rcMonitor.top) + lpRect->top - (rcStart.bottom - rcStart.top) + dwDim, rcTrayButton.right, rcTrayButton.bottom, TRUE);
+								if (!bIsPrimaryTaskbar) InvalidateRect(hTrayButton, NULL, TRUE);
+								dwDim += (rcTrayButton.right - rcTrayButton.left);
+							}
 						}
 						if (!bIsPrimaryTaskbar) InvalidateRect(hWndStart, NULL, TRUE);
 					}
@@ -239,6 +295,25 @@ BOOL TaskbarCenter_GetClientRectHook(HWND hWnd, LPRECT lpRect)
 			{
 				SetWindowPos(hWndStart, NULL, 0, 0, 0, 0, SWP_NOSIZE | SWP_FRAMECHANGED | SWP_ASYNCWINDOWPOS);
 				if (!bIsPrimaryTaskbar) InvalidateRect(hWndStart, NULL, TRUE);
+				RECT rcTrayButton;
+				GetClientRect(hWndStart, &rcTrayButton);
+				DWORD dwDim = (rcTrayButton.right - rcTrayButton.left);
+				HWND hTrayButton = NULL;
+				while (hTrayButton = FindWindowExW(hWndTaskbar, hTrayButton, L"TrayButton", NULL))
+				{
+					if (!IsWindowVisible(hTrayButton)) continue;
+					GetClientRect(hTrayButton, &rcTrayButton);
+					if (bIsTaskbarHorizontal)
+					{
+						MoveWindow(hTrayButton, dwDim, 0, rcTrayButton.right, rcTrayButton.bottom, TRUE);
+					}
+					else
+					{
+						MoveWindow(hTrayButton, 0, dwDim, rcTrayButton.right, rcTrayButton.bottom, TRUE);
+					}
+					if (!bIsPrimaryTaskbar) InvalidateRect(hTrayButton, NULL, TRUE);
+					dwDim += (rcTrayButton.right - rcTrayButton.left);
+				}
 			}
 		}
 	}
