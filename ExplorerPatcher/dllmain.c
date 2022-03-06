@@ -5743,26 +5743,6 @@ void WINAPI LoadSettings(LPARAM lParam)
             &bDoNotRedirectProgramsAndFeaturesToSettingsApp,
             &dwSize
         );
-        if (!bIsExplorer)
-        {
-            RegCloseKey(hKey);
-            return;
-        }
-        dwTemp = TRUE;
-        dwSize = sizeof(DWORD);
-        RegQueryValueExW(
-            hKey,
-            TEXT("OldTaskbar"),
-            0,
-            NULL,
-            &dwTemp,
-            &dwSize
-        );
-        if (!bWasOldTaskbarSet)
-        {
-            bOldTaskbar = dwTemp;
-            bWasOldTaskbarSet = TRUE;
-        }
         dwSize = sizeof(DWORD);
         dwTemp = 0;
         RegQueryValueExW(
@@ -5798,6 +5778,26 @@ void WINAPI LoadSettings(LPARAM lParam)
             &bHideIconAndTitleInExplorer,
             &dwSize
         );
+        if (!bIsExplorer)
+        {
+            RegCloseKey(hKey);
+            return;
+        }
+        dwTemp = TRUE;
+        dwSize = sizeof(DWORD);
+        RegQueryValueExW(
+            hKey,
+            TEXT("OldTaskbar"),
+            0,
+            NULL,
+            &dwTemp,
+            &dwSize
+        );
+        if (!bWasOldTaskbarSet)
+        {
+            bOldTaskbar = dwTemp;
+            bWasOldTaskbarSet = TRUE;
+        }
         dwSize = sizeof(DWORD);
         RegQueryValueExW(
             hKey,
