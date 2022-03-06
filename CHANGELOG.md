@@ -148,6 +148,14 @@ Please make sure you are connected to the Internet while installing, the applica
 * Prompt before updating when running on the built-in Administrator account and the `FilterAdministratorToken` policy ("User Account Control: Use Admin Approval Mode for the built-in Administrator account") is disabled or not configured
 * Reworked CHANGELOG format
 
+##### .30
+
+* Support for daytime/nighttime icons in the weather widget
+* Improved contrast between the weather icons and the taskbar using light theme
+* Implemented Mica effect for File Explorer windows (thanks @MishaTY) and option to hide the icon and title of File Explorer windows
+* Fixed a bug that made the search, Cortana and task view buttons display on the left even though the taskbar was set to center with Start menu (#999)
+* Disabling the "Recommended" section in the Windows 11 Start menu now works in newer OS builds as well (#995)
+
 ## 22000.469.41
 
 Tested on OS build 22000.434.
