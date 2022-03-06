@@ -110,7 +110,7 @@
 ;q
 ;t When clicking a system icon in the system tray, open:
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Control Panel\Settings\Network]
-;c 6 Network
+;c 5 Network
 ;x 0 Windows 10 flyout (default)
 ;x 2 Windows 8 flyout
 ;x 1 Network section in the Settings app
