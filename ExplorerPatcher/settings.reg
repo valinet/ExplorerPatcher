@@ -418,6 +418,10 @@
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;b Show Weather on the taskbar
 ;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_PeopleBand"=dword:00000000
+;w Location
+;Search City or Zip Code; the program looks up "weather in /* what you typed */" on Google. Leave blank for the default value (current location).
+;Current location (default)
+"WeatherLocation"=""
 ;c 5 Layout
 ;x 0 Icon and description (default)
 ;x 3 Icon and temperature
@@ -443,10 +447,6 @@
 ;x 0 Celsius (default)
 ;x 1 Fahrenheit
 "WeatherTemperatureUnit"=dword:00000000
-;w Location
-;Search City or Zip Code; the program looks up "weather in /* what you typed */" on Google. Leave blank for the default value (current location).
-;Current location (default)
-"WeatherLocation"=""
 ;;;c 2 Location accuracy
 ;;;x 0 Generic (based on the IP address) (default)
 ;;;x 1 Precise (geolocation)
