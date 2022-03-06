@@ -755,19 +755,6 @@ LRESULT CALLBACK EP_Service_Window_WndProc(
         InvokeClockFlyout();
         return 0;
     }
-    else if (uMsg == WM_TIMER && wParam == 1)
-    {
-        SendNotifyMessageW(HWND_BROADCAST, WM_WININICHANGE, 0, (LPARAM)L"ConvertibleSlateMode");
-        SetTimer(hWnd, 2, 1000, NULL);
-        KillTimer(hWnd, 1);
-        return 0;
-    }
-    else if (uMsg == WM_TIMER && wParam == 2)
-    {
-        SendNotifyMessageW(HWND_BROADCAST, WM_WININICHANGE, 0, (LPARAM)L"ConvertibleSlateMode");
-        KillTimer(hWnd, 2);
-        return 0;
-    }
 
     return DefWindowProcW(hWnd, uMsg, wParam, lParam);
 }
@@ -803,10 +790,6 @@ DWORD EP_ServiceWindowThread(DWORD unused)
             RegisterHotKey(hWnd, 1, MOD_WIN | MOD_NOREPEAT, 'C');
         }
         RegisterHotKey(hWnd, 2, MOD_WIN | MOD_ALT, 'D');
-        if (bOldTaskbar && (dwOldTaskbarAl || dwMMOldTaskbarAl))
-        {
-            SetTimer(hWnd, 1, 5000, NULL);
-        }
         MSG msg;
         BOOL bRet;
         while ((bRet = GetMessageW(&msg, NULL, 0, 0)) != 0)
@@ -6591,7 +6574,6 @@ void WINAPI LoadSettings(LPARAM lParam)
         if (dwRefreshUIMask & REFRESHUI_CENTER)
         {
 #ifdef _WIN64
-            //SendNotifyMessageW(HWND_BROADCAST, WM_WININICHANGE, 0, (LPARAM)L"ConvertibleSlateMode");
             ToggleTaskbarAutohide();
             Sleep(1000);
             ToggleTaskbarAutohide();
