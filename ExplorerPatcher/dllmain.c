@@ -189,7 +189,7 @@ DWORD S_Icon_Dark_Widgets = 0;
 #include "ImmersiveFlyouts.h"
 #include "updates.h"
 DWORD dwUpdatePolicy = UPDATE_POLICY_DEFAULT;
-wchar_t* EP_TASKBAR_LENGTH_PROP_NAME = _T("ExplorerPatcher_") _T(EP_CLSID) _T("_Length");
+wchar_t* EP_TASKBAR_LENGTH_PROP_NAME = L"EPTBLEN";
 
 HRESULT WINAPI _DllRegisterServer();
 HRESULT WINAPI _DllUnregisterServer();

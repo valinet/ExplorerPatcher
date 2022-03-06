@@ -31,7 +31,7 @@ inline BOOL TaskbarCenter_ShouldLeftAlignWhenSpaceConstrained(DWORD dwSetting)
 	return (dwSetting & 0b100);
 }
 
-HRESULT TaskbarCenter_Center(HWND hWnd, RECT rc, BOOL bIsTaskbarHorizontal)
+HRESULT TaskbarCenter_Center(HWND hWnd, HWND hWndTaskbar, RECT rc, BOOL bIsTaskbarHorizontal)
 {
 	HRESULT hr = S_OK;
 	VARIANT vtChild[10];
@@ -99,12 +99,18 @@ HRESULT TaskbarCenter_Center(HWND hWnd, RECT rc, BOOL bIsTaskbarHorizontal)
 										}
 										else
 										{
-											SetPropW(hWnd, EP_TASKBAR_LENGTH_PROP_NAME, (bIsTaskbarHorizontal ? (d - (x - rc.left)) : (d - (y - rc.top))));
+											if (!((GetKeyState(VK_LBUTTON) < 0) && (GetForegroundWindow() == hWndTaskbar)))
+											{
+												SetPropW(hWnd, EP_TASKBAR_LENGTH_PROP_NAME, (bIsTaskbarHorizontal ? (d - (x - rc.left)) : (d - (y - rc.top))));
+											}
 										}
 									}
 									else
 									{
-										SetPropW(hWnd, EP_TASKBAR_LENGTH_PROP_NAME, bIsTaskbarHorizontal ? w : h);
+										if (!((GetKeyState(VK_LBUTTON) < 0) && (GetForegroundWindow() == hWndTaskbar)))
+										{
+											SetPropW(hWnd, EP_TASKBAR_LENGTH_PROP_NAME, bIsTaskbarHorizontal ? w : h);
+										}
 									}
 								}
 							}
@@ -162,7 +168,7 @@ BOOL TaskbarCenter_GetClientRectHook(HWND hWnd, LPRECT lpRect)
 			mi.cbSize = sizeof(MONITORINFO);
 			GetMonitorInfoW(MonitorFromWindow(hWnd, MONITOR_DEFAULTTOPRIMARY), &mi);
 			DWORD dwLength = 0;
-			TaskbarCenter_Center(hWnd, mi.rcMonitor, bIsTaskbarHorizontal);
+			TaskbarCenter_Center(hWnd, hWndTaskbar, mi.rcMonitor, bIsTaskbarHorizontal);
 			if (dwLength = GetPropW(hWnd, EP_TASKBAR_LENGTH_PROP_NAME))
 			{
 				if (dwLength == -1)
