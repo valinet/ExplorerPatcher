@@ -124,6 +124,7 @@ DWORD dwWeatherTheme = 0;
 DWORD dwWeatherGeolocationMode = 0;
 DWORD dwWeatherWindowCornerPreference = DWMWCP_ROUND;
 DWORD dwWeatherDevMode = FALSE;
+DWORD dwWeatherIconPack = EP_WEATHER_ICONPACK_MICROSOFT;
 WCHAR* wszWeatherTerm = NULL;
 WCHAR* wszWeatherLanguage = NULL;
 WCHAR* wszEPWeatherKillswitch = NULL;
@@ -4170,6 +4171,7 @@ SIZE WINAPI PeopleButton_CalculateMinimumSizeHook(void* _this, SIZE* pSz)
                 epw->lpVtbl->SetTerm(epw, MAX_PATH * sizeof(WCHAR), wszWeatherTerm);
                 epw->lpVtbl->SetLanguage(epw, MAX_PATH * sizeof(WCHAR), wszWeatherLanguage);
                 epw->lpVtbl->SetDevMode(epw, dwWeatherDevMode, FALSE);
+                epw->lpVtbl->SetIconPack(epw, dwWeatherIconPack, FALSE);
                 UINT dpiX = 0, dpiY = 0;
                 HMONITOR hMonitor = MonitorFromWindow(PeopleButton_LastHWND, MONITOR_DEFAULTTOPRIMARY);
                 HRESULT hr = GetDpiForMonitor(hMonitor, MDT_DEFAULT, &dpiX, &dpiY);
@@ -6296,6 +6298,24 @@ void WINAPI LoadSettings(LPARAM lParam)
             if (epw)
             {
                 epw->lpVtbl->SetDevMode(epw, (LONG64)dwWeatherDevMode, TRUE);
+            }
+        }
+
+        DWORD dwOldWeatherIconPack = dwWeatherIconPack;
+        dwSize = sizeof(DWORD);
+        RegQueryValueExW(
+            hKey,
+            TEXT("WeatherIconPack"),
+            0,
+            NULL,
+            &dwWeatherIconPack,
+            &dwSize
+        );
+        if (dwWeatherIconPack != dwOldWeatherIconPack && PeopleButton_LastHWND)
+        {
+            if (epw)
+            {
+                epw->lpVtbl->SetIconPack(epw, (LONG64)dwWeatherIconPack, TRUE);
             }
         }
 

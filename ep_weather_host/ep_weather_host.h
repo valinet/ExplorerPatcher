@@ -53,6 +53,7 @@ typedef interface EPWeather
     LONG64 dwWindowCornerPreference;
     LONG64 dwDevMode;
     LONG64 dwTextDir;
+    LONG64 dwIconPack;
 
     HANDLE hMutexData; // protects the following:
     DWORD cbTemperature;
@@ -116,6 +117,7 @@ HRESULT STDMETHODCALLTYPE epw_Weather_IsDarkMode(EPWeather* _this, LONG64 dwDark
 HRESULT STDMETHODCALLTYPE epw_Weather_SetGeolocationMode(EPWeather* _this, LONG64 dwGeolocationMode);
 HRESULT STDMETHODCALLTYPE epw_Weather_SetWindowCornerPreference(EPWeather* _this, LONG64 dwWindowCornerPreference);
 HRESULT STDMETHODCALLTYPE epw_Weather_SetDevMode(EPWeather* _this, LONG64 dwDevMode, LONG64 bRefresh);
+HRESULT STDMETHODCALLTYPE epw_Weather_SetIconPack(EPWeather* _this, LONG64 dwIconPack, LONG64 bRefresh);
 
 static const IEPWeatherVtbl IEPWeather_Vtbl = {
     .QueryInterface = epw_Weather_QueryInterface,
@@ -143,6 +145,7 @@ static const IEPWeatherVtbl IEPWeather_Vtbl = {
     .SetGeolocationMode = epw_Weather_SetGeolocationMode,
     .SetWindowCornerPreference = epw_Weather_SetWindowCornerPreference,
     .SetDevMode = epw_Weather_SetDevMode,
+    .SetIconPack = epw_Weather_SetIconPack,
 };
 
 static inline DWORD epw_Weather_GetTextScaleFactor(EPWeather* _this) { return InterlockedAdd64(&_this->dwTextScaleFactor, 0); }

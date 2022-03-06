@@ -66,4 +66,6 @@ import "unknwn.idl";
 	HRESULT SetWindowCornerPreference([in] LONG64 dwWindowCornerPreference);
 
 	HRESULT SetDevMode([in] LONG64 dwDevMode, [in] LONG64 bRefresh);
+
+	HRESULT SetIconPack([in] LONG64 dwIconPack, [in] LONG64 bRefresh);
 };

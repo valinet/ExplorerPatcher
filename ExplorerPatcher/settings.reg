@@ -465,6 +465,10 @@
 ;x 3 Small rounded
 ;x 1 Not rounded
 "WeatherWindowCornerPreference"=dword:00000002
+;c 2 Taskbar icon pack
+;x 0 Microsoft (default)
+;x 1 Google
+"WeatherIconPack"=dword:00000000
 ;q
 ;t Weather data courtesy of Google, and weather.com.
 ;y Learn more about the Weather taskbar widget 🡕

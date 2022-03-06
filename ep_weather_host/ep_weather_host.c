@@ -227,9 +227,15 @@ HRESULT STDMETHODCALLTYPE _epw_Weather_ExecuteDataScript(EPWeather* _this)
         LPWSTR wszScriptData = malloc(sizeof(WCHAR) * EP_WEATHER_PROVIDER_GOOGLE_SCRIPT_LEN);
         if (wszScriptData)
         {
-            LONG64 dwTemperatureUnit = InterlockedAdd64(&_this->dwTemperatureUnit, 0);
-            LONG64 cbx = InterlockedAdd64(&_this->cbx, 0);
-            swprintf_s(wszScriptData, EP_WEATHER_PROVIDER_GOOGLE_SCRIPT_LEN, ep_weather_provider_google_script, dwTemperatureUnit == EP_WEATHER_TUNIT_FAHRENHEIT ? L'F' : L'C', cbx, cbx);
+            LONG64 dwIconPack = InterlockedAdd(&_this->dwIconPack, 0);
+            if (dwIconPack == EP_WEATHER_ICONPACK_MICROSOFT)
+            {
+                swprintf_s(wszScriptData, EP_WEATHER_PROVIDER_GOOGLE_SCRIPT_LEN, L"%s%s", ep_weather_provider_google_script00, ep_weather_provider_google_script01);
+            }
+            else if (dwIconPack == EP_WEATHER_ICONPACK_GOOGLE)
+            {
+                swprintf_s(wszScriptData, EP_WEATHER_PROVIDER_GOOGLE_SCRIPT_LEN, ep_weather_provider_google_script10);
+            }
             //wprintf(L"%s\n", _this->wszScriptData);
             if (_this->pCoreWebView2)
             {
@@ -413,6 +419,19 @@ HRESULT STDMETHODCALLTYPE ICoreWebView2_ExecuteScriptCompleted(ICoreWebView2Exec
                 //epw_Weather_IsDarkMode(_this, dwDarkMode, &bEnabled);
                 //swprintf_s(_this->wszScriptData, EP_WEATHER_PROVIDER_GOOGLE_SCRIPT_LEN, ep_weather_provider_google_script2, bEnabled ? 1 : 0);
                 _this->pCoreWebView2->lpVtbl->ExecuteScript(_this->pCoreWebView2, ep_weather_provider_google_script2, &EPWeather_ICoreWebView2ExecuteScriptCompletedHandler);
+                bOk = TRUE;
+            }
+            else if (!_wcsicmp(pResultObjectAsJson, L"\"run_part_0\""))
+            {
+                LONG64 dwTemperatureUnit = InterlockedAdd64(&_this->dwTemperatureUnit, 0);
+                LONG64 cbx = InterlockedAdd64(&_this->cbx, 0);
+                LPWSTR wszScriptData = malloc(sizeof(WCHAR) * EP_WEATHER_PROVIDER_GOOGLE_SCRIPT_LEN);
+                if (wszScriptData)
+                {
+                    swprintf_s(wszScriptData, EP_WEATHER_PROVIDER_GOOGLE_SCRIPT_LEN, ep_weather_provider_google_script, dwTemperatureUnit == EP_WEATHER_TUNIT_FAHRENHEIT ? L'F' : L'C', cbx, cbx);
+                    _this->pCoreWebView2->lpVtbl->ExecuteScript(_this->pCoreWebView2, wszScriptData, &EPWeather_ICoreWebView2ExecuteScriptCompletedHandler);
+                    free(wszScriptData);
+                }
                 bOk = TRUE;
             }
             else if (!_wcsicmp(pResultObjectAsJson, L"\"run_part_1\""))
@@ -1077,6 +1096,16 @@ HRESULT STDMETHODCALLTYPE epw_Weather_SetDevMode(EPWeather* _this, LONG64 dwDevM
     if (bRefresh)
     {
         PostMessageW(_this->hWnd, EP_WEATHER_WM_SETDEVMODE, dwDevMode, 0);
+    }
+    return S_OK;
+}
+
+HRESULT STDMETHODCALLTYPE epw_Weather_SetIconPack(EPWeather* _this, LONG64 dwIconPack, LONG64 bRefresh)
+{
+    InterlockedExchange64(&_this->dwIconPack, dwIconPack);
+    if (bRefresh)
+    {
+        PostMessageW(_this->hWnd, EP_WEATHER_WM_FETCH_DATA, 0, 0);
     }
     return S_OK;
 }
