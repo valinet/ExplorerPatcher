@@ -594,7 +594,16 @@ void LVT_StartDocked_DisableRecommendedSection(HWND hWnd, BOOL bApply)
                                                 Windows_UI_Xaml_IDependencyObject* pMainContent = LVT_FindChildByName(pRootContent, pVisualTreeHelperStatics, L"MainContent");
                                                 if (pMainContent)
                                                 {
+                                                    Windows_UI_Xaml_IDependencyObject* pInnerContent = NULL;
                                                     Windows_UI_Xaml_IDependencyObject* pUndockedRoot = LVT_FindChildByName(pMainContent, pVisualTreeHelperStatics, L"UndockedRoot");
+                                                    if (!pUndockedRoot)
+                                                    {
+                                                        pInnerContent = LVT_FindChildByName(pMainContent, pVisualTreeHelperStatics, L"InnerContent");
+                                                        if (pInnerContent)
+                                                        {
+                                                            pUndockedRoot = LVT_FindChildByName(pInnerContent, pVisualTreeHelperStatics, L"UndockedRoot");
+                                                        }
+                                                    }
                                                     if (pUndockedRoot)
                                                     {
                                                         Windows_UI_Xaml_IDependencyObject* pStartInnerFrame = LVT_FindChildByClassName(pUndockedRoot, pVisualTreeHelperStatics, L"StartMenu.StartInnerFrame", NULL);
@@ -656,6 +665,10 @@ void LVT_StartDocked_DisableRecommendedSection(HWND hWnd, BOOL bApply)
                                                             pStartInnerFrame->lpVtbl->Release(pStartInnerFrame);
                                                         }
                                                         pUndockedRoot->lpVtbl->Release(pUndockedRoot);
+                                                    }
+                                                    if (pInnerContent)
+                                                    {
+                                                        pInnerContent->lpVtbl->Release(pInnerContent);
                                                     }
                                                     pMainContent->lpVtbl->Release(pMainContent);
                                                 }
