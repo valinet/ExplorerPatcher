@@ -230,7 +230,7 @@ HRESULT STDMETHODCALLTYPE _epw_Weather_ExecuteDataScript(EPWeather* _this)
             LONG64 dwIconPack = InterlockedAdd(&_this->dwIconPack, 0);
             if (dwIconPack == EP_WEATHER_ICONPACK_MICROSOFT)
             {
-                swprintf_s(wszScriptData, EP_WEATHER_PROVIDER_GOOGLE_SCRIPT_LEN, L"%s%s", ep_weather_provider_google_script00, ep_weather_provider_google_script01);
+                swprintf_s(wszScriptData, EP_WEATHER_PROVIDER_GOOGLE_SCRIPT_LEN, L"%s%s%s%s", ep_weather_provider_google_script00, ep_weather_provider_google_script01, ep_weather_provider_google_script02, ep_weather_provider_google_script03);
             }
             else if (dwIconPack == EP_WEATHER_ICONPACK_GOOGLE)
             {

@@ -465,7 +465,7 @@
 ;x 3 Small rounded
 ;x 1 Not rounded
 "WeatherWindowCornerPreference"=dword:00000002
-;c 2 Taskbar icon pack
+;c 2 Icon pack
 ;x 0 Microsoft (default)
 ;x 1 Google
 "WeatherIconPack"=dword:00000000
