@@ -156,6 +156,14 @@ Please make sure you are connected to the Internet while installing, the applica
 * Fixed a bug that made the search, Cortana and task view buttons display on the left even though the taskbar was set to center with Start menu (#999)
 * Disabling the "Recommended" section in the Windows 11 Start menu now works in newer OS builds as well (#995)
 
+##### .31
+
+* The Microsoft icon pack for the weather widget applies to the widget contents as well, in addition to the taskbar icon
+* Fixed a bug that slightly moved the taskbar buttons to the right when dragging to rearrange one of them over the first or last item when using the centered Windows 10 taskbar (#1009)
+* Fixed a bug that crashed the "Properties" window when accessing the "System tray" section in Windows 10 (#1013)
+* Fixed a bug that prevented the Mica effect from working on File Explorer windows when the "Launch folder windows in a separate process" setting was used (#1021)
+* Fixed a bug that made certain systems, under certain circumstances, to become stuck in "tablet mode"; symptoms included more spacing between taskbar icons, compact view permanently disabled in File Explorer, and/or item checkboxes permanently enabled in File Explorer (#1022). After installing this update, if you are still stuck with the tablet UI, open the Registry Editor, go to `HKEY_LOCAL_MACHINE\SOFTWARE\\Microsoft\\TabletTip\\ConvertibleSlateModeChanged` and delete the `ConvertibleSlateModeChanged` which most likely is stuck to value `1`.
+
 ## 22000.469.41
 
 Tested on OS build 22000.434.
