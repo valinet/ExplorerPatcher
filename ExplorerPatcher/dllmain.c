@@ -743,6 +743,16 @@ void LaunchNetworkTargets(DWORD dwTarget)
 
 #pragma region "Service Window"
 #ifdef _WIN64
+void FixUpCenteredTaskbar()
+{
+    InvalidateRect(FindWindowExW(FindWindowExW(FindWindowExW(FindWindowExW(NULL, NULL, L"Shell_TrayWnd", NULL), NULL, L"ReBarWindow32", NULL), NULL, L"MSTaskSwWClass", NULL), NULL, L"MSTaskListWClass", NULL), NULL, TRUE);
+    HWND hWndTemp = NULL;
+    while (hWndTemp = FindWindowExW(NULL, hWndTemp, L"Shell_SecondaryTrayWnd", NULL))
+    {
+        InvalidateRect(FindWindowExW(FindWindowExW(hWndTemp, NULL, L"WorkerW", NULL), NULL, L"MSTaskListWClass", NULL), NULL, TRUE);
+    }
+}
+
 #define EP_SERVICE_WINDOW_CLASS_NAME L"EP_Service_Window_" _T(EP_CLSID)
 LRESULT CALLBACK EP_Service_Window_WndProc(
     HWND hWnd,
@@ -753,6 +763,19 @@ LRESULT CALLBACK EP_Service_Window_WndProc(
     if (uMsg == WM_HOTKEY && (wParam == 1 || wParam == 2))
     {
         InvokeClockFlyout();
+        return 0;
+    }
+    else if (uMsg == WM_TIMER && wParam == 1)
+    {
+        FixUpCenteredTaskbar();
+        SetTimer(hWnd, 2, 1000, NULL);
+        KillTimer(hWnd, 1);
+        return 0;
+    }
+    else if (uMsg == WM_TIMER && wParam == 2)
+    {
+        FixUpCenteredTaskbar();
+        KillTimer(hWnd, 2);
         return 0;
     }
 
@@ -790,6 +813,10 @@ DWORD EP_ServiceWindowThread(DWORD unused)
             RegisterHotKey(hWnd, 1, MOD_WIN | MOD_NOREPEAT, 'C');
         }
         RegisterHotKey(hWnd, 2, MOD_WIN | MOD_ALT, 'D');
+        if (bOldTaskbar && (dwOldTaskbarAl || dwMMOldTaskbarAl))
+        {
+            SetTimer(hWnd, 1, 5000, NULL);
+        }
         MSG msg;
         BOOL bRet;
         while ((bRet = GetMessageW(&msg, NULL, 0, 0)) != 0)
