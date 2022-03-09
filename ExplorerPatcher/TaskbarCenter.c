@@ -1,35 +1,11 @@
 #include "TaskbarCenter.h"
 
+extern HWND PeopleButton_LastHWND;
+extern DWORD dwWeatherToLeft;
 extern DWORD dwOldTaskbarAl;
 extern DWORD dwMMOldTaskbarAl;
 extern wchar_t* EP_TASKBAR_LENGTH_PROP_NAME;
 #define EP_TASKBAR_LENGTH_TOO_SMALL 20
-
-inline BOOL TaskbarCenter_IsTaskbarHorizontal(HWND hWnd)
-{
-	__int64 v1;
-	__int64 result;
-	v1 = *((__int64*)GetWindowLongPtrW(hWnd, 0) + 13);
-	result = 1i64;
-	if (v1)
-		return (*(__int64(__fastcall**)(__int64))(*(__int64*)v1 + 96))(v1);
-	return result;
-}
-
-inline BOOL TaskbarCenter_ShouldCenter(DWORD dwSetting)
-{
-	return (dwSetting & 0b001);
-}
-
-inline BOOL TaskbarCenter_ShouldStartBeCentered(DWORD dwSetting)
-{
-	return (dwSetting & 0b010);
-}
-
-inline BOOL TaskbarCenter_ShouldLeftAlignWhenSpaceConstrained(DWORD dwSetting)
-{
-	return (dwSetting & 0b100);
-}
 
 HRESULT TaskbarCenter_Center(HWND hWnd, HWND hWndTaskbar, RECT rc, BOOL bIsTaskbarHorizontal)
 {
@@ -147,9 +123,16 @@ BOOL TaskbarCenter_GetClientRectHook(HWND hWnd, LPRECT lpRect)
 		}
 		hWndStart = FindWindowExW(hWndTaskbar, NULL, L"Start", NULL);
 		BOOL bIsTaskbarHorizontal = TaskbarCenter_IsTaskbarHorizontal(hWnd);
+		BOOL bIsWeatherAvailable = FALSE;
+		HWND hReBarWindow32 = NULL;
+		if (bIsPrimaryTaskbar) hReBarWindow32 = FindWindowExW(hWndTaskbar, NULL, L"ReBarWindow32", NULL);
+		HWND hPeopleBand = NULL;
+		if (bIsPrimaryTaskbar) hPeopleBand = FindWindowExW(hReBarWindow32, NULL, L"PeopleBand", NULL);
+		bIsWeatherAvailable = hPeopleBand && dwWeatherToLeft;
+		BOOL bWasLeftAlignedDueToSpaceConstraints = FALSE;
 		if (TaskbarCenter_ShouldCenter(dwSetting))
 		{
-			if (TaskbarCenter_ShouldStartBeCentered(dwSetting) && hWndStart)
+			if (hWndStart)
 			{
 				GetClientRect(hWndStart, &rcStart);
 				HWND hTrayButton = NULL;
@@ -219,41 +202,96 @@ BOOL TaskbarCenter_GetClientRectHook(HWND hWnd, LPRECT lpRect)
 				}
 				else
 				{
+					RECT rcPeopleBand;
+					SetRect(&rcPeopleBand, 0, 0, 0, 0);
+					RECT rcReBarWindow32;
+					SetRect(&rcReBarWindow32, 0, 0, 0, 0);
+					if (hPeopleBand)
+					{
+						GetClientRect(hPeopleBand, &rcPeopleBand);
+					}
+					if (hReBarWindow32)
+					{
+						GetClientRect(hReBarWindow32, &rcReBarWindow32);
+					}
+					RECT rc;
+					GetWindowRect(hWnd, &rc);
+					//MARGINS mBand;
+					//mBand.cxLeftWidth = 0; mBand.cxRightWidth = 0; mBand.cyBottomHeight = 0; mBand.cyTopHeight = 0;
+					//if (bIsPrimaryTaskbar) SendMessageW(hReBarWindow32, RB_GETBANDMARGINS, 0, &mBand);
+					//if (TaskbarCenter_ShouldStartBeCentered(dwSetting))
+					//{
+					//	rc.left -= mBand.cxLeftWidth;
+					//}
+					//else
+					//{
+					//	rc.left += mBand.cxLeftWidth;
+					//}
+
+					DWORD dwAdd = 0;
 					if (TaskbarCenter_ShouldStartBeCentered(dwSetting) && hWndStart)
 					{
-						dwLength += (bIsTaskbarHorizontal ? (rcStart.right - rcStart.left) : (rcStart.bottom - rcStart.top));
+						dwAdd += (bIsTaskbarHorizontal ? (rcStart.right - rcStart.left) : (rcStart.bottom - rcStart.top));
 					}
 					bWasCalled = GetClientRect(hWnd, lpRect);
 					long res = 0;
 					if (bIsTaskbarHorizontal)
 					{
-						res = ((mi.rcMonitor.right - mi.rcMonitor.left) - dwLength) / 2 - (!TaskbarCenter_ShouldStartBeCentered(dwSetting) ? (rc.left - mi.rcMonitor.left) : 0);
+						res = ((mi.rcMonitor.right - mi.rcMonitor.left) - dwLength - dwAdd) / 2 - (rc.left - mi.rcMonitor.left);
+						if (res < 0)
+						{
+							dwLength -= abs(res) * 2;
+							res = ((mi.rcMonitor.right - mi.rcMonitor.left) - dwLength - dwAdd) / 2 - (rc.left - mi.rcMonitor.left);
+						}
+						if (TaskbarCenter_ShouldStartBeCentered(dwSetting))
+						{
+							res += (rcStart.right - rcStart.left);
+						}
 					}
 					else
 					{
-						res = ((mi.rcMonitor.bottom - mi.rcMonitor.top) - dwLength) / 2 - (!TaskbarCenter_ShouldStartBeCentered(dwSetting) ? (rc.top - mi.rcMonitor.top) : 0);
+						res = ((mi.rcMonitor.bottom - mi.rcMonitor.top) - dwLength - dwAdd) / 2 - (rc.top - mi.rcMonitor.top);
+						if (res < 0)
+						{
+							dwLength -= abs(res) * 2;
+							res = ((mi.rcMonitor.bottom - mi.rcMonitor.top) - dwLength - dwAdd) / 2 - (rc.top - mi.rcMonitor.top);
+						}
+						if (TaskbarCenter_ShouldStartBeCentered(dwSetting))
+						{
+							res += (rcStart.bottom - rcStart.top);
+						}
 					}
-					if (res + dwLength + 5 - (TaskbarCenter_ShouldStartBeCentered(dwSetting) ? (bIsTaskbarHorizontal ? (rc.left - mi.rcMonitor.left) : (rc.top - mi.rcMonitor.top)) : 0) < (bIsTaskbarHorizontal ? lpRect->right : lpRect->bottom))
+					if ((res + dwLength + 50 >= (bIsTaskbarHorizontal ? lpRect->right : lpRect->bottom)))
 					{
-						if (bIsTaskbarHorizontal)
-						{
-							lpRect->left = res;
-						}
-						else
-						{
-							lpRect->top = res;
-						}
 						if (TaskbarCenter_ShouldLeftAlignWhenSpaceConstrained(dwSetting) || !bIsTaskbarHorizontal)
 						{
+							bWasLeftAlignedDueToSpaceConstraints = TRUE;
+							res = 0;
 							if (bIsTaskbarHorizontal)
 							{
-								lpRect->right = (TaskbarCenter_ShouldStartBeCentered(dwSetting) ? (rc.left - mi.rcMonitor.left) : 0) + 10 + lpRect->right;
+								if (TaskbarCenter_ShouldStartBeCentered(dwSetting))
+								{
+									res += (rcStart.right - rcStart.left);
+								}
 							}
 							else
 							{
-								lpRect->bottom = (TaskbarCenter_ShouldStartBeCentered(dwSetting) ? (rc.top - mi.rcMonitor.top) : 0) + 10 + lpRect->bottom;
+								if (TaskbarCenter_ShouldStartBeCentered(dwSetting))
+								{
+									res += (rcStart.bottom - rcStart.top);
+								}
 							}
 						}
+					}
+					if (bIsTaskbarHorizontal)
+					{
+						lpRect->left = res;
+						//lpRect->right = MIN(MAX(lpRect->right, MIN_DIM), MAX(res + dwLength + 100, MIN_DIM));
+					}
+					else
+					{
+						lpRect->top = res;
+						//lpRect->bottom = MIN(MAX(lpRect->bottom, MIN_DIM), MAX(res + dwLength + 100, MIN_DIM));
 					}
 					if (TaskbarCenter_ShouldStartBeCentered(dwSetting) && hWndStart)
 					{
@@ -299,6 +337,64 @@ BOOL TaskbarCenter_GetClientRectHook(HWND hWnd, LPRECT lpRect)
 			if (GetPropW(hWnd, EP_TASKBAR_LENGTH_PROP_NAME))
 			{
 				RemovePropW(hWnd, EP_TASKBAR_LENGTH_PROP_NAME);
+			}
+		}
+		if (bIsPrimaryTaskbar)
+		{
+			BOOL bWeatherAlignment = FALSE;
+			if (bIsWeatherAvailable)
+			{
+				bWeatherAlignment = TRUE;
+			}
+			else
+			{
+				bWeatherAlignment = FALSE;
+			}
+			/*if (bIsWeatherAvailable && bWasLeftAlignedDueToSpaceConstraints && dwWeatherToLeft == 2)
+			{
+				bWeatherAlignment = FALSE;
+			}*/
+			REBARBANDINFOW rbi;
+			rbi.cbSize = sizeof(REBARBANDINFOW);
+			rbi.fMask = RBBIM_CHILD;
+			SendMessageW(hReBarWindow32, RB_GETBANDINFOW, 0, &rbi);
+			BOOL bIsFirstBandPeopleBand = GetClassWord(rbi.hwndChild, GCW_ATOM) == RegisterWindowMessageW(L"PeopleBand");
+			if (bWeatherAlignment ? !bIsFirstBandPeopleBand : bIsFirstBandPeopleBand)
+			{
+				int k = SendMessageW(hReBarWindow32, RB_GETBANDCOUNT, 0, 0);
+				int i = 1;
+				if (bWeatherAlignment)
+				{
+					for (i = 1; i < k; ++i)
+					{
+						rbi.cbSize = sizeof(REBARBANDINFOW);
+						rbi.fMask = RBBIM_CHILD;
+						SendMessageW(hReBarWindow32, RB_GETBANDINFOW, i, &rbi);
+						if (GetClassWord(rbi.hwndChild, GCW_ATOM) == RegisterWindowMessageW(L"PeopleBand"))
+						{
+							break;
+						}
+					}
+				}
+				else i = k - 1;
+				SendMessageW(hReBarWindow32, RB_MOVEBAND, 0, i);
+				SendNotifyMessageW(HWND_BROADCAST, WM_WININICHANGE, 0, (LPARAM)L"TraySettings");
+				/*if (PeopleButton_LastHWND)
+				{
+					//if (epw_dummytext[0] == 0) epw_dummytext = L"\u2009";
+					//else epw_dummytext = L"";
+					//InvalidateRect(PeopleButton_LastHWND, NULL, TRUE);
+					if (FindWindowW(L"Shell_SecondaryTrayWnd", NULL))
+					{
+						PostMessageW(FindWindowW(L"Shell_TrayWnd", NULL), WM_COMMAND, 425, 0);
+						PostMessageW(FindWindowW(L"Shell_TrayWnd", NULL), WM_COMMAND, 425, 0);
+					}
+					else
+					{
+						PostMessageW(FindWindowW(L"Shell_TrayWnd", NULL), WM_COMMAND, 424, 0);
+						PostMessageW(FindWindowW(L"Shell_TrayWnd", NULL), WM_COMMAND, 424, 0);
+					}
+				}*/
 			}
 		}
 		if ((!TaskbarCenter_ShouldCenter(dwSetting) || !TaskbarCenter_ShouldStartBeCentered(dwSetting)) && hWndStart)

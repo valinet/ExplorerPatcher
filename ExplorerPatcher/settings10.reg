@@ -374,6 +374,10 @@
 ;x 2 Automatic (fit contents) with threshold
 ;x 1 Fixed
 "WeatherFixedSize"=dword:00000000
+;c 2 Widget position
+;x 0 Right / bottom (default)
+;x 1 Left / top
+"WeatherToLeft"=dword:00000000
 ;c 7 Update frequency
 ;x 60 Every minute
 ;x 300 Every 5 minutes
@@ -408,6 +412,10 @@
 ;x 0 Microsoft (default)
 ;x 1 Google
 "WeatherIconPack"=dword:00000000
+;c 2 Display widget contents
+;x 0 On a single line (default)
+;x 1 On 2 lines, if possible
+"WeatherContentsMode"=dword:00000000
 ;q
 ;t Weather data courtesy of Google, and weather.com.
 ;y Learn more about the Weather taskbar widget 🡕
