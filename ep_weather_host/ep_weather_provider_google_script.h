@@ -101,14 +101,17 @@ Math.mod = function(a, b) {\n\
 }\n\
 \n\
 \n\
+var is_first_time = 1;\n\
 var final_im = 0;\n\
 var final_img2 = 0;\n\
 var final_int;\n\
 var final_cnt = 0;\n\
 function ep_set_final_img(){\n\
-document.getElementById('wob_tci').src = final_img2;\n\
-final_cnt++;\n\
-if (final_cnt == 20) clearInterval(final_int);\n\
+//document.getElementById('wob_tci').src = final_img2;\n\
+//final_cnt++;\n\
+//if (final_cnt == 20)\n\
+is_first_time=0;\n\
+clearInterval(final_int);\n\
 }\n\
 function ep_download_image_blob(url) {\n\
     var request = new XMLHttpRequest();\n\
@@ -240,7 +243,7 @@ LPCWSTR ep_weather_provider_google_script02 = L"\
 if (final_img != 0) {\n\
     if (im.id == document.getElementById('wob_tci').id) {\n\
         final_img2 = final_img;\n\
-        final_int = setInterval(ep_set_final_img, 500);\n\
+        final_int = setInterval(ep_set_final_img, 5000);\n\
 \n\
 var final_img3 = 0;\n\
 if (im.src.endsWith('/sunny_s_cloudy.png')) {\n\
@@ -326,7 +329,8 @@ var observer = new MutationObserver((changes) => {\n\
             let sp = document.getElementById(\"wob_dts\").innerText.split(':');\n\
             let hrs = parseInt(sp[0].split(' ')[1]);\n\
             let mins = parseInt(sp[1]);\n\
-            replaceImage(document.getElementById('wob_tci'), IsDay(1, hrs, mins));\n\
+            if (is_first_time) { replaceImage(document.getElementById('wob_tci'), is_day1); is_first_time = 0 }\n\
+            else replaceImage(document.getElementById('wob_tci'), IsDay(1, hrs, mins));\n\
         } else { replaceImage(document.getElementById('wob_tci'), 1); }\n\
       }\n\
   });\n\
