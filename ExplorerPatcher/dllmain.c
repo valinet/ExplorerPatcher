@@ -6896,7 +6896,7 @@ void WINAPI Explorer_RefreshUI(int src)
 {
     HKEY hKey = NULL;
     DWORD dwSize = 0, dwTemp = 0, dwRefreshMask = 0;
-    if (src == 1)
+    if (src == 99 || src == 1)
     {
         RegCreateKeyExW(
             HKEY_CURRENT_USER,
@@ -6958,7 +6958,7 @@ void WINAPI Explorer_RefreshUI(int src)
             //SearchboxTaskbarMode
         }
     }
-    if (src == 2)
+    if (src == 99 || src == 2)
     {
         RegCreateKeyExW(
             HKEY_CURRENT_USER,
@@ -6994,6 +6994,7 @@ void WINAPI Explorer_RefreshUI(int src)
             }
         }
     }
+    if (src == 99) return;
     SendNotifyMessageW(HWND_BROADCAST, WM_WININICHANGE, 0, (LPARAM)L"TraySettings");
     Explorer_RefreshClock(0);
     if (dwRefreshMask & REFRESHUI_CENTER)
@@ -8814,6 +8815,7 @@ DWORD Inject(BOOL bIsExplorer)
     }
 
     LoadSettings(MAKELPARAM(bIsExplorer, FALSE));
+    Explorer_RefreshUI(99);
 
 #ifdef _WIN64
     if (bIsExplorer)
