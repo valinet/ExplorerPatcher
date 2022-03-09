@@ -2,9 +2,9 @@
 
 This document includes the same release notes as in the [Releases](https://github.com/valinet/ExplorerPatcher/releases) section on GitHub.
 
-## 22000.493.42
+## 22000.556.42
 
-Tested on OS build 22000.493.
+Tested on OS build 22000.556.
 
 Please make sure you are connected to the Internet while installing, the application might need to perform one-time downloads for several resources in order to enable full functionality.
 
@@ -162,7 +162,16 @@ Please make sure you are connected to the Internet while installing, the applica
 * Fixed a bug that slightly moved the taskbar buttons to the right when dragging to rearrange one of them over the first or last item when using the centered Windows 10 taskbar (#1009)
 * Fixed a bug that crashed the "Properties" window when accessing the "System tray" section in Windows 10 (#1013)
 * Fixed a bug that prevented the Mica effect from working on File Explorer windows when the "Launch folder windows in a separate process" setting was used (#1021)
-* Fixed a bug that made certain systems, under certain circumstances, to become stuck in "tablet mode"; symptoms included more spacing between taskbar icons, compact view permanently disabled in File Explorer, and/or item checkboxes permanently enabled in File Explorer (#1022). After installing this update, if you are still stuck with the tablet UI, open the Registry Editor, go to `HKEY_LOCAL_MACHINE\SOFTWARE\\Microsoft\\TabletTip\\ConvertibleSlateModeChanged` and delete the `ConvertibleSlateModeChanged` which most likely is stuck to value `1`.
+* Fixed a bug that made certain systems, under certain circumstances, to become stuck in "tablet mode"; symptoms included more spacing between taskbar icons, compact view permanently disabled in File Explorer, and/or item checkboxes permanently enabled in File Explorer (#1022). After installing this update, if you are still stuck with the tablet UI, open the Registry Editor, go to `HKEY_CURRENT_USER\SOFTWARE\Microsoft\TabletTip\ConvertibleSlateModeChanged` and delete the `ConvertibleSlateModeChanged` value which most likely is stuck to `1`.
+
+##### .32
+
+* Built-in support for 22000.556
+* Weather widget can now show on the left/top side of the taskbar
+* Weather widget can display condition on 2 lines
+* Reliability improvements for the centered Windows 10 taskbar which now also works along with other taskbar toolbars
+* Fixed a bug that had the Windows 10 Start menu default to being left-aligned on Windows 10
+* Fixed a bug that prevented the "Centered, with Start button" modes of the Windows 10 taskbar from working correctly when the taskbar was vertically aligned
 
 ## 22000.469.41
 
