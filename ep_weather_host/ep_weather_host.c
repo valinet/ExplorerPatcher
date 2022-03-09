@@ -43,8 +43,7 @@ static void epw_Weather_SetTextScaleFactorFromRegistry(EPWeather* _this, HKEY hK
     }
     if (bRefresh)
     {
-        _this->cntResizeWindow = 0;
-        SetTimer(_this->hWnd, EP_WEATHER_TIMER_RESIZE_WINDOW, EP_WEATHER_TIMER_RESIZE_WINDOW_DELAY, NULL);
+        _ep_Weather_StartResize(_this);
     }
 }
 
@@ -152,16 +151,21 @@ HRESULT STDMETHODCALLTYPE ICoreWebView2_CreateCoreWebView2EnvironmentCompleted(I
 
 HRESULT STDMETHODCALLTYPE _epw_Weather_NavigateToError(EPWeather* _this)
 {
-    _ep_weather_ReboundBrowser(_this, TRUE);
+    _ep_Weather_ReboundBrowser(_this, TRUE);
     InterlockedExchange64(&_this->bIsNavigatingToError, TRUE);
     UINT dpi = GetDpiForWindow(_this->hWnd);
-    int ch = MulDiv(MulDiv(305, dpi, 96), epw_Weather_GetTextScaleFactor(_this), 100);
+    DWORD dwTextScaleFactor = epw_Weather_GetTextScaleFactor(_this);
+    DWORD dwZoomFactor = epw_Weather_GetZoomFactor(_this);
+    int ch = MulDiv(MulDiv(MulDiv(EP_WEATHER_HEIGHT_ERROR, dpi, 96), dwTextScaleFactor, 100), dwZoomFactor, 100);
     RECT rc;
-    GetWindowRect(_this->hWnd, &rc);
-    int w = MulDiv(MulDiv(EP_WEATHER_WIDTH, GetDpiForWindow(_this->hWnd), 96), epw_Weather_GetTextScaleFactor(_this), 100);
+    GetClientRect(_this->hWnd, &rc);
+    int w = MulDiv(MulDiv(MulDiv(EP_WEATHER_WIDTH, GetDpiForWindow(_this->hWnd), 96), dwTextScaleFactor, 100), dwZoomFactor, 100);
     if ((rc.bottom - rc.top != ch) || (rc.right - rc.left != w))
     {
-        SetWindowPos(_this->hWnd, NULL, 0, 0, w, ch, SWP_NOMOVE | SWP_NOSENDCHANGING);
+        RECT rcAdj;
+        SetRect(&rcAdj, 0, 0, w, ch);
+        AdjustWindowRectExForDpi(&rcAdj, epw_Weather_GetStyle(_this) & ~WS_OVERLAPPED, epw_Weather_HasMenuBar(_this), epw_Weather_GetExtendedStyle(_this), dpi);
+        SetWindowPos(_this->hWnd, NULL, 0, 0, rcAdj.right - rcAdj.left, rcAdj.bottom - rcAdj.top, SWP_NOMOVE | SWP_NOSENDCHANGING);
         HWND hNotifyWnd = InterlockedAdd64(&_this->hNotifyWnd, 0);
         if (hNotifyWnd)
         {
@@ -180,7 +184,7 @@ HRESULT STDMETHODCALLTYPE _epw_Weather_NavigateToError(EPWeather* _this)
 
 HRESULT STDMETHODCALLTYPE _epw_Weather_NavigateToProvider(EPWeather* _this)
 {
-    _ep_weather_ReboundBrowser(_this, FALSE);
+    _ep_Weather_ReboundBrowser(_this, FALSE);
     HRESULT hr = S_OK;
     LONG64 dwProvider = InterlockedAdd64(&_this->dwProvider, 0);
     if (dwProvider == EP_WEATHER_PROVIDER_TEST)
@@ -259,7 +263,14 @@ HRESULT STDMETHODCALLTYPE _epw_Weather_ExecuteDataScript(EPWeather* _this)
     return hr;
 }
 
-HRESULT STDMETHODCALLTYPE _ep_weather_ReboundBrowser(EPWeather* _this, LONG64 dwType)
+HRESULT STDMETHODCALLTYPE _ep_Weather_StartResize(EPWeather* _this)
+{
+    _this->cntResizeWindow = 0;
+    SetTimer(_this->hWnd, EP_WEATHER_TIMER_RESIZE_WINDOW, EP_WEATHER_TIMER_RESIZE_WINDOW_DELAY, NULL);
+    return S_OK;
+}
+
+HRESULT STDMETHODCALLTYPE _ep_Weather_ReboundBrowser(EPWeather* _this, LONG64 dwType)
 {
     UINT dpi = GetDpiForWindow(_this->hWnd);
     RECT bounds;
@@ -271,10 +282,11 @@ HRESULT STDMETHODCALLTYPE _ep_weather_ReboundBrowser(EPWeather* _this, LONG64 dw
     else
     {
         DWORD dwTextScaleFactor = epw_Weather_GetTextScaleFactor(_this);
-        bounds.left = 0 - MulDiv(MulDiv(167, dpi, 96), dwTextScaleFactor, 100);
-        bounds.top = 0 - MulDiv(MulDiv(178, dpi, 96), dwTextScaleFactor, 100);
-        bounds.right = MulDiv(MulDiv((!InterlockedAdd64(&_this->dwTextDir, 0) ? 1333 : 705), dpi, 96), dwTextScaleFactor, 100);// 5560;
-        bounds.bottom = MulDiv(MulDiv(600, dpi, 96), dwTextScaleFactor, 100);// 15600;
+        DWORD dwZoomFactor = epw_Weather_GetZoomFactor(_this);
+        bounds.left = 0 - MulDiv(MulDiv(MulDiv(167, dpi, 96), dwTextScaleFactor, 100), dwZoomFactor, 100);
+        bounds.top = 0 - MulDiv(MulDiv(MulDiv(178, dpi, 96), dwTextScaleFactor, 100), dwZoomFactor, 100);
+        bounds.right = MulDiv(MulDiv(MulDiv((!InterlockedAdd64(&_this->dwTextDir, 0) ? 1333 : 705), dpi, 96), dwTextScaleFactor, 100), dwZoomFactor, 100);// 5560;
+        bounds.bottom = MulDiv(MulDiv(MulDiv(600, dpi, 96), dwTextScaleFactor, 100), dwZoomFactor, 100);// 15600;
     }
     if (_this->pCoreWebView2Controller)
     {
@@ -293,9 +305,10 @@ HRESULT STDMETHODCALLTYPE ICoreWebView2_CreateCoreWebView2ControllerCompleted(IC
         _this->pCoreWebView2Controller = pCoreWebView2Controller;
         _this->pCoreWebView2Controller->lpVtbl->get_CoreWebView2(_this->pCoreWebView2Controller, &_this->pCoreWebView2);
         _this->pCoreWebView2Controller->lpVtbl->AddRef(_this->pCoreWebView2Controller);
+        _this->pCoreWebView2Controller->lpVtbl->put_ZoomFactor(_this->pCoreWebView2Controller, InterlockedAdd64(&_this->dwZoomFactor, 0) / 100.0);
     }
 
-    _ep_weather_ReboundBrowser(_this, FALSE);
+    _ep_Weather_ReboundBrowser(_this, FALSE);
 
     ICoreWebView2Controller2* pCoreWebView2Controller2 = NULL;
     _this->pCoreWebView2Controller->lpVtbl->QueryInterface(_this->pCoreWebView2Controller, &IID_ICoreWebView2Controller2, &pCoreWebView2Controller2);
@@ -537,14 +550,19 @@ HRESULT STDMETHODCALLTYPE ICoreWebView2_ExecuteScriptCompleted(ICoreWebView2Exec
                                                 int h = _wtoi(wszHeight);
                                                 int ch = MulDiv(h, EP_WEATHER_HEIGHT, 367);
                                                 UINT dpi = GetDpiForWindow(_this->hWnd);
-                                                ch = MulDiv(MulDiv(ch, dpi, 96), epw_Weather_GetTextScaleFactor(_this), 100);
+                                                DWORD dwTextScaleFactor = epw_Weather_GetTextScaleFactor(_this);
+                                                DWORD dwZoomFactor = epw_Weather_GetZoomFactor(_this);
+                                                ch = MulDiv(MulDiv(MulDiv(ch, dpi, 96), dwTextScaleFactor, 100), dwZoomFactor, 100);
                                                 RECT rc;
-                                                GetWindowRect(_this->hWnd, &rc);
-                                                int w = MulDiv(MulDiv(EP_WEATHER_WIDTH, GetDpiForWindow(_this->hWnd), 96), epw_Weather_GetTextScaleFactor(_this), 100);
+                                                GetClientRect(_this->hWnd, &rc);
+                                                int w = MulDiv(MulDiv(MulDiv(EP_WEATHER_WIDTH, GetDpiForWindow(_this->hWnd), 96), dwTextScaleFactor, 100), dwZoomFactor, 100);
                                                 if ((rc.bottom - rc.top != ch) || (rc.right - rc.left != w))
                                                 {
-                                                    SetWindowPos(_this->hWnd, NULL, 0, 0, w, ch, SWP_NOMOVE | SWP_NOSENDCHANGING);
-                                                    _ep_weather_ReboundBrowser(_this, FALSE);
+                                                    RECT rcAdj;
+                                                    SetRect(&rcAdj, 0, 0, w, ch);
+                                                    AdjustWindowRectExForDpi(&rcAdj, epw_Weather_GetStyle(_this) & ~WS_OVERLAPPED, epw_Weather_HasMenuBar(_this), epw_Weather_GetExtendedStyle(_this), dpi);
+                                                    SetWindowPos(_this->hWnd, NULL, 0, 0, rcAdj.right - rcAdj.left, rcAdj.bottom - rcAdj.top, SWP_NOMOVE | SWP_NOSENDCHANGING);
+                                                    _ep_Weather_ReboundBrowser(_this, FALSE);
                                                     HWND hNotifyWnd = InterlockedAdd64(&_this->hNotifyWnd, 0);
                                                     if (hNotifyWnd)
                                                     {
@@ -784,9 +802,19 @@ LRESULT CALLBACK epw_Weather_WindowProc(_In_ HWND hWnd, _In_ UINT uMsg, _In_ WPA
     }
     else if (uMsg == WM_TIMER && wParam == EP_WEATHER_TIMER_RESIZE_WINDOW)
     {
+        LPWSTR uri = NULL;
+        if (_this->pCoreWebView2)
+        {
+            _this->pCoreWebView2->lpVtbl->get_Source(_this->pCoreWebView2, &uri);
+        }
         DWORD dwTextScaleFactor = epw_Weather_GetTextScaleFactor(_this);
+        DWORD dwZoomFactor = epw_Weather_GetZoomFactor(_this);
         UINT dpi = GetDpiForWindow(_this->hWnd);
-        SetWindowPos(_this->hWnd, NULL, 0, 0, MulDiv(MulDiv(EP_WEATHER_WIDTH, dpi, 96), dwTextScaleFactor, 100), MulDiv(MulDiv(EP_WEATHER_HEIGHT, dpi, 96), dwTextScaleFactor, 100), SWP_NOMOVE | SWP_NOSENDCHANGING);
+        RECT rcAdj;
+        SetRect(&rcAdj, 0, 0, MulDiv(MulDiv(MulDiv(EP_WEATHER_WIDTH, dpi, 96), dwTextScaleFactor, 100), dwZoomFactor, 100), MulDiv(MulDiv(MulDiv((!wcscmp(L"about:blank", uri ? uri : L"") ? EP_WEATHER_HEIGHT_ERROR : EP_WEATHER_HEIGHT), dpi, 96), dwTextScaleFactor, 100), dwZoomFactor, 100));
+        AdjustWindowRectExForDpi(&rcAdj, epw_Weather_GetStyle(_this) & ~WS_OVERLAPPED, epw_Weather_HasMenuBar(_this), epw_Weather_GetExtendedStyle(_this), dpi);
+        SetWindowPos(_this->hWnd, NULL, 0, 0, rcAdj.right - rcAdj.left, rcAdj.bottom - rcAdj.top, SWP_NOMOVE | SWP_NOSENDCHANGING);
+        CoTaskMemFree(uri);
         if (_this->cntResizeWindow == 7)
         {
             _this->cntResizeWindow = 0;
@@ -805,7 +833,7 @@ LRESULT CALLBACK epw_Weather_WindowProc(_In_ HWND hWnd, _In_ UINT uMsg, _In_ WPA
         {
             _this->pCoreWebView2->lpVtbl->get_Source(_this->pCoreWebView2, &uri);
         }
-        _ep_weather_ReboundBrowser(_this, !wcscmp(L"about:blank", uri ? uri : L""));
+        _ep_Weather_ReboundBrowser(_this, !wcscmp(L"about:blank", uri ? uri : L""));
         CoTaskMemFree(uri);
         return 0;
     }
@@ -862,18 +890,25 @@ LRESULT CALLBACK epw_Weather_WindowProc(_In_ HWND hWnd, _In_ UINT uMsg, _In_ WPA
                     pCoreWebView2Settings6->lpVtbl->put_AreBrowserAcceleratorKeysEnabled(pCoreWebView2Settings6, wParam);
                     pCoreWebView2Settings6->lpVtbl->put_AreDefaultScriptDialogsEnabled(pCoreWebView2Settings6, wParam);
                     pCoreWebView2Settings6->lpVtbl->Release(pCoreWebView2Settings6);
-                    SetLastError(0);
-                    LONG dwStyle = GetWindowLongW(_this->hWnd, GWL_STYLE);
+                    LONG dwStyle = epw_Weather_GetStyle(_this);
                     if (!GetLastError())
                     {
                         if (wParam) dwStyle |= WS_SIZEBOX;
                         else dwStyle &= ~WS_SIZEBOX;
-                        SetWindowLong(_this->hWnd, GWL_STYLE, dwStyle);
+                        SetWindowLongW(_this->hWnd, GWL_STYLE, dwStyle);
                     }
                     PostMessageW(_this->hWnd, EP_WEATHER_WM_FETCH_DATA, 0, 0);
                 }
                 pCoreWebView2Settings->lpVtbl->Release(pCoreWebView2Settings);
             }
+        }
+    }
+    else if (uMsg == EP_WEATHER_WM_SETZOOMFACTOR)
+    {
+        if (_this->pCoreWebView2Controller)
+        {
+            _this->pCoreWebView2Controller->lpVtbl->put_ZoomFactor(_this->pCoreWebView2Controller, wParam / 100.0);
+            _ep_Weather_StartResize(_this);
         }
     }
     else if (uMsg == WM_CLOSE || (uMsg == WM_KEYUP && wParam == VK_ESCAPE) || (uMsg == WM_ACTIVATEAPP && wParam == FALSE && GetAncestor(GetForegroundWindow(), GA_ROOT) != _this->hWnd))
@@ -890,7 +925,7 @@ LRESULT CALLBACK epw_Weather_WindowProc(_In_ HWND hWnd, _In_ UINT uMsg, _In_ WPA
             pwp->flags |= (!dwDevMode ? (SWP_NOMOVE | SWP_NOSIZE) : 0);
             if (dwDevMode)
             {
-                _ep_weather_ReboundBrowser(_this, TRUE);
+                _ep_Weather_ReboundBrowser(_this, TRUE);
             }
         }
         return 0;
@@ -942,10 +977,15 @@ LRESULT CALLBACK epw_Weather_WindowProc(_In_ HWND hWnd, _In_ UINT uMsg, _In_ WPA
     }
     else if (uMsg == WM_DPICHANGED)
     {
-        UINT dpiX = LOWORD(wParam);
-        int w = MulDiv(MulDiv(EP_WEATHER_WIDTH, dpiX, 96), epw_Weather_GetTextScaleFactor(_this), 100);
+        //UINT dpiX = LOWORD(wParam);
+        //UINT dpiY = HIWORD(wParam);
+        //DWORD dwTextScaleFactor = epw_Weather_GetTextScaleFactor(_this);
+        //DWORD dwZoomFactor = epw_Weather_GetZoomFactor(_this);
+        //RECT rcAdj;
+        //SetRect(&rcAdj, 0, 0, MulDiv(MulDiv(MulDiv(EP_WEATHER_WIDTH, dpiX, 96), dwTextScaleFactor, 100), dwZoomFactor, 100), MulDiv(MulDiv(MulDiv(EP_WEATHER_HEIGHT, dpiY, 96), dwTextScaleFactor, 100), dwZoomFactor, 100));
+        //AdjustWindowRectExForDpi(&rcAdj, epw_Weather_GetStyle(_this) & ~WS_OVERLAPPED, epw_Weather_HasMenuBar(_this), epw_Weather_GetExtendedStyle(_this), dpiX);
         RECT* rc = lParam;
-        SetWindowPos(_this->hWnd, NULL, rc->left, rc->top, w, rc->bottom - rc->top, 0);
+        SetWindowPos(_this->hWnd, NULL, rc->left, rc->top, rc->right - rc->left, rc->bottom - rc->top, 0);
         return 0;
     }
     else if (uMsg == WM_PAINT && !IsWindows11())
@@ -1110,6 +1150,13 @@ HRESULT STDMETHODCALLTYPE epw_Weather_SetIconPack(EPWeather* _this, LONG64 dwIco
     return S_OK;
 }
 
+HRESULT STDMETHODCALLTYPE epw_Weather_SetZoomFactor(EPWeather* _this, LONG64 dwZoomFactor)
+{
+    InterlockedExchange64(&_this->dwZoomFactor, dwZoomFactor);
+    PostMessageW(_this->hWnd, EP_WEATHER_WM_SETZOOMFACTOR, dwZoomFactor, 0);
+    return S_OK;
+}
+
 DWORD WINAPI epw_Weather_MainThread(EPWeather* _this)
 {
     HRESULT hr = S_OK;
@@ -1150,7 +1197,11 @@ DWORD WINAPI epw_Weather_MainThread(EPWeather* _this)
     }
 
     DWORD dwDevMode = InterlockedAdd64(&_this->dwDevMode, 0);
-    _this->hWnd = CreateWindowExW(0, _T(EPW_WEATHER_CLASSNAME), L"", WS_OVERLAPPED | WS_CAPTION | (dwDevMode ? WS_SIZEBOX : 0), _this->rc.left, _this->rc.top, _this->rc.right - _this->rc.left, _this->rc.bottom - _this->rc.top, NULL, NULL, epw_hModule, _this); // 1030, 630
+    DWORD dwStyle = WS_CAPTION | (dwDevMode ? WS_SIZEBOX : 0);
+    DWORD dwExStyle = 0;
+    RECT rc = _this->rc;
+    AdjustWindowRectExForDpi(&rc, dwStyle, FALSE, dwExStyle, _this->dpiXInitial);
+    _this->hWnd = CreateWindowExW(dwExStyle, _T(EPW_WEATHER_CLASSNAME), L"", WS_OVERLAPPED | dwStyle, rc.left, rc.top, rc.right - rc.left, rc.bottom - rc.top, NULL, NULL, epw_hModule, _this); // 1030, 630
     if (!_this->hWnd)
     {
         _this->hrLastError = HRESULT_FROM_WIN32(GetLastError());
@@ -1361,7 +1412,7 @@ DWORD WINAPI epw_Weather_MainThread(EPWeather* _this)
     return 0;
 }
 
-HRESULT STDMETHODCALLTYPE epw_Weather_Initialize(EPWeather* _this, WCHAR wszName[MAX_PATH], BOOL bAllocConsole, LONG64 dwProvider, LONG64 cbx, LONG64 cby, LONG64 dwTemperatureUnit, LONG64 dwUpdateSchedule, RECT rc, LONG64 dwDarkMode, LONG64 dwGeolocationMode, HWND* hWnd)
+HRESULT STDMETHODCALLTYPE epw_Weather_Initialize(EPWeather* _this, WCHAR wszName[MAX_PATH], BOOL bAllocConsole, LONG64 dwProvider, LONG64 cbx, LONG64 cby, LONG64 dwTemperatureUnit, LONG64 dwUpdateSchedule, RECT rc, LONG64 dwDarkMode, LONG64 dwGeolocationMode, HWND* hWnd, LONG64 dwZoomFactor, LONG64 dpiXInitial, LONG64 dpiYInitial)
 {
     InitializeGlobalVersionAndUBR();
 
@@ -1417,6 +1468,9 @@ HRESULT STDMETHODCALLTYPE epw_Weather_Initialize(EPWeather* _this, WCHAR wszName
     }
 
     InterlockedExchange64(&_this->dwGeolocationMode, dwGeolocationMode);
+    InterlockedExchange64(&_this->dwZoomFactor, dwZoomFactor);
+    _this->dpiXInitial = dpiXInitial;
+    _this->dpiYInitial = dpiYInitial;
 
     _this->hUxtheme = LoadLibraryW(L"uxtheme.dll");
     if (_this->hUxtheme)

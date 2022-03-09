@@ -477,6 +477,25 @@
 ;x 0 On a single line (default)
 ;x 1 On 2 lines, if possible
 "WeatherContentsMode"=dword:00000000
+;c 17 Zoom
+;x 25 25 %
+;x 33 33 %
+;x 50 50 %
+;x 67 67 %
+;x 75 75 %
+;x 80 80 %
+;x 90 90 %
+;x 0 100 % (default)
+;x 110 110 %
+;x 125 125 %
+;x 150 150 %
+;x 175 175 %
+;x 200 200 %
+;x 250 250 %
+;x 300 300 %
+;x 400 400 %
+;x 500 500 %
+"WeatherZoomFactor"=dword:00000000
 ;q
 ;t Weather data courtesy of Google, and weather.com.
 ;y Learn more about the Weather taskbar widget 🡕

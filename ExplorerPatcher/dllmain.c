@@ -127,6 +127,7 @@ DWORD dwWeatherDevMode = FALSE;
 DWORD dwWeatherIconPack = EP_WEATHER_ICONPACK_MICROSOFT;
 DWORD dwWeatherToLeft = 0;
 DWORD dwWeatherContentsMode = 0;
+DWORD dwWeatherZoomFactor = 0;
 WCHAR* wszWeatherTerm = NULL;
 WCHAR* wszWeatherLanguage = NULL;
 WCHAR* wszEPWeatherKillswitch = NULL;
@@ -4366,10 +4367,10 @@ SIZE WINAPI PeopleButton_CalculateMinimumSizeHook(void* _this, SIZE* pSz)
                     RECT rcWeatherFlyoutWindow;
                     rcWeatherFlyoutWindow.left = mi.rcWork.left;
                     rcWeatherFlyoutWindow.top = mi.rcWork.top;
-                    rcWeatherFlyoutWindow.right = rcWeatherFlyoutWindow.left + MulDiv(MulDiv(EP_WEATHER_WIDTH, dpiX, 96), dwTextScaleFactor, 100);
-                    rcWeatherFlyoutWindow.bottom = rcWeatherFlyoutWindow.top + MulDiv(MulDiv(EP_WEATHER_HEIGHT, dpiX, 96), dwTextScaleFactor, 100);
+                    rcWeatherFlyoutWindow.right = rcWeatherFlyoutWindow.left + MulDiv(MulDiv(MulDiv(EP_WEATHER_WIDTH, dpiX, 96), dwTextScaleFactor, 100), dwWeatherZoomFactor, 100);
+                    rcWeatherFlyoutWindow.bottom = rcWeatherFlyoutWindow.top + MulDiv(MulDiv(MulDiv(EP_WEATHER_HEIGHT, dpiX, 96), dwTextScaleFactor, 100), dwWeatherZoomFactor, 100);
                     int k = 0;
-                    while (FAILED(hr = epw->lpVtbl->Initialize(epw, wszEPWeatherKillswitch, bAllocConsole, EP_WEATHER_PROVIDER_GOOGLE, rt, rt, dwWeatherTemperatureUnit, dwWeatherUpdateSchedule * 1000, rcWeatherFlyoutWindow, dwWeatherTheme, dwWeatherGeolocationMode, &hWndWeatherFlyout)))
+                    while (FAILED(hr = epw->lpVtbl->Initialize(epw, wszEPWeatherKillswitch, bAllocConsole, EP_WEATHER_PROVIDER_GOOGLE, rt, rt, dwWeatherTemperatureUnit, dwWeatherUpdateSchedule * 1000, rcWeatherFlyoutWindow, dwWeatherTheme, dwWeatherGeolocationMode, &hWndWeatherFlyout, dwWeatherZoomFactor ? dwWeatherZoomFactor : 100, dpiX, dpiY)))
                     {
                         BOOL bFailed = FALSE;
                         if (k == 0 && hr == HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND))
@@ -6521,7 +6522,7 @@ void WINAPI LoadSettings(LPARAM lParam)
             dwRefreshUIMask = REFRESHUI_PEOPLE;
         }
 
-        DWORD bOldWeatherContentsMode = dwWeatherContentsMode;
+        DWORD dwOldWeatherContentsMode = dwWeatherContentsMode;
         dwSize = sizeof(DWORD);
         RegQueryValueExW(
             hKey,
@@ -6531,9 +6532,27 @@ void WINAPI LoadSettings(LPARAM lParam)
             &dwWeatherContentsMode,
             &dwSize
         );
-        if (dwWeatherContentsMode != bOldWeatherContentsMode && epw)
+        if (dwWeatherContentsMode != dwOldWeatherContentsMode && PeopleButton_LastHWND)
         {
             dwRefreshUIMask |= REFRESHUI_PEOPLE;
+        }
+
+        DWORD dwOldWeatherZoomFactor = dwWeatherZoomFactor;
+        dwSize = sizeof(DWORD);
+        RegQueryValueExW(
+            hKey,
+            TEXT("WeatherZoomFactor"),
+            0,
+            NULL,
+            &dwWeatherZoomFactor,
+            &dwSize
+        );
+        if (dwWeatherZoomFactor != dwOldWeatherZoomFactor && PeopleButton_LastHWND)
+        {
+            if (epw)
+            {
+                epw->lpVtbl->SetZoomFactor(epw, dwWeatherZoomFactor ? (LONG64)dwWeatherZoomFactor : 100);
+            }
         }
 
         ReleaseSRWLockShared(&lock_epw);
