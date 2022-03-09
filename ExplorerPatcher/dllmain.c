@@ -125,6 +125,8 @@ DWORD dwWeatherGeolocationMode = 0;
 DWORD dwWeatherWindowCornerPreference = DWMWCP_ROUND;
 DWORD dwWeatherDevMode = FALSE;
 DWORD dwWeatherIconPack = EP_WEATHER_ICONPACK_MICROSOFT;
+DWORD dwWeatherToLeft = 0;
+DWORD dwWeatherContentsMode = 0;
 WCHAR* wszWeatherTerm = NULL;
 WCHAR* wszWeatherLanguage = NULL;
 WCHAR* wszEPWeatherKillswitch = NULL;
@@ -135,6 +137,10 @@ DWORD bWasRemoveExtraGapAroundPinnedItems = FALSE;
 DWORD bRemoveExtraGapAroundPinnedItems = FALSE;
 DWORD dwOldTaskbarAl = 0b110;
 DWORD dwMMOldTaskbarAl = 0b110;
+DWORD dwTaskbarSmallIcons = FALSE;
+DWORD dwShowTaskViewButton = FALSE;
+DWORD dwSearchboxTaskbarMode = FALSE;
+DWORD dwTaskbarDa = FALSE;
 int Code = 0;
 HRESULT InjectStartFromExplorer();
 void InvokeClockFlyout();
@@ -190,6 +196,7 @@ DWORD S_Icon_Dark_Widgets = 0;
 #include "updates.h"
 DWORD dwUpdatePolicy = UPDATE_POLICY_DEFAULT;
 wchar_t* EP_TASKBAR_LENGTH_PROP_NAME = L"EPTBLEN";
+HWND hWinXWnd;
 
 HRESULT WINAPI _DllRegisterServer();
 HRESULT WINAPI _DllUnregisterServer();
@@ -743,13 +750,43 @@ void LaunchNetworkTargets(DWORD dwTarget)
 
 #pragma region "Service Window"
 #ifdef _WIN64
+HWND hWndServiceWindow = NULL;
+
 void FixUpCenteredTaskbar()
 {
-    InvalidateRect(FindWindowExW(FindWindowExW(FindWindowExW(FindWindowExW(NULL, NULL, L"Shell_TrayWnd", NULL), NULL, L"ReBarWindow32", NULL), NULL, L"MSTaskSwWClass", NULL), NULL, L"MSTaskListWClass", NULL), NULL, TRUE);
-    HWND hWndTemp = NULL;
-    while (hWndTemp = FindWindowExW(NULL, hWndTemp, L"Shell_SecondaryTrayWnd", NULL))
+    //SendNotifyMessageW(HWND_BROADCAST, WM_WININICHANGE, 0, (LPARAM)L"TraySettings");
+    BOOL failed = FALSE;
+    int k = 0;
+    RECT rc;
+    BOOL vis = TRUE, vis2 = TRUE;
+    HWND htp = FindWindowExW(FindWindowExW(FindWindowW(L"Shell_TrayWnd", NULL), NULL, L"TrayNotifyWnd", NULL), NULL, L"TIPBand", NULL);
+    if (!htp) vis = FALSE;
+    else
     {
-        InvalidateRect(FindWindowExW(FindWindowExW(hWndTemp, NULL, L"WorkerW", NULL), NULL, L"MSTaskListWClass", NULL), NULL, TRUE);
+        GetClientRect(htp, &rc);
+        vis = !(!rc.right || !rc.bottom);
+    }
+    for (int i = 0; i < 2; ++i)
+    {
+        vis2 = !vis;
+        Sleep(50);
+        SendMessageW(FindWindowW(L"Shell_TrayWnd", NULL), WM_COMMAND, 436, 0);
+        while (vis != vis2)
+        {
+            if (!htp) htp = FindWindowExW(FindWindowExW(FindWindowW(L"Shell_TrayWnd", NULL), NULL, L"TrayNotifyWnd", NULL), NULL, L"TIPBand", NULL);
+            if (htp)
+            {
+                GetClientRect(htp, &rc);
+                vis = !(!rc.right || !rc.bottom);
+            }
+            k++;
+            if (k == 100)
+            {
+                failed = TRUE;
+                break;
+            }
+            Sleep(10);
+        }
     }
 }
 
@@ -760,22 +797,35 @@ LRESULT CALLBACK EP_Service_Window_WndProc(
     WPARAM wParam,
     LPARAM lParam)
 {
-    if (uMsg == WM_HOTKEY && (wParam == 1 || wParam == 2))
+    static UINT s_uTaskbarRestart = 0;
+    if (uMsg == WM_CREATE)
+    {
+        s_uTaskbarRestart = RegisterWindowMessageW(L"TaskbarCreated");
+    }
+    else if (uMsg == WM_HOTKEY && (wParam == 1 || wParam == 2))
     {
         InvokeClockFlyout();
         return 0;
     }
-    else if (uMsg == WM_TIMER && wParam == 1)
+    else if (uMsg == s_uTaskbarRestart && bOldTaskbar && (dwOldTaskbarAl || dwMMOldTaskbarAl))
+    {
+        SetTimer(hWnd, 1, 1000, NULL);
+    }
+    else if (uMsg == WM_TIMER && wParam < 2)
     {
         FixUpCenteredTaskbar();
-        SetTimer(hWnd, 2, 1000, NULL);
-        KillTimer(hWnd, 1);
+        if (wParam != 2 - 1) SetTimer(hWnd, wParam + 1, 1000, NULL);
+        KillTimer(hWnd, wParam);
         return 0;
     }
-    else if (uMsg == WM_TIMER && wParam == 2)
+    else if (uMsg == WM_TIMER && wParam == 10)
     {
-        FixUpCenteredTaskbar();
-        KillTimer(hWnd, 2);
+        if (GetClassWord(GetForegroundWindow(), GCW_ATOM) != RegisterWindowMessageW(L"Windows.UI.Core.CoreWindow"))
+        {
+            DWORD dwVal = 1;
+            RegSetKeyValueW(HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", L"TaskbarAl", REG_DWORD, &dwVal, sizeof(DWORD));
+            KillTimer(hWnd, 10);
+        }
         return 0;
     }
 
@@ -792,7 +842,7 @@ DWORD EP_ServiceWindowThread(DWORD unused)
     wc.hCursor = LoadCursorW(NULL, IDC_ARROW);
     RegisterClassW(&wc);
 
-    HWND hWnd = CreateWindowExW(
+    hWndServiceWindow = CreateWindowExW(
         0,
         EP_SERVICE_WINDOW_CLASS_NAME,
         0,
@@ -806,17 +856,13 @@ DWORD EP_ServiceWindowThread(DWORD unused)
         GetModuleHandle(NULL),
         NULL
     );
-    if (hWnd)
+    if (hWndServiceWindow)
     {
         if (bClockFlyoutOnWinC)
         {
-            RegisterHotKey(hWnd, 1, MOD_WIN | MOD_NOREPEAT, 'C');
+            RegisterHotKey(hWndServiceWindow, 1, MOD_WIN | MOD_NOREPEAT, 'C');
         }
-        RegisterHotKey(hWnd, 2, MOD_WIN | MOD_ALT, 'D');
-        if (bOldTaskbar && (dwOldTaskbarAl || dwMMOldTaskbarAl))
-        {
-            SetTimer(hWnd, 1, 5000, NULL);
-        }
+        RegisterHotKey(hWndServiceWindow, 2, MOD_WIN | MOD_ALT, 'D');
         MSG msg;
         BOOL bRet;
         while ((bRet = GetMessageW(&msg, NULL, 0, 0)) != 0)
@@ -831,7 +877,7 @@ DWORD EP_ServiceWindowThread(DWORD unused)
                 DispatchMessageW(&msg);
             }
         }
-        DestroyWindow(hWnd);
+        DestroyWindow(hWndServiceWindow);
     }
     SetEvent(hCanStartSws);
 }
@@ -927,6 +973,83 @@ void ToggleActionCenter()
 {
     PostMessageW(FindWindowExW(NULL, NULL, L"Shell_TrayWnd", NULL), WM_HOTKEY, 500, MAKELPARAM(MOD_WIN, 0x41));
 }
+
+#ifdef _WIN64
+void ToggleLauncherTipContextMenu()
+{
+    if (hIsWinXShown)
+    {
+        SendMessage(hWinXWnd, WM_CLOSE, 0, 0);
+    }
+    else
+    {
+        HWND hWnd = FindWindowEx(
+            NULL,
+            NULL,
+            L"Shell_TrayWnd",
+            NULL
+        );
+        if (hWnd)
+        {
+            hWnd = FindWindowEx(
+                hWnd,
+                NULL,
+                L"Start",
+                NULL
+            );
+            if (hWnd)
+            {
+                POINT pt = GetDefaultWinXPosition(FALSE, NULL, NULL, TRUE, FALSE);
+                // Finally implemented a variation of
+                // https://github.com/valinet/ExplorerPatcher/issues/3
+                // inspired by how the real Start button activates this menu
+                // (CPearl::_GetLauncherTipContextMenu)
+                // This also works when auto hide taskbar is on (#63)
+                HRESULT hr = S_OK;
+                IUnknown* pImmersiveShell = NULL;
+                hr = CoCreateInstance(
+                    &CLSID_ImmersiveShell,
+                    NULL,
+                    CLSCTX_INPROC_SERVER,
+                    &IID_IServiceProvider,
+                    &pImmersiveShell
+                );
+                if (SUCCEEDED(hr))
+                {
+                    IImmersiveMonitorService* pMonitorService = NULL;
+                    IUnknown_QueryService(
+                        pImmersiveShell,
+                        &SID_IImmersiveMonitorService,
+                        &IID_IImmersiveMonitorService,
+                        &pMonitorService
+                    );
+                    if (pMonitorService)
+                    {
+                        ILauncherTipContextMenu* pMenu = NULL;
+                        pMonitorService->lpVtbl->QueryServiceFromWindow(
+                            pMonitorService,
+                            hWnd,
+                            &IID_ILauncherTipContextMenu,
+                            &IID_ILauncherTipContextMenu,
+                            &pMenu
+                        );
+                        if (pMenu)
+                        {
+                            pMenu->lpVtbl->ShowLauncherTipContextMenu(
+                                pMenu,
+                                &pt
+                            );
+                            pMenu->lpVtbl->Release(pMenu);
+                        }
+                        pMonitorService->lpVtbl->Release(pMonitorService);
+                    }
+                    pImmersiveShell->lpVtbl->Release(pImmersiveShell);
+                }
+            }
+        }
+    }
+}
+#endif
 #pragma endregion
 
 
@@ -1073,7 +1196,6 @@ typedef struct
     IUnknown* iunk;
     BOOL bShouldCenterWinXHorizontally;
 } ShowLauncherTipContextMenuParameters;
-HWND hWinXWnd;
 DWORD ShowLauncherTipContextMenu(
     ShowLauncherTipContextMenuParameters* params
 )
@@ -1284,7 +1406,7 @@ INT64 CLauncherTipContextMenu_ShowLauncherTipContextMenuHook(
         rcHitZone.top = pt->y - 5;
         rcHitZone.bottom = pt->y + 5;
         //printf("%d %d = %d %d %d %d\n", posCursor.x, posCursor.y, rcHitZone.left, rcHitZone.right, rcHitZone.top, rcHitZone.bottom);
-        if (bBottom && IsThemeActive() && PtInRect(&rcHitZone, posCursor))
+        if (bBottom && IsThemeActive() && PtInRect(&rcHitZone, posCursor) && GetClassWord(WindowFromPoint(point), GCW_ATOM) == RegisterWindowMessageW(L"Start"))
         {
             HMONITOR hMonitor = MonitorFromPoint(point, MONITOR_DEFAULTTOPRIMARY);
             MONITORINFO mi;
@@ -1745,6 +1867,102 @@ DWORD FixTaskbarAutohide(DWORD unused)
 
 #pragma region "Shell_TrayWnd subclass"
 #ifdef _WIN64
+int HandleTaskbarCornerInteraction(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+    POINT pt; pt.x = 0; pt.y = 0;
+    if (uMsg == WM_RBUTTONUP || uMsg == WM_LBUTTONUP || uMsg == WM_RBUTTONDOWN || uMsg == WM_LBUTTONDOWN)
+    {
+        pt.x = GET_X_LPARAM(lParam);
+        pt.y = GET_Y_LPARAM(lParam);
+        ClientToScreen(hWnd, &pt);
+    }
+    else if (uMsg == WM_NCLBUTTONUP || uMsg == WM_NCRBUTTONUP || uMsg == WM_NCLBUTTONDOWN || uMsg == WM_NCRBUTTONDOWN)
+    {
+        DWORD dwPos = GetMessagePos();
+        pt.x = GET_X_LPARAM(lParam);
+        pt.y = GET_Y_LPARAM(lParam);
+    }
+    HMONITOR hMonitor = MonitorFromPoint(pt, MONITOR_DEFAULTTOPRIMARY);
+    MONITORINFO mi;
+    ZeroMemory(&mi, sizeof(MONITORINFO));
+    mi.cbSize = sizeof(MONITORINFO);
+    GetMonitorInfoW(hMonitor, &mi);
+    int t = 2;
+    BOOL bOk = FALSE;
+    if (pt.x < mi.rcMonitor.left + t && pt.y > mi.rcMonitor.bottom - t)
+    {
+        //printf("bottom left\n");
+        bOk = TRUE;
+    }
+    else if (pt.x < mi.rcMonitor.left + t && pt.y < mi.rcMonitor.top + t)
+    {
+        //printf("top left\n");
+        bOk = TRUE;
+    }
+    else if (pt.x > mi.rcMonitor.right - t && pt.y < mi.rcMonitor.top + t)
+    {
+        //printf("top right\n");
+        bOk = TRUE;
+    }
+    if (bOk)
+    {
+        if (uMsg == WM_RBUTTONUP || uMsg == WM_NCRBUTTONUP || uMsg == WM_RBUTTONDOWN || uMsg == WM_NCRBUTTONDOWN)
+        {
+            ToggleLauncherTipContextMenu();
+            return 1;
+        }
+        else if (uMsg == WM_LBUTTONUP || uMsg == WM_NCLBUTTONUP || uMsg == WM_LBUTTONDOWN || uMsg == WM_NCLBUTTONDOWN)
+        {
+            DWORD dwVal = 0, dwSize = sizeof(DWORD);
+            RegGetValueW(HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", L"TaskbarAl", RRF_RT_DWORD, NULL, &dwVal, &dwSize);
+            if (dwVal)
+            {
+                dwVal = 0;
+                RegSetKeyValueW(HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", L"TaskbarAl", REG_DWORD, &dwVal, sizeof(DWORD));
+                if (hWndServiceWindow) SetTimer(hWndServiceWindow, 10, 1000, NULL);
+            }
+            OpenStartOnMonitor(hMonitor);
+            return 1;
+        }
+    }
+    return 0;
+}
+
+INT64 ReBarWindow32SubclassProc(_In_ HWND hWnd, _In_ UINT uMsg, _In_ WPARAM wParam, _In_ LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwUnused)
+{
+    if (uMsg == WM_NCDESTROY)
+    {
+        RemoveWindowSubclass(hWnd, ReBarWindow32SubclassProc, ReBarWindow32SubclassProc);
+    }
+    if (TaskbarCenter_ShouldCenter(dwOldTaskbarAl) && TaskbarCenter_ShouldStartBeCentered(dwOldTaskbarAl) && uMsg == WM_WINDOWPOSCHANGING)
+    {
+        LPWINDOWPOS lpWP = lParam;
+        lpWP->cx += lpWP->x;
+        lpWP->x = 0;
+        lpWP->cy += lpWP->y;
+        lpWP->y = 0;
+    }
+    else if (uMsg == RB_INSERTBANDW)
+    {
+        REBARBANDINFOW* lpRbi = lParam;
+    }
+    else if (uMsg == RB_SETBANDINFOW)
+    {
+        REBARBANDINFOW* lpRbi = lParam;
+        if (GetClassWord(lpRbi->hwndChild, GCW_ATOM) == RegisterWindowMessageW(L"PeopleBand"))
+        {
+            lpRbi->fMask |= RBBIM_STYLE;
+            lpRbi->fStyle &= ~RBBS_FIXEDSIZE;
+            //lpRbi->fStyle &= ~RBBS_NOGRIPPER;
+        }
+    }
+    else if (TaskbarCenter_ShouldCenter(dwOldTaskbarAl) && TaskbarCenter_ShouldStartBeCentered(dwOldTaskbarAl) && (uMsg == WM_LBUTTONUP || uMsg == WM_RBUTTONUP) && HandleTaskbarCornerInteraction(hWnd, uMsg, wParam, lParam))
+    {
+        return 0;
+    }
+    return DefSubclassProc(hWnd, uMsg, wParam, lParam);
+}
+
 HMENU explorer_LoadMenuW(HINSTANCE hInstance, LPCWSTR lpMenuName)
 {
     HMENU hMenu = LoadMenuW(hInstance, lpMenuName);
@@ -1991,6 +2209,10 @@ INT64 Shell_TrayWndSubclassProc(
             UnhookWindowsHookEx(Shell_TrayWndMouseHook);
         }
         RemoveWindowSubclass(hWnd, Shell_TrayWndSubclassProc, Shell_TrayWndSubclassProc);
+    }
+    else if (bOldTaskbar && !bIsPrimaryTaskbar && TaskbarCenter_ShouldCenter(dwMMOldTaskbarAl) && TaskbarCenter_ShouldStartBeCentered(dwMMOldTaskbarAl) && (uMsg == WM_NCLBUTTONDOWN || uMsg == WM_NCRBUTTONUP) && HandleTaskbarCornerInteraction(hWnd, uMsg, wParam, lParam))
+    {
+        return 0;
     }
     else if (!bIsPrimaryTaskbar && uMsg == WM_CONTEXTMENU)
     {
@@ -3873,77 +4095,7 @@ LRESULT explorer_SendMessageW(HWND hWndx, UINT uMsg, WPARAM wParam, LPARAM lPara
                 );
                 if (hWnd && hWnd == hWndx && wParam == -1)
                 {
-                    if (hIsWinXShown)
-                    {
-                        SendMessage(hWinXWnd, WM_CLOSE, 0, 0);
-                    }
-                    else
-                    {
-                        hWnd = FindWindowEx(
-                            NULL,
-                            NULL,
-                            L"Shell_TrayWnd",
-                            NULL
-                        );
-                        if (hWnd)
-                        {
-                            hWnd = FindWindowEx(
-                                hWnd,
-                                NULL,
-                                L"Start",
-                                NULL
-                            );
-                            if (hWnd)
-                            {
-                                POINT pt = GetDefaultWinXPosition(FALSE, NULL, NULL, TRUE, FALSE);
-                                // Finally implemented a variation of
-                                // https://github.com/valinet/ExplorerPatcher/issues/3
-                                // inspired by how the real Start button activates this menu
-                                // (CPearl::_GetLauncherTipContextMenu)
-                                // This also works when auto hide taskbar is on (#63)
-                                HRESULT hr = S_OK;
-                                IUnknown* pImmersiveShell = NULL;
-                                hr = CoCreateInstance(
-                                    &CLSID_ImmersiveShell,
-                                    NULL,
-                                    CLSCTX_INPROC_SERVER,
-                                    &IID_IServiceProvider,
-                                    &pImmersiveShell
-                                );
-                                if (SUCCEEDED(hr))
-                                {
-                                    IImmersiveMonitorService* pMonitorService = NULL;
-                                    IUnknown_QueryService(
-                                        pImmersiveShell,
-                                        &SID_IImmersiveMonitorService,
-                                        &IID_IImmersiveMonitorService,
-                                        &pMonitorService
-                                    );
-                                    if (pMonitorService)
-                                    {
-                                        ILauncherTipContextMenu* pMenu = NULL;
-                                        pMonitorService->lpVtbl->QueryServiceFromWindow(
-                                            pMonitorService,
-                                            hWnd,
-                                            &IID_ILauncherTipContextMenu,
-                                            &IID_ILauncherTipContextMenu,
-                                            &pMenu
-                                        );
-                                        if (pMenu)
-                                        {
-                                            pMenu->lpVtbl->ShowLauncherTipContextMenu(
-                                                pMenu,
-                                                &pt
-                                            );
-                                            pMenu->lpVtbl->Release(pMenu);
-                                        }
-                                        pMonitorService->lpVtbl->Release(pMonitorService);
-                                    }
-                                    pImmersiveShell->lpVtbl->Release(pImmersiveShell);
-                                }
-                            }
-                        }
-                    }
+                    ToggleLauncherTipContextMenu();
                     return 0;
                 }
             }
@@ -4099,6 +4251,10 @@ void RecomputeWeatherFlyoutLocation(HWND hWnd)
                 {
                     pNewWindow.x = mi.rcWork.right - (rcWeatherFlyoutWindow.right - rcWeatherFlyoutWindow.left);
                 }
+                if (mi.rcWork.left > pNewWindow.x)
+                {
+                    pNewWindow.x = mi.rcWork.left;
+                }
             }
         }
     }
@@ -4116,6 +4272,10 @@ void RecomputeWeatherFlyoutLocation(HWND hWnd)
                 if (mi.rcWork.bottom < pNewWindow.y + (rcWeatherFlyoutWindow.bottom - rcWeatherFlyoutWindow.top))
                 {
                     pNewWindow.y = mi.rcWork.bottom - (rcWeatherFlyoutWindow.bottom - rcWeatherFlyoutWindow.top);
+                }
+                if (mi.rcWork.top > pNewWindow.y)
+                {
+                    pNewWindow.y = mi.rcWork.top;
                 }
             }
         }
@@ -4449,9 +4609,7 @@ __int64 __fastcall PeopleBand_DrawTextWithGlowHook(
                     logFont.lfWeight = FW_NORMAL;
                     if (bEmptyData)
                     {
-                        DWORD dwVal = 1, dwSize = sizeof(DWORD);
-                        RegGetValueW(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", L"TaskbarSmallIcons", RRF_RT_DWORD, NULL, &dwVal, &dwSize);
-                        if (!dwVal)
+                        if (!dwTaskbarSmallIcons)
                         {
                             logFont.lfHeight *= 1.6;
                         }
@@ -4510,20 +4668,22 @@ __int64 __fastcall PeopleBand_DrawTextWithGlowHook(
                             }
                             else
                             {
-                                DWORD dwTextFlags = DT_SINGLELINE | DT_VCENTER | DT_HIDEPREFIX;
+                                DWORD dwWeatherSplit = (dwWeatherContentsMode && (dwWeatherViewMode == EP_WEATHER_VIEW_ICONTEXT || dwWeatherViewMode == EP_WEATHER_VIEW_TEXTONLY) && !dwTaskbarSmallIcons);
+
+                                DWORD dwTextFlags = DT_SINGLELINE | DT_HIDEPREFIX;
 
                                 WCHAR wszText1[MAX_PATH];
                                 swprintf_s(wszText1, MAX_PATH, L"%s%s %s", bIsThemeActive ? L"" : L" ", epw_wszTemperature, dwWeatherTemperatureUnit == EP_WEATHER_TUNIT_FAHRENHEIT ? L"\u00B0F" : L"\u00B0C");// epw_wszUnit);
                                 RECT rcText1;
-                                SetRect(&rcText1, 0, 0, a4->right, a4->bottom);
-                                DrawTextW(hDC, wszText1, -1, &rcText1, dwTextFlags | DT_CALCRECT);
-                                rcText1.bottom = a4->bottom;
+                                SetRect(&rcText1, 0, 0, a4->right, dwWeatherSplit ? (a4->bottom / 2) : a4->bottom);
+                                DrawTextW(hDC, wszText1, -1, &rcText1, dwTextFlags | DT_CALCRECT | (dwWeatherSplit ? DT_BOTTOM : DT_VCENTER));
+                                rcText1.bottom = dwWeatherSplit ? (a4->bottom / 2) : a4->bottom;
                                 WCHAR wszText2[MAX_PATH];
                                 swprintf_s(wszText2, MAX_PATH, L"%s%s", bIsThemeActive ? L"" : L" ", epw_wszCondition);
                                 RECT rcText2;
-                                SetRect(&rcText2, 0, 0, a4->right, a4->bottom);
-                                DrawTextW(hDC, wszText2, -1, &rcText2, dwTextFlags | DT_CALCRECT);
-                                rcText2.bottom = a4->bottom;
+                                SetRect(&rcText2, 0, 0, a4->right, dwWeatherSplit ? (a4->bottom / 2) : a4->bottom);
+                                DrawTextW(hDC, wszText2, -1, &rcText2, dwTextFlags | DT_CALCRECT | (dwWeatherSplit ? DT_TOP : DT_VCENTER));
+                                rcText2.bottom = dwWeatherSplit ? (a4->bottom / 2) : a4->bottom;
 
                                 if (bWeatherFixedSize)
                                 {
@@ -4544,7 +4704,10 @@ __int64 __fastcall PeopleBand_DrawTextWithGlowHook(
                                 {
                                 case EP_WEATHER_VIEW_ICONTEXT:
                                 case EP_WEATHER_VIEW_TEXTONLY:
-                                    addend = (rcText1.right - rcText1.left) + margin_h + (rcText2.right - rcText2.left) + margin_h;
+                                    if (dwWeatherSplit)
+                                        addend = MAX((rcText1.right - rcText1.left), (rcText2.right - rcText2.left)) + margin_h;
+                                    else
+                                        addend = (rcText1.right - rcText1.left) + margin_h + (rcText2.right - rcText2.left) + margin_h;
                                     break;
                                 case EP_WEATHER_VIEW_ICONTEMP:
                                 case EP_WEATHER_VIEW_TEMPONLY:
@@ -4567,7 +4730,10 @@ __int64 __fastcall PeopleBand_DrawTextWithGlowHook(
                                         {
                                         case EP_WEATHER_VIEW_ICONTEXT:
                                         case EP_WEATHER_VIEW_TEXTONLY:
-                                            addend = (rcText1.right - rcText1.left) + margin_h + (rcText2.right - rcText2.left) + margin_h;
+                                            if (dwWeatherSplit)
+                                                addend = MAX((rcText1.right - rcText1.left), (rcText2.right - rcText2.left)) + margin_h;
+                                            else
+                                                addend = (rcText1.right - rcText1.left) + margin_h + (rcText2.right - rcText2.left) + margin_h;
                                             break;
                                         case EP_WEATHER_VIEW_ICONTEMP:
                                         case EP_WEATHER_VIEW_TEMPONLY: // should be impossible
@@ -4633,7 +4799,7 @@ __int64 __fastcall PeopleBand_DrawTextWithGlowHook(
                                 {
                                     size.cx = rcText1.right - rcText1.left;
                                     size.cy = rcText1.bottom - rcText1.top;
-                                    hBitmap = sws_WindowHelpers_CreateAlphaTextBitmap(wszText1, hFont, dwTextFlags, size, rgbColor);
+                                    hBitmap = sws_WindowHelpers_CreateAlphaTextBitmap(wszText1, hFont, dwTextFlags | (dwWeatherSplit ? DT_BOTTOM : DT_VCENTER), size, rgbColor);
                                     if (hBitmap)
                                     {
                                         HBITMAP hOldBMP = SelectBitmap(hDC, hBitmap);
@@ -4658,7 +4824,7 @@ __int64 __fastcall PeopleBand_DrawTextWithGlowHook(
                                 {
                                     size.cx = rcText2.right - rcText2.left;
                                     size.cy = rcText2.bottom - rcText2.top;
-                                    hBitmap = sws_WindowHelpers_CreateAlphaTextBitmap(wszText2, hFont, dwTextFlags, size, rgbColor);
+                                    hBitmap = sws_WindowHelpers_CreateAlphaTextBitmap(wszText2, hFont, dwTextFlags | (dwWeatherSplit ? DT_TOP : DT_VCENTER), size, rgbColor);
                                     if (hBitmap)
                                     {
                                         HBITMAP hOldBMP = SelectBitmap(hDC, hBitmap);
@@ -4670,7 +4836,7 @@ __int64 __fastcall PeopleBand_DrawTextWithGlowHook(
                                         bf.BlendFlags = 0;
                                         bf.SourceConstantAlpha = 0xFF;
                                         bf.AlphaFormat = AC_SRC_ALPHA;
-                                        GdiAlphaBlend(hdc, start_x + (bIsIconMode ? ((margin_h - p) + rt + (margin_h - p)) : margin_h) + (rcText1.right - rcText1.left) + margin_h, 0, BMInf.bmWidth, BMInf.bmHeight, hDC, 0, 0, BMInf.bmWidth, BMInf.bmHeight, bf);
+                                        GdiAlphaBlend(hdc, start_x + (bIsIconMode ? ((margin_h - p) + rt + (margin_h - p)) : margin_h) + (dwWeatherSplit ? -1 : (rcText1.right - rcText1.left) + margin_h), dwWeatherSplit ? (a4->bottom / 2 - 1) : 0, BMInf.bmWidth, BMInf.bmHeight, hDC, 0, 0, BMInf.bmWidth, BMInf.bmHeight, bf);
 
                                         SelectBitmap(hDC, hOldBMP);
                                         DeleteBitmap(hBitmap);
@@ -6329,6 +6495,36 @@ void WINAPI LoadSettings(LPARAM lParam)
             }
         }
 
+        DWORD dwOldWeatherToLeft = dwWeatherToLeft;
+        dwSize = sizeof(DWORD);
+        RegQueryValueExW(
+            hKey,
+            TEXT("WeatherToLeft"),
+            0,
+            NULL,
+            &dwWeatherToLeft,
+            &dwSize
+        );
+        if (dwWeatherToLeft != dwOldWeatherToLeft && PeopleButton_LastHWND)
+        {
+            dwRefreshUIMask = REFRESHUI_PEOPLE;
+        }
+
+        DWORD bOldWeatherContentsMode = dwWeatherContentsMode;
+        dwSize = sizeof(DWORD);
+        RegQueryValueExW(
+            hKey,
+            TEXT("WeatherContentsMode"),
+            0,
+            NULL,
+            &dwWeatherContentsMode,
+            &dwSize
+        );
+        if (dwWeatherContentsMode != bOldWeatherContentsMode && epw)
+        {
+            dwRefreshUIMask |= REFRESHUI_PEOPLE;
+        }
+
         ReleaseSRWLockShared(&lock_epw);
 #endif
 
@@ -6576,6 +6772,8 @@ void WINAPI LoadSettings(LPARAM lParam)
             }
             if (dwRefreshUIMask & REFRESHUI_PEOPLE)
             {
+                //if (epw_dummytext[0] == 0) epw_dummytext = L"\u2009";
+                //else epw_dummytext = L"";
 #ifdef _WIN64
                 InvalidateRect(PeopleButton_LastHWND, NULL, TRUE);
 #endif
@@ -6601,9 +6799,10 @@ void WINAPI LoadSettings(LPARAM lParam)
         if (dwRefreshUIMask & REFRESHUI_CENTER)
         {
 #ifdef _WIN64
-            ToggleTaskbarAutohide();
-            Sleep(1000);
-            ToggleTaskbarAutohide();
+            //ToggleTaskbarAutohide();
+            //Sleep(1000);
+            //ToggleTaskbarAutohide();
+            FixUpCenteredTaskbar();
 #endif
         }
     }
@@ -6662,10 +6861,117 @@ void Explorer_RefreshClock(int unused)
     } while (hWnd);
 }
 
-void WINAPI Explorer_RefreshUI(int unused)
+int numTBButtons = 0;
+void WINAPI Explorer_RefreshUI(int src)
 {
+    HKEY hKey = NULL;
+    DWORD dwSize = 0, dwTemp = 0, dwRefreshMask = 0;
+    if (src == 1)
+    {
+        RegCreateKeyExW(
+            HKEY_CURRENT_USER,
+            L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
+            0,
+            NULL,
+            REG_OPTION_NON_VOLATILE,
+            KEY_READ | KEY_WOW64_64KEY,
+            NULL,
+            &hKey,
+            NULL
+        );
+        if (hKey == NULL || hKey == INVALID_HANDLE_VALUE)
+        {
+            hKey = NULL;
+        }
+        if (hKey)
+        {
+            dwSize = sizeof(DWORD);
+            RegQueryValueExW(
+                hKey,
+                TEXT("TaskbarSmallIcons"),
+                0,
+                NULL,
+                &dwTaskbarSmallIcons,
+                &dwSize
+            );
+            dwTemp = 0;
+            dwSize = sizeof(DWORD);
+            RegQueryValueExW(
+                hKey,
+                TEXT("ShowTaskViewButton"),
+                0,
+                NULL,
+                &dwTemp,
+                &dwSize
+            );
+            if (dwTemp != dwShowTaskViewButton)
+            {
+                dwShowTaskViewButton = dwTemp;
+                dwRefreshMask |= REFRESHUI_CENTER;
+            }
+            dwTemp = 0;
+            dwSize = sizeof(DWORD);
+            RegQueryValueExW(
+                hKey,
+                TEXT("TaskbarDa"),
+                0,
+                NULL,
+                &dwTemp,
+                &dwSize
+            );
+            if (dwTemp != dwTaskbarDa)
+            {
+                dwTaskbarDa = dwTemp;
+                dwRefreshMask |= REFRESHUI_CENTER;
+            }
+            RegCloseKey(hKey);
+            //SearchboxTaskbarMode
+        }
+    }
+    if (src == 2)
+    {
+        RegCreateKeyExW(
+            HKEY_CURRENT_USER,
+            L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Search",
+            0,
+            NULL,
+            REG_OPTION_NON_VOLATILE,
+            KEY_READ | KEY_WOW64_64KEY,
+            NULL,
+            &hKey,
+            NULL
+        );
+        if (hKey == NULL || hKey == INVALID_HANDLE_VALUE)
+        {
+            hKey = NULL;
+        }
+        if (hKey)
+        {
+            dwTemp = 0;
+            dwSize = sizeof(DWORD);
+            RegQueryValueExW(
+                hKey,
+                TEXT("SearchboxTaskbarMode"),
+                0,
+                NULL,
+                &dwTemp,
+                &dwSize
+            );
+            if (dwTemp != dwSearchboxTaskbarMode)
+            {
+                dwSearchboxTaskbarMode = dwTemp;
+                dwRefreshMask |= REFRESHUI_CENTER;
+            }
+        }
+    }
     SendNotifyMessageW(HWND_BROADCAST, WM_WININICHANGE, 0, (LPARAM)L"TraySettings");
     Explorer_RefreshClock(0);
+    if (dwRefreshMask & REFRESHUI_CENTER)
+    {
+#ifdef _WIN64
+        FixUpCenteredTaskbar();
+#endif
+    }
 }
 
 void Explorer_TogglePeopleButton(int unused)
@@ -6795,6 +7101,10 @@ HWND CreateWindowExWHook(
     else if (bIsExplorerProcess && (*((WORD*)&(lpClassName)+1)) && !wcscmp(lpClassName, L"Shell_SecondaryTrayWnd"))
     {
         SetWindowSubclass(hWnd, Shell_TrayWndSubclassProc, Shell_TrayWndSubclassProc, FALSE);
+    }
+    else if (bIsExplorerProcess && (*((WORD*)&(lpClassName)+1)) && !_wcsicmp(lpClassName, L"ReBarWindow32") && hWndParent == FindWindowW(L"Shell_TrayWnd", NULL))
+    {
+        SetWindowSubclass(hWnd, ReBarWindow32SubclassProc, ReBarWindow32SubclassProc, FALSE);
     }
 #endif
     /*
@@ -8553,7 +8863,7 @@ DWORD Inject(BOOL bIsExplorer)
         if (cs < numSettings)
         {
             settings[cs].callback = Explorer_RefreshUI;
-            settings[cs].data = NULL;
+            settings[cs].data = 1;
             settings[cs].hEvent = NULL;
             settings[cs].hKey = NULL;
             wcscpy_s(settings[cs].name, MAX_PATH, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced");
@@ -8564,7 +8874,7 @@ DWORD Inject(BOOL bIsExplorer)
         if (cs < numSettings)
         {
             settings[cs].callback = Explorer_RefreshUI;
-            settings[cs].data = NULL;
+            settings[cs].data = 2;
             settings[cs].hEvent = NULL;
             settings[cs].hKey = NULL;
             wcscpy_s(settings[cs].name, MAX_PATH, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Search");
