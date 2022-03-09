@@ -136,6 +136,7 @@ DWORD bWasPinnedItemsActAsQuickLaunch = FALSE;
 DWORD bPinnedItemsActAsQuickLaunch = FALSE;
 DWORD bWasRemoveExtraGapAroundPinnedItems = FALSE;
 DWORD bRemoveExtraGapAroundPinnedItems = FALSE;
+DWORD dwUndeadStartCorner = FALSE;
 DWORD dwOldTaskbarAl = 0b110;
 DWORD dwMMOldTaskbarAl = 0b110;
 DWORD dwTaskbarSmallIcons = FALSE;
@@ -1914,6 +1915,15 @@ int HandleTaskbarCornerInteraction(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM l
         }
         else if (uMsg == WM_LBUTTONUP || uMsg == WM_NCLBUTTONUP || uMsg == WM_LBUTTONDOWN || uMsg == WM_NCLBUTTONDOWN)
         {
+            if (!dwUndeadStartCorner)
+            {
+                return 1;
+            }
+            if (dwUndeadStartCorner != 2)
+            {
+                OpenStartOnMonitor(hMonitor);
+                return 1;
+            }
             DWORD dwVal = 0, dwSize = sizeof(DWORD);
             RegGetValueW(HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", L"TaskbarAl", RRF_RT_DWORD, NULL, &dwVal, &dwSize);
             if (dwVal)
@@ -6262,6 +6272,15 @@ void WINAPI LoadSettings(LPARAM lParam)
                 dwRefreshUIMask |= REFRESHUI_TASKBAR;
             }
         }
+        dwSize = sizeof(DWORD);
+        RegQueryValueExW(
+            hKey,
+            TEXT("UndeadStartCorner"),
+            0,
+            NULL,
+            &dwUndeadStartCorner,
+            &dwSize
+        );
 
 #ifdef _WIN64
         AcquireSRWLockShared(&lock_epw);
