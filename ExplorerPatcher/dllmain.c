@@ -10300,6 +10300,8 @@ void InjectStartMenu()
     HANDLE hStartDocked = NULL;
     HANDLE hStartUI = NULL;
 
+    if (!IsWindows11()) dwTaskbarAl = 0;
+
     StartMenu_LoadSettings(FALSE);
 
     if (dwStartShowClassicMode || !IsWindows11())
