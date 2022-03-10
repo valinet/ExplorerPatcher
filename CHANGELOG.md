@@ -182,6 +182,11 @@ Please make sure you are connected to the Internet while installing, the applica
 * Fixed a bug that prevented the centered taskbar from working when animations are turned off system-wide (for example, in usual remote sessions)
 * Fixed a bug that prevented the taskbar from displaying correctly when the weather widget is set to display at left/top (#1041)
 
+##### .34
+
+* Weather: Fixed a bug that prevented resizing other taskbar toolbars (#1043)
+* Weather: Fixed bugs regarding left/top positioning option (#1041)
+
 ## 22000.469.41
 
 Tested on OS build 22000.434.
