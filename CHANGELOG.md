@@ -173,6 +173,15 @@ Please make sure you are connected to the Internet while installing, the applica
 * Fixed a bug that had the Windows 10 Start menu default to being left-aligned on Windows 10
 * Fixed a bug that prevented the "Centered, with Start button" modes of the Windows 10 taskbar from working correctly when the taskbar was vertically aligned
 
+##### .33
+
+* Weather: Implemented manual zoom levels (#1033)
+* Weather: Fixed a bug that had the widget display, at startup, a day/night icon relating to time at the last hour change, instead of the actual current time
+* Weather: Fixed a bug that made the widget display a line at the top for some places
+* Fixed a bug that could make the centered taskbar not layout correctly when showing/hiding either of the search, Cortana or task view buttons the first time after the application started
+* Fixed a bug that prevented the centered taskbar from working when animations are turned off system-wide (for example, in usual remote sessions)
+* Fixed a bug that prevented the taskbar from displaying correctly when the weather widget is set to display at left/top (#1041)
+
 ## 22000.469.41
 
 Tested on OS build 22000.434.
