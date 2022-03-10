@@ -1,11 +1,14 @@
 #include "TaskbarCenter.h"
 
+DEFINE_GUID(POLID_TurnOffSPIAnimations, 0xD7AF00A, 0xB468, 0x4A39, 0xB0, 0x16, 0x33, 0x3E, 0x22, 0x77, 0xAB, 0xED);
+extern int(*SHWindowsPolicy)(REFIID);
 extern HWND PeopleButton_LastHWND;
 extern DWORD dwWeatherToLeft;
 extern DWORD dwOldTaskbarAl;
 extern DWORD dwMMOldTaskbarAl;
 extern wchar_t* EP_TASKBAR_LENGTH_PROP_NAME;
 #define EP_TASKBAR_LENGTH_TOO_SMALL 20
+BOOL bTaskbarCenterHasPatchedSHWindowsPolicy = FALSE;
 
 HRESULT TaskbarCenter_Center(HWND hWnd, HWND hWndTaskbar, RECT rc, BOOL bIsTaskbarHorizontal)
 {
@@ -428,4 +431,29 @@ BOOL TaskbarCenter_GetClientRectHook(HWND hWnd, LPRECT lpRect)
 	}
 	if (bWasCalled) return bWasCalled;
 	return GetClientRect(hWnd, lpRect);
+}
+
+BOOL TaskbarCenter_SHWindowsPolicy(REFIID riid)
+{
+	if (IsEqualIID(riid, &POLID_TurnOffSPIAnimations) && (TaskbarCenter_ShouldCenter(dwOldTaskbarAl) || TaskbarCenter_ShouldCenter(dwMMOldTaskbarAl)))
+	{
+		DWORD flOldProtect = 0;
+		if (!bTaskbarCenterHasPatchedSHWindowsPolicy && *((unsigned char*)_ReturnAddress() + 7) == 0x0F)
+		{
+			if (*((unsigned char*)_ReturnAddress() + 8) == 0x85 && VirtualProtect((unsigned char*)_ReturnAddress() + 9, 1, PAGE_EXECUTE_READWRITE, &flOldProtect))
+			{
+				*((unsigned char*)_ReturnAddress() + 9) += 2;
+				VirtualProtect((unsigned char*)_ReturnAddress() + 9, 1, flOldProtect, &flOldProtect);
+			}
+			else if (*((unsigned char*)_ReturnAddress() + 8) == 0x84 && VirtualProtect((unsigned char*)_ReturnAddress() + 13, 2, PAGE_EXECUTE_READWRITE, &flOldProtect))
+			{
+				*((unsigned char*)_ReturnAddress() + 13) += 0x90;
+				*((unsigned char*)_ReturnAddress() + 13) += 0x90;
+				VirtualProtect((unsigned char*)_ReturnAddress() + 13, 2, flOldProtect, &flOldProtect);
+			}
+			bTaskbarCenterHasPatchedSHWindowsPolicy = TRUE;
+		}
+		return 1;
+	}
+	return SHWindowsPolicy(riid);
 }

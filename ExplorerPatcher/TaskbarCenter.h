@@ -39,4 +39,6 @@ inline BOOL TaskbarCenter_ShouldLeftAlignWhenSpaceConstrained(DWORD dwSetting)
 }
 
 BOOL TaskbarCenter_GetClientRectHook(HWND hWnd, LPRECT lpRect);
+
+BOOL TaskbarCenter_SHWindowsPolicy(REFIID riid);
 #endif

@@ -147,6 +147,7 @@ int Code = 0;
 HRESULT InjectStartFromExplorer();
 void InvokeClockFlyout();
 void WINAPI Explorer_RefreshUI(int unused);
+int (*SHWindowsPolicy)(REFIID);
 
 #define ORB_STYLE_WINDOWS10 0
 #define ORB_STYLE_WINDOWS11 1
@@ -9164,8 +9165,9 @@ DWORD Inject(BOOL bIsExplorer)
     }
 
 
-#ifdef USE_PRIVATE_INTERFACES
     HANDLE hShcore = LoadLibraryW(L"shcore.dll");
+    SHWindowsPolicy = GetProcAddress(hShcore, (LPCSTR)190);
+#ifdef USE_PRIVATE_INTERFACES
     explorer_SHCreateStreamOnModuleResourceWFunc = GetProcAddress(hShcore, (LPCSTR)109);
     VnPatchIAT(hExplorer, "shcore.dll", (LPCSTR)0x6D, explorer_SHCreateStreamOnModuleResourceWHook);
 #endif
@@ -9620,14 +9622,9 @@ DWORD Inject(BOOL bIsExplorer)
 
 
 
-    if (VnPatchDelayIAT(hExplorer, "ext-ms-win-rtcore-ntuser-window-ext-l1-1-0.dll", "GetClientRect", TaskbarCenter_GetClientRectHook))
-    {
-        printf("Initialized taskbar centering module.\n");
-    }
-    else
-    {
-        printf("Failed to initialize taskbar centering module.\n");
-    }
+    VnPatchDelayIAT(hExplorer, "ext-ms-win-rtcore-ntuser-window-ext-l1-1-0.dll", "GetClientRect", TaskbarCenter_GetClientRectHook);
+    VnPatchIAT(hExplorer, "SHCORE.dll", (LPCSTR)190, TaskbarCenter_SHWindowsPolicy);
+    printf("Initialized taskbar centering module.\n");
 
 
 
