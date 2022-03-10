@@ -9,6 +9,9 @@ extern DWORD dwMMOldTaskbarAl;
 extern wchar_t* EP_TASKBAR_LENGTH_PROP_NAME;
 #define EP_TASKBAR_LENGTH_TOO_SMALL 20
 BOOL bTaskbarCenterHasPatchedSHWindowsPolicy = FALSE;
+UINT atomPeopleBand = 0;
+UINT atomMSTaskListWClass = 0;
+UINT atomMSTaskSwWClass = 0;
 
 HRESULT TaskbarCenter_Center(HWND hWnd, HWND hWndTaskbar, RECT rc, BOOL bIsTaskbarHorizontal)
 {
@@ -111,9 +114,11 @@ BOOL TaskbarCenter_GetClientRectHook(HWND hWnd, LPRECT lpRect)
 	HWND hWndStart = NULL;
 	RECT rcStart;
 	SetRect(&rcStart, 0, 0, 0, 0);
-	if (GetClassWord(hWnd, GCW_ATOM) == RegisterWindowMessageW(L"MSTaskListWClass"))
+	if (!atomMSTaskListWClass) atomMSTaskListWClass = RegisterWindowMessageW(L"MSTaskListWClass");
+	if (GetClassWord(hWnd, GCW_ATOM) == atomMSTaskListWClass)
 	{
-		BOOL bIsPrimaryTaskbar = GetClassWord(GetParent(hWnd), GCW_ATOM) == RegisterWindowMessageW(L"MSTaskSwWClass");
+		if (!atomMSTaskSwWClass) atomMSTaskSwWClass = RegisterWindowMessageW(L"MSTaskSwWClass");
+		BOOL bIsPrimaryTaskbar = (GetClassWord(GetParent(hWnd), GCW_ATOM) == atomMSTaskSwWClass);
 		DWORD dwSetting = (bIsPrimaryTaskbar ? dwOldTaskbarAl : dwMMOldTaskbarAl);
 		HWND hWndTaskbar = NULL;
 		if (bIsPrimaryTaskbar)
@@ -357,49 +362,73 @@ BOOL TaskbarCenter_GetClientRectHook(HWND hWnd, LPRECT lpRect)
 			{
 				bWeatherAlignment = FALSE;
 			}*/
+			if (!atomPeopleBand) atomPeopleBand = RegisterWindowMessageW(L"PeopleBand");
 			REBARBANDINFOW rbi;
 			ZeroMemory(&rbi, sizeof(REBARBANDINFOW));
 			rbi.cbSize = sizeof(REBARBANDINFOW);
 			rbi.fMask = RBBIM_CHILD;
 			SendMessageW(hReBarWindow32, RB_GETBANDINFOW, 0, &rbi);
-			BOOL bIsFirstBandPeopleBand = GetClassWord(rbi.hwndChild, GCW_ATOM) == RegisterWindowMessageW(L"PeopleBand");
+			BOOL bIsFirstBandPeopleBand = (GetClassWord(rbi.hwndChild, GCW_ATOM) == atomPeopleBand);
 			if (bWeatherAlignment ? !bIsFirstBandPeopleBand : bIsFirstBandPeopleBand)
 			{
+				int s = 0;
 				int k = SendMessageW(hReBarWindow32, RB_GETBANDCOUNT, 0, 0);
-				int i = 1;
 				if (bWeatherAlignment)
 				{
-					for (i = 1; i < k; ++i)
+					for (int i = k - 1; i >= 0; i--)
 					{
-						ZeroMemory(&rbi, sizeof(REBARBANDINFOW));
-						rbi.cbSize = sizeof(REBARBANDINFOW);
-						rbi.fMask = RBBIM_CHILD;
-						SendMessageW(hReBarWindow32, RB_GETBANDINFOW, i, &rbi);
-						if (rbi.hwndChild && GetClassWord(rbi.hwndChild, GCW_ATOM) == RegisterWindowMessageW(L"PeopleBand"))
+						if (s == 0)
 						{
-							break;
+							ZeroMemory(&rbi, sizeof(REBARBANDINFOW));
+							rbi.cbSize = sizeof(REBARBANDINFOW);
+							rbi.fMask = RBBIM_CHILD;
+							SendMessageW(hReBarWindow32, RB_GETBANDINFOW, i, &rbi);
+							if (rbi.hwndChild && (GetClassWord(rbi.hwndChild, GCW_ATOM) == atomPeopleBand))
+							{
+								s = 1;
+							}
+						}
+						if (s == 1 && i >= 1)
+						{
+							SendMessageW(hReBarWindow32, RB_MOVEBAND, i, i - 1);
 						}
 					}
+					SendNotifyMessageW(HWND_BROADCAST, WM_WININICHANGE, 0, (LPARAM)L"TraySettings");
 				}
-				else i = k - 1;
-				SendMessageW(hReBarWindow32, RB_MOVEBAND, 0, i);
-				SendNotifyMessageW(HWND_BROADCAST, WM_WININICHANGE, 0, (LPARAM)L"TraySettings");
-				/*if (PeopleButton_LastHWND)
+				else
 				{
-					//if (epw_dummytext[0] == 0) epw_dummytext = L"\u2009";
-					//else epw_dummytext = L"";
-					//InvalidateRect(PeopleButton_LastHWND, NULL, TRUE);
-					if (FindWindowW(L"Shell_SecondaryTrayWnd", NULL))
+					for (int i = 0; i < k - 1; ++i)
 					{
-						PostMessageW(FindWindowW(L"Shell_TrayWnd", NULL), WM_COMMAND, 425, 0);
-						PostMessageW(FindWindowW(L"Shell_TrayWnd", NULL), WM_COMMAND, 425, 0);
+						SendMessageW(hReBarWindow32, RB_MOVEBAND, i, i + 1);
 					}
-					else
+					SendNotifyMessageW(HWND_BROADCAST, WM_WININICHANGE, 0, (LPARAM)L"TraySettings");
+				}
+			}
+			int k = SendMessageW(hReBarWindow32, RB_GETBANDCOUNT, 0, 0);
+			for (int i = 0; i < k - 1; ++i)
+			{
+				ZeroMemory(&rbi, sizeof(REBARBANDINFOW));
+				rbi.cbSize = sizeof(REBARBANDINFOW);
+				rbi.fMask = RBBIM_CHILD | RBBIM_CHILDSIZE;
+				SendMessageW(hReBarWindow32, RB_GETBANDINFOW, i, &rbi);
+				if (rbi.hwndChild && (GetClassWord(rbi.hwndChild, GCW_ATOM) == atomPeopleBand))
+				{
+					RECT rcpp;
+					SetRect(&rcpp, 0, 0, 0, 0);
+					GetClientRect(rbi.hwndChild, &rcpp);
+					if (rcpp.right && rcpp.bottom)
 					{
-						PostMessageW(FindWindowW(L"Shell_TrayWnd", NULL), WM_COMMAND, 424, 0);
-						PostMessageW(FindWindowW(L"Shell_TrayWnd", NULL), WM_COMMAND, 424, 0);
+						if (bIsTaskbarHorizontal)
+						{
+							if (rcpp.right - rcpp.left != rbi.cxMinChild) SendMessageW(hReBarWindow32, RB_MINIMIZEBAND, i, 0);
+						}
+						else
+						{
+							if (rcpp.bottom - rcpp.top != rbi.cxMinChild) SendMessageW(hReBarWindow32, RB_MINIMIZEBAND, i, 0);
+						}
 					}
-				}*/
+					break;
+				}
 			}
 		}
 		if ((!TaskbarCenter_ShouldCenter(dwSetting) || !TaskbarCenter_ShouldStartBeCentered(dwSetting)) && hWndStart)

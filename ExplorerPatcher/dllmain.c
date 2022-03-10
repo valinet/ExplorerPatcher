@@ -757,40 +757,7 @@ HWND hWndServiceWindow = NULL;
 
 void FixUpCenteredTaskbar()
 {
-    //SendNotifyMessageW(HWND_BROADCAST, WM_WININICHANGE, 0, (LPARAM)L"TraySettings");
-    BOOL failed = FALSE;
-    int k = 0;
-    RECT rc;
-    BOOL vis = TRUE, vis2 = TRUE;
-    HWND htp = FindWindowExW(FindWindowExW(FindWindowW(L"Shell_TrayWnd", NULL), NULL, L"TrayNotifyWnd", NULL), NULL, L"TIPBand", NULL);
-    if (!htp) vis = FALSE;
-    else
-    {
-        GetClientRect(htp, &rc);
-        vis = !(!rc.right || !rc.bottom);
-    }
-    for (int i = 0; i < 2; ++i)
-    {
-        vis2 = !vis;
-        Sleep(50);
-        SendMessageW(FindWindowW(L"Shell_TrayWnd", NULL), WM_COMMAND, 436, 0);
-        while (vis != vis2)
-        {
-            if (!htp) htp = FindWindowExW(FindWindowExW(FindWindowW(L"Shell_TrayWnd", NULL), NULL, L"TrayNotifyWnd", NULL), NULL, L"TIPBand", NULL);
-            if (htp)
-            {
-                GetClientRect(htp, &rc);
-                vis = !(!rc.right || !rc.bottom);
-            }
-            k++;
-            if (k == 100)
-            {
-                failed = TRUE;
-                break;
-            }
-            Sleep(10);
-        }
-    }
+    PostMessageW(FindWindowW(L"Shell_TrayWnd", NULL), 798, 0, 0); // uMsg = 0x31E in explorer!TrayUI::WndProc
 }
 
 #define EP_SERVICE_WINDOW_CLASS_NAME L"EP_Service_Window_" _T(EP_CLSID)
@@ -814,10 +781,10 @@ LRESULT CALLBACK EP_Service_Window_WndProc(
     {
         SetTimer(hWnd, 1, 1000, NULL);
     }
-    else if (uMsg == WM_TIMER && wParam < 2)
+    else if (uMsg == WM_TIMER && wParam < 3)
     {
         FixUpCenteredTaskbar();
-        if (wParam != 2 - 1) SetTimer(hWnd, wParam + 1, 1000, NULL);
+        if (wParam != 3 - 1) SetTimer(hWnd, wParam + 1, 1000, NULL);
         KillTimer(hWnd, wParam);
         return 0;
     }
@@ -6539,7 +6506,7 @@ void WINAPI LoadSettings(LPARAM lParam)
         );
         if (dwWeatherToLeft != dwOldWeatherToLeft && PeopleButton_LastHWND)
         {
-            dwRefreshUIMask = REFRESHUI_PEOPLE;
+            dwRefreshUIMask |= REFRESHUI_CENTER;
         }
 
         DWORD dwOldWeatherContentsMode = dwWeatherContentsMode;
@@ -6554,7 +6521,7 @@ void WINAPI LoadSettings(LPARAM lParam)
         );
         if (dwWeatherContentsMode != dwOldWeatherContentsMode && PeopleButton_LastHWND)
         {
-            dwRefreshUIMask |= REFRESHUI_PEOPLE;
+            dwRefreshUIMask |= REFRESHUI_CENTER;
         }
 
         DWORD dwOldWeatherZoomFactor = dwWeatherZoomFactor;
@@ -6593,7 +6560,7 @@ void WINAPI LoadSettings(LPARAM lParam)
             dwRefreshUIMask = REFRESHUI_GLOM;
             if (dwOldTaskbarAl)
             {
-                dwRefreshUIMask = REFRESHUI_CENTER;
+                dwRefreshUIMask |= REFRESHUI_CENTER;
             }
         }
         dwTaskbarGlomLevel = dwTemp;
@@ -6612,7 +6579,7 @@ void WINAPI LoadSettings(LPARAM lParam)
             dwRefreshUIMask = REFRESHUI_GLOM;
             if (dwMMOldTaskbarAl)
             {
-                dwRefreshUIMask = REFRESHUI_CENTER;
+                dwRefreshUIMask |= REFRESHUI_CENTER;
             }
         }
         dwMMTaskbarGlomLevel = dwTemp;
