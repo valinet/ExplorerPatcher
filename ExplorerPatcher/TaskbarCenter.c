@@ -358,19 +358,6 @@ BOOL TaskbarCenter_GetClientRectHook(HWND hWnd, LPRECT lpRect)
 				bWeatherAlignment = FALSE;
 			}*/
 			REBARBANDINFOW rbi;
-			int k = SendMessageW(hReBarWindow32, RB_GETBANDCOUNT, 0, 0);
-			for (int i = 0; i < k; ++i)
-			{
-				ZeroMemory(&rbi, sizeof(REBARBANDINFOW));
-				rbi.cbSize = sizeof(REBARBANDINFOW);
-				rbi.fMask = RBBIM_CHILD;
-				SendMessageW(hReBarWindow32, RB_GETBANDINFOW, i, &rbi);
-				if (rbi.hwndChild && GetClassWord(rbi.hwndChild, GCW_ATOM) == RegisterWindowMessageW(L"MSTaskSwWClass"))
-				{
-					SendMessageW(hReBarWindow32, RB_MAXIMIZEBAND, i, 0);
-					break;
-				}
-			}
 			ZeroMemory(&rbi, sizeof(REBARBANDINFOW));
 			rbi.cbSize = sizeof(REBARBANDINFOW);
 			rbi.fMask = RBBIM_CHILD;
