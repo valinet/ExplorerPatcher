@@ -9471,6 +9471,7 @@ DWORD Inject(BOOL bIsExplorer)
     }
 
 
+    /*
     if (IsWindows11())
     {
         DWORD dwSize = 0;
@@ -9493,6 +9494,7 @@ DWORD Inject(BOOL bIsExplorer)
             );
         }
     }
+    */
 
 
 
