@@ -588,6 +588,26 @@ int WINAPI wWinMain(
         exit(0);
     }
 
+    DWORD bIsUndockingDisabled = FALSE, dwSize = sizeof(DWORD);
+    RegGetValueW(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Shell\\Update\\Packages", L"UndockingDisabled", RRF_RT_DWORD, NULL, &bIsUndockingDisabled, &dwSize);
+    if (bIsUndockingDisabled)
+    {
+        if (MessageBoxW(
+            NULL,
+            bInstall ? L"In order to install, you will be automatically signed out of Windows. The software will be ready for use when you sign back in.\n\nDo you want to continue?"
+                     : L"To complete the uninstallation, you will be automatically signed out of Windows.\n\nDo you want to continue?",
+            _T(PRODUCT_NAME),
+            MB_YESNO | MB_DEFBUTTON1 | MB_ICONQUESTION
+        ) == IDYES)
+        {
+            RegDeleteKeyValueW(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Shell\\Update\\Packages", L"UndockingDisabled");
+        }
+        else
+        {
+            exit(0);
+        }
+    }
+
     CreateEventW(NULL, FALSE, FALSE, _T(EP_SETUP_EVENTNAME));
 
     SHGetFolderPathW(NULL, SPECIAL_FOLDER, NULL, SHGFP_TYPE_CURRENT, wszPath);
@@ -1171,6 +1191,11 @@ int WINAPI wWinMain(
                 _T(PRODUCT_NAME),
                 MB_ICONERROR | MB_OK | MB_DEFBUTTON1
             );
+        }
+        if (bOk && bIsUndockingDisabled)
+        {
+            ExitWindowsEx(EWX_LOGOFF, SHTDN_REASON_FLAG_PLANNED);
+            exit(0);
         }
 
         StartExplorerWithDelay(1000);
