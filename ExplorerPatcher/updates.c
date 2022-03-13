@@ -287,7 +287,9 @@ BOOL IsUpdateAvailableHelper(
                                                         }
                                                     }
                                                 }
-                                                if (res == -1)
+                                                DWORD dwAllowDowngrades = FALSE, dwSize = sizeof(DWORD);
+                                                RegGetValueW(HKEY_CURRENT_USER, _T(REGPATH), L"UpdateAllowDowngrades", RRF_RT_DWORD, NULL, &dwAllowDowngrades, &dwSize);
+                                                if ((res == 1 && dwAllowDowngrades) || res == -1)
                                                 {
                                                     bIsUpdateAvailable = TRUE;
                                                 }

@@ -562,6 +562,8 @@
 "UpdatePolicy"=dword:00000001
 ;b Receive pre-release versions, if available (not recommended)
 "UpdatePreferStaging"=dword:00000000
+;b Suggest the latest version on the server, even if it's older (not recommended)
+"UpdateAllowDowngrades"=dword:00000000
 ;t Update servers:
 ;w Releases
 ;Type a URL that serves resources adhering to GitHub's releases API. To learn how to configure your own update server, please consult the wiki.
