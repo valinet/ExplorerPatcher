@@ -8554,6 +8554,19 @@ HMODULE patched_LoadLibraryExW(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlag
 #pragma endregion
 
 
+#pragma region "Fix taskbar thumbnails in newer builds (22572+)"
+HRESULT explorer_DwmUpdateThumbnailPropertiesHook(HTHUMBNAIL hThumbnailId, DWM_THUMBNAIL_PROPERTIES* ptnProperties)
+{
+    if (ptnProperties->dwFlags == 0 || ptnProperties->dwFlags == DWM_TNP_RECTSOURCE)
+    {
+        ptnProperties->dwFlags |= DWM_TNP_SOURCECLIENTAREAONLY;
+        ptnProperties->fSourceClientAreaOnly = TRUE;
+    }
+    return DwmUpdateThumbnailProperties(hThumbnailId, ptnProperties);
+}
+#pragma endregion
+
+
 DWORD InjectBasicFunctions(BOOL bIsExplorer, BOOL bInstall)
 {
     //Sleep(150);
@@ -9129,6 +9142,10 @@ DWORD Inject(BOOL bIsExplorer)
     if (bOldTaskbar)
     {
         VnPatchIAT(hExplorer, "USER32.DLL", "DeleteMenu", explorer_DeleteMenu);
+    }
+    if (bOldTaskbar && global_rovi.dwBuildNumber >= 22572)
+    {
+        VnPatchIAT(hExplorer, "dwmapi.dll", "DwmUpdateThumbnailProperties", explorer_DwmUpdateThumbnailPropertiesHook);
     }
 
 
