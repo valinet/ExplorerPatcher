@@ -8554,7 +8554,7 @@ HMODULE patched_LoadLibraryExW(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlag
 #pragma endregion
 
 
-#pragma region "Fix taskbar thumbnails in newer builds (22572+)"
+#pragma region "Fix taskbar thumbnails and acrylic in newer OS builds (22572+)"
 HRESULT explorer_DwmUpdateThumbnailPropertiesHook(HTHUMBNAIL hThumbnailId, DWM_THUMBNAIL_PROPERTIES* ptnProperties)
 {
     if (ptnProperties->dwFlags == 0 || ptnProperties->dwFlags == DWM_TNP_RECTSOURCE)
@@ -8563,6 +8563,69 @@ HRESULT explorer_DwmUpdateThumbnailPropertiesHook(HTHUMBNAIL hThumbnailId, DWM_T
         ptnProperties->fSourceClientAreaOnly = TRUE;
     }
     return DwmUpdateThumbnailProperties(hThumbnailId, ptnProperties);
+}
+
+void PatchExplorer_UpdateWindowAccentProperties()
+{
+#ifdef _WIN64
+    HMODULE hExplorer = GetModuleHandleW(NULL);
+    if (hExplorer)
+    {
+        PIMAGE_DOS_HEADER dosHeader = hExplorer;
+        if (dosHeader->e_magic == IMAGE_DOS_SIGNATURE)
+        {
+            PIMAGE_NT_HEADERS64 ntHeader = (PIMAGE_NT_HEADERS64)((u_char*)dosHeader + dosHeader->e_lfanew);
+            if (ntHeader->Signature == IMAGE_NT_SIGNATURE)
+            {
+                char* pPatchArea = NULL;
+                // test al, al; jz rip+0x11; and ...
+                char pattern1[6] = { 0x84, 0xC0, 0x74, 0x11, 0x83, 0x65 };
+                BOOL bTwice = FALSE;
+                PIMAGE_SECTION_HEADER section = IMAGE_FIRST_SECTION(ntHeader);
+                for (unsigned int i = 0; i < ntHeader->FileHeader.NumberOfSections; ++i)
+                {
+                    if (section->Characteristics & IMAGE_SCN_CNT_CODE)
+                    {
+                        if (section->SizeOfRawData && !bTwice)
+                        {
+                            char* pCandidate = NULL;
+                            while (TRUE)
+                            {
+                                pCandidate = memmem(
+                                    !pCandidate ? hExplorer + section->VirtualAddress : pCandidate,
+                                    !pCandidate ? section->SizeOfRawData : (uintptr_t)section->SizeOfRawData - (uintptr_t)(pCandidate - (hExplorer + section->VirtualAddress)),
+                                    pattern1,
+                                    sizeof(pattern1)
+                                );
+                                if (!pCandidate)
+                                {
+                                    break;
+                                }
+                                if (!pPatchArea)
+                                {
+                                    pPatchArea = pCandidate;
+                                }
+                                else
+                                {
+                                    bTwice = TRUE;
+                                }
+                                pCandidate += sizeof(pattern1);
+                            }
+                        }
+                    }
+                    section++;
+                }
+                if (pPatchArea && !bTwice)
+                {
+                    DWORD dwOldProtect;
+                    VirtualProtect(pPatchArea, sizeof(pattern1), PAGE_EXECUTE_READWRITE, &dwOldProtect);
+                    pPatchArea[2] = 0xEB; // replace jz with jmp
+                    VirtualProtect(pPatchArea, sizeof(pattern1), dwOldProtect, &dwOldProtect);
+                }
+            }
+        }
+    }
+#endif
 }
 #pragma endregion
 
@@ -9146,6 +9209,7 @@ DWORD Inject(BOOL bIsExplorer)
     if (bOldTaskbar && global_rovi.dwBuildNumber >= 22572)
     {
         VnPatchIAT(hExplorer, "dwmapi.dll", "DwmUpdateThumbnailProperties", explorer_DwmUpdateThumbnailPropertiesHook);
+        PatchExplorer_UpdateWindowAccentProperties();
     }
 
 
