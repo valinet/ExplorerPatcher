@@ -197,6 +197,11 @@ Please make sure you are connected to the Internet while installing, the applica
 
 * Weather: Display time of last update in the Properties window
 
+##### .37
+
+* Fixed Windows 10 taskbar button thumbnails on newer OS builds (22572+)
+* Fixed Windows 10 taskbar showing fully transparent instead of the acrylic effect on newer OS builds (22572+)
+
 ## 22000.469.41
 
 Tested on OS build 22000.434.
