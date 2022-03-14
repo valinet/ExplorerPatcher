@@ -193,6 +193,10 @@ Please make sure you are connected to the Internet while installing, the applica
 * ExplorerPatcher no longer sets the `MinWidth` registry entry automatically - this was used to mitigate an issue with `explorer.exe` where taskbar button labels were becoming too large. If you are affected by having this registry entry set, open the Registry Editor, go to `HKEY_CURRENT_USER\Control Panel\Desktop\WindowMetrics` and remove the `MinWidth` entry (which is probably set to `38`). The same procedure can be used in order to have this option set up in the registry. For more information, see #664.
 * Setup will disable the `UndockingDisabled` registry entry at `HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Shell\Update\Packages` when servicing the application. Using `UndockingDisabled` with ExplorerPatcher is not necessary and can actually cause issues (for example, see #704).
 
+##### .36
+
+* Weather: Display time of last update in the Properties window
+
 ## 22000.469.41
 
 Tested on OS build 22000.434.
