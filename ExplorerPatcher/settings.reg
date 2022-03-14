@@ -497,9 +497,9 @@
 ;x 500 500 %
 "WeatherZoomFactor"=dword:00000000
 ;q
-;t Weather data courtesy of Google, and weather.com.
 ;y Learn more about the Weather taskbar widget 🡕
 ;https://github.com/valinet/ExplorerPatcher/wiki/Weather
+;t %WEATHERLASTUPDATETEXT%
 ;u Update weather now
 ;update_weather
 ;u Clear weather widget local data

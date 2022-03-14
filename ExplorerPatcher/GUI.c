@@ -6,6 +6,7 @@ DEFINE_GUID(LiveSetting_Property_GUID, 0xc12bcd8e, 0x2a8e, 0x4950, 0x8a, 0xe7, 0
 TCHAR GUI_title[260];
 FILE* AuditFile = NULL;
 LANGID locale;
+WCHAR wszLanguage[MAX_PATH];
 void* GUI_FileMapping = NULL;
 DWORD GUI_FileSize = 0;
 BOOL g_darkModeEnabled = FALSE;
@@ -1030,6 +1031,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
         wchar_t* lastHeading = calloc(MAX_LINE_LENGTH, sizeof(wchar_t));
         while ((numChRd = getline(&line, &bufsiz, f)) != -1)
         {
+            hOldFont = NULL;
             if (currentSection == _this->section)
             {
                 bWasSpecifiedSectionValid = TRUE;
@@ -1236,6 +1238,42 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                         text,
                         MAX_LINE_LENGTH
                     );
+                    if (!wcsncmp(text, L"%WEATHERLASTUPDATETEXT%", 23))
+                    {
+                        BOOL bOk = FALSE;
+                        DWORD bIsWeatherEnabled = 0, dwSize = sizeof(DWORD);
+                        GUI_Internal_RegQueryValueExW(NULL, L"Virtualized_" _T(EP_CLSID) L"_PeopleBand", NULL, NULL, &bIsWeatherEnabled, &dwSize);
+                        if (bIsWeatherEnabled)
+                        {
+                            IEPWeather* epw = NULL;
+                            if (SUCCEEDED(CoCreateInstance(&CLSID_EPWeather, NULL, CLSCTX_LOCAL_SERVER, &IID_IEPWeather, &epw)) && epw)
+                            {
+                                SYSTEMTIME stLastUpdate;
+                                ZeroMemory(&stLastUpdate, sizeof(SYSTEMTIME));
+                                if (SUCCEEDED(epw->lpVtbl->GetLastUpdateTime(epw, &stLastUpdate)))
+                                {
+                                    WCHAR wszWeatherLanguage[10];
+                                    ZeroMemory(wszWeatherLanguage, 10);
+                                    dwSize = sizeof(WCHAR) * 10;
+                                    RegGetValueW(HKEY_CURRENT_USER, _T(REGPATH), L"WeatherLanguage", RRF_RT_REG_SZ, NULL, wszWeatherLanguage, &dwSize);
+                                    WCHAR wszDate[MAX_PATH];
+                                    ZeroMemory(wszDate, sizeof(WCHAR) * MAX_PATH);
+                                    if (GetDateFormatEx(wszWeatherLanguage[0] ? wszWeatherLanguage : wszLanguage, DATE_AUTOLAYOUT | DATE_LONGDATE, &stLastUpdate, NULL, wszDate, MAX_PATH, NULL))
+                                    {
+                                        WCHAR wszTime[MAX_PATH];
+                                        ZeroMemory(wszTime, sizeof(WCHAR) * MAX_PATH);
+                                        if (GetTimeFormatEx(wszWeatherLanguage[0] ? wszWeatherLanguage : wszLanguage, TIME_NOSECONDS, &stLastUpdate, NULL, wszTime, MAX_PATH))
+                                        {
+                                            bOk = TRUE;
+                                            swprintf_s(text, MAX_LINE_LENGTH, L"Last updated on: %s, %s.", wszDate, wszTime);
+                                        }
+                                    }
+                                }
+                                epw->lpVtbl->Release(epw);
+                            }
+                        }
+                        if (!bOk) continue;
+                    }
                     if (bResetLastHeading)
                     {
                         wcscpy_s(lastHeading, MAX_LINE_LENGTH, text);
@@ -3087,6 +3125,10 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                     tabOrder++;
                 }
             }
+            if (hOldFont)
+            {
+                SelectObject(hdcPaint, hOldFont);
+            }
         }
         fclose(f);
         free(section);
@@ -3102,7 +3144,6 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
             InvalidateRect(hwnd, NULL, FALSE);
         }
 
-        SelectObject(hdcPaint, hOldFont);
         if (!hDC)
         {
             ReleaseDC(hwnd, hdcPaint);
@@ -3821,6 +3862,26 @@ __declspec(dllexport) int ZZGUI(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLin
             &locale,
             &dwSize
         );
+    }
+    BOOL bOk = FALSE;
+    ULONG ulNumLanguages = 0;
+    LPCWSTR wszLanguagesBuffer = NULL;
+    ULONG cchLanguagesBuffer = 0;
+    if (GetUserPreferredUILanguages(MUI_LANGUAGE_NAME, &ulNumLanguages, NULL, &cchLanguagesBuffer))
+    {
+        if (wszLanguagesBuffer = malloc(cchLanguagesBuffer * sizeof(WCHAR)))
+        {
+            if (GetUserPreferredUILanguages(MUI_LANGUAGE_NAME, &ulNumLanguages, wszLanguagesBuffer, &cchLanguagesBuffer))
+            {
+                wcscpy_s(wszLanguage, MAX_PATH, wszLanguagesBuffer);
+                bOk = TRUE;
+            }
+            free(wszLanguagesBuffer);
+        }
+    }
+    if (!bOk)
+    {
+        wcscpy_s(wszLanguage, MAX_PATH, L"en-US");
     }
 
     wchar_t wszPath[MAX_PATH];

@@ -85,4 +85,6 @@ import "unknwn.idl";
 	HRESULT SetIconPack([in] LONG64 dwIconPack, [in] LONG64 bRefresh);
 
 	HRESULT SetZoomFactor([in] LONG64 dwZoomFactor);
+
+	HRESULT GetLastUpdateTime([out] LPSYSTEMTIME lpLastUpdateTime);
 };

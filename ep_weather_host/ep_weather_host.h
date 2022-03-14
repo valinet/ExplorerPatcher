@@ -122,6 +122,7 @@ HRESULT STDMETHODCALLTYPE epw_Weather_SetWindowCornerPreference(EPWeather* _this
 HRESULT STDMETHODCALLTYPE epw_Weather_SetDevMode(EPWeather* _this, LONG64 dwDevMode, LONG64 bRefresh);
 HRESULT STDMETHODCALLTYPE epw_Weather_SetIconPack(EPWeather* _this, LONG64 dwIconPack, LONG64 bRefresh);
 HRESULT STDMETHODCALLTYPE epw_Weather_SetZoomFactor(EPWeather* _this, LONG64 dwZoomFactor);
+HRESULT STDMETHODCALLTYPE epw_Weather_GetLastUpdateTime(EPWeather* _this, LPSYSTEMTIME lpLastUpdateTime);
 
 static const IEPWeatherVtbl IEPWeather_Vtbl = {
     .QueryInterface = epw_Weather_QueryInterface,
@@ -151,6 +152,7 @@ static const IEPWeatherVtbl IEPWeather_Vtbl = {
     .SetDevMode = epw_Weather_SetDevMode,
     .SetIconPack = epw_Weather_SetIconPack,
     .SetZoomFactor = epw_Weather_SetZoomFactor,
+    .GetLastUpdateTime = epw_Weather_GetLastUpdateTime,
 };
 
 static inline DWORD epw_Weather_GetTextScaleFactor(EPWeather* _this) { return InterlockedAdd64(&_this->dwTextScaleFactor, 0); }

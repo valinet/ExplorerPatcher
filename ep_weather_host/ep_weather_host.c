@@ -8,6 +8,7 @@ DWORD32 global_ubr;
 EPWeather* EPWeather_Instance = NULL;
 SRWLOCK Lock_EPWeather_Instance = { .Ptr = SRWLOCK_INIT };
 FARPROC SHRegGetValueFromHKCUHKLMFunc;
+SYSTEMTIME stLastUpdate;
 
 static DWORD epw_Weather_ReleaseBecauseClientDiedThread(EPWeather* _this)
 {
@@ -589,6 +590,9 @@ HRESULT STDMETHODCALLTYPE ICoreWebView2_ExecuteScriptCompleted(ICoreWebView2Exec
         }
         else
         {
+            GetLocalTime(&stLastUpdate);
+            HWND hGUI = FindWindowW(L"ExplorerPatcher_GUI_" _T(EP_CLSID), NULL);
+            if (hGUI) InvalidateRect(hGUI, NULL, TRUE);
             InterlockedExchange64(&_this->bBrowserBusy, FALSE);
             printf("[General] Fetched data, requesting redraw.\n");
             SetTimer(_this->hWnd, EP_WEATHER_TIMER_REQUEST_REPAINT, EP_WEATHER_TIMER_REQUEST_REPAINT_DELAY, NULL);
@@ -1154,6 +1158,12 @@ HRESULT STDMETHODCALLTYPE epw_Weather_SetZoomFactor(EPWeather* _this, LONG64 dwZ
 {
     InterlockedExchange64(&_this->dwZoomFactor, dwZoomFactor);
     PostMessageW(_this->hWnd, EP_WEATHER_WM_SETZOOMFACTOR, dwZoomFactor, 0);
+    return S_OK;
+}
+
+HRESULT STDMETHODCALLTYPE epw_Weather_GetLastUpdateTime(EPWeather* _this, LPSYSTEMTIME lpLastUpdateTime)
+{
+    *lpLastUpdateTime = stLastUpdate;
     return S_OK;
 }
 
