@@ -202,6 +202,10 @@ Please make sure you are connected to the Internet while installing, the applica
 * Fixed Windows 10 taskbar button thumbnails on newer OS builds (22572+)
 * Fixed Windows 10 taskbar showing fully transparent instead of the acrylic effect on newer OS builds (22572+)
 
+##### .38
+
+* Fixed a bug that made the disable window rounded corners feature not work after signing out and then back into a user account
+
 ## 22000.469.41
 
 Tested on OS build 22000.434.
