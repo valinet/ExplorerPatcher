@@ -9072,6 +9072,14 @@ DWORD Inject(BOOL bIsExplorer)
     wprintf(L"Running on Windows %d, OS Build %d.%d.%d.%d.\n", IsWindows11() ? 11 : 10, global_rovi.dwMajorVersion, global_rovi.dwMinorVersion, global_rovi.dwBuildNumber, global_ubr);
 #endif
 
+    WCHAR wszPath[MAX_PATH];
+    SHGetFolderPathW(NULL, CSIDL_APPDATA, NULL, SHGFP_TYPE_CURRENT, wszPath);
+    wcscat_s(wszPath, MAX_PATH, _T(APP_RELATIVE_PATH));
+    if (!PathFileExistsW(wszPath))
+    {
+        CreateDirectoryW(wszPath, NULL);
+    }
+
 #ifdef _WIN64
     wszEPWeatherKillswitch = calloc(sizeof(WCHAR), MAX_PATH);
     srand(time(NULL));
