@@ -206,6 +206,10 @@ Please make sure you are connected to the Internet while installing, the applica
 
 * Fixed a bug that made the disable window rounded corners feature not work after signing out and then back into a user account
 
+##### .39
+
+* Weather: Fixed a bug that prevented the widget from starting up on new installations due to the folder `%APPDATA%\ExplorerPatcher` not existing
+
 ## 22000.469.41
 
 Tested on OS build 22000.434.
