@@ -478,8 +478,8 @@ BOOL TaskbarCenter_SHWindowsPolicy(REFIID riid)
 			}
 			else if (*((unsigned char*)_ReturnAddress() + 8) == 0x84 && VirtualProtect((unsigned char*)_ReturnAddress() + 13, 2, PAGE_EXECUTE_READWRITE, &flOldProtect))
 			{
-				*((unsigned char*)_ReturnAddress() + 13) += 0x90;
-				*((unsigned char*)_ReturnAddress() + 13) += 0x90;
+				*((unsigned char*)_ReturnAddress() + 13) = 0x90;
+				*((unsigned char*)_ReturnAddress() + 14) = 0x90;
 				VirtualProtect((unsigned char*)_ReturnAddress() + 13, 2, flOldProtect, &flOldProtect);
 			}
 			bTaskbarCenterHasPatchedSHWindowsPolicy = TRUE;
