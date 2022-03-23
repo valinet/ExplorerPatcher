@@ -537,6 +537,9 @@
 ;x 4 Restart
 "Start_PowerButtonAction"=dword:00000002
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
+;b Disable Window Snap Quadrants
+"DisableAeroSnapQuadrants"=dword:00000000
+[HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;c 2 Snap Assist style
 ;x 0 Windows 11 (default)
 ;x 3 Windows 10
