@@ -92,6 +92,7 @@ DWORD bTaskbarAutohideOnDoubleClick = FALSE;
 DWORD dwOrbStyle = 0;
 DWORD bEnableSymbolDownload = TRUE;
 DWORD dwAltTabSettings = 0;
+DWORD bDisableAeroSnapQuadrants = FALSE;
 DWORD dwSnapAssistSettings = 0;
 DWORD dwStartShowClassicMode = 0;
 BOOL bDoNotRedirectSystemToSettingsApp = FALSE;
@@ -1020,6 +1021,23 @@ void ToggleLauncherTipContextMenu()
     }
 }
 #endif
+#pragma endregion
+
+
+#pragma region "windowsudk.shellcommon Hooks"
+
+static HRESULT(WINAPI *SLGetWindowsInformationDWORDFunc)(PCWSTR pwszValueName, DWORD* pdwValue) = NULL;
+
+HRESULT WINAPI windowsudkshellcommon_SLGetWindowsInformationDWORDHook(PCWSTR pwszValueName, DWORD* pdwValue)
+{
+    HRESULT hr = SLGetWindowsInformationDWORDFunc(pwszValueName, pdwValue);
+
+    if (bDisableAeroSnapQuadrants && !wcsncmp(pwszValueName, L"Shell-Windowing-LimitSnappedWindows", 35))
+        *pdwValue = 1;
+
+    return hr;
+}
+
 #pragma endregion
 
 
@@ -6166,6 +6184,16 @@ void WINAPI LoadSettings(LPARAM lParam)
             LaunchPropertiesGUI(hModule);
 #endif
         }
+
+        dwSize = sizeof(DWORD);
+        RegQueryValueExW(
+            hKey,
+            TEXT("DisableAeroSnapQuadrants"),
+            0,
+            NULL,
+            &bDisableAeroSnapQuadrants,
+            &dwSize
+        );
         dwSize = sizeof(DWORD);
         RegQueryValueExW(
             hKey,
@@ -9474,6 +9502,20 @@ DWORD Inject(BOOL bIsExplorer)
         {
             VnPatchIAT(hInputSwitch, "user32.dll", "TrackPopupMenuEx", inputswitch_TrackPopupMenuExHook);
             printf("Setup inputswitch functions done\n");
+        }
+
+        HANDLE hWindowsudkShellcommon = LoadLibraryW(L"windowsudk.shellcommon.dll");
+        HANDLE hSLC = LoadLibraryW(L"slc.dll");
+        if (hWindowsudkShellcommon && hSLC)
+        {
+            SLGetWindowsInformationDWORDFunc = GetProcAddress(hSLC, "SLGetWindowsInformationDWORD");
+
+            if (SLGetWindowsInformationDWORDFunc)
+            {
+                VnPatchDelayIAT(hWindowsudkShellcommon, "ext-ms-win-security-slc-l1-1-0.dll", "SLGetWindowsInformationDWORD", windowsudkshellcommon_SLGetWindowsInformationDWORDHook);
+            }
+
+            printf("Setup windowsudk.shellcommon functions done\n");
         }
     }
 
