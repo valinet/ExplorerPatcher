@@ -527,6 +527,14 @@
 "DisableOfficeHotkeys"=dword:00000000
 ;b Disable rounded corners for application windows
 ;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_DisableRoundedCorners"=dword:00000000
+[HKEY_CURRENT_USER\Software\ExplorerPatcher]
+;b Disable quadrants when snapping windows *
+"DisableAeroSnapQuadrants"=dword:00000000
+[HKEY_CURRENT_USER\Software\ExplorerPatcher]
+;c 2 Snap Assist style
+;x 0 Windows 11 (default)
+;x 3 Windows 10
+"SnapAssistSettings"=dword:00000000
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
 ;c 6 Default action in the Alt+F4 dialog on the desktop
 ;x 256 Switch user
@@ -536,14 +544,6 @@
 ;x 2 Shut down (default)
 ;x 4 Restart
 "Start_PowerButtonAction"=dword:00000002
-[HKEY_CURRENT_USER\Software\ExplorerPatcher]
-;b Disable Window Snap Quadrants
-"DisableAeroSnapQuadrants"=dword:00000000
-[HKEY_CURRENT_USER\Software\ExplorerPatcher]
-;c 2 Snap Assist style
-;x 0 Windows 11 (default)
-;x 3 Windows 10
-"SnapAssistSettings"=dword:00000000
 ;t Prevent the following Control Panel links from being redirected to the Settings app:
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;b System / About page
