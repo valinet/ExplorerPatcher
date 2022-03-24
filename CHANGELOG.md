@@ -2,6 +2,18 @@
 
 This document includes the same release notes as in the [Releases](https://github.com/valinet/ExplorerPatcher/releases) section on GitHub.
 
+## 22000.556.43
+
+Tested on OS build 22000.556.
+
+Please make sure you are connected to the Internet while installing, the application might need to perform one-time downloads for several resources in order to enable full functionality.
+
+#### Details
+
+##### 1
+
+* Option to disable window Snap quadrants in Windows 11 (thanks @lordmilko)
+
 ## 22000.556.42
 
 Tested on OS build 22000.556.
