@@ -7247,15 +7247,6 @@ HRESULT explorer_SetWindowThemeHook(
     return explorer_SetWindowThemeFunc(hwnd, pszSubAppName, pszSubIdList);
 }
 
-INT64 explorer_SetWindowCompositionAttribute(HWND hWnd, WINCOMPATTRDATA* data)
-{
-    if (bClassicThemeMitigations)
-    {
-        return TRUE;
-    }
-    return SetWindowCompositionAttribute(hWnd, data);
-}
-
 HDPA hOrbCollection = NULL;
 HRESULT explorer_DrawThemeBackground(
     HTHEME  hTheme,
@@ -8583,6 +8574,10 @@ HMODULE patched_LoadLibraryExW(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlag
 
 
 #pragma region "Fix taskbar thumbnails and acrylic in newer OS builds (22572+)"
+#ifdef _WIN64
+unsigned int (*GetTaskbarColor)(INT64 u1, INT64 u2) = NULL;
+unsigned int (*GetTaskbarTheme)() = NULL;
+
 HRESULT explorer_DwmUpdateThumbnailPropertiesHook(HTHUMBNAIL hThumbnailId, DWM_THUMBNAIL_PROPERTIES* ptnProperties)
 {
     if (ptnProperties->dwFlags == 0 || ptnProperties->dwFlags == DWM_TNP_RECTSOURCE)
@@ -8593,9 +8588,26 @@ HRESULT explorer_DwmUpdateThumbnailPropertiesHook(HTHUMBNAIL hThumbnailId, DWM_T
     return DwmUpdateThumbnailProperties(hThumbnailId, ptnProperties);
 }
 
+BOOL WINAPI explorer_SetWindowCompositionAttribute(HWND hWnd, WINCOMPATTRDATA* pData)
+{
+    if (bClassicThemeMitigations)
+    {
+        return TRUE;
+    }
+    if (bOldTaskbar && global_rovi.dwBuildNumber >= 22581 && GetTaskbarColor && GetTaskbarTheme && 
+        (GetClassWord(hWnd, GCW_ATOM) == RegisterWindowMessageW(L"Shell_TrayWnd") || 
+         GetClassWord(hWnd, GCW_ATOM) == RegisterWindowMessageW(L"Shell_SecondaryTrayWnd")) && 
+        pData->nAttribute == 19 && pData->pData && pData->ulDataSize == sizeof(ACCENTPOLICY))
+    {
+        ACCENTPOLICY* pAccentPolicy = pData->pData;
+        pAccentPolicy->nAccentState = (unsigned __int16)GetTaskbarTheme() >> 8 != 0 ? 4 : 1;
+        pAccentPolicy->nColor = GetTaskbarColor(0, 0);
+    }
+    return SetWindowCompositionAttribute(hWnd, pData);
+}
+
 void PatchExplorer_UpdateWindowAccentProperties()
 {
-#ifdef _WIN64
     HMODULE hExplorer = GetModuleHandleW(NULL);
     if (hExplorer)
     {
@@ -8607,7 +8619,15 @@ void PatchExplorer_UpdateWindowAccentProperties()
             {
                 char* pPatchArea = NULL;
                 // test al, al; jz rip+0x11; and ...
-                char pattern1[6] = { 0x84, 0xC0, 0x74, 0x11, 0x83, 0x65 };
+                char p1[] = { 0x84, 0xC0, 0x74, 0x11, 0x83, 0x65 };
+                char p2[] = { 0xF3, 0xF3, 0xF3, 0xFF };
+                char* pattern1 = p1;
+                int sizeof_pattern1 = 6;
+                if (global_rovi.dwBuildNumber >= 22581)
+                {
+                    pattern1 = p2;
+                    sizeof_pattern1 = 4;
+                }
                 BOOL bTwice = FALSE;
                 PIMAGE_SECTION_HEADER section = IMAGE_FIRST_SECTION(ntHeader);
                 for (unsigned int i = 0; i < ntHeader->FileHeader.NumberOfSections; ++i)
@@ -8623,7 +8643,7 @@ void PatchExplorer_UpdateWindowAccentProperties()
                                     !pCandidate ? hExplorer + section->VirtualAddress : pCandidate,
                                     !pCandidate ? section->SizeOfRawData : (uintptr_t)section->SizeOfRawData - (uintptr_t)(pCandidate - (hExplorer + section->VirtualAddress)),
                                     pattern1,
-                                    sizeof(pattern1)
+                                    sizeof_pattern1
                                 );
                                 if (!pCandidate)
                                 {
@@ -8637,7 +8657,7 @@ void PatchExplorer_UpdateWindowAccentProperties()
                                 {
                                     bTwice = TRUE;
                                 }
-                                pCandidate += sizeof(pattern1);
+                                pCandidate += sizeof_pattern1;
                             }
                         }
                     }
@@ -8645,16 +8665,70 @@ void PatchExplorer_UpdateWindowAccentProperties()
                 }
                 if (pPatchArea && !bTwice)
                 {
-                    DWORD dwOldProtect;
-                    VirtualProtect(pPatchArea, sizeof(pattern1), PAGE_EXECUTE_READWRITE, &dwOldProtect);
-                    pPatchArea[2] = 0xEB; // replace jz with jmp
-                    VirtualProtect(pPatchArea, sizeof(pattern1), dwOldProtect, &dwOldProtect);
+                    if (global_rovi.dwBuildNumber >= 22581)
+                    {
+                        int dec_size = 200;
+                        _DecodedInst* decodedInstructions = calloc(110, sizeof(_DecodedInst));
+                        if (decodedInstructions)
+                        {
+                            unsigned int decodedInstructionsCount = 0;
+                            _DecodeResult res = distorm_decode(0, (const unsigned char*)(pPatchArea - dec_size), dec_size + 20, Decode64Bits, decodedInstructions, 100, &decodedInstructionsCount);
+                            int status = 0;
+                            for (int i = decodedInstructionsCount - 1; i >= 0; i--)
+                            {
+                                if (status == 0 && strstr(decodedInstructions[i].instructionHex.p, "f3f3f3ff"))
+                                {
+                                    status = 1;
+                                }
+                                else if (status == 1 && !strcmp(decodedInstructions[i].instructionHex.p, "c3"))
+                                {
+                                    status = 2;
+                                }
+                                else if (status == 2 && strcmp(decodedInstructions[i].instructionHex.p, "cc"))
+                                {
+                                    GetTaskbarColor = pPatchArea - dec_size + decodedInstructions[i].offset;
+                                    status = 3;
+                                }
+                                else if (status == 3 && !strncmp(decodedInstructions[i].instructionHex.p, "e8", 2))
+                                {
+                                    status = 4;
+                                }
+                                else if (status == 4 && !strncmp(decodedInstructions[i].instructionHex.p, "e8", 2))
+                                {
+                                    uint32_t* off = pPatchArea - dec_size + decodedInstructions[i].offset + 1;
+                                    GetTaskbarTheme = pPatchArea - dec_size + decodedInstructions[i].offset + decodedInstructions[i].size + (*off);
+                                    break;
+                                }
+                                if (status >= 2)
+                                {
+                                    i = i + 2;
+                                    if (i >= decodedInstructionsCount)
+                                    {
+                                        break;
+                                    }
+                                }
+                            }
+                            if (SetWindowCompositionAttribute && GetTaskbarColor && GetTaskbarTheme)
+                            {
+                                VnPatchIAT(GetModuleHandleW(NULL), "user32.dll", "SetWindowCompositionAttribute", explorer_SetWindowCompositionAttribute);
+                                printf("Patched taskbar transparency in newer OS builds\n");
+                            }
+                            free(decodedInstructions);
+                        }
+                    }
+                    else
+                    {
+                        DWORD dwOldProtect;
+                        VirtualProtect(pPatchArea, sizeof_pattern1, PAGE_EXECUTE_READWRITE, &dwOldProtect);
+                        pPatchArea[2] = 0xEB; // replace jz with jmp
+                        VirtualProtect(pPatchArea, sizeof_pattern1, dwOldProtect, &dwOldProtect);
+                    }
                 }
             }
         }
     }
-#endif
 }
+#endif
 #pragma endregion
 
 
