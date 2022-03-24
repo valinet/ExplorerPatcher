@@ -10,6 +10,10 @@ Please make sure you are connected to the Internet while installing, the applica
 
 #### Details
 
+##### 2
+
+* Fixed Windows 10 taskbar showing fully transparent instead of the acrylic effect on newer OS builds (22581+)
+
 ##### 1
 
 * Option to disable window Snap quadrants in Windows 11 (thanks @lordmilko)
