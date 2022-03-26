@@ -16,6 +16,13 @@
 #define IDS_UNINSTALL_ERROR_TEXT        112
 #define IDS_OPERATION_NONE              113
 #define IDR_REGISTRY2                   114
+#define IDS_DRIVECATEGORY_HARDDISKDRIVES              40000
+#define IDS_DRIVECATEGORY_REMOVABLESTORAGE            40001
+#define IDS_DRIVECATEGORY_OTHER                       40002
+#define IDS_DRIVECATEGORY_IMAGING                     40003
+#define IDS_DRIVECATEGORY_PORTABLEMEDIA               40004
+#define IDS_DRIVECATEGORY_PORTABLEMEDIADEVICE         40004
+#define IDS_DRIVECATEGORY_PORTABLEDEVICE              40005
 
 // Next default values for new objects
 // 

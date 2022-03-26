@@ -111,6 +111,12 @@ BEGIN
     IDS_INSTALL_SUCCESS_TEXT "Installation succeeded."
     IDS_INSTALL_ERROR_TEXT  "Installation failed."
     IDS_UNINSTALL_SUCCESS_TEXT "Uninstallation succeeded."
+    IDS_DRIVECATEGORY_HARDDISKDRIVES      "Hard Disk Drives"
+    IDS_DRIVECATEGORY_REMOVABLESTORAGE    "Devices with Removable Storage"
+    IDS_DRIVECATEGORY_OTHER               "Other"
+    IDS_DRIVECATEGORY_IMAGING             "Scanners and Cameras"
+    IDS_DRIVECATEGORY_PORTABLEMEDIADEVICE "Portable Media Devices"
+    IDS_DRIVECATEGORY_PORTABLEDEVICE      "Portable Devices"
 END
 
 STRINGTABLE

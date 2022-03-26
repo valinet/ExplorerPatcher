@@ -13,6 +13,8 @@
 #include <Uxtheme.h>
 #pragma comment(lib, "UxTheme.lib")
 #include <Shlobj_core.h>
+#include <propvarutil.h>
+#pragma comment(lib, "Propsys.lib")
 #include <commctrl.h>
 #pragma comment(lib, "Comctl32.lib")
 #include <dwmapi.h>
@@ -78,6 +80,7 @@ DWORD bEnableArchivePlugin = FALSE;
 DWORD bMonitorOverride = TRUE;
 DWORD bOpenAtLogon = FALSE;
 DWORD bClockFlyoutOnWinC = FALSE;
+DWORD bUseClassicDriveGrouping = FALSE;
 DWORD bDisableImmersiveContextMenu = FALSE;
 DWORD bClassicThemeMitigations = FALSE;
 DWORD bWasClassicThemeMitigationsSet = FALSE;
@@ -106,6 +109,7 @@ DWORD bNoPropertiesInContextMenu = FALSE;
 DWORD dwTaskbarGlomLevel = TASKBARGLOMLEVEL_DEFAULT;
 DWORD dwMMTaskbarGlomLevel = MMTASKBARGLOMLEVEL_DEFAULT;
 HMODULE hModule = NULL;
+HANDLE hShell32 = NULL;
 HANDLE hDelayedInjectionThread = NULL;
 HANDLE hIsWinXShown = NULL;
 HANDLE hWinXThread = NULL;
@@ -5861,6 +5865,15 @@ void WINAPI LoadSettings(LPARAM lParam)
         dwSize = sizeof(DWORD);
         RegQueryValueExW(
             hKey,
+            TEXT("UseClassicDriveGrouping"),
+            0,
+            NULL,
+            &bUseClassicDriveGrouping,
+            &dwSize
+        );
+        dwSize = sizeof(DWORD);
+        RegQueryValueExW(
+            hKey,
             TEXT("DisableImmersiveContextMenu"),
             0,
             NULL,
@@ -7905,6 +7918,252 @@ HINSTANCE explorer_ShellExecuteW(
 #pragma endregion
 
 
+#pragma region "Classic Drive Grouping"
+
+const struct { DWORD dwDescriptionId; UINT uResourceId; } driveCategoryMap[] = {
+    { SHDID_FS_DIRECTORY,        9338 }, //shell32
+    { SHDID_COMPUTER_SHAREDDOCS, 9338 }, //shell32
+    { SHDID_COMPUTER_FIXED,      IDS_DRIVECATEGORY_HARDDISKDRIVES },
+    { SHDID_COMPUTER_DRIVE35,    IDS_DRIVECATEGORY_REMOVABLESTORAGE },
+    { SHDID_COMPUTER_REMOVABLE,  IDS_DRIVECATEGORY_REMOVABLESTORAGE },
+    { SHDID_COMPUTER_CDROM,      IDS_DRIVECATEGORY_REMOVABLESTORAGE },
+    { SHDID_COMPUTER_DRIVE525,   IDS_DRIVECATEGORY_REMOVABLESTORAGE },
+    { SHDID_COMPUTER_NETDRIVE,   9340 }, //shell32
+    { SHDID_COMPUTER_OTHER,      IDS_DRIVECATEGORY_OTHER },
+    { SHDID_COMPUTER_RAMDISK,    IDS_DRIVECATEGORY_OTHER },
+    { SHDID_COMPUTER_IMAGING,    IDS_DRIVECATEGORY_IMAGING },
+    { SHDID_COMPUTER_AUDIO,      IDS_DRIVECATEGORY_PORTABLEMEDIADEVICE },
+    { SHDID_MOBILE_DEVICE,       IDS_DRIVECATEGORY_PORTABLEDEVICE }
+};
+
+//Represents the true data structure that is returned from shell32!DllGetClassObject
+typedef struct {
+    const IClassFactoryVtbl* lpVtbl;
+    ULONG flags;
+    REFCLSID rclsid;
+    HRESULT(*pfnCreateInstance)(IUnknown*, REFIID, void**);
+} Shell32ClassFactoryEntry;
+
+//Represents a custom ICategorizer/IShellExtInit
+typedef struct _EPCategorizer
+{
+    ICategorizerVtbl* categorizer;
+    IShellExtInitVtbl* shellExtInit;
+
+    ULONG ulRefCount;
+    IShellFolder2* pShellFolder;
+} EPCategorizer;
+
+#pragma region "EPCategorizer: ICategorizer"
+
+HRESULT STDMETHODCALLTYPE EPCategorizer_ICategorizer_QueryInterface(ICategorizer* _this, REFIID riid, void** ppvObject)
+{
+    if (IsEqualIID(riid, &IID_IUnknown) || IsEqualIID(riid, &IID_ICategorizer))
+    {
+        *ppvObject = _this;
+    }
+    else if (IsEqualIID(riid, &IID_IShellExtInit))
+    {
+        *ppvObject = &((EPCategorizer*) _this)->shellExtInit;
+    }
+    else
+    {
+        ppvObject = NULL;
+        return E_NOINTERFACE;
+    }
+
+    _this->lpVtbl->AddRef(_this);
+
+    return S_OK;
+}
+
+ULONG STDMETHODCALLTYPE EPCategorizer_ICategorizer_AddRef(ICategorizer* _this)
+{
+    return InterlockedIncrement(&((EPCategorizer*)_this)->ulRefCount);
+}
+
+ULONG STDMETHODCALLTYPE EPCategorizer_ICategorizer_Release(ICategorizer* _this)
+{
+    ULONG ulNewCount = InterlockedDecrement(&((EPCategorizer*)_this)->ulRefCount);
+
+    //When the window is closed or refreshed the object is finally freed
+    if (ulNewCount == 0)
+    {
+        EPCategorizer* epCategorizer = (EPCategorizer*)_this;
+
+        if (epCategorizer->pShellFolder != NULL)
+        {
+            epCategorizer->pShellFolder->lpVtbl->Release(epCategorizer->pShellFolder);
+            epCategorizer->pShellFolder = NULL;
+        }
+
+        free(epCategorizer);
+    }
+
+    return ulNewCount;
+}
+
+HRESULT STDMETHODCALLTYPE EPCategorizer_ICategorizer_GetDescription(ICategorizer* _this, LPWSTR pszDesc, UINT cch)
+{
+    //As of writing returns the string "Type". Same implementation as shell32!CStorageSystemTypeCategorizer::GetDescription
+    LoadStringW(hShell32, 0x3105, pszDesc, cch);
+    return S_OK;
+}
+
+HRESULT STDMETHODCALLTYPE EPCategorizer_ICategorizer_GetCategory(ICategorizer* _this, UINT cidl, PCUITEMID_CHILD_ARRAY apidl, DWORD* rgCategoryIds)
+{
+    EPCategorizer* epCategorizer = (EPCategorizer*)_this;
+
+    HRESULT hr = S_OK;
+
+    for (UINT i = 0; i < cidl; i++)
+    {
+        rgCategoryIds[i] = IDS_DRIVECATEGORY_OTHER;
+
+        PROPERTYKEY key = { FMTID_ShellDetails, PID_DESCRIPTIONID };
+        VARIANT variant;
+        VariantInit(&variant);
+
+        hr = epCategorizer->pShellFolder->lpVtbl->GetDetailsEx(epCategorizer->pShellFolder, apidl[i], &key, &variant);
+
+        if (SUCCEEDED(hr))
+        {
+            SHDESCRIPTIONID did;
+
+            if (SUCCEEDED(VariantToBuffer(&variant, &did, sizeof(did))))
+            {
+                for (int j = 0; j < ARRAYSIZE(driveCategoryMap); j++)
+                {
+                    if (did.dwDescriptionId == driveCategoryMap[j].dwDescriptionId)
+                    {
+                        rgCategoryIds[i] = driveCategoryMap[j].uResourceId;
+                        break;
+                    }
+                }
+            }
+
+            VariantClear(&variant);
+        }
+    }
+
+    return hr;
+}
+
+HRESULT STDMETHODCALLTYPE EPCategorizer_ICategorizer_GetCategoryInfo(ICategorizer* _this, DWORD dwCategoryId, CATEGORY_INFO* pci)
+{
+    //Now retrieve the display name to use for the resource ID dwCategoryId.
+    //pci is already populated with most of the information it needs, we just need to fill in the wszName
+    if (!LoadStringW(hModule, dwCategoryId, pci->wszName, ARRAYSIZE(pci->wszName)))
+        LoadStringW(hShell32, dwCategoryId, pci->wszName, ARRAYSIZE(pci->wszName));
+
+    return S_OK;
+}
+
+HRESULT STDMETHODCALLTYPE EPCategorizer_ICategorizer_CompareCategory(ICategorizer* _this, CATSORT_FLAGS csfFlags, DWORD dwCategoryId1, DWORD dwCategoryId2)
+{
+    //Typically a categorizer would use the resource IDs containing the names of each category as the "category ID" as well. In our case however, we're using
+    //a combination of resource/category IDs provided by shell32 and resource/category IDs we're overriding ourselves. As a result, we are forced to compare
+    //not by the value of the category/resource IDs themselves, but by their _position_ within our category ID map
+
+    int categoryArraySize = ARRAYSIZE(driveCategoryMap);
+
+    int firstPos = -1;
+    int secondPos = -1;
+
+    for (int i = 0; i < categoryArraySize; i++)
+    {
+        if (driveCategoryMap[i].uResourceId == dwCategoryId1)
+        {
+            firstPos = i;
+            break;
+        }
+    }
+
+    for (int i = 0; i < categoryArraySize; i++)
+    {
+        if (driveCategoryMap[i].uResourceId == dwCategoryId2)
+        {
+            secondPos = i;
+            break;
+        }
+    }
+
+    int diff = firstPos - secondPos;
+
+    if (diff < 0)
+        return 0xFFFF;
+
+    return diff > 0;
+}
+
+#pragma endregion
+#pragma region "EPCategorizer: IShellExtInit"
+
+//Adjustor Thunks: https://devblogs.microsoft.com/oldnewthing/20040206-00/?p=40723
+HRESULT STDMETHODCALLTYPE EPCategorizer_IShellExtInit_QueryInterface(IShellExtInit* _this, REFIID riid, void** ppvObject)
+{
+    return EPCategorizer_ICategorizer_QueryInterface((ICategorizer*)((char*)_this - sizeof(IShellExtInitVtbl*)), riid, ppvObject);
+}
+
+ULONG STDMETHODCALLTYPE EPCategorizer_IShellExtInit_AddRef(IShellExtInit* _this)
+{
+    return EPCategorizer_ICategorizer_AddRef((ICategorizer*)((char*)_this - sizeof(IShellExtInitVtbl*)));
+}
+
+ULONG STDMETHODCALLTYPE EPCategorizer_IShellExtInit_Release(IShellExtInit* _this)
+{
+    return EPCategorizer_ICategorizer_Release((ICategorizer*)((char*)_this - sizeof(IShellExtInitVtbl*)));
+}
+
+HRESULT STDMETHODCALLTYPE EPCategorizer_IShellExtInit_Initialize(IShellExtInit* _this, PCIDLIST_ABSOLUTE pidlFolder, IDataObject* pdtobj, HKEY hkeyProgID)
+{
+    EPCategorizer* epCategorizer = (EPCategorizer*)((char*)_this - sizeof(IShellExtInitVtbl*));
+
+    return SHBindToObject(NULL, pidlFolder, NULL, &IID_IShellFolder2, (void**)&epCategorizer->pShellFolder);
+}
+
+#pragma endregion
+
+const ICategorizerVtbl EPCategorizer_categorizerVtbl = {
+    EPCategorizer_ICategorizer_QueryInterface,
+    EPCategorizer_ICategorizer_AddRef,
+    EPCategorizer_ICategorizer_Release,
+    EPCategorizer_ICategorizer_GetDescription,
+    EPCategorizer_ICategorizer_GetCategory,
+    EPCategorizer_ICategorizer_GetCategoryInfo,
+    EPCategorizer_ICategorizer_CompareCategory
+};
+
+const IShellExtInitVtbl EPCategorizer_shellExtInitVtbl = {
+    EPCategorizer_IShellExtInit_QueryInterface,
+    EPCategorizer_IShellExtInit_AddRef,
+    EPCategorizer_IShellExtInit_Release,
+    EPCategorizer_IShellExtInit_Initialize
+};
+
+HRESULT(STDMETHODCALLTYPE *shell32_DriveTypeCategorizer_CreateInstanceFunc)(IUnknown* pUnkOuter, REFIID riid, void** ppvObject);
+
+HRESULT shell32_DriveTypeCategorizer_CreateInstanceHook(IUnknown* pUnkOuter, REFIID riid, void** ppvObject)
+{
+    if (IsEqualIID(riid, &IID_ICategorizer))
+    {
+        EPCategorizer* epCategorizer = (EPCategorizer*) malloc(sizeof(EPCategorizer));
+        epCategorizer->categorizer = &EPCategorizer_categorizerVtbl;
+        epCategorizer->shellExtInit = &EPCategorizer_shellExtInitVtbl;
+        epCategorizer->ulRefCount = 1;
+        epCategorizer->pShellFolder = NULL;
+
+        *ppvObject = epCategorizer;
+
+        return S_OK;
+    }
+
+    return shell32_DriveTypeCategorizer_CreateInstanceFunc(pUnkOuter, riid, ppvObject);
+}
+
+#pragma endregion
+
+
 #pragma region "Change language UI style"
 #ifdef _WIN64
 DEFINE_GUID(CLSID_InputSwitchControl,
@@ -9529,7 +9788,7 @@ DWORD Inject(BOOL bIsExplorer)
 #endif
 
 
-    HANDLE hShell32 = GetModuleHandleW(L"shell32.dll");
+    hShell32 = GetModuleHandleW(L"shell32.dll");
     if (hShell32)
     {
         HRESULT(*SHELL32_Create_IEnumUICommand)(IUnknown*, int*, int, IUnknown**) = GetProcAddress(hShell32, (LPCSTR)0x2E8);
@@ -9560,6 +9819,38 @@ DWORD Inject(BOOL bIsExplorer)
                         }
                         pUICommand->lpVtbl->Release(pUICommand);
                     }
+                }
+            }
+        }
+
+        if (bUseClassicDriveGrouping)
+        {
+            HRESULT(*SHELL32_DllGetClassObject)(REFCLSID rclsid, REFIID riid, LPVOID* ppv) = GetProcAddress(hShell32, "DllGetClassObject");
+
+            if (SHELL32_DllGetClassObject)
+            {
+                IClassFactory* pClassFactory;
+                SHELL32_DllGetClassObject(&CLSID_DriveTypeCategorizer, &IID_IClassFactory, &pClassFactory);
+
+                if (pClassFactory)
+                {
+                    //DllGetClassObject hands out a unique "factory entry" data structure for each type of CLSID, containing a pointer to an IClassFactoryVtbl as well as some other members including
+                    //the _true_ create instance function that should be called (in this instance, shell32!CDriveTypeCategorizer_CreateInstance). When the IClassFactory::CreateInstance method is called,
+                    //shell32!ECFCreateInstance will cast the IClassFactory* passed to it back into a factory entry, and then invoke the pfnCreateInstance function defined in that entry directly.
+                    //Thus, rather than hooking the shared shell32!ECFCreateInstance function found on the IClassFactoryVtbl* shared by all class objects returned by shell32!DllGetClassObject, we get the real
+                    //CreateInstance function that will be called and hook that instead
+                    Shell32ClassFactoryEntry* pClassFactoryEntry = (Shell32ClassFactoryEntry*)pClassFactory;
+
+                    DWORD flOldProtect = 0;
+
+                    if (VirtualProtect(pClassFactoryEntry, sizeof(Shell32ClassFactoryEntry), PAGE_EXECUTE_READWRITE, &flOldProtect))
+                    {
+                        shell32_DriveTypeCategorizer_CreateInstanceFunc = pClassFactoryEntry->pfnCreateInstance;
+                        pClassFactoryEntry->pfnCreateInstance = shell32_DriveTypeCategorizer_CreateInstanceHook;
+                        VirtualProtect(pClassFactoryEntry, sizeof(Shell32ClassFactoryEntry), flOldProtect, &flOldProtect);
+                    }
+
+                    pClassFactory->lpVtbl->Release(pClassFactory);
                 }
             }
         }
