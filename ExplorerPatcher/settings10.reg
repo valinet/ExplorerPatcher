@@ -142,6 +142,9 @@
 ;https://github.com/valinet/ExplorerPatcher/wiki/Using-ExplorerPatcher-as-shell-extension
 ;q
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
+;b Use classic drive groupings in This PC *
+"UseClassicDriveGrouping"=dword:00000000
+[HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;i Use immersive menus when displaying Windows 10 context menus **
 "DisableImmersiveContextMenu"=dword:00000000
 [-HKEY_CURRENT_USER\Software\Classes\CLSID\{056440FD-8568-48e7-A632-72157243B55B}\InprocServer32]
