@@ -10,6 +10,11 @@ Please make sure you are connected to the Internet while installing, the applica
 
 #### Details
 
+##### 3
+
+* Option to enable classic drive groupings in This PC (thanks @lordmilko)
+* Choice of Windows 11 Command Bar, Windows 10 Ribbon or Windows 7 Command Bar for File Explorer windows
+
 ##### 2
 
 * Fixed Windows 10 taskbar showing fully transparent instead of the acrylic effect on newer OS builds (22581+)
