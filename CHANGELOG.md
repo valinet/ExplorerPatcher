@@ -10,6 +10,10 @@ Please make sure you are connected to the Internet while installing, the applica
 
 #### Details
 
+##### 4
+
+* Option to enable legacy file transfer dialog
+
 ##### 3
 
 * Option to enable classic drive groupings in This PC (thanks @lordmilko)
