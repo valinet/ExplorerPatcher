@@ -162,6 +162,9 @@
 ;d Disable the Windows 11 context menu *
 @=""
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
+;b Always use legacy file transfer dialog
+"LegacyFileTransferDialog"=dword:00000000
+[HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;b Use classic drive groupings in This PC
 "UseClassicDriveGrouping"=dword:00000000
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]

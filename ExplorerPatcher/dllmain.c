@@ -82,6 +82,7 @@ DWORD bOpenAtLogon = FALSE;
 DWORD bClockFlyoutOnWinC = FALSE;
 DWORD bUseClassicDriveGrouping = FALSE;
 DWORD dwFileExplorerCommandUI = 9999;
+DWORD bLegacyFileTransferDialog = FALSE;
 DWORD bDisableImmersiveContextMenu = FALSE;
 DWORD bClassicThemeMitigations = FALSE;
 DWORD bWasClassicThemeMitigationsSet = FALSE;
@@ -5897,6 +5898,15 @@ void WINAPI LoadSettings(LPARAM lParam)
         dwSize = sizeof(DWORD);
         RegQueryValueExW(
             hKey,
+            TEXT("LegacyFileTransferDialog"),
+            0,
+            NULL,
+            &bLegacyFileTransferDialog,
+            &dwSize
+        );
+        dwSize = sizeof(DWORD);
+        RegQueryValueExW(
+            hKey,
             TEXT("DisableImmersiveContextMenu"),
             0,
             NULL,
@@ -9031,6 +9041,16 @@ void PatchExplorer_UpdateWindowAccentProperties()
 #pragma endregion
 
 
+#pragma region "Revert legacy copy dialog"
+BOOL(*SHELL32_CanDisplayWin8CopyDialogFunc)();
+BOOL SHELL32_CanDisplayWin8CopyDialogHook()
+{
+    if (bLegacyFileTransferDialog) return FALSE;
+    return SHELL32_CanDisplayWin8CopyDialogFunc();
+}
+#pragma endregion
+
+
 DWORD InjectBasicFunctions(BOOL bIsExplorer, BOOL bInstall)
 {
     //Sleep(150);
@@ -9899,6 +9919,12 @@ DWORD Inject(BOOL bIsExplorer)
     HANDLE hExplorerFrame = GetModuleHandleW(L"ExplorerFrame.dll");
     VnPatchIAT(hExplorerFrame, "api-ms-win-core-com-l1-1-0.dll", "CoCreateInstance", ExplorerFrame_CoCreateInstanceHook);
     printf("Setup explorerframe functions done\n");
+
+
+    HANDLE hWindowsStorage = LoadLibraryW(L"windows.storage.dll");
+    SHELL32_CanDisplayWin8CopyDialogFunc = GetProcAddress(hShell32, "SHELL32_CanDisplayWin8CopyDialog");
+    if (SHELL32_CanDisplayWin8CopyDialogFunc) VnPatchDelayIAT(hWindowsStorage, "ext-ms-win-shell-exports-internal-l1-1-0.dll", "SHELL32_CanDisplayWin8CopyDialog", SHELL32_CanDisplayWin8CopyDialogHook);
+    printf("Setup windows.storage functions done\n");
 
 
     if (IsWindows11())
