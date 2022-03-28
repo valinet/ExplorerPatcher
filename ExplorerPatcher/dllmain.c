@@ -7942,7 +7942,7 @@ HINSTANCE explorer_ShellExecuteW(
 
 
 #pragma region "Classic Drive Grouping"
-
+#ifdef _WIN64
 const struct { DWORD dwDescriptionId; UINT uResourceId; } driveCategoryMap[] = {
     { SHDID_FS_DIRECTORY,        9338 }, //shell32
     { SHDID_COMPUTER_SHAREDDOCS, 9338 }, //shell32
@@ -8168,7 +8168,7 @@ HRESULT(STDMETHODCALLTYPE *shell32_DriveTypeCategorizer_CreateInstanceFunc)(IUnk
 
 HRESULT shell32_DriveTypeCategorizer_CreateInstanceHook(IUnknown* pUnkOuter, REFIID riid, void** ppvObject)
 {
-    if (IsEqualIID(riid, &IID_ICategorizer))
+    if (bUseClassicDriveGrouping && IsEqualIID(riid, &IID_ICategorizer))
     {
         EPCategorizer* epCategorizer = (EPCategorizer*) malloc(sizeof(EPCategorizer));
         epCategorizer->categorizer = &EPCategorizer_categorizerVtbl;
@@ -8200,6 +8200,7 @@ HRESULT ExplorerFrame_CoCreateInstanceHook(REFCLSID rclsid, LPUNKNOWN pUnkOuter,
     }
     return CoCreateInstance(rclsid, pUnkOuter, dwClsContext, riid, ppv);
 }
+#endif
 #pragma endregion
 
 
@@ -9830,6 +9831,7 @@ DWORD Inject(BOOL bIsExplorer)
     hShell32 = GetModuleHandleW(L"shell32.dll");
     if (hShell32)
     {
+        // Patch ribbon to handle redirects to classic CPLs
         HRESULT(*SHELL32_Create_IEnumUICommand)(IUnknown*, int*, int, IUnknown**) = GetProcAddress(hShell32, (LPCSTR)0x2E8);
         if (SHELL32_Create_IEnumUICommand)
         {
@@ -9862,35 +9864,32 @@ DWORD Inject(BOOL bIsExplorer)
             }
         }
 
-        if (bUseClassicDriveGrouping)
+        // Allow clasic drive groupings in This PC
+        HRESULT(*SHELL32_DllGetClassObject)(REFCLSID rclsid, REFIID riid, LPVOID* ppv) = GetProcAddress(hShell32, "DllGetClassObject");
+        if (SHELL32_DllGetClassObject)
         {
-            HRESULT(*SHELL32_DllGetClassObject)(REFCLSID rclsid, REFIID riid, LPVOID* ppv) = GetProcAddress(hShell32, "DllGetClassObject");
+            IClassFactory* pClassFactory = NULL;
+            SHELL32_DllGetClassObject(&CLSID_DriveTypeCategorizer, &IID_IClassFactory, &pClassFactory);
 
-            if (SHELL32_DllGetClassObject)
+            if (pClassFactory)
             {
-                IClassFactory* pClassFactory;
-                SHELL32_DllGetClassObject(&CLSID_DriveTypeCategorizer, &IID_IClassFactory, &pClassFactory);
+                //DllGetClassObject hands out a unique "factory entry" data structure for each type of CLSID, containing a pointer to an IClassFactoryVtbl as well as some other members including
+                //the _true_ create instance function that should be called (in this instance, shell32!CDriveTypeCategorizer_CreateInstance). When the IClassFactory::CreateInstance method is called,
+                //shell32!ECFCreateInstance will cast the IClassFactory* passed to it back into a factory entry, and then invoke the pfnCreateInstance function defined in that entry directly.
+                //Thus, rather than hooking the shared shell32!ECFCreateInstance function found on the IClassFactoryVtbl* shared by all class objects returned by shell32!DllGetClassObject, we get the real
+                //CreateInstance function that will be called and hook that instead
+                Shell32ClassFactoryEntry* pClassFactoryEntry = (Shell32ClassFactoryEntry*)pClassFactory;
 
-                if (pClassFactory)
+                DWORD flOldProtect = 0;
+
+                if (VirtualProtect(pClassFactoryEntry, sizeof(Shell32ClassFactoryEntry), PAGE_EXECUTE_READWRITE, &flOldProtect))
                 {
-                    //DllGetClassObject hands out a unique "factory entry" data structure for each type of CLSID, containing a pointer to an IClassFactoryVtbl as well as some other members including
-                    //the _true_ create instance function that should be called (in this instance, shell32!CDriveTypeCategorizer_CreateInstance). When the IClassFactory::CreateInstance method is called,
-                    //shell32!ECFCreateInstance will cast the IClassFactory* passed to it back into a factory entry, and then invoke the pfnCreateInstance function defined in that entry directly.
-                    //Thus, rather than hooking the shared shell32!ECFCreateInstance function found on the IClassFactoryVtbl* shared by all class objects returned by shell32!DllGetClassObject, we get the real
-                    //CreateInstance function that will be called and hook that instead
-                    Shell32ClassFactoryEntry* pClassFactoryEntry = (Shell32ClassFactoryEntry*)pClassFactory;
-
-                    DWORD flOldProtect = 0;
-
-                    if (VirtualProtect(pClassFactoryEntry, sizeof(Shell32ClassFactoryEntry), PAGE_EXECUTE_READWRITE, &flOldProtect))
-                    {
-                        shell32_DriveTypeCategorizer_CreateInstanceFunc = pClassFactoryEntry->pfnCreateInstance;
-                        pClassFactoryEntry->pfnCreateInstance = shell32_DriveTypeCategorizer_CreateInstanceHook;
-                        VirtualProtect(pClassFactoryEntry, sizeof(Shell32ClassFactoryEntry), flOldProtect, &flOldProtect);
-                    }
-
-                    pClassFactory->lpVtbl->Release(pClassFactory);
+                    shell32_DriveTypeCategorizer_CreateInstanceFunc = pClassFactoryEntry->pfnCreateInstance;
+                    pClassFactoryEntry->pfnCreateInstance = shell32_DriveTypeCategorizer_CreateInstanceHook;
+                    VirtualProtect(pClassFactoryEntry, sizeof(Shell32ClassFactoryEntry), flOldProtect, &flOldProtect);
                 }
+
+                pClassFactory->lpVtbl->Release(pClassFactory);
             }
         }
     }
