@@ -465,6 +465,18 @@ LSTATUS GUI_Internal_RegSetValueExW(
     {
         return RegisterDWMService(*(DWORD*)lpData, 0);
     }
+    else if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_FileExplorerCommandUI"))
+    {
+        if (!*(DWORD*)lpData)
+        {
+            RegDeleteKeyW(HKEY_CURRENT_USER, L"SOFTWARE\\Classes\\CLSID\\{d93ed569-3b3e-4bff-8355-3c44f6a52bb5}\\InProcServer32");
+        }
+        else
+        {
+            RegSetKeyValueW(HKEY_CURRENT_USER, L"SOFTWARE\\Classes\\CLSID\\{d93ed569-3b3e-4bff-8355-3c44f6a52bb5}\\InProcServer32", L"", REG_SZ, L"", 1);
+        }
+        RegSetKeyValueW(HKEY_CURRENT_USER, _T(REGPATH), L"FileExplorerCommandUI", REG_DWORD, lpData, sizeof(DWORD));
+    }
     else if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_RegisterAsShellExtension"))
     {
         HKEY hKey2 = NULL;
@@ -538,7 +550,7 @@ LSTATUS GUI_Internal_RegSetValueExW(
             }
         }
         return ERROR_SUCCESS;
-     }
+    }
 }
 
 LSTATUS GUI_RegSetValueExW(
@@ -699,6 +711,16 @@ LSTATUS GUI_Internal_RegQueryValueExW(
             }
         }
         return ERROR_SUCCESS;
+    }
+    else if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_FileExplorerCommandUI"))
+    {
+        if (RegGetValueW(HKEY_CURRENT_USER, L"SOFTWARE\\Classes\\CLSID\\{d93ed569-3b3e-4bff-8355-3c44f6a52bb5}\\InProcServer32", L"", RRF_RT_REG_SZ, NULL, NULL, NULL) != ERROR_SUCCESS)
+        {
+            *lpcbData = sizeof(DWORD);
+            *(DWORD*)lpData = 0;
+            return ERROR_SUCCESS;
+        }
+        return RegQueryValueExW(hKey, L"FileExplorerCommandUI", lpReserved, lpType, lpData, lpcbData);
     }
     else if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_RegisterAsShellExtension"))
     {

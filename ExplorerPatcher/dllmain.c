@@ -81,6 +81,7 @@ DWORD bMonitorOverride = TRUE;
 DWORD bOpenAtLogon = FALSE;
 DWORD bClockFlyoutOnWinC = FALSE;
 DWORD bUseClassicDriveGrouping = FALSE;
+DWORD dwFileExplorerCommandUI = 9999;
 DWORD bDisableImmersiveContextMenu = FALSE;
 DWORD bClassicThemeMitigations = FALSE;
 DWORD bWasClassicThemeMitigationsSet = FALSE;
@@ -5874,6 +5875,28 @@ void WINAPI LoadSettings(LPARAM lParam)
         dwSize = sizeof(DWORD);
         RegQueryValueExW(
             hKey,
+            TEXT("FileExplorerCommandUI"),
+            0,
+            NULL,
+            &dwFileExplorerCommandUI,
+            &dwSize
+        );
+        if (dwFileExplorerCommandUI == 9999)
+        {
+            if (IsWindows11())
+            {
+                DWORD bIsWindows11CommandBarDisabled = (RegGetValueW(HKEY_CURRENT_USER, L"SOFTWARE\\Classes\\CLSID\\{d93ed569-3b3e-4bff-8355-3c44f6a52bb5}\\InProcServer32", L"", RRF_RT_REG_SZ, NULL, NULL, NULL) == ERROR_SUCCESS);
+                RegSetValueExW(hKey, L"FileExplorerCommandUI", 0, REG_DWORD, &bIsWindows11CommandBarDisabled, sizeof(DWORD));
+                dwFileExplorerCommandUI = bIsWindows11CommandBarDisabled;
+            }
+            else
+            {
+                dwFileExplorerCommandUI = 0;
+            }
+        }
+        dwSize = sizeof(DWORD);
+        RegQueryValueExW(
+            hKey,
             TEXT("DisableImmersiveContextMenu"),
             0,
             NULL,
@@ -8164,6 +8187,22 @@ HRESULT shell32_DriveTypeCategorizer_CreateInstanceHook(IUnknown* pUnkOuter, REF
 #pragma endregion
 
 
+#pragma region "Disable ribbon in File Explorer"
+DEFINE_GUID(CLSID_UIRibbonFramework,
+    0x926749FA, 0x2615, 0x4987, 0x88, 0x45, 0xC3, 0x3E, 0x65, 0xF2, 0xB9, 0x57);
+DEFINE_GUID(IID_UIRibbonFramework,
+    0xF4F0385D, 0x6872, 0x43A8, 0xAD, 0x09, 0x4C, 0x33, 0x9C, 0xB3, 0xF5, 0xC5);
+HRESULT ExplorerFrame_CoCreateInstanceHook(REFCLSID rclsid, LPUNKNOWN pUnkOuter, DWORD dwClsContext, REFIID riid, LPVOID* ppv)
+{
+    if (dwFileExplorerCommandUI == 2 && IsEqualCLSID(rclsid, &CLSID_UIRibbonFramework) && IsEqualIID(riid, &IID_UIRibbonFramework))
+    {
+        return REGDB_E_CLASSNOTREG;
+    }
+    return CoCreateInstance(rclsid, pUnkOuter, dwClsContext, riid, ppv);
+}
+#pragma endregion
+
+
 #pragma region "Change language UI style"
 #ifdef _WIN64
 DEFINE_GUID(CLSID_InputSwitchControl,
@@ -9857,6 +9896,10 @@ DWORD Inject(BOOL bIsExplorer)
     }
     printf("Setup shell32 functions done\n");
 
+
+    HANDLE hExplorerFrame = GetModuleHandleW(L"ExplorerFrame.dll");
+    VnPatchIAT(hExplorerFrame, "api-ms-win-core-com-l1-1-0.dll", "CoCreateInstance", ExplorerFrame_CoCreateInstanceHook);
+    printf("Setup explorerframe functions done\n");
 
 
     if (IsWindows11())

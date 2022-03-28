@@ -158,15 +158,18 @@
 ;q
 ;b Register as shell extension
 ;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_RegisterAsShellExtension"=dword:00000000
-[-HKEY_CURRENT_USER\Software\Classes\CLSID\{d93ed569-3b3e-4bff-8355-3c44f6a52bb5}\InprocServer32]
-;d Disable the Windows 11 command bar *
-@=""
 [-HKEY_CURRENT_USER\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32]
 ;d Disable the Windows 11 context menu *
 @=""
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;b Use classic drive groupings in This PC *
 "UseClassicDriveGrouping"=dword:00000000
+[HKEY_CURRENT_USER\Software\ExplorerPatcher]
+;c 3 Control Interface *
+;x 0 Windows 11 Command Bar (default)
+;x 1 Windows 10 Ribbon
+;x 2 Windows 7 Command Bar
+;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_FileExplorerCommandUI"=dword:00000000
 ;t The following settings take effect on newly created File Explorer windows:
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;i Use immersive menus when displaying Windows 10 context menus **
