@@ -1916,7 +1916,7 @@ int HandleTaskbarCornerInteraction(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM l
                 OpenStartOnMonitor(hMonitor);
                 return 1;
             }
-            DWORD dwVal = 0, dwSize = sizeof(DWORD);
+            DWORD dwVal = 1, dwSize = sizeof(DWORD);
             RegGetValueW(HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", L"TaskbarAl", RRF_RT_DWORD, NULL, &dwVal, &dwSize);
             if (dwVal)
             {
