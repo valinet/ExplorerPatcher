@@ -105,6 +105,7 @@ BOOL bDoNotRedirectProgramsAndFeaturesToSettingsApp = FALSE;
 BOOL bDoNotRedirectDateAndTimeToSettingsApp = FALSE;
 BOOL bDoNotRedirectNotificationIconsToSettingsApp = FALSE;
 BOOL bDisableOfficeHotkeys = FALSE;
+BOOL bDisableWinFHotkey = FALSE;
 DWORD bNoPropertiesInContextMenu = FALSE;
 #define TASKBARGLOMLEVEL_DEFAULT 2
 #define MMTASKBARGLOMLEVEL_DEFAULT 2
@@ -863,6 +864,8 @@ DWORD EP_ServiceWindowThread(DWORD unused)
 
 
 #pragma region "Toggle shell features"
+// More details in explorer.exe!CTray::_HandleGlobalHotkey
+
 BOOL CALLBACK ToggleImmersiveCallback(HWND hWnd, LPARAM lParam)
 {
     WORD ClassWord;
@@ -4066,13 +4069,7 @@ FARPROC explorer_GetProcAddressHook(HMODULE hModule, const CHAR* lpProcName)
 #ifdef _WIN64
 LRESULT explorer_SendMessageW(HWND hWndx, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-    if (uMsg == 0x579) // "Raise desktop" - basically shows desktop or the windows
-                       // wParam = 3 => show desktop
-                       // wParam = 2 => raise windows
-    {
-        
-    }
-    else if (uMsg == TB_GETTEXTROWS)
+    if (uMsg == TB_GETTEXTROWS)
     {
         HWND hWnd = FindWindowEx(
             NULL,
@@ -6274,6 +6271,15 @@ void WINAPI LoadSettings(LPARAM lParam)
             0,
             NULL,
             &bDisableOfficeHotkeys,
+            &dwSize
+        );
+        dwSize = sizeof(DWORD);
+        RegQueryValueExW(
+            hKey,
+            TEXT("DisableWinFHotkey"),
+            0,
+            NULL,
+            &bDisableWinFHotkey,
             &dwSize
         );
         dwTemp = FALSE;
@@ -8854,6 +8860,16 @@ BOOL explorer_RegisterHotkeyHook(HWND hWnd, int id, UINT fsModifiers, UINT vk)
     }
     return RegisterHotKey(hWnd, id, fsModifiers, vk);
 }
+
+BOOL twinui_RegisterHotkeyHook(HWND hWnd, int id, UINT fsModifiers, UINT vk)
+{
+    if (fsModifiers == (MOD_WIN | MOD_NOREPEAT) && vk == 'F')
+    {
+        SetLastError(ERROR_HOTKEY_ALREADY_REGISTERED);
+        return FALSE;
+    }
+    return RegisterHotKey(hWnd, id, fsModifiers, vk);
+}
 #pragma endregion
 
 
@@ -9785,12 +9801,17 @@ DWORD Inject(BOOL bIsExplorer)
     printf("Setup twinui.pcshell functions done\n");
 
 
+
+    HANDLE hTwinui = LoadLibraryW(L"twinui.dll");
     if (!IsWindows11())
     {
-        HANDLE hTwinui = LoadLibraryW(L"twinui.dll");
         VnPatchIAT(hTwinui, "user32.dll", "TrackPopupMenu", twinui_TrackPopupMenuHook);
-        printf("Setup twinui functions done\n");
     }
+    if (bDisableWinFHotkey)
+    {
+        VnPatchIAT(hTwinui, "user32.dll", "RegisterHotKey", twinui_RegisterHotkeyHook);
+    }
+    printf("Setup twinui functions done\n");
 
 
     HANDLE hStobject = LoadLibraryW(L"stobject.dll");
@@ -9964,7 +9985,6 @@ DWORD Inject(BOOL bIsExplorer)
 
 
 
-
     rv = funchook_install(funchook, 0);
     if (rv != 0)
     {
@@ -10090,6 +10110,7 @@ DWORD Inject(BOOL bIsExplorer)
     {
         VnPatchIAT(hExplorer, "user32.dll", "RegisterHotKey", explorer_RegisterHotkeyHook);
     }
+
 
 
     if (bEnableArchivePlugin)

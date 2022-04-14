@@ -534,6 +534,8 @@
 "NoMenuAccelerator"=dword:00000000
 ;b Disable Office hotkeys (Ctrl+Alt+Shift+Windows key combinations) *
 "DisableOfficeHotkeys"=dword:00000000
+;b Disable Win+F (Feedback Hub) hotkey *
+"DisableWinFHotkey"=dword:00000000
 ;b Disable rounded corners for application windows
 ;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_DisableRoundedCorners"=dword:00000000
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
