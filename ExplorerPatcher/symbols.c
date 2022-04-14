@@ -832,6 +832,19 @@ BOOL LoadSymbols(symbols_addr* symbols_PTRS, HMODULE hModule)
         symbols_PTRS->twinui_pcshell_PTRS[8] = 0x4da10;
         bIsTwinuiPcshellHardcoded = TRUE;
     }
+    else if (!_stricmp(hash, "068b6012bc825f178d3418870422871b")) // 613
+    {
+        symbols_PTRS->twinui_pcshell_PTRS[0] = 0x227696;
+        symbols_PTRS->twinui_pcshell_PTRS[1] = 0x5cd590;
+        symbols_PTRS->twinui_pcshell_PTRS[2] = 0x5eb6d8;
+        symbols_PTRS->twinui_pcshell_PTRS[3] = 0x5ebee0;
+        symbols_PTRS->twinui_pcshell_PTRS[4] = 0x5d06d0;
+        symbols_PTRS->twinui_pcshell_PTRS[5] = 0x5d0384;
+        symbols_PTRS->twinui_pcshell_PTRS[6] = 0x5ce9a0;
+        symbols_PTRS->twinui_pcshell_PTRS[7] = 0x5ecc9c;
+        symbols_PTRS->twinui_pcshell_PTRS[8] = 0x3bc70;
+        bIsTwinuiPcshellHardcoded = TRUE;
+    }
     if (bIsTwinuiPcshellHardcoded)
     {
         printf("[Symbols] Identified known \"" TWINUI_PCSHELL_SB_NAME ".dll\" with hash %s.\n", hash);
@@ -856,6 +869,15 @@ BOOL LoadSymbols(symbols_addr* symbols_PTRS, HMODULE hModule)
         symbols_PTRS->startdocked_PTRS[2] = 0x187900;
         symbols_PTRS->startdocked_PTRS[3] = 0x3C00;
         symbols_PTRS->startdocked_PTRS[4] = 0x1612CC;
+        bIsStartHardcoded = TRUE;
+    }
+    else if (!_stricmp(hash, "45d43542e694713bffd217862721109a")) // 613
+    {
+        symbols_PTRS->startdocked_PTRS[0] = 0x18993c;
+        symbols_PTRS->startdocked_PTRS[1] = 0x18993c;
+        symbols_PTRS->startdocked_PTRS[2] = 0x187ba0;
+        symbols_PTRS->startdocked_PTRS[3] = 0x3c00;
+        symbols_PTRS->startdocked_PTRS[4] = 0x16156c;
         bIsStartHardcoded = TRUE;
     }
     if (bIsStartHardcoded)
@@ -922,7 +944,7 @@ BOOL LoadSymbols(symbols_addr* symbols_PTRS, HMODULE hModule)
     GetWindowsDirectoryW(wszPath, MAX_PATH);
     wcscat_s(wszPath, MAX_PATH, L"\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\" TEXT(STARTUI_SB_NAME) L".dll");
     ComputeFileHash(wszPath, hash, 100);
-    if (!_stricmp(hash, "2768cc6cc7f686b2aa084cb5c8cce65d") || !_stricmp(hash, "a7c82cb9a9fd6f87897fc8a737d6b4d7")) // 493, 527, 556
+    if (!_stricmp(hash, "2768cc6cc7f686b2aa084cb5c8cce65d") || !_stricmp(hash, "a7c82cb9a9fd6f87897fc8a737d6b4d7")) // 493, 527, 556, 613
     {
         symbols_PTRS->startui_PTRS[0] = 0x37180;
         bIsStartHardcoded = TRUE;
