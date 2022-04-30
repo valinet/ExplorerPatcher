@@ -1560,6 +1560,12 @@ HRESULT STDMETHODCALLTYPE epw_Weather_Initialize(EPWeather* _this, WCHAR wszName
 
 HRESULT STDMETHODCALLTYPE epw_Weather_Show(EPWeather* _this)
 {
+    SetLastError(0);
+    LONG_PTR dwExStyle = GetWindowLongPtrW(_this->hWnd, GWL_EXSTYLE);
+    if (!GetLastError())
+    {
+        SetWindowLongPtrW(_this->hWnd, GWL_EXSTYLE, WS_EX_TOOLWINDOW | dwExStyle);
+    }
     INT preference = InterlockedAdd64(&_this->dwWindowCornerPreference, 0);
     DwmSetWindowAttribute(_this->hWnd, DWMWA_WINDOW_CORNER_PREFERENCE, &preference, sizeof(preference));
     PostMessageW(_this->hWnd, EP_WEATHER_WM_REBOUND_BROWSER, 0, 0);
@@ -1570,6 +1576,12 @@ HRESULT STDMETHODCALLTYPE epw_Weather_Show(EPWeather* _this)
 
 HRESULT STDMETHODCALLTYPE epw_Weather_Hide(EPWeather* _this)
 {
+    SetLastError(0);
+    LONG_PTR dwExStyle = GetWindowLongPtrW(_this->hWnd, GWL_EXSTYLE);
+    if (!GetLastError())
+    {
+        SetWindowLongPtrW(_this->hWnd, GWL_EXSTYLE, ~WS_EX_TOOLWINDOW & dwExStyle);
+    }
     ShowWindow(_this->hWnd, SW_HIDE);
     return S_OK;
 }
