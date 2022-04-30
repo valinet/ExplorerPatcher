@@ -39,10 +39,13 @@
 #ifdef _WIN64
 #include "../ep_weather_host/ep_weather_host_h.h"
 IEPWeather* epw = NULL;
-SRWLOCK lock_epw = { .Ptr = SRWLOCK_INIT };
+CRITICAL_SECTION lock_epw;
+int prev_total_h = 0;
+HWND PeopleButton_LastHWND = NULL;
 #endif
 #include "osutility.h"
-
+HANDLE hServiceWindowThread = NULL;
+//#pragma comment(lib, "Winmm.lib")
 #ifndef _WIN64
 RTL_OSVERSIONINFOW global_rovi;
 DWORD32 global_ubr;
@@ -848,6 +851,21 @@ DWORD EP_ServiceWindowThread(DWORD unused)
             if (bRet == -1)
             {
                 break;
+            }
+            else if (!msg.hwnd)
+            {
+                if (msg.message == WM_USER + 1)
+                {
+                    EnterCriticalSection(&lock_epw);
+                    if (epw)
+                    {
+                        epw = NULL;
+                        prev_total_h = 0;
+                        if (PeopleButton_LastHWND) InvalidateRect(PeopleButton_LastHWND, NULL, TRUE);
+                        //PlaySoundA((LPCTSTR)SND_ALIAS_SYSTEMASTERISK, NULL, SND_ALIAS_ID);
+                    }
+                    LeaveCriticalSection(&lock_epw);
+                }
             }
             else
             {
@@ -4187,7 +4205,6 @@ void stub1(void* i)
 {
 }
 
-HWND PeopleButton_LastHWND = NULL;
 #define WEATHER_FIXEDSIZE2_MAXWIDTH 192
 BOOL explorer_DeleteMenu(HMENU hMenu, UINT uPosition, UINT uFlags)
 {
@@ -4284,14 +4301,13 @@ void RecomputeWeatherFlyoutLocation(HWND hWnd)
     SetWindowPos(hWnd, NULL, pNewWindow.x, pNewWindow.y, 0, 0, SWP_NOSIZE | SWP_NOSENDCHANGING);
 }
 
-int prev_total_h = 0;
 BOOL people_has_ellipsed = FALSE;
 SIZE (*PeopleButton_CalculateMinimumSizeFunc)(void*, SIZE*);
 SIZE WINAPI PeopleButton_CalculateMinimumSizeHook(void* _this, SIZE* pSz)
 {
     SIZE ret = PeopleButton_CalculateMinimumSizeFunc(_this, pSz);
-    AcquireSRWLockShared(&lock_epw);
-    if (epw)
+    BOOL bHasLocked = TryEnterCriticalSection(&lock_epw);
+    if (bHasLocked && epw)
     {
         if (bWeatherFixedSize == 1)
         {
@@ -4325,106 +4341,110 @@ SIZE WINAPI PeopleButton_CalculateMinimumSizeHook(void* _this, SIZE* pSz)
                 pSz->cx = prev_total_h;
             }
         }
-    }
-    //printf("[CalculateMinimumSize] %d %d\n", pSz->cx, pSz->cy);
-    if (pSz->cy && epw)
-    {
-        BOOL bIsInitialized = TRUE;
-        HRESULT hr = epw->lpVtbl->IsInitialized(epw, &bIsInitialized);
-        if (SUCCEEDED(hr))
+        //printf("[CalculateMinimumSize] %d %d\n", pSz->cx, pSz->cy);
+        if (pSz->cy)
         {
-            int rt = MulDiv(48, pSz->cy, 60);
-            if (!bIsInitialized)
+            BOOL bIsInitialized = TRUE;
+            HRESULT hr = epw->lpVtbl->IsInitialized(epw, &bIsInitialized);
+            if (SUCCEEDED(hr))
             {
-                ReleaseSRWLockShared(&lock_epw);
-                AcquireSRWLockExclusive(&lock_epw);
-                epw->lpVtbl->SetTerm(epw, MAX_PATH * sizeof(WCHAR), wszWeatherTerm);
-                epw->lpVtbl->SetLanguage(epw, MAX_PATH * sizeof(WCHAR), wszWeatherLanguage);
-                epw->lpVtbl->SetDevMode(epw, dwWeatherDevMode, FALSE);
-                epw->lpVtbl->SetIconPack(epw, dwWeatherIconPack, FALSE);
-                UINT dpiX = 0, dpiY = 0;
-                HMONITOR hMonitor = MonitorFromWindow(PeopleButton_LastHWND, MONITOR_DEFAULTTOPRIMARY);
-                HRESULT hr = GetDpiForMonitor(hMonitor, MDT_DEFAULT, &dpiX, &dpiY);
-                MONITORINFO mi;
-                ZeroMemory(&mi, sizeof(MONITORINFO));
-                mi.cbSize = sizeof(MONITORINFO);
-                if (GetMonitorInfoW(hMonitor, &mi))
+                int rt = MulDiv(48, pSz->cy, 60);
+                if (!bIsInitialized)
                 {
-                    DWORD dwTextScaleFactor = 0, dwSize = sizeof(DWORD);
-                    if (SHRegGetValueFromHKCUHKLMFunc && SHRegGetValueFromHKCUHKLMFunc(
-                        TEXT("SOFTWARE\\Microsoft\\Accessibility"),
-                        TEXT("TextScaleFactor"),
-                        SRRF_RT_REG_DWORD,
-                        NULL,
-                        &dwTextScaleFactor,
-                        (LPDWORD)(&dwSize)
-                    ) != ERROR_SUCCESS)
+                    epw->lpVtbl->SetTerm(epw, MAX_PATH * sizeof(WCHAR), wszWeatherTerm);
+                    epw->lpVtbl->SetLanguage(epw, MAX_PATH * sizeof(WCHAR), wszWeatherLanguage);
+                    epw->lpVtbl->SetDevMode(epw, dwWeatherDevMode, FALSE);
+                    epw->lpVtbl->SetIconPack(epw, dwWeatherIconPack, FALSE);
+                    UINT dpiX = 0, dpiY = 0;
+                    HMONITOR hMonitor = MonitorFromWindow(PeopleButton_LastHWND, MONITOR_DEFAULTTOPRIMARY);
+                    HRESULT hr = GetDpiForMonitor(hMonitor, MDT_DEFAULT, &dpiX, &dpiY);
+                    MONITORINFO mi;
+                    ZeroMemory(&mi, sizeof(MONITORINFO));
+                    mi.cbSize = sizeof(MONITORINFO);
+                    if (GetMonitorInfoW(hMonitor, &mi))
                     {
-                        dwTextScaleFactor = 100;
-                    }
-
-                    RECT rcWeatherFlyoutWindow;
-                    rcWeatherFlyoutWindow.left = mi.rcWork.left;
-                    rcWeatherFlyoutWindow.top = mi.rcWork.top;
-                    rcWeatherFlyoutWindow.right = rcWeatherFlyoutWindow.left + MulDiv(MulDiv(MulDiv(EP_WEATHER_WIDTH, dpiX, 96), dwTextScaleFactor, 100), dwWeatherZoomFactor, 100);
-                    rcWeatherFlyoutWindow.bottom = rcWeatherFlyoutWindow.top + MulDiv(MulDiv(MulDiv(EP_WEATHER_HEIGHT, dpiX, 96), dwTextScaleFactor, 100), dwWeatherZoomFactor, 100);
-                    int k = 0;
-                    while (FAILED(hr = epw->lpVtbl->Initialize(epw, wszEPWeatherKillswitch, bAllocConsole, EP_WEATHER_PROVIDER_GOOGLE, rt, rt, dwWeatherTemperatureUnit, dwWeatherUpdateSchedule * 1000, rcWeatherFlyoutWindow, dwWeatherTheme, dwWeatherGeolocationMode, &hWndWeatherFlyout, dwWeatherZoomFactor ? dwWeatherZoomFactor : 100, dpiX, dpiY)))
-                    {
-                        BOOL bFailed = FALSE;
-                        if (k == 0 && hr == HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND))
+                        DWORD dwTextScaleFactor = 0, dwSize = sizeof(DWORD);
+                        if (SHRegGetValueFromHKCUHKLMFunc && SHRegGetValueFromHKCUHKLMFunc(
+                            TEXT("SOFTWARE\\Microsoft\\Accessibility"),
+                            TEXT("TextScaleFactor"),
+                            SRRF_RT_REG_DWORD,
+                            NULL,
+                            &dwTextScaleFactor,
+                            (LPDWORD)(&dwSize)
+                        ) != ERROR_SUCCESS)
                         {
-                            if (DownloadAndInstallWebView2Runtime())
+                            dwTextScaleFactor = 100;
+                        }
+
+                        RECT rcWeatherFlyoutWindow;
+                        rcWeatherFlyoutWindow.left = mi.rcWork.left;
+                        rcWeatherFlyoutWindow.top = mi.rcWork.top;
+                        rcWeatherFlyoutWindow.right = rcWeatherFlyoutWindow.left + MulDiv(MulDiv(MulDiv(EP_WEATHER_WIDTH, dpiX, 96), dwTextScaleFactor, 100), dwWeatherZoomFactor, 100);
+                        rcWeatherFlyoutWindow.bottom = rcWeatherFlyoutWindow.top + MulDiv(MulDiv(MulDiv(EP_WEATHER_HEIGHT, dpiX, 96), dwTextScaleFactor, 100), dwWeatherZoomFactor, 100);
+                        int k = 0;
+                        while (FAILED(hr = epw->lpVtbl->Initialize(epw, wszEPWeatherKillswitch, bAllocConsole, EP_WEATHER_PROVIDER_GOOGLE, rt, rt, dwWeatherTemperatureUnit, dwWeatherUpdateSchedule * 1000, rcWeatherFlyoutWindow, dwWeatherTheme, dwWeatherGeolocationMode, &hWndWeatherFlyout, dwWeatherZoomFactor ? dwWeatherZoomFactor : 100, dpiX, dpiY)))
+                        {
+                            BOOL bFailed = FALSE;
+                            if (k == 0 && hr == HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND))
                             {
-                                k++;
+                                if (DownloadAndInstallWebView2Runtime())
+                                {
+                                    k++;
+                                }
+                                else
+                                {
+                                    bFailed = TRUE;
+                                }
                             }
                             else
                             {
                                 bFailed = TRUE;
                             }
+                            if (bFailed)
+                            {
+                                epw->lpVtbl->Release(epw);
+                                epw = NULL;
+                                prev_total_h = 0;
+                                PostMessageW(FindWindowW(L"Shell_TrayWnd", NULL), WM_COMMAND, 435, 0);
+                                PostMessageW(FindWindowW(L"ExplorerPatcher_GUI_" _T(EP_CLSID), NULL), WM_USER + 1, 0, 0);
+                                break;
+                            }
                         }
-                        else
+                        if (SUCCEEDED(hr))
                         {
-                            bFailed = TRUE;
+                            epw->lpVtbl->SetWindowCornerPreference(epw, dwWeatherWindowCornerPreference);
                         }
-                        if (bFailed)
-                        {
-                            epw->lpVtbl->Release(epw);
-                            epw = NULL;
-                            prev_total_h = 0;
-                            PostMessageW(FindWindowW(L"Shell_TrayWnd", NULL), WM_COMMAND, 435, 0);
-                            PostMessageW(FindWindowW(L"ExplorerPatcher_GUI_" _T(EP_CLSID), NULL), WM_USER + 1, 0, 0);
-                            break;
-                        }
-                    }
-                    if (SUCCEEDED(hr))
-                    {
-                        epw->lpVtbl->SetWindowCornerPreference(epw, dwWeatherWindowCornerPreference);
                     }
                 }
-                ReleaseSRWLockExclusive(&lock_epw);
-                AcquireSRWLockShared(&lock_epw);
+                else
+                {
+                    epw->lpVtbl->SetIconSize(epw, rt, rt);
+                }
             }
             else
             {
-                epw->lpVtbl->SetIconSize(epw, rt, rt);
+                if (hr == 0x800706ba) // RPC server is unavailable
+                {
+                    //ReleaseSRWLockShared(&lock_epw);
+                    /*AcquireSRWLockExclusive(&lock_epw);
+                    epw = NULL;
+                    prev_total_h = 0;
+                    InvalidateRect(PeopleButton_LastHWND, NULL, TRUE);
+                    ReleaseSRWLockExclusive(&lock_epw);*/
+                    if (hServiceWindowThread) PostThreadMessageW(GetThreadId(hServiceWindowThread), WM_USER + 1, NULL, NULL);
+                    //AcquireSRWLockShared(&lock_epw);
+                }
             }
         }
-        else
+        LeaveCriticalSection(&lock_epw);
+    }
+    else
+    {
+        if (bHasLocked)
         {
-            if (hr == 0x800706ba) // RPC server is unavailable
-            {
-                ReleaseSRWLockShared(&lock_epw);
-                AcquireSRWLockExclusive(&lock_epw);
-                epw = NULL;
-                prev_total_h = 0;
-                InvalidateRect(PeopleButton_LastHWND, NULL, TRUE);
-                ReleaseSRWLockExclusive(&lock_epw);
-                AcquireSRWLockShared(&lock_epw);
-            }
+            LeaveCriticalSection(&lock_epw);
         }
     }
-    ReleaseSRWLockShared(&lock_epw);
     return ret;
 }
 
@@ -4433,8 +4453,8 @@ int PeopleBand_MulDivHook(int nNumber, int nNumerator, int nDenominator)
     if (nNumber != 46) // 46 = vertical taskbar, 48 = horizontal taskbar
     {
         //printf("[MulDivHook] %d %d %d\n", nNumber, nNumerator, nDenominator);
-        AcquireSRWLockShared(&lock_epw);
-        if (epw)
+        BOOL bHasLocked = TryEnterCriticalSection(&lock_epw);
+        if (bHasLocked && epw)
         {
             if (bWeatherFixedSize == 1)
             {
@@ -4455,25 +4475,32 @@ int PeopleBand_MulDivHook(int nNumber, int nNumerator, int nDenominator)
                     mul = 1;
                     break;
                 }
-                ReleaseSRWLockShared(&lock_epw);
+                LeaveCriticalSection(&lock_epw);
                 return MulDiv(nNumber * mul, nNumerator, nDenominator);
             }
             else
             {
                 if (prev_total_h)
                 {
-                    ReleaseSRWLockShared(&lock_epw);
+                    LeaveCriticalSection(&lock_epw);
                     return prev_total_h;
                 }
                 else
                 {
                     prev_total_h = MulDiv(nNumber, nNumerator, nDenominator);
-                    ReleaseSRWLockShared(&lock_epw);
+                    LeaveCriticalSection(&lock_epw);
                     return prev_total_h;
                 }
             }
+            LeaveCriticalSection(&lock_epw);
         }
-        ReleaseSRWLockShared(&lock_epw);
+        else
+        {
+            if (bHasLocked)
+            {
+                LeaveCriticalSection(&lock_epw);
+            }
+        }
     }
     return MulDiv(nNumber, nNumerator, nDenominator);
 }
@@ -4513,8 +4540,8 @@ __int64 __fastcall PeopleBand_DrawTextWithGlowHook(
     int(__stdcall* a11)(HDC, unsigned __int16*, int, struct tagRECT*, unsigned int, __int64),
     __int64 a12)
 {
-    AcquireSRWLockShared(&lock_epw);
-    if (a5 == 0x21 && epw)
+    BOOL bHasLocked = FALSE;
+    if (a5 == 0x21 && (bHasLocked = TryEnterCriticalSection(&lock_epw)) && epw)
     {
         people_has_ellipsed = FALSE;
 
@@ -4912,24 +4939,28 @@ __int64 __fastcall PeopleBand_DrawTextWithGlowHook(
             //printf("444444444444 0x%x\n", hr);
             if (hr == 0x800706ba) // RPC server is unavailable
             {
-                ReleaseSRWLockShared(&lock_epw);
-                AcquireSRWLockExclusive(&lock_epw);
+                //ReleaseSRWLockShared(&lock_epw);
+                /*AcquireSRWLockExclusive(&lock_epw);
                 epw = NULL;
                 prev_total_h = 0;
                 InvalidateRect(PeopleButton_LastHWND, NULL, TRUE); 
-                ReleaseSRWLockExclusive(&lock_epw);
-                AcquireSRWLockShared(&lock_epw);
+                ReleaseSRWLockExclusive(&lock_epw);*/
+                if (hServiceWindowThread) PostThreadMessageW(GetThreadId(hServiceWindowThread), WM_USER + 1, NULL, NULL);
+                //AcquireSRWLockShared(&lock_epw);
             }
         }
 
         //printf("hr %x\n", hr);
 
-        ReleaseSRWLockShared(&lock_epw);
+        LeaveCriticalSection(&lock_epw);
         return S_OK;
     }
     else
     {
-        ReleaseSRWLockShared(&lock_epw);
+        if (bHasLocked)
+        {
+            LeaveCriticalSection(&lock_epw);
+        }
         return PeopleBand_DrawTextWithGlowFunc(hdc, a2, a3, a4, a5, a6, a7, dy, a9, a10, a11, a12);
     }
 }
@@ -4937,8 +4968,8 @@ __int64 __fastcall PeopleBand_DrawTextWithGlowHook(
 void(*PeopleButton_ShowTooltipFunc)(__int64 a1, unsigned __int8 bShow) = 0;
 void WINAPI PeopleButton_ShowTooltipHook(__int64 _this, unsigned __int8 bShow)
 {
-    AcquireSRWLockShared(&lock_epw);
-    if (epw)
+    BOOL bHasLocked = TryEnterCriticalSection(&lock_epw);
+    if (bHasLocked && epw)
     {
         if (bShow)
         {
@@ -4971,9 +5002,14 @@ void WINAPI PeopleButton_ShowTooltipHook(__int64 _this, unsigned __int8 bShow)
                 epw->lpVtbl->UnlockData(epw);
             }
         }
+        LeaveCriticalSection(&lock_epw);
     }
     else
     {
+        if (bHasLocked)
+        {
+            LeaveCriticalSection(&lock_epw);
+        }
         WCHAR wszBuffer[MAX_PATH];
         ZeroMemory(wszBuffer, sizeof(WCHAR) * MAX_PATH);
         LoadStringW(GetModuleHandle(NULL), 912, wszBuffer, MAX_PATH);
@@ -4988,7 +5024,6 @@ void WINAPI PeopleButton_ShowTooltipHook(__int64 _this, unsigned __int8 bShow)
             SendMessageW((HWND) * ((INT64*)_this + 10), TTM_UPDATETIPTEXTW, 0, (LPARAM)&ti);
         }
     }
-    ReleaseSRWLockShared(&lock_epw);
     if (PeopleButton_ShowTooltipFunc)
     {
         return PeopleButton_ShowTooltipFunc(_this, bShow);
@@ -4999,8 +5034,8 @@ void WINAPI PeopleButton_ShowTooltipHook(__int64 _this, unsigned __int8 bShow)
 __int64 (*PeopleButton_OnClickFunc)(__int64 a1, __int64 a2) = 0;
 __int64 PeopleButton_OnClickHook(__int64 a1, __int64 a2)
 {
-    AcquireSRWLockShared(&lock_epw);
-    if (epw)
+    BOOL bHasLocked = TryEnterCriticalSection(&lock_epw);
+    if (bHasLocked && epw)
     {
         if (!hWndWeatherFlyout)
         {
@@ -5029,12 +5064,15 @@ __int64 PeopleButton_OnClickHook(__int64 a1, __int64 a2)
                 SwitchToThisWindow(hWndWeatherFlyout, TRUE);
             }
         }
-        ReleaseSRWLockShared(&lock_epw);
+        LeaveCriticalSection(&lock_epw);
         return 0;
     }
     else
     {
-        ReleaseSRWLockShared(&lock_epw);
+        if (bHasLocked)
+        {
+            LeaveCriticalSection(&lock_epw);
+        }
         if (PeopleButton_OnClickFunc)
         {
             return PeopleButton_OnClickFunc(a1, a2);
@@ -5055,7 +5093,7 @@ INT64 PeopleButton_SubclassProc(
     if (uMsg == WM_NCDESTROY)
     {
         RemoveWindowSubclass(hWnd, PeopleButton_SubclassProc, PeopleButton_SubclassProc);
-        AcquireSRWLockExclusive(&lock_epw);
+        /*AcquireSRWLockExclusive(&lock_epw);
         if (epw)
         {
             epw->lpVtbl->Release(epw);
@@ -5063,7 +5101,8 @@ INT64 PeopleButton_SubclassProc(
             PeopleButton_LastHWND = NULL;
             prev_total_h = 0;
         }
-        ReleaseSRWLockExclusive(&lock_epw);
+        ReleaseSRWLockExclusive(&lock_epw);*/
+        if (hServiceWindowThread) PostThreadMessageW(GetThreadId(hServiceWindowThread), WM_USER + 1, NULL, NULL);
     }
     return DefSubclassProc(hWnd, uMsg, wParam, lParam);
 }
@@ -5173,7 +5212,7 @@ BOOL explorer_SetChildWindowNoActivateHook(HWND hWnd)
                     PeopleButton_LastHWND = hWnd;
                     SetWindowSubclass(hWnd, PeopleButton_SubclassProc, PeopleButton_SubclassProc, 0);
 
-                    AcquireSRWLockExclusive(&lock_epw);
+                    EnterCriticalSection(&lock_epw);
                     if (!epw)
                     {
                         if (SUCCEEDED(CoCreateInstance(&CLSID_EPWeather, NULL, CLSCTX_LOCAL_SERVER, &IID_IEPWeather, &epw)) && epw)
@@ -5190,7 +5229,7 @@ BOOL explorer_SetChildWindowNoActivateHook(HWND hWnd)
                             SetWindowTextW(hWnd, wszBuffer);
                         }
                     }
-                    ReleaseSRWLockExclusive(&lock_epw);
+                    LeaveCriticalSection(&lock_epw);
                 }
             }
         }
@@ -6331,7 +6370,7 @@ void WINAPI LoadSettings(LPARAM lParam)
         );
 
 #ifdef _WIN64
-        AcquireSRWLockShared(&lock_epw);
+        EnterCriticalSection(&lock_epw);
 
         DWORD dwOldWeatherTemperatureUnit = dwWeatherTemperatureUnit;
         dwSize = sizeof(DWORD);
@@ -6622,7 +6661,7 @@ void WINAPI LoadSettings(LPARAM lParam)
             }
         }
 
-        ReleaseSRWLockShared(&lock_epw);
+        LeaveCriticalSection(&lock_epw);
 #endif
 
         dwTemp = TASKBARGLOMLEVEL_DEFAULT;
@@ -9310,6 +9349,9 @@ DWORD Inject(BOOL bIsExplorer)
 
     if (bIsExplorer)
     {
+#ifdef _WIN64
+        InitializeCriticalSection(&lock_epw);
+#endif
         wszWeatherLanguage = malloc(sizeof(WCHAR) * MAX_PATH);
         wszWeatherTerm = malloc(sizeof(WCHAR) * MAX_PATH);
     }
@@ -10094,7 +10136,7 @@ DWORD Inject(BOOL bIsExplorer)
 
 
 
-    CreateThread(
+    hServiceWindowThread = CreateThread(
         0,
         0,
         EP_ServiceWindowThread,
