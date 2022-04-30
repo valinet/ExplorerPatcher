@@ -15,6 +15,11 @@ Please make sure you are connected to the Internet while installing, the applica
 * Option to disable Win+F (Feedback Hub) hotkey
 * Built-in support for OS build 22000.613
 
+##### 2
+
+* Weather: Fixed a bug that had "COM Surrogate" display as a running app in Task Manager after the widget flyout was opened the first time
+* Weather: Fixed a bug that could hang or lock the shutdown/restart/sign out process when using the weather widget
+
 ## 22000.556.43
 
 Tested on OS build 22000.556.
