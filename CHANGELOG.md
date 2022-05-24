@@ -14,6 +14,11 @@ Please make sure you are connected to the Internet while installing, the applica
 
 * sws: Fixed a bug that displayed a wrong window to switch to when a background application was denied the request to have the foreground window by the OS (#1084)
 
+##### 2
+
+* libvalinet: Fixed a memory leak in `toast.h`
+* sws: Fixed a bug that caused the switcher to display non-responsive (hung) immersive (UWP) windows twice in the list
+
 ## 22000.613.44
 
 Tested on OS build 22000.613.
