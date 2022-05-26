@@ -1296,6 +1296,52 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                         }
                         if (!bOk) continue;
                     }
+                    else if (!wcsncmp(text, L"%SPOTLIGHTINFOTIP1%", 18))
+                    {
+                        DWORD dwDataSize = MAX_LINE_LENGTH;
+                        RegGetValueW(HKEY_CURRENT_USER, L"Software\\Classes\\CLSID\\{2cc5ca98-6485-489a-920e-b3e88a6ccce3}", L"InfoTip", RRF_RT_REG_SZ, NULL, text, &dwDataSize);
+                        WCHAR* pC = wcschr(text, L'\r');
+                        if (pC) pC[0] = 0;
+                    }
+                    else if (!wcsncmp(text, L"%SPOTLIGHTINFOTIP2%", 18))
+                    {
+                        DWORD dwDataSize = MAX_LINE_LENGTH;
+                        RegGetValueW(HKEY_CURRENT_USER, L"Software\\Classes\\CLSID\\{2cc5ca98-6485-489a-920e-b3e88a6ccce3}", L"InfoTip", RRF_RT_REG_SZ, NULL, text, &dwDataSize);
+                        WCHAR* pC = wcschr(text, L'\r');
+                        if (pC)
+                        {
+                            int d = (pC - text) + 1;
+                            for (int i = d; i < wcslen(text); ++i)
+                            {
+                                text[i - d] = text[i];
+                            }
+                            pC = wcschr(text, L'\r');
+                            if (pC)
+                            {
+                                pC[0] = 0;
+                            }
+                        }
+                    }
+                    else if (!wcsncmp(text, L"%SPOTLIGHTCLICK%", 16))
+                    {
+                        DWORD dwDataSize = MAX_LINE_LENGTH;
+                        RegQueryValueW(HKEY_CURRENT_USER, L"Software\\Classes\\CLSID\\{2cc5ca98-6485-489a-920e-b3e88a6ccce3}", text, &dwDataSize);
+                    }
+                    else if (!wcsncmp(text, L"%SPOTLIGHTDISLIKE%", 18))
+                    {
+                        DWORD dwDataSize = MAX_LINE_LENGTH;
+                        RegQueryValueW(HKEY_CURRENT_USER, L"Software\\Classes\\CLSID\\{2cc5ca98-6485-489a-920e-b3e88a6ccce3}\\shell\\SpotlightDislike", text, &dwDataSize);
+                    }
+                    else if (!wcsncmp(text, L"%SPOTLIGHTLIKE%", 15))
+                    {
+                        DWORD dwDataSize = MAX_LINE_LENGTH;
+                        RegQueryValueW(HKEY_CURRENT_USER, L"Software\\Classes\\CLSID\\{2cc5ca98-6485-489a-920e-b3e88a6ccce3}\\shell\\SpotlightLike", text, &dwDataSize);
+                    }
+                    else if (!wcsncmp(text, L"%SPOTLIGHTNEXT%", 15))
+                    {
+                        DWORD dwDataSize = MAX_LINE_LENGTH;
+                        RegQueryValueW(HKEY_CURRENT_USER, L"Software\\Classes\\CLSID\\{2cc5ca98-6485-489a-920e-b3e88a6ccce3}\\shell\\SpotlightNext", text, &dwDataSize);
+                    }
                     if (bResetLastHeading)
                     {
                         wcscpy_s(lastHeading, MAX_LINE_LENGTH, text);
@@ -2256,6 +2302,30 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                     }
                                     psfDesktop->lpVtbl->Release(psfDesktop);
                                 }
+                            }
+                            else if (!strncmp(line + 1, "spotlight_menu", 14))
+                            {
+                                POINT p;
+                                p.x = rcText.left;
+                                p.y = rcText.bottom;
+                                ClientToScreen(hwnd, &p);
+                                SpotlightHelper(SPOP_OPENMENU, hwnd, NULL, &p);
+                            }
+                            else if (!strncmp(line + 1, "spotlight_click", 15))
+                            {
+                                SpotlightHelper(SPOP_CLICKMENU_OPEN, hwnd, NULL, &p);
+                            }
+                            else if (!strncmp(line + 1, "spotlight_next", 14))
+                            {
+                                SpotlightHelper(SPOP_CLICKMENU_NEXTPIC, hwnd, NULL, &p);
+                            }
+                            else if (!strncmp(line + 1, "spotlight_like", 14))
+                            {
+                                SpotlightHelper(SPOP_CLICKMENU_LIKE, hwnd, NULL, &p);
+                            }
+                            else if (!strncmp(line + 1, "spotlight_dislike", 17))
+                            {
+                                SpotlightHelper(SPOP_CLICKMENU_DISLIKE, hwnd, NULL, &p);
                             }
                         }
                     }

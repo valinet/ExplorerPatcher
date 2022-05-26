@@ -516,6 +516,54 @@
 
 
 
+;s Spotlight_SpotlightOSCheck DoesOSBuildSupportSpotlight
+;T Spotlight
+[HKEY_CURRENT_USER\Software\ExplorerPatcher]
+;t When using Windows spotlight as desktop background:
+;b Hide the "Learn about this picture" icon
+"SpotlightDisableIcon"=dword:00000000
+;c 8 Desktop context menu items
+;x 0 No items
+;x 32 Switch to the next picture
+;x 48 Learn about and switch to next picture
+;x 288 Info and switch to next picture
+;x 800 Info, copyright, and switch to next picture
+;x 304 Info, learn about, and switch to next picture
+;x 816 Info, copyright, learn about, and switch to next picture
+;x 1008 All items
+"SpotlightDesktopMenuMask"=dword:00000000
+;c 11 Update frequency
+;x 0 Let Windows decide the best schedule (default)
+;x 60 Every minute
+;x 300 Every 5 minutes
+;x 900 Every 15 minutes
+;x 1200 Every 20 minutes
+;x 1800 Every half an hour
+;x 3600 Every hour
+;x 7200 Every couple of hours
+;x 21600 Every 6 hours
+;x 43200 Every 12 hours
+;x 86400 Once a day
+"SpotlightUpdateSchedule"=dword:00000000
+;s Spotlight_SpotlightEnabledCheck IsSpotlightEnabled
+;u %SPOTLIGHTCLICK%
+;spotlight_click
+;t %SPOTLIGHTINFOTIP1%
+;t %SPOTLIGHTINFOTIP2%
+;u %SPOTLIGHTNEXT%
+;spotlight_next
+;u %SPOTLIGHTLIKE%
+;spotlight_like
+;u %SPOTLIGHTDISLIKE%
+;spotlight_dislike
+;;;u Show more options
+;;;spotlight_menu
+;g Spotlight_SpotlightEnabledCheck
+;g Spotlight_SpotlightOSCheck
+
+
+
+
 ;T Other
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;b Remember last used section in this window
