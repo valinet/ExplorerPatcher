@@ -2,6 +2,24 @@
 
 This document includes the same release notes as in the [Releases](https://github.com/valinet/ExplorerPatcher/releases) section on GitHub.
 
+## 22000.708.46
+
+Tested on OS build 22000.708.
+
+Please make sure you are connected to the Internet while installing, the application might need to perform one-time downloads for several resources in order to enable full functionality.
+
+#### Details
+
+##### 1
+
+* Built-in support for OS build 22000.708.
+* Added configuration options for the new Windows Spotlight desktop background feature, including:
+  * Hide the "Learn about this picture" icon
+  * Choose which items from the Windows spotlight icon context menu to have replicated in the desktop context menu (legacy context menu only)
+  * Set a schedule for "Switch to next picture"
+  * Manipulate the feature from the Properties UI, bypassing the desktop icon
+* The Properties UI hides sections that are not applicable to your current settings; for example, the "Weather" tab is not displayed if you've selected the Windows 11 taskbar, as none of the options in there apply when in this mode.
+  
 ## 22000.675.45
 
 Tested on OS build 22000.675.
