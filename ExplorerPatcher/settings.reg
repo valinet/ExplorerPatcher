@@ -83,7 +83,6 @@
 ;x 0 Large (default)
 "TaskbarSmallIcons"=dword:00000000
 ;e 
-;e 
 ;g Taskbar_Windows10Section
 
 
@@ -530,9 +529,9 @@
 
 
 ;s Spotlight_SpotlightOSCheck DoesOSBuildSupportSpotlight
+;s Spotlight_SpotlightEnabledCheck IsSpotlightEnabled
 ;T Spotlight
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
-;t When using Windows spotlight as desktop background:
 ;b Hide the "Learn about this picture" icon
 "SpotlightDisableIcon"=dword:00000000
 ;c 8 Desktop context menu items
@@ -558,7 +557,6 @@
 ;x 43200 Every 12 hours
 ;x 86400 Once a day
 "SpotlightUpdateSchedule"=dword:00000000
-;s Spotlight_SpotlightEnabledCheck IsSpotlightEnabled
 ;u %SPOTLIGHTCLICK%
 ;spotlight_click
 ;t %SPOTLIGHTINFOTIP1%

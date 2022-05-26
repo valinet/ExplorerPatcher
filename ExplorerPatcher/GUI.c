@@ -3663,12 +3663,31 @@ static LRESULT CALLBACK GUI_WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
             return 0;
         }
         // this should be determined from the file, but for now it works
-        else if (wParam >= '1' && wParam <= '9' || wParam == '0')
+        else if (wParam >= '1' && wParam <= '9' || wParam == '0' || wParam == MapVirtualKeyW(0x0C, MAPVK_VSC_TO_VK_EX) || wParam == MapVirtualKeyW(0x0D, MAPVK_VSC_TO_VK_EX))
         {
-            _this->tabOrder = 0;
-            GUI_SetSection(_this, TRUE, wParam == '0' ? 9 : wParam - '1');
-            _this->bShouldAnnounceSelected = TRUE;
-            InvalidateRect(hWnd, NULL, FALSE);
+            int min_section = 0;
+            int max_section = 100;
+            for (unsigned int i = 0; i < 100; ++i)
+            {
+                if (_this->sectionNames[i][0] == 0)
+                {
+                    max_section = i - 1;
+                    break;
+                }
+            }
+            int new_section = 0;
+            if (wParam == MapVirtualKeyW(0x0C, MAPVK_VSC_TO_VK_EX)) new_section = 10;
+            else if (wParam == MapVirtualKeyW(0x0D, MAPVK_VSC_TO_VK_EX)) new_section = 11;
+            else new_section = (wParam == '0' ? 9 : wParam - '1');
+            if (new_section < min_section) return 0;
+            if (new_section > max_section) return 0;
+            if (_this->section != new_section)
+            {
+                _this->tabOrder = 0;
+                GUI_SetSection(_this, TRUE, new_section);
+                _this->bShouldAnnounceSelected = TRUE;
+                InvalidateRect(hWnd, NULL, FALSE);
+            }
             return 0;
         }
         else if (wParam == VK_LEFT || wParam == VK_RIGHT)
@@ -3700,10 +3719,13 @@ static LRESULT CALLBACK GUI_WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
             {
                 new_section = min_section;
             }
-            _this->tabOrder = 0;
-            GUI_SetSection(_this, TRUE, new_section);
-            _this->bShouldAnnounceSelected = TRUE;
-            InvalidateRect(hWnd, NULL, FALSE);
+            if (_this->section != new_section)
+            {
+                _this->tabOrder = 0;
+                GUI_SetSection(_this, TRUE, new_section);
+                _this->bShouldAnnounceSelected = TRUE;
+                InvalidateRect(hWnd, NULL, FALSE);
+            }
             return 0; 
         }
         else if (wParam == 'H' || wParam == VK_F1)

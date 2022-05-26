@@ -6343,7 +6343,9 @@ void WINAPI LoadSettings(LPARAM lParam)
         if (dwTemp != bDisableSpotlightIcon)
         {
             bDisableSpotlightIcon = dwTemp;
+#ifdef _WIN64
             if (IsSpotlightEnabled()) dwRefreshUIMask |= REFRESHUI_SPOTLIGHT;
+#endif
         }
         dwSize = sizeof(DWORD);
         RegQueryValueExW(
@@ -6367,6 +6369,7 @@ void WINAPI LoadSettings(LPARAM lParam)
         if (dwTemp != dwSpotlightUpdateSchedule)
         {
             dwSpotlightUpdateSchedule = dwTemp;
+#ifdef _WIN64
             if (IsSpotlightEnabled() && hWndServiceWindow)
             {
                 if (dwSpotlightUpdateSchedule)
@@ -6378,6 +6381,7 @@ void WINAPI LoadSettings(LPARAM lParam)
                     KillTimer(hWndServiceWindow, 100);
                 }
             }
+#endif
         }
         dwTemp = FALSE;
         dwSize = sizeof(DWORD);
@@ -9175,6 +9179,7 @@ BOOL SHELL32_CanDisplayWin8CopyDialogHook()
 
 
 #pragma region "Windows Spotlight customization"
+#ifdef _WIN64
 
 HKEY hKeySpotlight1 = NULL;
 HKEY hKeySpotlight2 = NULL;
@@ -9233,6 +9238,7 @@ BOOL shell32_TrackPopupMenu(HMENU hMenu, UINT uFlags, int x, int y, int nReserve
     }
     return bRet;
 }
+#endif
 #pragma endregion
 
 
@@ -9259,14 +9265,18 @@ DWORD InjectBasicFunctions(BOOL bIsExplorer, BOOL bInstall)
     {
         if (bInstall)
         {
+#ifdef _WIN64
             if (DoesOSBuildSupportSpotlight())
             {
                 VnPatchIAT(hShell32, "user32.dll", "TrackPopupMenu", shell32_TrackPopupMenu);
             }
             else
             {
+#endif
                 VnPatchIAT(hShell32, "user32.dll", "TrackPopupMenu", TrackPopupMenuHook);
+#ifdef _WIN64
             }
+#endif
             VnPatchIAT(hShell32, "user32.dll", "SystemParametersInfoW", DisableImmersiveMenus_SystemParametersInfoW);
             if (!bIsExplorer)
             {
