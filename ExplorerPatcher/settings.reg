@@ -10,7 +10,7 @@
 ;x 0 Windows 11 (default)
 ;x 1 Windows 10
 "OldTaskbar"=dword:00000001
-;y More taskbar options in the Settings app 🡕
+;y More taskbar options in the Settings app 🡕                                                            
 ;ms-settings:taskbar
 ;y Customize notification area icons 🡕
 ;shell:::{05d7b0f4-2121-4eff-bf6b-ed3f69b894d9}
@@ -47,7 +47,7 @@
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;b Automatically hide the taskbar
 ;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_AutoHideTaskbar"=dword:00000000
-;t The following settings only apply to the Windows 10 taskbar:                                
+;s Taskbar_Windows10Section IsOldTaskbar
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;c 2 Start button style
 ;x 0 Windows 10 (default)
@@ -83,6 +83,8 @@
 ;x 0 Large (default)
 "TaskbarSmallIcons"=dword:00000000
 ;e 
+;e 
+;g Taskbar_Windows10Section
 
 
 ;T System tray
@@ -96,7 +98,7 @@
 [HKEY_CURRENT_USER\Software\Microsoft\TabletTip\1.7]
 ;b Show touch keyboard button *
 "TipbandDesiredVisibility"=dword:00000000
-;t The following settings only apply to the Windows 10 taskbar:
+;s SystemTray_Windows10Section IsOldTaskbar
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;p 2
 ;b Apply Windows 11 style to system tray icons *
@@ -114,7 +116,7 @@
 ;x 2 Network Connections in Control Panel
 "ReplaceNetwork"=dword:00000000
 ;q
-;t When clicking a system icon in the Windows 10 taskbar system tray, open:
+;t When clicking a system icon in the system tray, open:
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Control Panel\Settings\Network]
 ;c 7 Network
 ;x 6 Control Center
@@ -147,6 +149,8 @@
 ;x 1 Windows 10 (with link to "Language Preferences")
 ;x 4 Windows 10
 "IMEStyle"=dword:00000000
+;g SystemTray_Windows10Section
+
 
 
 ;T File Explorer
@@ -198,6 +202,7 @@
 ;x 1 Title bar, command bar and navigation bar
 ;x 2 Nowhere
 "MicaEffectOnTitlebar"=dword:00000000
+
 
 
 ;T Start menu
@@ -252,14 +257,15 @@
 ;x 8 Monitor #8
 ;x 9 Monitor #9
 "MonitorOverride"=dword:00000001
-;t The following settings only apply to the Windows 11 Start menu:
+;s StartMenu_Windows11 !IsWindows10StartMenu
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;b Disable the "Recommended" section
 ;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_StartDocked_DisableRecommendedSection"=dword:00000000
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\StartPage]
 ;b Open Start in All apps by default
 "MakeAllAppsDefault"=dword:00000000
-;t The following settings only apply to the Windows 10 Start menu:
+;g StartMenu_Windows11
+;s StartMenu_Windows10 IsWindows10StartMenu
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;b Show more tiles
 ;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_StartUI_ShowMoreTiles"=dword:00000000
@@ -281,6 +287,7 @@
 ;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_NoStartMenuMorePrograms"=dword:00000000
 ;u Pin tiles to Windows 10 Start menu from File Explorer
 ;pin_tiles
+;g StartMenu_Windows10
 
 
 
@@ -292,7 +299,7 @@
 ;x 1 Windows NT
 ;x 2 Simple Window Switcher
 "AltTabSettings"=dword:00000000
-;t The following settings only apply to the Simple Window Switcher:
+;s WindowSwitcher_SWS IsSWSEnabled
 [HKEY_CURRENT_USER\Software\ExplorerPatcher\sws]
 ;b Include desktop
 "IncludeWallpaper"=dword:00000001
@@ -419,14 +426,16 @@
 ;q
 ;y Learn more about Simple Window Switcher 🡕
 ;https://github.com/valinet/ExplorerPatcher/wiki/Simple-Window-Switcher
+;g WindowSwitcher_SWS
 
 
 
+;s Weather_Windows10 IsOldTaskbar
 ;T Weather
-;t The following settings only apply to the Windows 10 taskbar:
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;b Show Weather on the taskbar
 ;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_PeopleBand"=dword:00000000
+;s Weather_Section1 IsWeatherEnabled
 ;w Location
 ;Search City or Zip Code; the program looks up "weather in /* what you typed */" on Google. Leave blank for the default value (current location).
 ;Current location (default)
@@ -506,13 +515,17 @@
 ;x 500 500 %
 "WeatherZoomFactor"=dword:00000000
 ;q
+;g Weather_Section1
 ;y Learn more about the Weather taskbar widget 🡕
 ;https://github.com/valinet/ExplorerPatcher/wiki/Weather
+;s Weather_Section2 IsWeatherEnabled
 ;t %WEATHERLASTUPDATETEXT%
 ;u Update weather now
 ;update_weather
 ;u Clear weather widget local data
 ;clear_data_weather
+;g Weather_Section2
+;g Weather_Windows10
 
 
 
@@ -615,6 +628,7 @@
 "DoNotRedirectNotificationIconsToSettingsApp"=dword:00000000
 
 
+
 ;T Updates
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;z 3 When File Explorer starts
@@ -671,6 +685,12 @@
 "NoPropertiesInContextMenu"=dword:00000000
 ;b Enable symbols download *
 "EnableSymbolDownload"=dword:00000001
+;s Advanced_Windows10 IsOldTaskbar
+;b Pinned items act as quick launch (don't group pinned items with active apps) *
+"PinnedItemsActAsQuickLaunch"=dword:00000000
+;b When the taskbar shows button labels, remove the extra gap around pinned items *
+"RemoveExtraGapAroundPinnedItems"=dword:00000000
+;g Advanced_Windows10
 ;c 12 Supplementary delay at logon *
 ;x 0 None (default)
 ;x 300 300 ms
@@ -685,11 +705,7 @@
 ;x 8000 8 seconds
 ;x 10000 10 seconds
 "ExplorerReadyDelay"=dword:00000000
-;t The following settings only apply to the Windows 10 taskbar:                          
-;b Pinned items act as quick launch (don't group pinned items with active apps) *
-"PinnedItemsActAsQuickLaunch"=dword:00000000
-;b When the taskbar shows button labels, remove the extra gap around pinned items *
-"RemoveExtraGapAroundPinnedItems"=dword:00000000
+
 
 
 ;T About

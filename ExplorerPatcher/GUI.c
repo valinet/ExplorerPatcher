@@ -1058,6 +1058,38 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
             {
                 bWasSpecifiedSectionValid = TRUE;
             }
+            if (!strncmp(line, ";g ", 3))
+            {
+                continue;
+            }
+            if (!strncmp(line, ";s ", 3))
+            {
+                if (_this->bCalcExtent) continue;
+                char* funcName = strchr(line + 3, ' ');
+                funcName[0] = 0;
+                char* skipToName = line + 3;
+                funcName++;
+                strchr(funcName, '\r')[0] = 0;
+                BOOL bSkipLines = FALSE;
+                DWORD dwRes = 0, dwSize = sizeof(DWORD);
+                if (!_stricmp(funcName, "DoesOSBuildSupportSpotlight") && !DoesOSBuildSupportSpotlight()) bSkipLines = TRUE;
+                else if (!_stricmp(funcName, "IsSpotlightEnabled") && !IsSpotlightEnabled()) bSkipLines = TRUE;
+                else if (!_stricmp(funcName, "IsSWSEnabled") && (RegGetValueW(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer", L"AltTabSettings", RRF_RT_DWORD, NULL, &dwRes, &dwSize), (dwRes != 2))) bSkipLines = TRUE;
+                else if (!_stricmp(funcName, "IsOldTaskbar") && (RegGetValueW(HKEY_CURRENT_USER, _T(REGPATH), L"OldTaskbar", RRF_RT_DWORD, NULL, &dwRes, &dwSize), (dwRes != 1))) bSkipLines = TRUE;
+                else if (!_stricmp(funcName, "!IsOldTaskbar") && (RegGetValueW(HKEY_CURRENT_USER, _T(REGPATH), L"OldTaskbar", RRF_RT_DWORD, NULL, &dwRes, &dwSize), (dwRes == 1))) bSkipLines = TRUE;
+                else if (!_stricmp(funcName, "IsWindows10StartMenu") && (RegGetValueW(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", L"Start_ShowClassicMode", RRF_RT_DWORD, NULL, &dwRes, &dwSize), (dwRes != 1))) bSkipLines = TRUE;
+                else if (!_stricmp(funcName, "!IsWindows10StartMenu") && (RegGetValueW(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", L"Start_ShowClassicMode", RRF_RT_DWORD, NULL, &dwRes, &dwSize), (dwRes == 1))) bSkipLines = TRUE;
+                else if (!_stricmp(funcName, "IsWeatherEnabled") && (RegGetValueW(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced\\People", L"PeopleBand", RRF_RT_DWORD, NULL, &dwRes, &dwSize), (dwRes != 1))) bSkipLines = TRUE;
+                if (bSkipLines)
+                {
+                    do
+                    {
+                        getline(&text, &bufsiz, f);
+                        strchr(text, '\r')[0] = 0;
+                    } while (strncmp(text, ";g ", 3) || _stricmp((char*)text + 3, skipToName));
+                }
+                continue;
+            }
             if (!strncmp(line, ";q", 2))
             {
                 bResetLastHeading = TRUE;
