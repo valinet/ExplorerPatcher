@@ -1519,7 +1519,7 @@ void SpotlightHelper(DWORD dwOp, HWND hWnd, HMENU hMenu, LPPOINT pPt)
                         else if (!(dwOp & ~SPOP_INSERTMENU_ALL))
                         {
                             MENUITEMINFOW mii;
-                            int i = -1;
+                            int i = ARRAYSIZE(spop_insertmenu_ops) - 1;
                             while (1)
                             {
                                 if (i == -1 ? ((dwOp & SPOP_INSERTMENU_INFOTIP1) || (dwOp & SPOP_INSERTMENU_INFOTIP2)) : (dwOp & spop_insertmenu_ops[i]))
@@ -1548,20 +1548,11 @@ void SpotlightHelper(DWORD dwOp, HWND hWnd, HMENU hMenu, LPPOINT pPt)
                                             {
                                                 if (i == -1)
                                                 {
+                                                    WCHAR* pCInit = mii.dwTypeData;
                                                     WCHAR* pC = wcschr(mii.dwTypeData, L'\r');
                                                     if (pC)
                                                     {
                                                         pC[0] = 0;
-
-                                                        mii.fMask = MIIM_ID | MIIM_STRING | MIIM_DATA | MIIM_STATE;
-                                                        mii.wID = 3999 + i - 1;
-                                                        mii.dwItemData = SPOP_CLICKMENU_FIRST + i - 1;
-                                                        mii.fType = MFT_STRING;
-                                                        mii.fState = MFS_DISABLED;
-                                                        if (dwOp & SPOP_INSERTMENU_INFOTIP1)
-                                                        {
-                                                            InsertMenuItemW(hMenu, GetMenuItemCount(hMenu) - 1, TRUE, &mii);
-                                                        }
 
                                                         pC++;
                                                         WCHAR* pC2 = wcschr(pC, L'\r');
@@ -1570,6 +1561,18 @@ void SpotlightHelper(DWORD dwOp, HWND hWnd, HMENU hMenu, LPPOINT pPt)
                                                             pC2[0] = 0;
                                                         }
                                                         mii.dwTypeData = pC;
+
+                                                        mii.fMask = MIIM_ID | MIIM_STRING | MIIM_DATA | MIIM_STATE;
+                                                        mii.wID = 3999 + i - 1;
+                                                        mii.dwItemData = SPOP_CLICKMENU_FIRST + i - 1;
+                                                        mii.fType = MFT_STRING;
+                                                        mii.fState = MFS_DISABLED;
+                                                        if (dwOp & SPOP_INSERTMENU_INFOTIP2)
+                                                        {
+                                                            InsertMenuItemW(hMenu, 3, TRUE, &mii);
+                                                        }
+
+                                                        mii.dwTypeData = pCInit;
                                                     }
                                                 }
                                                 mii.fMask = MIIM_ID | MIIM_STRING | MIIM_DATA | (i == -1 ? MIIM_STATE : 0);
@@ -1577,22 +1580,22 @@ void SpotlightHelper(DWORD dwOp, HWND hWnd, HMENU hMenu, LPPOINT pPt)
                                                 mii.dwItemData = SPOP_CLICKMENU_FIRST + i;
                                                 mii.fType = MFT_STRING;
                                                 if (i == -1) mii.fState = MFS_DISABLED;
-                                                if (i != -1 || (i == -1 && (dwOp & SPOP_INSERTMENU_INFOTIP2)))
+                                                if (i != -1 || (i == -1 && (dwOp & SPOP_INSERTMENU_INFOTIP1)))
                                                 {
-                                                    InsertMenuItemW(hMenu, GetMenuItemCount(hMenu) - 1, TRUE, &mii);
+                                                    InsertMenuItemW(hMenu, 3, TRUE, &mii);
                                                 }
                                             }
                                             free(buf);
                                         }
                                     }
                                 }
-                                i++;
-                                if (i >= ARRAYSIZE(spop_insertmenu_ops)) break;
+                                i--;
+                                if (i < -1) break;
                             }
                             mii.fMask = MIIM_FTYPE | MIIM_DATA;
                             mii.dwItemData = 0;
                             mii.fType = MFT_SEPARATOR;
-                            InsertMenuItemW(hMenu, GetMenuItemCount(hMenu) - 1, TRUE, &mii);
+                            InsertMenuItemW(hMenu, 3, TRUE, &mii);
                         }
                         else if (dwOp >= SPOP_CLICKMENU_FIRST && dwOp <= SPOP_CLICKMENU_LAST)
                         {
