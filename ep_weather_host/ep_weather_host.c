@@ -1639,6 +1639,7 @@ HRESULT STDMETHODCALLTYPE epw_Weather_GetData(EPWeather* _this, DWORD cbTemperat
 HRESULT STDMETHODCALLTYPE epw_Weather_GetTitle(EPWeather* _this, DWORD cbTitle, LPCWSTR wszTitle, DWORD dwType)
 {
     WCHAR wszBuffer[MAX_PATH];
+    ZeroMemory(wszBuffer, MAX_PATH * sizeof(WCHAR));
     if (cbTitle)
     {
         switch (dwType)

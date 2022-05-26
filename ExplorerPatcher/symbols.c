@@ -858,6 +858,19 @@ BOOL LoadSymbols(symbols_addr* symbols_PTRS, HMODULE hModule)
         symbols_PTRS->twinui_pcshell_PTRS[8] = 0x4a7e0;
         bIsTwinuiPcshellHardcoded = TRUE;
     }
+    else if (!_stricmp(hash, "b6d42f3599df7caf5b0da775e725d963")) // 708
+    {
+        symbols_PTRS->twinui_pcshell_PTRS[0] = 0x227cb6;
+        symbols_PTRS->twinui_pcshell_PTRS[1] = 0x5cd600;
+        symbols_PTRS->twinui_pcshell_PTRS[2] = 0x5eb748;
+        symbols_PTRS->twinui_pcshell_PTRS[3] = 0x5ebf50;
+        symbols_PTRS->twinui_pcshell_PTRS[4] = 0x5d0740;
+        symbols_PTRS->twinui_pcshell_PTRS[5] = 0x5d03f4;
+        symbols_PTRS->twinui_pcshell_PTRS[6] = 0x5cea10;
+        symbols_PTRS->twinui_pcshell_PTRS[7] = 0x5ecd0c;
+        symbols_PTRS->twinui_pcshell_PTRS[8] = 0x4a7b0;
+        bIsTwinuiPcshellHardcoded = TRUE;
+    }
     if (bIsTwinuiPcshellHardcoded)
     {
         printf("[Symbols] Identified known \"" TWINUI_PCSHELL_SB_NAME ".dll\" with hash %s.\n", hash);
@@ -893,7 +906,7 @@ BOOL LoadSymbols(symbols_addr* symbols_PTRS, HMODULE hModule)
         symbols_PTRS->startdocked_PTRS[4] = 0x16156c;
         bIsStartHardcoded = TRUE;
     }
-    else if (!_stricmp(hash, "7f6d03e316dfca4ee61a89b51b453d82")) // 675
+    else if (!_stricmp(hash, "7f6d03e316dfca4ee61a89b51b453d82") || !_stricmp(hash, "1b727beb3cafc0ce0e928ccfae4b8e8f")) // 675, 708
     {
         symbols_PTRS->startdocked_PTRS[0] = 0x189a7c;
         symbols_PTRS->startdocked_PTRS[1] = 0x189a7c;
@@ -969,6 +982,11 @@ BOOL LoadSymbols(symbols_addr* symbols_PTRS, HMODULE hModule)
     if (!_stricmp(hash, "2768cc6cc7f686b2aa084cb5c8cce65d") || !_stricmp(hash, "a7c82cb9a9fd6f87897fc8a737d6b4d7")) // 493, 527, 556, 613, 675
     {
         symbols_PTRS->startui_PTRS[0] = 0x37180;
+        bIsStartHardcoded = TRUE;
+    }
+    else if (!_stricmp(hash, "bab11b2d1dca6b167f313f4d54de2b7d")) // 708
+    {
+        symbols_PTRS->startui_PTRS[0] = 0x37120;
         bIsStartHardcoded = TRUE;
     }
     if (bIsStartHardcoded)
