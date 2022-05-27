@@ -10594,7 +10594,8 @@ void StartMenu_LoadSettings(BOOL bRestartIfChanged)
         dwStartShowClassicMode = dwVal;
 
         dwSize = sizeof(DWORD);
-        dwVal = 1;
+        if (IsWindows11()) dwVal = 1;
+        else dwVal = 0;
         RegQueryValueExW(
             hKey,
             TEXT("TaskbarAl"),
