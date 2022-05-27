@@ -23,6 +23,11 @@ Please make sure you are connected to the Internet while installing, the applica
 ##### 2
 
 * sws: Fixed a bug that created unnecessary paint events when a window was flashing and the switcher is not shown
+
+##### 3
+
+* Added option to hide the "Show desktop" button, but still retain its functionality, when using the Windows 10 taskbar
+* Fixed a bug in Windows 10 where the Start menu was displayed centered by default
   
 ## 22000.675.45
 
