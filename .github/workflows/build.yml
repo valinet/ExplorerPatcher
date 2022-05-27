@@ -144,7 +144,6 @@ jobs:
     - name: Generate release name
       shell: bash
       working-directory: build/Release
-      if: github.ref == 'refs/heads/master' && github.event.inputs.ref == ''
       run: |
         echo "::set-output name=data::$(./ep_generate_release_name.exe)"
       id: release_name
@@ -152,7 +151,6 @@ jobs:
     - name: Generate release notes
       shell: bash
       working-directory: build/Release
-      if: github.ref == 'refs/heads/master' && github.event.inputs.ref == ''
       run: |
         MY_STRING=$(./ep_generate_release_description.exe ${{ steps.vars.outputs.sha_short }} ${{ steps.vars.outputs.branch }} ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
         MY_STRING="${MY_STRING//'%'/'%25'}"
@@ -163,7 +161,7 @@ jobs:
       
     - name: Create/update release (valinet)
       uses: actions/create-release@v1
-      if: github.repository_owner == 'valinet' && github.ref == 'refs/heads/master' && github.event.inputs.ref == ''
+      if: github.repository_owner == 'valinet'
       id: create_release
       with:
         draft: false
@@ -176,7 +174,7 @@ jobs:
 
     - name: Upload setup (valinet)
       uses: actions/upload-release-asset@v1
-      if: github.repository_owner == 'valinet' && github.ref == 'refs/heads/master' && github.event.inputs.ref == ''
+      if: github.repository_owner == 'valinet'
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
         asset_path: ./build/Release/ep_setup.exe
@@ -187,7 +185,7 @@ jobs:
         
     - name: Create/update release (forks)
       uses: actions/create-release@v1
-      if: github.repository_owner != 'valinet' && github.ref == 'refs/heads/master' && github.event.inputs.ref == ''
+      if: github.repository_owner != 'valinet'
       id: create_release_fork
       with:
         draft: false
@@ -200,7 +198,7 @@ jobs:
 
     - name: Upload setup (forks)
       uses: actions/upload-release-asset@v1
-      if: github.repository_owner != 'valinet' && github.ref == 'refs/heads/master' && github.event.inputs.ref == ''
+      if: github.repository_owner != 'valinet'
       with:
         upload_url: ${{ steps.create_release_fork.outputs.upload_url }}
         asset_path: ./build/Release/ep_setup.exe

@@ -19,6 +19,10 @@ Please make sure you are connected to the Internet while installing, the applica
 * libvalinet: Fixed a memory leak in `toast.h`
 * sws: Fixed a bug that caused the switcher to display non-responsive (hung) immersive (UWP) windows twice in the list
 
+##### 3
+
+* sws: Fixed a bug that created unnecessary paint events when a window was flashing and the switcher is not shown
+
 ## 22000.613.44
 
 Tested on OS build 22000.613.
