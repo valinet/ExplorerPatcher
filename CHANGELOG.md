@@ -19,6 +19,10 @@ Please make sure you are connected to the Internet while installing, the applica
   * Set a schedule for "Switch to next picture"
   * Manipulate the feature from the Properties UI, bypassing the desktop icon
 * The Properties UI hides sections that are not applicable to your current settings; for example, the "Weather" tab is not displayed if you've selected the Windows 11 taskbar, as none of the options in there apply when in this mode.
+
+##### 2
+
+* sws: Fixed a bug that created unnecessary paint events when a window was flashing and the switcher is not shown
   
 ## 22000.675.45
 
@@ -36,6 +40,10 @@ Please make sure you are connected to the Internet while installing, the applica
 
 * libvalinet: Fixed a memory leak in `toast.h`
 * sws: Fixed a bug that caused the switcher to display non-responsive (hung) immersive (UWP) windows twice in the list
+
+##### 3
+
+* sws: Fixed a bug that created unnecessary paint events when a window was flashing and the switcher is not shown
 
 ## 22000.613.44
 
