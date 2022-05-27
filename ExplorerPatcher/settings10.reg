@@ -37,9 +37,6 @@
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
 ;b Show Task view button
 "ShowTaskViewButton"=dword:00000001
-[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
-;b Show Desktop button
-"TaskbarSD"=dword:00000001
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;b Automatically hide the taskbar
 ;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_AutoHideTaskbar"=dword:00000000
@@ -100,6 +97,12 @@
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
 ;b Show seconds in the clock
 "ShowSecondsInSystemClock"=dword:00000000
+[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
+;c 3 Show desktop button
+;x 1 Enabled (default)
+;x 0 Disabled
+;x 2 Hidden
+"TaskbarSD"=dword:00000001
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;a Choosing 'Open Network && Internet settings' when right clicking the
 ;c 3 network icon should open:
