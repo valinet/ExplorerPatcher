@@ -28,6 +28,14 @@ Please make sure you are connected to the Internet while installing, the applica
 
 * Added option to hide the "Show desktop" button, but still retain its functionality, when using the Windows 10 taskbar
 * Fixed a bug in Windows 10 where the Start menu was displayed centered by default
+
+##### 4
+
+* Weather: Show "Reload" link when data fails to load (thanks Varun A. for the suggestion)
+* sws: Draw placeholder thumbnail when a proper thumbnail cannot be obtained (for example, due to a window having an invalid width or height)
+* sws: Fixed a bug that could prevent the switcher from identifying when the desktop is in the foreground
+* sws: Fixed a regression that could prevent the switcher from properly detecting foreground window changes
+* sws: Fixed a bug that made very small windows have a rectangle area too small for properly working with in the switcher
   
 ## 22000.675.45
 
