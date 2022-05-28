@@ -1375,6 +1375,14 @@ DWORD WINAPI epw_Weather_MainThread(EPWeather* _this)
 
     cleanup:
 
+    if (_this->tkOnNavigationCompleted.value)
+    {
+        _this->pCoreWebView2->lpVtbl->remove_NavigationCompleted(_this->pCoreWebView2, _this->tkOnNavigationCompleted);
+    }
+    if (_this->tkOnPermissionRequested.value)
+    {
+        _this->pCoreWebView2->lpVtbl->remove_PermissionRequested(_this->pCoreWebView2, _this->tkOnPermissionRequested);
+    }
     if (_this->pCoreWebView2)
     {
         _this->pCoreWebView2->lpVtbl->Release(_this->pCoreWebView2);

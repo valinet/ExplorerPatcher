@@ -78,8 +78,8 @@ typedef interface EPWeather
     ITaskbarList* pTaskList;
     ICoreWebView2Controller* pCoreWebView2Controller;
     ICoreWebView2* pCoreWebView2;
-    EventRegistrationToken* tkOnNavigationCompleted;
-    EventRegistrationToken* tkOnPermissionRequested;
+    EventRegistrationToken tkOnNavigationCompleted;
+    EventRegistrationToken tkOnPermissionRequested;
     RECT rc;
     LONG64 dpiXInitial;
     LONG64 dpiYInitial;
