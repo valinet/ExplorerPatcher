@@ -23,6 +23,11 @@ Please make sure you are connected to the Internet while installing, the applica
 
 * sws: Fixed a bug that created unnecessary paint events when a window was flashing and the switcher is not shown
 
+##### 4
+
+* sws: Fixed a bug that could prevent the switcher from identifying when the desktop is in the foreground
+* sws: Fixed a regression that could prevent the switcher from properly detecting foreground window changes
+
 ## 22000.613.44
 
 Tested on OS build 22000.613.
