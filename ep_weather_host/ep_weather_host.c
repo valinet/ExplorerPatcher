@@ -351,9 +351,9 @@ HRESULT STDMETHODCALLTYPE ICoreWebView2_CreateCoreWebView2ControllerCompleted(IC
     LONG64 dwDarkMode = InterlockedAdd64(&_this->g_darkModeEnabled, 0);
     epw_Weather_SetDarkMode(_this, dwDarkMode, FALSE);
 
-    _this->pCoreWebView2->lpVtbl->add_PermissionRequested(_this->pCoreWebView2, &EPWeather_ICoreWebView2PermissionRequestedEventHandler, &_this->tkOnPermissionRequested);
-
+    _this->pCoreWebView2->lpVtbl->add_NavigationStarting(_this->pCoreWebView2, &EPWeather_ICoreWebView2NavigationStartingEventHandler, &_this->tkOnNavigationStarting);
     _this->pCoreWebView2->lpVtbl->add_NavigationCompleted(_this->pCoreWebView2, &EPWeather_ICoreWebView2NavigationCompletedEventHandler, &_this->tkOnNavigationCompleted);
+    _this->pCoreWebView2->lpVtbl->add_PermissionRequested(_this->pCoreWebView2, &EPWeather_ICoreWebView2PermissionRequestedEventHandler, &_this->tkOnPermissionRequested);
 
     _epw_Weather_NavigateToProvider(_this);
 
@@ -384,8 +384,28 @@ HRESULT STDMETHODCALLTYPE ICoreWebView2_CallDevToolsProtocolMethodCompleted(ICor
     return S_OK;
 }
 
+HRESULT STDMETHODCALLTYPE ICoreWebView2_NavigationStarting(ICoreWebView2NavigationStartingEventHandler* _this2, ICoreWebView2* pCoreWebView2, ICoreWebView2NavigationStartingEventArgs* pCoreWebView2NavigationStartingEventArgs)
+{
+    EPWeather* _this = EPWeather_Instance; // GetWindowLongPtrW(FindWindowW(_T(EPW_WEATHER_CLASSNAME), NULL), GWLP_USERDATA);
+    LPWSTR wszUri = NULL;
+    pCoreWebView2NavigationStartingEventArgs->lpVtbl->get_Uri(pCoreWebView2NavigationStartingEventArgs, &wszUri);
+    if (wszUri)
+    {
+        if (!_wcsicmp(wszUri, L"epweather://refresh"))
+        {
+            pCoreWebView2NavigationStartingEventArgs->lpVtbl->put_Cancel(pCoreWebView2NavigationStartingEventArgs, TRUE);
+            PostMessageW(_this->hWnd, EP_WEATHER_WM_FETCH_DATA, 0, 0);
+        }
+        CoTaskMemFree(wszUri);
+    }
+    return S_OK;
+}
+
 HRESULT STDMETHODCALLTYPE ICoreWebView2_NavigationCompleted(ICoreWebView2NavigationCompletedEventHandler* _this2, ICoreWebView2* pCoreWebView2, ICoreWebView2NavigationCompletedEventArgs* pCoreWebView2NavigationCompletedEventArgs)
 {
+    COREWEBVIEW2_WEB_ERROR_STATUS dwStatus = COREWEBVIEW2_WEB_ERROR_STATUS_UNKNOWN;
+    pCoreWebView2NavigationCompletedEventArgs->lpVtbl->get_WebErrorStatus(pCoreWebView2NavigationCompletedEventArgs, &dwStatus);
+    if (dwStatus == COREWEBVIEW2_WEB_ERROR_STATUS_OPERATION_CANCELED) return S_OK;
     AcquireSRWLockShared(&Lock_EPWeather_Instance);
     EPWeather* _this = EPWeather_Instance; // GetWindowLongPtrW(FindWindowW(_T(EPW_WEATHER_CLASSNAME), NULL), GWLP_USERDATA);
     BOOL bIsSuccess = FALSE;
@@ -1375,6 +1395,10 @@ DWORD WINAPI epw_Weather_MainThread(EPWeather* _this)
 
     cleanup:
 
+    if (_this->tkOnNavigationStarting.value)
+    {
+        _this->pCoreWebView2->lpVtbl->remove_NavigationStarting(_this->pCoreWebView2, _this->tkOnNavigationStarting);
+    }
     if (_this->tkOnNavigationCompleted.value)
     {
         _this->pCoreWebView2->lpVtbl->remove_NavigationCompleted(_this->pCoreWebView2, _this->tkOnNavigationCompleted);

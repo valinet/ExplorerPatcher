@@ -19,6 +19,24 @@ body {\n\
   justify-content: center;\n\
   align-items: center;\n\
 }\n\
+@media (prefers-color-scheme: dark) {\n\
+  .refreshLink   { color: #43a7ff; }\n\
+}\n\
+@media (prefers-color-scheme: light) {\n\
+  .refreshLink   { color: #096bda; }\n\
+}\n\
+a:link {\n\
+  text-decoration: none;\n\
+}\n\
+a:visited {\n\
+  text-decoration: none;\n\
+}\n\
+a:hover {\n\
+  text-decoration: underline;\n\
+}\n\
+a:active {\n\
+  text-decoration: underline;\n\
+}\n\
 </style>\n\
 </head>\n\
 <body><center>\n\
@@ -26,6 +44,7 @@ body {\n\
 <h2>Unable to load weather information</h2>\n\
 <p>Make sure that the location you have entered is correct.<br/>\n\
 Verify that you are connected to the Internet.</p>\n\
+<a class=\"refreshLink\" href=\"epweather://refresh\">Reload</a>\n\
 </center></body>\n\
 </html>";
 #endif

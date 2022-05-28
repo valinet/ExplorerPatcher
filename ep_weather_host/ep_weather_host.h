@@ -78,6 +78,7 @@ typedef interface EPWeather
     ITaskbarList* pTaskList;
     ICoreWebView2Controller* pCoreWebView2Controller;
     ICoreWebView2* pCoreWebView2;
+    EventRegistrationToken tkOnNavigationStarting;
     EventRegistrationToken tkOnNavigationCompleted;
     EventRegistrationToken tkOnPermissionRequested;
     RECT rc;
@@ -168,6 +169,7 @@ HRESULT STDMETHODCALLTYPE epw_Weather_static_QueryInterface(EPWeather* _this, RE
 
 HRESULT STDMETHODCALLTYPE ICoreWebView2_CreateCoreWebView2EnvironmentCompleted(ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler* _this, HRESULT errorCode, ICoreWebView2Environment* pCoreWebView2Environment);
 HRESULT STDMETHODCALLTYPE ICoreWebView2_CreateCoreWebView2ControllerCompleted(ICoreWebView2CreateCoreWebView2ControllerCompletedHandler* _this, HRESULT hr, ICoreWebView2Controller* pCoreWebView2Controller);
+HRESULT STDMETHODCALLTYPE ICoreWebView2_NavigationStarting(ICoreWebView2NavigationStartingEventHandler* _this, ICoreWebView2* pCoreWebView2, ICoreWebView2NavigationStartingEventArgs* pCoreWebView2NavigationStartingEventArgs);
 HRESULT STDMETHODCALLTYPE ICoreWebView2_NavigationCompleted(ICoreWebView2NavigationCompletedEventHandler* _this, ICoreWebView2* pCoreWebView2, ICoreWebView2NavigationCompletedEventArgs* pCoreWebView2NavigationCompletedEventArgs);
 HRESULT STDMETHODCALLTYPE ICoreWebView2_ExecuteScriptCompleted(ICoreWebView2ExecuteScriptCompletedHandler* _this, HRESULT hr, LPCWSTR pResultObjectAsJson);
 HRESULT STDMETHODCALLTYPE ICoreWebView2_get_AdditionalBrowserArguments(ICoreWebView2EnvironmentOptions* _this, LPWSTR* value);
@@ -199,6 +201,17 @@ static const ICoreWebView2CreateCoreWebView2ControllerCompletedHandlerVtbl EPWea
 
 static const ICoreWebView2CreateCoreWebView2ControllerCompletedHandler EPWeather_ICoreWebView2CreateCoreWebView2ControllerCompletedHandler = {
     .lpVtbl = &EPWeather_ICoreWebView2CreateCoreWebView2ControllerCompletedHandlerVtbl
+};
+
+static const ICoreWebView2NavigationStartingEventHandlerVtbl EPWeather_ICoreWebView2NavigationStartingEventHandlerVtbl = {
+    .QueryInterface = epw_Weather_static_QueryInterface,
+    .AddRef = epw_Weather_static_AddRefRelease,
+    .Release = epw_Weather_static_AddRefRelease,
+    .Invoke = ICoreWebView2_NavigationStarting,
+};
+
+static const ICoreWebView2NavigationStartingEventHandler EPWeather_ICoreWebView2NavigationStartingEventHandler = {
+    .lpVtbl = &EPWeather_ICoreWebView2NavigationStartingEventHandlerVtbl
 };
 
 static const ICoreWebView2NavigationCompletedEventHandlerVtbl EPWeather_ICoreWebView2NavigationCompletedEventHandlerVtbl = {
