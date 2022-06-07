@@ -36,6 +36,11 @@ Please make sure you are connected to the Internet while installing, the applica
 * sws: Fixed a bug that could prevent the switcher from identifying when the desktop is in the foreground
 * sws: Fixed a regression that could prevent the switcher from properly detecting foreground window changes
 * sws: Fixed a bug that made very small windows have a rectangle area too small for properly working with in the switcher
+
+##### 5
+
+* Fixed a bug that could prevent Control Panel link redirection from working correctly
+* Weather: Fixed a bug that prevented the widget from working when WebView2 Runtime >= 102.0.1245.33
   
 ## 22000.675.45
 
