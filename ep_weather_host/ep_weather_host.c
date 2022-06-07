@@ -100,10 +100,85 @@ ULONG STDMETHODCALLTYPE epw_Weather_static_AddRefRelease(void* _this)
     return 1;
 }
 
-HRESULT STDMETHODCALLTYPE epw_Weather_static_QueryInterface(void* _this, REFIID riid, void** ppv)
+HRESULT STDMETHODCALLTYPE ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler_QueryInterface(void* _this, REFIID riid, void** ppv)
 {
-    *ppv = _this;
-    return S_OK;
+    if (IsEqualIID(riid, &IID_ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler) || IsEqualIID(riid, &IID_IUnknown))
+    {
+        *ppv = _this;
+        return S_OK;
+    }
+    return E_NOINTERFACE;
+
+}
+
+HRESULT STDMETHODCALLTYPE ICoreWebView2CreateCoreWebView2ControllerCompletedHandler_QueryInterface(void* _this, REFIID riid, void** ppv)
+{
+    if (IsEqualIID(riid, &IID_ICoreWebView2CreateCoreWebView2ControllerCompletedHandler) || IsEqualIID(riid, &IID_IUnknown))
+    {
+        *ppv = _this;
+        return S_OK;
+    }
+    return E_NOINTERFACE;
+}
+
+HRESULT STDMETHODCALLTYPE ICoreWebView2NavigationStartingEventHandler_QueryInterface(void* _this, REFIID riid, void** ppv)
+{
+    if (IsEqualIID(riid, &IID_ICoreWebView2NavigationStartingEventHandler) || IsEqualIID(riid, &IID_IUnknown))
+    {
+        *ppv = _this;
+        return S_OK;
+    }
+    return E_NOINTERFACE;
+}
+
+HRESULT STDMETHODCALLTYPE ICoreWebView2NavigationCompletedEventHandler_QueryInterface(void* _this, REFIID riid, void** ppv)
+{
+    if (IsEqualIID(riid, &IID_ICoreWebView2NavigationCompletedEventHandler) || IsEqualIID(riid, &IID_IUnknown))
+    {
+        *ppv = _this;
+        return S_OK;
+    }
+    return E_NOINTERFACE;
+}
+
+HRESULT STDMETHODCALLTYPE ICoreWebView2ExecuteScriptCompletedHandler_QueryInterface(void* _this, REFIID riid, void** ppv)
+{
+    if (IsEqualIID(riid, &IID_ICoreWebView2ExecuteScriptCompletedHandler) || IsEqualIID(riid, &IID_IUnknown))
+    {
+        *ppv = _this;
+        return S_OK;
+    }
+    return E_NOINTERFACE;
+}
+
+HRESULT STDMETHODCALLTYPE ICoreWebView2EnvironmentOptions_QueryInterface(void* _this, REFIID riid, void** ppv)
+{
+    if (IsEqualIID(riid, &IID_ICoreWebView2EnvironmentOptions) || IsEqualIID(riid, &IID_IUnknown))
+    {
+        *ppv = _this;
+        return S_OK;
+    }
+    return E_NOINTERFACE;
+}
+
+HRESULT STDMETHODCALLTYPE ICoreWebView2CallDevToolsProtocolMethodCompletedHandler_QueryInterface(void* _this, REFIID riid, void** ppv)
+{
+    if (IsEqualIID(riid, &IID_ICoreWebView2CallDevToolsProtocolMethodCompletedHandler) || IsEqualIID(riid, &IID_IUnknown))
+    {
+        *ppv = _this;
+        return S_OK;
+    }
+    return E_NOINTERFACE;
+}
+
+HRESULT STDMETHODCALLTYPE ICoreWebView2PermissionRequestedEventHandler_QueryInterface(void* _this, REFIID riid, void** ppv)
+{
+    if (IsEqualIID(riid, &IID_ICoreWebView2PermissionRequestedEventHandler) || IsEqualIID(riid, &IID_IUnknown))
+    {
+        *ppv = _this;
+        return S_OK;
+    }
+    return E_NOINTERFACE;
 }
 
 HRESULT STDMETHODCALLTYPE ICoreWebView2_get_AdditionalBrowserArguments(ICoreWebView2EnvironmentOptions* _this, LPWSTR* value)

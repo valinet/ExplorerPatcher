@@ -165,7 +165,6 @@ static void epw_Weather_SetTextScaleFactorFromRegistry(EPWeather* _this, HKEY hK
 
 HRESULT STDMETHODCALLTYPE epw_Weather_static_Stub(void* _this);
 ULONG   STDMETHODCALLTYPE epw_Weather_static_AddRefRelease(EPWeather* _this);
-HRESULT STDMETHODCALLTYPE epw_Weather_static_QueryInterface(EPWeather* _this, REFIID riid, void** ppv);
 
 HRESULT STDMETHODCALLTYPE ICoreWebView2_CreateCoreWebView2EnvironmentCompleted(ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler* _this, HRESULT errorCode, ICoreWebView2Environment* pCoreWebView2Environment);
 HRESULT STDMETHODCALLTYPE ICoreWebView2_CreateCoreWebView2ControllerCompleted(ICoreWebView2CreateCoreWebView2ControllerCompletedHandler* _this, HRESULT hr, ICoreWebView2Controller* pCoreWebView2Controller);
@@ -181,8 +180,9 @@ HRESULT STDMETHODCALLTYPE ICoreWebView2_CallDevToolsProtocolMethodCompleted(ICor
 
 HRESULT STDMETHODCALLTYPE ICoreWebView2_PermissionRequested(ICoreWebView2PermissionRequestedEventHandler* _this2, ICoreWebView2* pCoreWebView2, ICoreWebView2PermissionRequestedEventArgs* pCoreWebView2PermissionRequestedEventArgs);
 
+HRESULT STDMETHODCALLTYPE ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler_QueryInterface(void* _this, REFIID riid, void** ppv);
 static const ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandlerVtbl EPWeather_ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandlerVtbl = {
-    .QueryInterface = epw_Weather_static_QueryInterface,
+    .QueryInterface = ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler_QueryInterface,
     .AddRef = epw_Weather_static_AddRefRelease,
     .Release = epw_Weather_static_AddRefRelease,
     .Invoke = ICoreWebView2_CreateCoreWebView2EnvironmentCompleted,
@@ -192,8 +192,9 @@ static const ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler EPWeathe
     .lpVtbl = &EPWeather_ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandlerVtbl
 };
 
+HRESULT STDMETHODCALLTYPE ICoreWebView2CreateCoreWebView2ControllerCompletedHandler_QueryInterface(void* _this, REFIID riid, void** ppv);
 static const ICoreWebView2CreateCoreWebView2ControllerCompletedHandlerVtbl EPWeather_ICoreWebView2CreateCoreWebView2ControllerCompletedHandlerVtbl = {
-    .QueryInterface = epw_Weather_static_QueryInterface,
+    .QueryInterface = ICoreWebView2CreateCoreWebView2ControllerCompletedHandler_QueryInterface,
     .AddRef = epw_Weather_static_AddRefRelease,
     .Release = epw_Weather_static_AddRefRelease,
     .Invoke = ICoreWebView2_CreateCoreWebView2ControllerCompleted,
@@ -203,8 +204,9 @@ static const ICoreWebView2CreateCoreWebView2ControllerCompletedHandler EPWeather
     .lpVtbl = &EPWeather_ICoreWebView2CreateCoreWebView2ControllerCompletedHandlerVtbl
 };
 
+HRESULT STDMETHODCALLTYPE ICoreWebView2NavigationStartingEventHandler_QueryInterface(void* _this, REFIID riid, void** ppv);
 static const ICoreWebView2NavigationStartingEventHandlerVtbl EPWeather_ICoreWebView2NavigationStartingEventHandlerVtbl = {
-    .QueryInterface = epw_Weather_static_QueryInterface,
+    .QueryInterface = ICoreWebView2NavigationStartingEventHandler_QueryInterface,
     .AddRef = epw_Weather_static_AddRefRelease,
     .Release = epw_Weather_static_AddRefRelease,
     .Invoke = ICoreWebView2_NavigationStarting,
@@ -214,8 +216,9 @@ static const ICoreWebView2NavigationStartingEventHandler EPWeather_ICoreWebView2
     .lpVtbl = &EPWeather_ICoreWebView2NavigationStartingEventHandlerVtbl
 };
 
+HRESULT STDMETHODCALLTYPE ICoreWebView2NavigationCompletedEventHandler_QueryInterface(void* _this, REFIID riid, void** ppv);
 static const ICoreWebView2NavigationCompletedEventHandlerVtbl EPWeather_ICoreWebView2NavigationCompletedEventHandlerVtbl = {
-    .QueryInterface = epw_Weather_static_QueryInterface,
+    .QueryInterface = ICoreWebView2NavigationCompletedEventHandler_QueryInterface,
     .AddRef = epw_Weather_static_AddRefRelease,
     .Release = epw_Weather_static_AddRefRelease,
     .Invoke = ICoreWebView2_NavigationCompleted,
@@ -225,8 +228,9 @@ static const ICoreWebView2NavigationCompletedEventHandler EPWeather_ICoreWebView
     .lpVtbl = &EPWeather_ICoreWebView2NavigationCompletedEventHandlerVtbl
 };
 
+HRESULT STDMETHODCALLTYPE ICoreWebView2ExecuteScriptCompletedHandler_QueryInterface(void* _this, REFIID riid, void** ppv);
 static const ICoreWebView2ExecuteScriptCompletedHandlerVtbl EPWeather_ICoreWebView2ExecuteScriptCompletedHandlerVtbl = {
-    .QueryInterface = epw_Weather_static_QueryInterface,
+    .QueryInterface = ICoreWebView2ExecuteScriptCompletedHandler_QueryInterface,
     .AddRef = epw_Weather_static_AddRefRelease,
     .Release = epw_Weather_static_AddRefRelease,
     .Invoke = ICoreWebView2_ExecuteScriptCompleted,
@@ -236,8 +240,9 @@ static const ICoreWebView2ExecuteScriptCompletedHandler EPWeather_ICoreWebView2E
     .lpVtbl = &EPWeather_ICoreWebView2ExecuteScriptCompletedHandlerVtbl
 };
 
+HRESULT STDMETHODCALLTYPE ICoreWebView2EnvironmentOptions_QueryInterface(void* _this, REFIID riid, void** ppv);
 static const ICoreWebView2EnvironmentOptionsVtbl EPWeather_ICoreWebView2EnvironmentOptionsVtbl = {
-    .QueryInterface = epw_Weather_static_QueryInterface,
+    .QueryInterface = ICoreWebView2EnvironmentOptions_QueryInterface,
     .AddRef = epw_Weather_static_AddRefRelease,
     .Release = epw_Weather_static_AddRefRelease,
     .get_AdditionalBrowserArguments = ICoreWebView2_get_AdditionalBrowserArguments,
@@ -254,8 +259,9 @@ static const ICoreWebView2EnvironmentOptions EPWeather_ICoreWebView2EnvironmentO
     .lpVtbl = &EPWeather_ICoreWebView2EnvironmentOptionsVtbl
 };
 
+HRESULT STDMETHODCALLTYPE ICoreWebView2CallDevToolsProtocolMethodCompletedHandler_QueryInterface(void* _this, REFIID riid, void** ppv);
 static ICoreWebView2CallDevToolsProtocolMethodCompletedHandlerVtbl EPWeather_ICoreWebView2CallDevToolsProtocolMethodCompletedHandlerVtbl = {
-    .QueryInterface = epw_Weather_static_QueryInterface,
+    .QueryInterface = ICoreWebView2CallDevToolsProtocolMethodCompletedHandler_QueryInterface,
     .AddRef = epw_Weather_static_AddRefRelease,
     .Release = epw_Weather_static_AddRefRelease,
     .Invoke = ICoreWebView2_CallDevToolsProtocolMethodCompleted
@@ -265,8 +271,9 @@ static const ICoreWebView2CallDevToolsProtocolMethodCompletedHandler EPWeather_I
     .lpVtbl = &EPWeather_ICoreWebView2CallDevToolsProtocolMethodCompletedHandlerVtbl
 };
 
+HRESULT STDMETHODCALLTYPE ICoreWebView2PermissionRequestedEventHandler_QueryInterface(void* _this, REFIID riid, void** ppv);
 static const ICoreWebView2PermissionRequestedEventHandlerVtbl EPWeather_ICoreWebView2PermissionRequestedEventHandlerVtbl = {
-    .QueryInterface = epw_Weather_static_QueryInterface,
+    .QueryInterface = ICoreWebView2PermissionRequestedEventHandler_QueryInterface,
     .AddRef = epw_Weather_static_AddRefRelease,
     .Release = epw_Weather_static_AddRefRelease,
     .Invoke = ICoreWebView2_PermissionRequested,
