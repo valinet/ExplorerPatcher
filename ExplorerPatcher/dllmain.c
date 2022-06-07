@@ -7863,14 +7863,18 @@ int ExplorerFrame_CompareStringOrdinal(const WCHAR* a1, int a2, const WCHAR* a3,
         NULL
     };
     int ret = CompareStringOrdinal(a1, a2, a3, a4, bIgnoreCase);
-    if ((!bDoNotRedirectSystemToSettingsApp && !bDoNotRedirectProgramsAndFeaturesToSettingsApp) || ret != CSTR_EQUAL)
+    if (ret != CSTR_EQUAL)
     {
         return ret;
     }
 
     int i = 0;
-    while (CompareStringOrdinal(a3, -1, pRedirects[i], -1, FALSE) != CSTR_EQUAL)
+    while (1)
     {
+        BOOL bCond = FALSE;
+        if (i == 0) bCond = bDoNotRedirectSystemToSettingsApp;
+        else if (i == 1) bCond = bDoNotRedirectProgramsAndFeaturesToSettingsApp;
+        if (CompareStringOrdinal(a3, -1, pRedirects[i], -1, FALSE) == CSTR_EQUAL && bCond) break;
         i++;
         if (pRedirects[i] == NULL)
         {
