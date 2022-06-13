@@ -41,6 +41,10 @@ Please make sure you are connected to the Internet while installing, the applica
 
 * Fixed a bug that could prevent Control Panel link redirection from working correctly
 * Weather: Fixed a bug that prevented the widget from working when WebView2 Runtime >= 102.0.1245.33
+
+##### 6
+
+* Fix a bug in the Properties window that had the it fail to display some sections under default settings
   
 ## 22000.675.45
 
