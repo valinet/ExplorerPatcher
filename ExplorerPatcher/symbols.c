@@ -871,6 +871,19 @@ BOOL LoadSymbols(symbols_addr* symbols_PTRS, HMODULE hModule)
         symbols_PTRS->twinui_pcshell_PTRS[8] = 0x4a7b0;
         bIsTwinuiPcshellHardcoded = TRUE;
     }
+    else if (!_stricmp(hash, "93dbd7bfcb21d2449bc0eb10d6e3f6ab")) // 778
+    {
+        symbols_PTRS->twinui_pcshell_PTRS[0] = 0x2291b6;
+        symbols_PTRS->twinui_pcshell_PTRS[1] = 0x5ce700;
+        symbols_PTRS->twinui_pcshell_PTRS[2] = 0x5ec688;
+        symbols_PTRS->twinui_pcshell_PTRS[3] = 0x5ece90;
+        symbols_PTRS->twinui_pcshell_PTRS[4] = 0x5d1684;
+        symbols_PTRS->twinui_pcshell_PTRS[5] = 0x5d1338;
+        symbols_PTRS->twinui_pcshell_PTRS[6] = 0x5cf890;
+        symbols_PTRS->twinui_pcshell_PTRS[7] = 0x5edc4c;
+        symbols_PTRS->twinui_pcshell_PTRS[8] = 0x49de0;
+        bIsTwinuiPcshellHardcoded = TRUE;
+    }
     if (bIsTwinuiPcshellHardcoded)
     {
         printf("[Symbols] Identified known \"" TWINUI_PCSHELL_SB_NAME ".dll\" with hash %s.\n", hash);
@@ -913,6 +926,15 @@ BOOL LoadSymbols(symbols_addr* symbols_PTRS, HMODULE hModule)
         symbols_PTRS->startdocked_PTRS[2] = 0x187ce0;
         symbols_PTRS->startdocked_PTRS[3] = 0x3c00;
         symbols_PTRS->startdocked_PTRS[4] = 0x1616ac;
+        bIsStartHardcoded = TRUE;
+    }
+    else if (!_stricmp(hash, "a7745c7fabca519e865a559bb7e13ed9")) // 778
+    {
+        symbols_PTRS->startdocked_PTRS[0] = 0x19a910;
+        symbols_PTRS->startdocked_PTRS[1] = 0x19a910;
+        symbols_PTRS->startdocked_PTRS[2] = 0x198a70;
+        symbols_PTRS->startdocked_PTRS[3] = 0x4480;
+        symbols_PTRS->startdocked_PTRS[4] = 0x170ddc;
         bIsStartHardcoded = TRUE;
     }
     if (bIsStartHardcoded)
@@ -984,7 +1006,7 @@ BOOL LoadSymbols(symbols_addr* symbols_PTRS, HMODULE hModule)
         symbols_PTRS->startui_PTRS[0] = 0x37180;
         bIsStartHardcoded = TRUE;
     }
-    else if (!_stricmp(hash, "bab11b2d1dca6b167f313f4d54de2b7d")) // 708
+    else if (!_stricmp(hash, "bab11b2d1dca6b167f313f4d54de2b7d") || !_stricmp(hash, "0c1b88f888d9073c505d7f47724132c8")) // 708, 778
     {
         symbols_PTRS->startui_PTRS[0] = 0x37120;
         bIsStartHardcoded = TRUE;
