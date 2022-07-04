@@ -2,6 +2,19 @@
 
 This document includes the same release notes as in the [Releases](https://github.com/valinet/ExplorerPatcher/releases) section on GitHub.
 
+## 22000.778.47
+
+Tested on OS build 22000.778.
+
+Please make sure you are connected to the Internet while installing, the application might need to perform one-time downloads for several resources in order to enable full functionality.
+
+#### Details
+
+##### 1
+
+* Built-in support for OS build 22000.778.
+* Fixed a bug that had the Start button context menu / Win-X menu / power user menu fail to display and potentially lock the shell on OS builds 22000.778+ and 22621+
+
 ## 22000.708.46
 
 Tested on OS build 22000.708.
