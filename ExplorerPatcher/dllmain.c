@@ -1223,6 +1223,24 @@ DWORD ShowLauncherTipContextMenu(
     ShowLauncherTipContextMenuParameters* params
 )
 {
+    // Adjust this based on info from: CLauncherTipContextMenu::SetSite
+    // and CLauncherTipContextMenu::CLauncherTipContextMenu
+    // 22000.739: 0xe8
+    // 22000.778: 0xf0
+    // What has happened, between .739 and .778 is that the launcher tip
+    // context menu object now implements a new interface, ILauncherTipContextMenuMigration;
+    // thus, members have shifted 8 bytes (one 64-bit value which will hold the
+    // address of the vtable for this intf at runtime) to the right;
+    // all this intf seems to do, as of now, is to remove some "obsolete" links
+    // from the menu (check out "CLauncherTipContextMenu::RunMigrationTasks"); it
+    // seems you can disable this by setting a DWORD "WinXMigrationLevel" = 1 in
+    // HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced
+    int offset_in_class = 0;
+    if (global_rovi.dwBuildNumber >= 22621 || (global_rovi.dwBuildNumber == 22000 && global_ubr >= 778))
+    {
+        offset_in_class = 8;
+    }
+
     WNDCLASS wc = { 0 };
     wc.style = CS_DBLCLKS;
     wc.lpfnWndProc = CLauncherTipContextMenu_WndProc;
@@ -1255,11 +1273,11 @@ DWORD ShowLauncherTipContextMenu(
     // ShowWindow(hWinXWnd, SW_SHOW);
     SetForegroundWindow(hWinXWnd);
 
-    while (!(*((HMENU*)((char*)params->_this + 0xe8))))
+    while (!(*((HMENU*)((char*)params->_this + 0xe8 + offset_in_class))))
     {
         Sleep(1);
     }
-    if (!(*((HMENU*)((char*)params->_this + 0xe8))))
+    if (!(*((HMENU*)((char*)params->_this + 0xe8 + offset_in_class))))
     {
         goto finalize;
     }
@@ -1298,8 +1316,8 @@ DWORD ShowLauncherTipContextMenu(
     if (bPropertiesInWinX)
     {
         InsertMenuItemW(
-            *((HMENU*)((char*)params->_this + 0xe8)),
-            GetMenuItemCount(*((HMENU*)((char*)params->_this + 0xe8))) - 1,
+            *((HMENU*)((char*)params->_this + 0xe8 + offset_in_class)),
+            GetMenuItemCount(*((HMENU*)((char*)params->_this + 0xe8 + offset_in_class))) - 1,
             TRUE,
             &menuInfo
         );
@@ -1313,7 +1331,7 @@ DWORD ShowLauncherTipContextMenu(
         if (ImmersiveContextMenuHelper_ApplyOwnerDrawToMenuFunc)
         {
             ImmersiveContextMenuHelper_ApplyOwnerDrawToMenuFunc(
-                *((HMENU*)((char*)params->_this + 0xe8)),
+                *((HMENU*)((char*)params->_this + 0xe8 + offset_in_class)),
                 hWinXWnd,
                 &(params->point),
                 0xc,
@@ -1323,7 +1341,7 @@ DWORD ShowLauncherTipContextMenu(
     }
 
     BOOL res = TrackPopupMenu(
-        *((HMENU*)((char*)params->_this + 0xe8)),
+        *((HMENU*)((char*)params->_this + 0xe8 + offset_in_class)),
         TPM_RETURNCMD | TPM_RIGHTBUTTON | (params->bShouldCenterWinXHorizontally ? TPM_CENTERALIGN : 0),
         params->point.x,
         params->point.y,
@@ -1337,7 +1355,7 @@ DWORD ShowLauncherTipContextMenu(
         if (ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc)
         {
             ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc(
-                *((HMENU*)((char*)params->_this + 0xe8)),
+                *((HMENU*)((char*)params->_this + 0xe8 + offset_in_class)),
                 hWinXWnd,
                 &(params->point)
             );
@@ -1348,7 +1366,7 @@ DWORD ShowLauncherTipContextMenu(
     if (bCreatedMenu)
     {
         RemoveMenu(
-            *((HMENU*)((char*)params->_this + 0xe8)),
+            *((HMENU*)((char*)params->_this + 0xe8 + offset_in_class)),
             3999,
             MF_BYCOMMAND
         );
@@ -1362,7 +1380,7 @@ DWORD ShowLauncherTipContextMenu(
         }
         else if (res < 4000)
         {
-            INT64 info = *(INT64*)((char*)(*(INT64*)((char*)params->_this + 0xa8 - 0x58)) + (INT64)res * 8 - 8);
+            INT64 info = *(INT64*)((char*)(*(INT64*)((char*)params->_this + 0xa8 + offset_in_class - 0x58)) + (INT64)res * 8 - 8);
             if (CLauncherTipContextMenu_ExecuteCommandFunc)
             {
                 CLauncherTipContextMenu_ExecuteCommandFunc(
@@ -1373,7 +1391,7 @@ DWORD ShowLauncherTipContextMenu(
         }
         else
         {
-            INT64 info = *(INT64*)((char*)(*(INT64*)((char*)params->_this + 0xc8 - 0x58)) + ((INT64)res - 4000) * 8);
+            INT64 info = *(INT64*)((char*)(*(INT64*)((char*)params->_this + 0xc8 + offset_in_class - 0x58)) + ((INT64)res - 4000) * 8);
             if (CLauncherTipContextMenu_ExecuteShutdownCommandFunc)
             {
                 CLauncherTipContextMenu_ExecuteShutdownCommandFunc(
