@@ -9279,6 +9279,32 @@ BOOL shell32_TrackPopupMenu(HMENU hMenu, UINT uFlags, int x, int y, int nReserve
 #pragma endregion
 
 
+#pragma region "Fix Windows 10 taskbar high DPI button width bug"
+#ifdef _WIN64
+int patched_GetSystemMetrics(int nIndex)
+{
+    if ((bOldTaskbar && nIndex == SM_CXMINIMIZED) || nIndex == SM_CXICONSPACING || nIndex == SM_CYICONSPACING)
+    {
+        wchar_t wszDim[MAX_PATH + 4];
+        ZeroMemory(wszDim, sizeof(wchar_t) * (MAX_PATH + 4));
+        DWORD dwSize = MAX_PATH;
+        wchar_t* pVal = L"MinWidth";
+        if (nIndex == SM_CXICONSPACING) pVal = L"IconSpacing";
+        else if (nIndex == SM_CYICONSPACING) pVal = L"IconVerticalSpacing";
+        RegGetValueW(HKEY_CURRENT_USER, L"Control Panel\\Desktop\\WindowMetrics", pVal, SRRF_RT_REG_SZ, NULL, wszDim, &dwSize);
+        int dwDim = _wtoi(wszDim);
+        if (dwDim <= 0)
+        {
+            if (nIndex == SM_CXMINIMIZED) return 160;
+            else if (dwDim < 0) return MulDiv(dwDim, GetDpiForSystem(), -1440);
+        }
+    }
+    return GetSystemMetrics(nIndex);
+}
+#endif
+#pragma endregion
+
+
 DWORD InjectBasicFunctions(BOOL bIsExplorer, BOOL bInstall)
 {
     //Sleep(150);
@@ -9843,6 +9869,11 @@ DWORD Inject(BOOL bIsExplorer)
     VnPatchIAT(hExplorer, "uxtheme.dll", "OpenThemeDataForDpi", explorer_OpenThemeDataForDpi);
     VnPatchIAT(hExplorer, "uxtheme.dll", "DrawThemeBackground", explorer_DrawThemeBackground);
     VnPatchIAT(hExplorer, "uxtheme.dll", "CloseThemeData", explorer_CloseThemeData);
+    // Fix Windows 10 taskbar high DPI button width bug
+    if (IsWindows11())
+    {
+        VnPatchIAT(hExplorer, "api-ms-win-ntuser-sysparams-l1-1-0.dll", "GetSystemMetrics", patched_GetSystemMetrics);
+    }
     //VnPatchIAT(hExplorer, "api-ms-win-core-libraryloader-l1-2-0.dll", "LoadStringW", explorer_LoadStringWHook);
     if (bClassicThemeMitigations)
     {
@@ -10166,6 +10197,12 @@ DWORD Inject(BOOL bIsExplorer)
             VnPatchIAT(hShell32, "API-MS-WIN-CORE-REGISTRY-L1-1-0.DLL", "RegCreateKeyExW", shell32_RegCreateKeyExW);
             VnPatchIAT(hShell32, "API-MS-WIN-CORE-REGISTRY-L1-1-0.DLL", "RegSetValueExW", shell32_RegSetValueExW);
             VnPatchIAT(hShell32, "user32.dll", "DeleteMenu", shell32_DeleteMenu);
+        }
+
+        // Fix high DPI wrong (desktop) icon spacing bug
+        if (IsWindows11())
+        {
+            VnPatchIAT(hShell32, "user32.dll", "GetSystemMetrics", patched_GetSystemMetrics);
         }
     }
     printf("Setup shell32 functions done\n");
