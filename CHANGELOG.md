@@ -15,6 +15,10 @@ Please make sure you are connected to the Internet while installing, the applica
 * Built-in support for OS build 22000.778.
 * Fixed a bug that had the Start button context menu / Win-X menu / power user menu fail to display and potentially lock the shell on OS builds 22000.778+ and 22621+
 
+##### 2
+
+* Fixed a system high DPI-related bug that caused wide Windows 10 taskbar buttons and incorrect (desktop) icon spacing
+
 ## 22000.708.46
 
 Tested on OS build 22000.708.
