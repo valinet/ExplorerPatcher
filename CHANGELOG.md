@@ -2,6 +2,19 @@
 
 This document includes the same release notes as in the [Releases](https://github.com/valinet/ExplorerPatcher/releases) section on GitHub.
 
+## 22000.795.48
+
+Tested on OS build 22000.795.
+
+Please make sure you are connected to the Internet while installing, the application might need to perform one-time downloads for several resources in order to enable full functionality.
+
+#### Details
+
+##### 1
+
+* Weather: Fixed a bug that could hang the widget and lead to an infinite loop with the program using an entire CPU core when the computer resumed from sleep or hibernation.
+* Weather: Fixed a bug that had the widget display the error page when the computer lost network connectivity; instead, now the widget continues to display the cached data from the previous refresh (if any).
+
 ## 22000.778.47
 
 Tested on OS build 22000.778.
