@@ -75,7 +75,8 @@ HRESULT STDMETHODCALLTYPE INetworkListManagerEvents_ConnectivityChanged(void* _t
         {
             printf("[Network Events] Internet connection status is: Available.\n");
             LONG64 dwUpdateSchedule = InterlockedAdd64(&_this->dwUpdateSchedule, 0);
-            PostMessageW(_this->hWnd, EP_WEATHER_WM_FETCH_DATA, 0, 0);
+            SetTimer(_this->hWnd, EP_WEATHER_TIMER_REQUEST_REFRESH, EP_WEATHER_TIMER_REQUEST_REFRESH_DELAY, NULL);
+            //PostMessageW(_this->hWnd, EP_WEATHER_WM_FETCH_DATA, 0, 0);
             SetTimer(_this->hWnd, EP_WEATHER_TIMER_SCHEDULE_REFRESH, dwUpdateSchedule, NULL);
             printf("[Network Events] Reinstalled refresh timer.\n");
         }
