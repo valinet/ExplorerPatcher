@@ -1,6 +1,7 @@
 #ifndef _H_EP_WEATHER_ERROR_HTML_H_
 #define _H_EP_WEATHER_ERROR_HTML_H_
 #include <Windows.h>
+#include <tchar.h>
 #define EP_WEATHER_ERROR_LEN 2000
 LPCWSTR ep_weather_error_html = L"\
 <!DOCTYPE html>\n\
@@ -8,7 +9,7 @@ LPCWSTR ep_weather_error_html = L"\
 <head>\n\
 <meta charset=\"utf-8\" />\n\
 <meta name=\"color-scheme\" content=\"light dark\">\n\
-<title>Weather</title>\n\
+<title>" _T(CLSID_EPWeather_TEXT) L"_ErrorPage</title>\n\
 <style>\n\
 html {\n\
   background-color: transparent !important;\n\

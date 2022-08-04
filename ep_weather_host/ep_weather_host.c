@@ -250,12 +250,20 @@ HRESULT STDMETHODCALLTYPE _epw_Weather_NavigateToError(EPWeather* _this)
     }
     if (_this->pCoreWebView2)
     {
-        return _this->pCoreWebView2->lpVtbl->NavigateToString(_this->pCoreWebView2, ep_weather_error_html);
+        LPWSTR wszPageTitle = NULL;
+        if (SUCCEEDED(_this->pCoreWebView2->lpVtbl->get_DocumentTitle(_this->pCoreWebView2, &wszPageTitle)))
+        {
+            BOOL bIsOnErrorPage = !_wcsicmp(wszPageTitle, _T(CLSID_EPWeather_TEXT) L"_ErrorPage");
+            CoTaskMemFree(wszPageTitle);
+            if (!bIsOnErrorPage) return _this->pCoreWebView2->lpVtbl->NavigateToString(_this->pCoreWebView2, ep_weather_error_html);
+            else
+            {
+                printf("[Browser] Already on the error page.\n");
+                return S_OK;
+            }
+        }
     }
-    else
-    {
-        return E_FAIL;
-    }
+    return E_FAIL;
 }
 
 HRESULT STDMETHODCALLTYPE _epw_Weather_NavigateToProvider(EPWeather* _this)
@@ -500,6 +508,7 @@ HRESULT STDMETHODCALLTYPE ICoreWebView2_NavigationCompleted(ICoreWebView2Navigat
     }
     else
     {
+        printf("[Browser] Navigation completed with error, showing error page.\n");
         _epw_Weather_NavigateToError(_this);
     }
     _this->pCoreWebView2Controller->lpVtbl->put_IsVisible(_this->pCoreWebView2Controller, FALSE);
