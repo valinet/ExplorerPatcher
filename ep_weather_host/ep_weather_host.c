@@ -83,6 +83,7 @@ HRESULT STDMETHODCALLTYPE INetworkListManagerEvents_ConnectivityChanged(void* _t
         else
         {
             printf("[Network Events] Internet connection status is: Offline.\n");
+            KillTimer(_this->hWnd, EP_WEATHER_TIMER_REQUEST_REFRESH);
             KillTimer(_this->hWnd, EP_WEATHER_TIMER_SCHEDULE_REFRESH);
             printf("[Network Events] Killed refresh timer.\n");
         }
