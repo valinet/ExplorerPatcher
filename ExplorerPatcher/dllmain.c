@@ -867,6 +867,7 @@ DWORD EP_ServiceWindowThread(DWORD unused)
                     EnterCriticalSection(&lock_epw);
                     if (epw)
                     {
+                        epw->lpVtbl->Release(epw);
                         epw = NULL;
                         prev_total_h = 0;
                         if (PeopleButton_LastHWND) InvalidateRect(PeopleButton_LastHWND, NULL, TRUE);
@@ -4432,11 +4433,10 @@ SIZE WINAPI PeopleButton_CalculateMinimumSizeHook(void* _this, SIZE* pSz)
                             }
                             if (bFailed)
                             {
-                                epw->lpVtbl->Release(epw);
-                                epw = NULL;
                                 prev_total_h = 0;
                                 PostMessageW(FindWindowW(L"Shell_TrayWnd", NULL), WM_COMMAND, 435, 0);
-                                PostMessageW(FindWindowW(L"ExplorerPatcher_GUI_" _T(EP_CLSID), NULL), WM_USER + 1, 0, 0);
+                                //PostMessageW(FindWindowW(L"ExplorerPatcher_GUI_" _T(EP_CLSID), NULL), WM_USER + 1, 0, 0);
+                                if (hServiceWindowThread) PostThreadMessageW(GetThreadId(hServiceWindowThread), WM_USER + 1, NULL, NULL);
                                 break;
                             }
                         }
