@@ -55,4 +55,11 @@ inline HRESULT SetMicaMaterialForThisWindow(HWND hWnd, BOOL bApply)
     DWORD dwProp = (bApply ? ((global_rovi.dwBuildNumber >= 22523) ? 2 : 1) : 0);
     return DwmSetWindowAttribute(hWnd, dwAttribute, &dwProp, sizeof(DWORD));
 }
+
+inline BOOL IsWindows11Version22H2OrHigher()
+{
+    if (!global_rovi.dwMajorVersion) global_ubr = VnGetOSVersionAndUBR(&global_rovi);
+    if (global_rovi.dwBuildNumber >= 22621) return TRUE;
+    return FALSE;
+}
 #endif
