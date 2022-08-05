@@ -15,6 +15,10 @@ Please make sure you are connected to the Internet while installing, the applica
 * Weather: Fixed a bug that could hang the widget and lead to an infinite loop with the program using an entire CPU core when the computer resumed from sleep or hibernation.
 * Weather: Fixed a bug that had the widget display the error page when the computer lost network connectivity; instead, now the widget continues to display the cached data from the previous refresh (if any).
 
+##### 2
+
+* Weather: Fixed a bug that could hang explorer and the weather widget host process under certain circumstances, for example, when explorer restarted.
+
 ## 22000.778.47
 
 Tested on OS build 22000.778.
