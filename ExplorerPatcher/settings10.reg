@@ -41,7 +41,7 @@
 ;b Automatically hide the taskbar
 ;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_AutoHideTaskbar"=dword:00000000
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
-;c 2 Start button style
+;c 2 Start button style *
 ;x 0 Windows 10 (default)
 ;x 1 Windows 11
 "OrbStyle"=dword:00000000
