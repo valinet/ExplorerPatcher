@@ -209,6 +209,8 @@
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;b Hide search bar completely **
 "HideExplorerSearchBar"=dword:00000000
+;s Explorer_TitlebarSection !IsWindows11Version22H2OrHigher
+[HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;c 4 Title bar
 ;x 0 Show icon and title (default)
 ;x 1 Hide title, show icon
@@ -221,6 +223,7 @@
 ;x 1 Title bar, command bar and navigation bar
 ;x 2 Nowhere
 "MicaEffectOnTitlebar"=dword:00000000
+;g Explorer_TitlebarSection
 
 
 
