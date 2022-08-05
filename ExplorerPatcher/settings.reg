@@ -188,11 +188,13 @@
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;b Use classic drive groupings in This PC
 "UseClassicDriveGrouping"=dword:00000000
+;s Explorer_ControlInterface !IsWindows11Version22H2OrHigher
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;c 3 Control Interface *
 ;x 0 Windows 11 Command Bar (default)
 ;x 1 Windows 10 Ribbon
 ;x 2 Windows 7 Command Bar
+;g Explorer_ControlInterface
 ;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_FileExplorerCommandUI"=dword:00000000
 ;t The following settings take effect on newly created File Explorer windows:
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
