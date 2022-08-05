@@ -10325,6 +10325,16 @@ DWORD Inject(BOOL bIsExplorer)
         RegDeleteKeyValueW(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", L"MMTaskbarGlomLevel");
     }
 
+    if (IsWindows11Version22H2OrHigher() && bOldTaskbar)
+    {
+        DWORD dwRes = 1;
+        DWORD dwSize = sizeof(DWORD);
+        if (RegGetValueW(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Search", L"SearchboxTaskbarMode", RRF_RT_DWORD, NULL, &dwRes, &dwSize) != ERROR_SUCCESS)
+        {
+            RegSetKeyValueW(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Search", L"SearchboxTaskbarMode", REG_DWORD, &dwRes, sizeof(DWORD));
+        }
+    }
+
 
     /*
     if (IsWindows11())
