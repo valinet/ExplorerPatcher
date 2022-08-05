@@ -16,6 +16,7 @@
 ;shell:::{05d7b0f4-2121-4eff-bf6b-ed3f69b894d9}
 ;y Customize system icons in the notification area 🡕
 ;shell:::{05d7b0f4-2121-4eff-bf6b-ed3f69b894d9}\SystemIcons
+;s Taskbar_LocationSection !(IsWindows11Version22H2OrHigher&&!IsOldTaskbar)
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;c 4 Primary taskbar location on screen *
 ;x 3 Bottom (default)
@@ -29,6 +30,7 @@
 ;x 0 Left
 ;x 2 Right
 ;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_MMTaskbarPosition"=dword:00000003
+;g Taskbar_LocationSection
 ;s Taskbar_CortanaButtonSection !IsWindows11Version22H2OrHigher
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
 ;c 3 Extra button should be
