@@ -2210,6 +2210,9 @@ BOOL IsPointOnEmptyAreaOfNewTaskbar(POINT pt)
     IUIAutomationElement* pIUIAutomationElement = NULL;
     HWND hWnd = NULL;
     BOOL bRet = FALSE;
+    BSTR elemName = NULL;
+    BSTR elemType = NULL;
+    BOOL bIsWindows11Version22H2OrHigher = IsWindows11Version22H2OrHigher();
     
     if (SUCCEEDED(hr))
     {
@@ -2219,11 +2222,23 @@ BOOL IsPointOnEmptyAreaOfNewTaskbar(POINT pt)
     {
         hr = pIUIAutomation2->lpVtbl->ElementFromPoint(pIUIAutomation2, pt, &pIUIAutomationElement);
     }
-    if (SUCCEEDED(hr))
+    if (SUCCEEDED(hr) && bIsWindows11Version22H2OrHigher)
+    {
+        hr = pIUIAutomationElement->lpVtbl->get_CurrentName(pIUIAutomationElement, &elemName);
+    }
+    if (SUCCEEDED(hr) && bIsWindows11Version22H2OrHigher)
+    {
+        hr = pIUIAutomationElement->lpVtbl->get_CurrentClassName(pIUIAutomationElement, &elemType);
+    }
+    if (SUCCEEDED(hr) && bIsWindows11Version22H2OrHigher)
+    {
+        bRet = (!wcscmp(elemName, L"") && !wcscmp(elemType, L"Taskbar.TaskbarFrameAutomationPeer"));
+    }
+    if (SUCCEEDED(hr) && !bIsWindows11Version22H2OrHigher)
     {
         hr = pIUIAutomationElement->lpVtbl->get_CurrentNativeWindowHandle(pIUIAutomationElement, &hWnd);
     }
-    if (SUCCEEDED(hr))
+    if (SUCCEEDED(hr) && !bIsWindows11Version22H2OrHigher)
     {
         WCHAR wszClassName[200];
         GetClassNameW(hWnd, wszClassName, 200);
@@ -2303,6 +2318,14 @@ BOOL IsPointOnEmptyAreaOfNewTaskbar(POINT pt)
                 }
             }
         }
+    }
+    if (elemName)
+    {
+        SysFreeString(elemName);
+    }
+    if (elemType)
+    {
+        SysFreeString(elemType);
     }
     if (pIUIAutomationElement)
     {
