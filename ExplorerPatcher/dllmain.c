@@ -2583,7 +2583,7 @@ INT64 Shell_TrayWndSubclassProc(
     {
         g_bIsDesktopRaised = (lParam & 1) == 0;
     }
-    else if (uMsg == WM_SETTINGCHANGE && IsWindows11Version22H2OrHigher() && !wcscmp(lParam, L"EnsureXAML"))
+    else if (uMsg == WM_SETTINGCHANGE && IsWindows11Version22H2OrHigher() && (*((WORD*)&(lParam)+1)) && !wcscmp(lParam, L"EnsureXAML"))
     {
         EnsureXAML();
         return 0;
