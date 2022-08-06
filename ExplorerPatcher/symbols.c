@@ -246,6 +246,16 @@ DWORD DownloadSymbols(DownloadSymbolsParams* params)
             VirtualProtect(twinui_pcshell_SN, sizeof(twinui_pcshell_SN), flOldProtect, &flOldProtect);
         }
     }
+    if (IsWindows11Version22H2OrHigher())
+    {
+        DWORD flOldProtect = 0;
+        if (VirtualProtect(twinui_pcshell_SN, sizeof(twinui_pcshell_SN), PAGE_EXECUTE_READWRITE, &flOldProtect))
+        {
+            twinui_pcshell_SN[7] = "CMultitaskingViewManager::_CreateXamlMTVHost";
+            twinui_pcshell_SN[TWINUI_PCSHELL_SB_CNT - 1] = "CMultitaskingViewManager::_CreateDCompMTVHost";
+            VirtualProtect(twinui_pcshell_SN, sizeof(twinui_pcshell_SN), flOldProtect, &flOldProtect);
+        }
+    }
     if (VnGetSymbols(
         szSettingsPath,
         symbols_PTRS.twinui_pcshell_PTRS,
@@ -1124,6 +1134,17 @@ BOOL LoadSymbols(symbols_addr* symbols_PTRS, HMODULE hModule)
             &(symbols_PTRS->twinui_pcshell_PTRS[7]),
             &dwSize
         );
+        if (IsWindows11Version22H2OrHigher())
+        {
+            RegQueryValueExW(
+                hKey,
+                TEXT(TWINUI_PCSHELL_SB_LAST),
+                0,
+                NULL,
+                &(symbols_PTRS->twinui_pcshell_PTRS[TWINUI_PCSHELL_SB_CNT - 1]),
+                &dwSize
+            );
+        }
         RegCloseKey(hKey);
 
         if (IsWindows11())

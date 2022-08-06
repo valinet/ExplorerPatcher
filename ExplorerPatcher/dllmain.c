@@ -9658,8 +9658,18 @@ INT64 twinui_pcshell_IsUndockedAssetAvailableHook(INT a1, INT64 a2, INT64 a3, co
     // else, show Windows 11 style basically
     else
     {
-        return twinui_pcshell_IsUndockedAssetAvailableFunc(a1, a2, a3, a4);
+        if (twinui_pcshell_IsUndockedAssetAvailableFunc)
+            return twinui_pcshell_IsUndockedAssetAvailableFunc(a1, a2, a3, a4);
+        return 1;
     }
+}
+
+INT64(*twinui_pcshell_CMultitaskingViewManager__CreateDCompMTVHostFunc)(INT64 a1, unsigned int a2, INT64 a3, INT64 a4, INT64* a5);
+INT64(*twinui_pcshell_CMultitaskingViewManager__CreateXamlMTVHostFunc)(INT64 a1, unsigned int a2, INT64 a3, INT64 a4, INT64* a5);
+INT64 twinui_pcshell_CMultitaskingViewManager__CreateXamlMTVHostHook(INT64 a1, unsigned int a2, INT64 a3, INT64 a4, INT64* a5)
+{
+    if (!twinui_pcshell_IsUndockedAssetAvailableHook(a2, 0, 0, 0, NULL)) return twinui_pcshell_CMultitaskingViewManager__CreateDCompMTVHostFunc(a1, a2, a3, a4, a5);
+    return twinui_pcshell_CMultitaskingViewManager__CreateXamlMTVHostFunc(a1, a2, a3, a4, a5);
 }
 
 BOOL IsDebuggerPresentHook()
@@ -10180,17 +10190,37 @@ DWORD Inject(BOOL bIsExplorer)
 
     if (symbols_PTRS.twinui_pcshell_PTRS[7] && symbols_PTRS.twinui_pcshell_PTRS[7] != 0xFFFFFFFF)
     {
-        twinui_pcshell_IsUndockedAssetAvailableFunc = (INT64(*)(void*, POINT*))
-            ((uintptr_t)hTwinuiPcshell + symbols_PTRS.twinui_pcshell_PTRS[7]);
-        rv = funchook_prepare(
-            funchook,
-            (void**)&twinui_pcshell_IsUndockedAssetAvailableFunc,
-            twinui_pcshell_IsUndockedAssetAvailableHook
-        );
-        if (rv != 0)
+        if (IsWindows11Version22H2OrHigher())
         {
-            FreeLibraryAndExitThread(hModule, rv);
-            return rv;
+            twinui_pcshell_CMultitaskingViewManager__CreateDCompMTVHostFunc = (INT64(*)(void*, POINT*))
+                ((uintptr_t)hTwinuiPcshell + symbols_PTRS.twinui_pcshell_PTRS[TWINUI_PCSHELL_SB_CNT - 1]);
+            twinui_pcshell_CMultitaskingViewManager__CreateXamlMTVHostFunc = (INT64(*)(void*, POINT*))
+                ((uintptr_t)hTwinuiPcshell + symbols_PTRS.twinui_pcshell_PTRS[7]);
+            rv = funchook_prepare(
+                funchook,
+                (void**)&twinui_pcshell_CMultitaskingViewManager__CreateXamlMTVHostFunc,
+                twinui_pcshell_CMultitaskingViewManager__CreateXamlMTVHostHook
+            );
+            if (rv != 0)
+            {
+                FreeLibraryAndExitThread(hModule, rv);
+                return rv;
+            }
+        }
+        else
+        {
+            twinui_pcshell_IsUndockedAssetAvailableFunc = (INT64(*)(void*, POINT*))
+                ((uintptr_t)hTwinuiPcshell + symbols_PTRS.twinui_pcshell_PTRS[7]);
+            rv = funchook_prepare(
+                funchook,
+                (void**)&twinui_pcshell_IsUndockedAssetAvailableFunc,
+                twinui_pcshell_IsUndockedAssetAvailableHook
+            );
+            if (rv != 0)
+            {
+                FreeLibraryAndExitThread(hModule, rv);
+                return rv;
+            }
         }
     }
 
