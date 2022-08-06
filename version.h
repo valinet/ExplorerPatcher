@@ -1,6 +1,6 @@
-#define VER_MAJOR 22000
-#define VER_MINOR 795
-#define VER_BUILD_HI    48
+#define VER_MAJOR 22622
+#define VER_MINOR 450
+#define VER_BUILD_HI    50
 #define VER_BUILD_LO 2
 #define VER_FLAGS   VS_FF_PRERELEASE
 
@@ -12,5 +12,5 @@
 #define VER_STR(arg) #arg
 
 // The String form of the version numbers
-#define VER_FILE_STRING VALUE "FileVersion", "22000.795.48.2"
-#define VER_PRODUCT_STRING VALUE "ProductVersion", "22000.795.48.2"
+#define VER_FILE_STRING VALUE "FileVersion", "22622.450.50.1"
+#define VER_PRODUCT_STRING VALUE "ProductVersion", "22622.450.50.1"

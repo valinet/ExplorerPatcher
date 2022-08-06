@@ -2,6 +2,19 @@
 
 This document includes the same release notes as in the [Releases](https://github.com/valinet/ExplorerPatcher/releases) section on GitHub.
 
+## 22622.450.50
+
+Tested on OS build 22622.450.
+
+Please make sure you are connected to the Internet while installing, the application might need to perform one-time downloads for several resources in order to enable full functionality.
+
+#### Details
+
+##### 1
+
+* Support for OS builds 22621+. Read more [here](https://github.com/valinet/ExplorerPatcher/issues/1082#issuecomment-1206690333).
+* Added an option to shrink address bar height in File Explorer windows (thanks @krlvm).
+
 ## 22000.795.48
 
 Tested on OS build 22000.795.
