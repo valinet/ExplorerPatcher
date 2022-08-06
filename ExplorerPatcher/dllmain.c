@@ -1909,6 +1909,7 @@ DWORD FixTaskbarAutohide(DWORD unused)
 
 
 #pragma region "EnsureXAML on OS builds 22621+"
+#ifdef _WIN64
 DEFINE_GUID(uuidof_Windows_Internal_Shell_XamlExplorerHost_IXamlApplicationStatics,
     0xECC13292, 0x27EF, 0x547A, 0xAC, 0x8B, 0x76, 0xCD, 0x17, 0x32, 0x21, 0x86);
 
@@ -2041,6 +2042,7 @@ HMODULE __fastcall Windows11v22H2_combase_LoadLibraryExW(LPCWSTR lpLibFileName, 
     }
     return hModule;
 }
+#endif
 #pragma endregion
 
 
@@ -8523,24 +8525,27 @@ HRESULT shell32_DriveTypeCategorizer_CreateInstanceHook(IUnknown* pUnkOuter, REF
 
     return shell32_DriveTypeCategorizer_CreateInstanceFunc(pUnkOuter, riid, ppvObject);
 }
-
+#endif
 #pragma endregion
 
 
-#pragma region "Disable ribbon in File Explorer"
+#pragma region "File Explorer command bar and ribbon support"
 DEFINE_GUID(CLSID_UIRibbonFramework,
     0x926749FA, 0x2615, 0x4987, 0x88, 0x45, 0xC3, 0x3E, 0x65, 0xF2, 0xB9, 0x57);
 DEFINE_GUID(IID_UIRibbonFramework,
     0xF4F0385D, 0x6872, 0x43A8, 0xAD, 0x09, 0x4C, 0x33, 0x9C, 0xB3, 0xF5, 0xC5);
 HRESULT ExplorerFrame_CoCreateInstanceHook(REFCLSID rclsid, LPUNKNOWN pUnkOuter, DWORD dwClsContext, REFIID riid, LPVOID* ppv)
 {
+    if ((dwFileExplorerCommandUI != 0) && *(INT64*)&rclsid->Data1 == 0x4D1E5A836480100B && *(INT64*)rclsid->Data4 == 0x339A8EA8E58A699F)
+    {
+        return REGDB_E_CLASSNOTREG;
+    }
     if (dwFileExplorerCommandUI == 2 && IsEqualCLSID(rclsid, &CLSID_UIRibbonFramework) && IsEqualIID(riid, &IID_UIRibbonFramework))
     {
         return REGDB_E_CLASSNOTREG;
     }
     return CoCreateInstance(rclsid, pUnkOuter, dwClsContext, riid, ppv);
 }
-#endif
 #pragma endregion
 
 

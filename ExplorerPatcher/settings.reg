@@ -206,14 +206,12 @@
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;b Use classic drive groupings in This PC
 "UseClassicDriveGrouping"=dword:00000000
-;s Explorer_ControlInterface !IsWindows11Version22H2OrHigher
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;c 3 Control Interface *
 ;x 0 Windows 11 Command Bar (default)
 ;x 1 Windows 10 Ribbon
 ;x 2 Windows 7 Command Bar
 ;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_FileExplorerCommandUI"=dword:00000000
-;g Explorer_ControlInterface
 ;t The following settings take effect on newly created File Explorer windows:
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;i Use immersive menus when displaying Windows 10 context menus **
