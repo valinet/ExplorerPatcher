@@ -1469,7 +1469,7 @@ BOOL IsConnectedToInternet()
 
 BOOL DoesOSBuildSupportSpotlight()
 {
-    return global_rovi.dwBuildNumber >= 22000 && global_ubr >= 706;
+    return (global_rovi.dwBuildNumber == 22000 && global_ubr >= 706) || (global_rovi.dwBuildNumber >= 22598);
 }
 
 BOOL IsSpotlightEnabled()
