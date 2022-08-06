@@ -70,6 +70,7 @@ DWORD bOldTaskbar = TRUE;
 DWORD bWasOldTaskbarSet = FALSE;
 DWORD bAllocConsole = FALSE;
 DWORD bHideExplorerSearchBar = FALSE;
+DWORD bShrinkExplorerAdressBar = FALSE;
 DWORD bMicaEffectOnTitlebar = FALSE;
 DWORD bHideIconAndTitleInExplorer = FALSE;
 DWORD bHideControlCenterButton = FALSE;
@@ -6099,6 +6100,15 @@ void WINAPI LoadSettings(LPARAM lParam)
         dwSize = sizeof(DWORD);
         RegQueryValueExW(
             hKey,
+            TEXT("ShrinkExplorerAddressBar"),
+            0,
+            NULL,
+            &bShrinkExplorerAdressBar,
+            &dwSize
+        );
+        dwSize = sizeof(DWORD);
+        RegQueryValueExW(
+            hKey,
             TEXT("UseClassicDriveGrouping"),
             0,
             NULL,
@@ -9483,6 +9493,15 @@ HWND Windows11v22H2_explorer_CreateWindowExW(DWORD dwExStyle, LPCWSTR lpClassNam
 #pragma endregion
 
 
+#pragma region "Shrink File Explorer address bar height"
+int explorerframe_GetSystemMetricsForDpi(int nIndex, UINT dpi)
+{
+    if (bShrinkExplorerAdressBar && nIndex == SM_CYFIXEDFRAME) return 0;
+    return GetSystemMetricsForDpi(nIndex, dpi);
+}
+#pragma endregion
+
+
 DWORD InjectBasicFunctions(BOOL bIsExplorer, BOOL bInstall)
 {
     //Sleep(150);
@@ -9571,6 +9590,7 @@ DWORD InjectBasicFunctions(BOOL bIsExplorer, BOOL bInstall)
                 VnPatchIAT(hExplorerFrame, "user32.dll", "SetWindowLongPtrW", SetWindowLongPtrWHook);
             }
             VnPatchIAT(hExplorerFrame, "API-MS-WIN-CORE-STRING-L1-1-0.DLL", "CompareStringOrdinal", ExplorerFrame_CompareStringOrdinal);
+            VnPatchIAT(hExplorerFrame, "user32.dll", "GetSystemMetricsForDpi", explorerframe_GetSystemMetricsForDpi);
         }
         else
         {
@@ -9583,6 +9603,7 @@ DWORD InjectBasicFunctions(BOOL bIsExplorer, BOOL bInstall)
                 VnPatchIAT(hExplorerFrame, "user32.dll", "SetWindowLongPtrW", SetWindowLongPtrW);
             }
             VnPatchIAT(hExplorerFrame, "API-MS-WIN-CORE-STRING-L1-1-0.DLL", "CompareStringOrdinal", CompareStringOrdinal);
+            VnPatchIAT(hExplorerFrame, "user32.dll", "GetSystemMetricsForDpi", GetSystemMetricsForDpi);
             FreeLibrary(hExplorerFrame);
             FreeLibrary(hExplorerFrame);
         }

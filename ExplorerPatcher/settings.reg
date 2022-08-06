@@ -225,6 +225,9 @@
 ;d Disable modern search bar
 @="{64bc32b5-4eec-4de7-972d-bd8bd0324537}"
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
+;b Shrink address bar height **
+"ShrinkExplorerAddressBar"=dword:00000000
+[HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;b Hide search bar completely **
 "HideExplorerSearchBar"=dword:00000000
 ;s Explorer_TitlebarSection !IsWindows11Version22H2OrHigher
