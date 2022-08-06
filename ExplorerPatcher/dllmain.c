@@ -6363,6 +6363,11 @@ void WINAPI LoadSettings(LPARAM lParam)
             &dwIMEStyle,
             &dwSize
         );
+        if (IsWindows11Version22H2OrHigher())
+        {
+            if (!dwIMEStyle) dwIMEStyle = 7;
+            else if (dwIMEStyle == 7) dwIMEStyle = 0;
+        }
         dwSize = sizeof(DWORD);
         RegQueryValueExW(
             hKey,

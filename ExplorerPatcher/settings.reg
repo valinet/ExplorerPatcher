@@ -160,12 +160,23 @@
 ;x 0 Windows 10 flyout (default)
 ;x 1 Windows 7
 "UseWin32BatteryFlyout"=dword:00000000
+;s SystemTray_LanguageSwitcherBefore22H2 !IsWindows11Version22H2OrHigher
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;c 3 Language switcher *
 ;x 0 Windows 11 (default)
 ;x 1 Windows 10 (with link to "Language Preferences")
 ;x 4 Windows 10
 "IMEStyle"=dword:00000000
+;g SystemTray_LanguageSwitcherBefore22H2
+;s SystemTray_LanguageSwitcherAfter22H2 IsWindows11Version22H2OrHigher
+[HKEY_CURRENT_USER\Software\ExplorerPatcher]
+;c 4 Language switcher *
+;x 0 Windows 11 (default)
+;x 7 Windows 10
+;x 1 Windows 10 (with link to "Language Preferences") (no animation)
+;x 4 Windows 10 (no animation)
+"IMEStyle"=dword:00000000
+;g SystemTray_LanguageSwitcherAfter22H2
 ;g SystemTray_Windows10Section
 
 
