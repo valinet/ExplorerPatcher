@@ -9651,7 +9651,7 @@ INT64 twinui_pcshell_IsUndockedAssetAvailableHook(INT a1, INT64 a2, INT64 a3, co
         return 0;
     }
     // if IsSnapAssist and SnapAssistSettings == Windows 10
-    else if (a1 == 4 && dwSnapAssistSettings == 3)
+    else if (a1 == 4 && dwSnapAssistSettings == 3 && !IsWindows11Version22H2OrHigher())
     {
         return 0;
     }

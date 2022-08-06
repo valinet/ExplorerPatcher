@@ -631,11 +631,13 @@
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;b Disable quadrants when snapping windows *
 "DisableAeroSnapQuadrants"=dword:00000000
+;s Other_SnapAssistStyle !IsWindows11Version22H2OrHigher
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;c 2 Snap Assist style
 ;x 0 Windows 11 (default)
 ;x 3 Windows 10
 "SnapAssistSettings"=dword:00000000
+;g Other_SnapAssistStyle
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
 ;c 6 Default action in the Alt+F4 dialog on the desktop
 ;x 256 Switch user
