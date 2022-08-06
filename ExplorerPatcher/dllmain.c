@@ -1562,8 +1562,8 @@ finalize:
 #pragma endregion
 
 
-#ifdef _WIN64
 #pragma region "Windows 10 Taskbar Hooks"
+#ifdef _WIN64
 // credits: https://github.com/m417z/7-Taskbar-Tweaker
 
 DEFINE_GUID(IID_ITaskGroup,
@@ -1762,8 +1762,8 @@ void explorer_QISearch(void* that, LPCQITAB pqit, REFIID riid, void** ppv)
     }
     return hr;
 }
-#pragma endregion
 #endif
+#pragma endregion
 
 
 #pragma region "Show Start in correct location according to TaskbarAl"
@@ -1904,6 +1904,142 @@ DWORD FixTaskbarAutohide(DWORD unused)
     SetEvent(hCanStartSws);
 }
 #endif
+#pragma endregion
+
+
+#pragma region "EnsureXAML on OS builds 22621+"
+DEFINE_GUID(uuidof_Windows_Internal_Shell_XamlExplorerHost_IXamlApplicationStatics,
+    0xECC13292, 0x27EF, 0x547A, 0xAC, 0x8B, 0x76, 0xCD, 0x17, 0x32, 0x21, 0x86);
+
+DEFINE_GUID(uuidof_Windows_UI_Core_ICoreWindow5,
+    0x28258A12, 0x7D82, 0x505B, 0xB2, 0x10, 0x71, 0x2B, 0x04, 0xA5, 0x88, 0x82);
+
+BOOL bIsXAMLEnsured = FALSE;
+void EnsureXAML()
+{
+    signed int v0; // eax
+    signed int v2; // eax
+
+    if (!bIsXAMLEnsured)
+    {
+        bIsXAMLEnsured = TRUE;
+        ULONGLONG initTime = GetTickCount64();
+
+        IInspectable* pUIXamlApplicationFactory = NULL;
+        HSTRING_HEADER hstringheaderXamlApplication;
+        HSTRING hstringXamlApplication = NULL;
+        IInspectable* pCoreWindow5 = NULL;
+        HSTRING_HEADER hstringheaderWindowsXamlManager;
+        HSTRING hstringWindowsXamlManager = NULL;
+
+        if (FAILED(WindowsCreateStringReference(L"Windows.Internal.Shell.XamlExplorerHost.XamlApplication", 0x37u, &hstringheaderXamlApplication, &hstringXamlApplication)) || !hstringXamlApplication)
+        {
+            printf("Error in sub_1800135EC on WindowsCreateStringReference.\n");
+            goto cleanup;
+        }
+        if (FAILED(RoGetActivationFactory(hstringXamlApplication, &uuidof_Windows_Internal_Shell_XamlExplorerHost_IXamlApplicationStatics, &pUIXamlApplicationFactory)) || !pUIXamlApplicationFactory)
+        {
+            printf("Error in sub_1800135EC on RoGetActivationFactory.\n");
+            goto cleanup0;
+        }
+
+        IUnknown* pXamlApplication = NULL;
+        (*(void(__fastcall**)(__int64, __int64*))(*(INT64*)pUIXamlApplicationFactory + 48))(pUIXamlApplicationFactory, &pXamlApplication); // get_Current
+        if (!pXamlApplication)
+        {
+            printf("Error in sub_1800135EC on pUIXamlApplicationFactory + 48.\n");
+            goto cleanup1;
+        }
+        else pXamlApplication->lpVtbl->Release(pXamlApplication);
+
+        if (FAILED(WindowsCreateStringReference(L"Windows.UI.Xaml.Hosting.WindowsXamlManager", 0x2Au, &hstringheaderWindowsXamlManager, &hstringWindowsXamlManager)))
+        {
+            printf("Error in sub_1800135EC on WindowsCreateStringReference 2.\n");
+            goto cleanup1;
+        }
+        if (FAILED(RoGetActivationFactory(hstringWindowsXamlManager, &uuidof_Windows_UI_Core_ICoreWindow5, &pCoreWindow5)))
+        {
+            printf("Error in sub_1800135EC on RoGetActivationFactory 2.\n");
+            goto cleanup2;
+        }
+
+        if (pCoreWindow5)
+        {
+            IUnknown* pDispatcherQueue = NULL;
+            (*(void(__fastcall**)(__int64, __int64*))(*(INT64*)pCoreWindow5 + 48))(pCoreWindow5, &pDispatcherQueue); // get_DispatcherQueue
+            if (!pDispatcherQueue)
+            {
+                printf("Error in sub_1800135EC on pCoreWindow5 + 48.\n");
+                goto cleanup3;
+            }
+            // Keep pDispatcherQueue referenced in memory
+        }
+
+        ULONGLONG finalTime = GetTickCount64();
+        printf("EnsureXAML %lld ms.\n", finalTime - initTime);
+
+    cleanup3:
+        if (pCoreWindow5) pCoreWindow5->lpVtbl->Release(pCoreWindow5);
+    cleanup2:
+        if (hstringWindowsXamlManager) WindowsDeleteString(hstringWindowsXamlManager);
+    cleanup1:
+        if (pUIXamlApplicationFactory) pUIXamlApplicationFactory->lpVtbl->Release(pUIXamlApplicationFactory);
+    cleanup0:
+        if (hstringXamlApplication) WindowsDeleteString(hstringXamlApplication);
+    cleanup:
+        ;
+    }
+}
+
+HRESULT(*ICoreWindow5_get_DispatcherQueueFunc)(INT64, INT64);
+HRESULT WINAPI ICoreWindow5_get_DispatcherQueueHook(void* _this, void** ppValue)
+{
+    SendMessageTimeoutW(FindWindowW(L"Shell_TrayWnd", NULL), WM_SETTINGCHANGE, 0, L"EnsureXAML", SMTO_NOTIMEOUTIFNOTHUNG, 5000, NULL);
+    return ICoreWindow5_get_DispatcherQueueFunc(_this, ppValue);
+}
+
+HMODULE __fastcall Windows11v22H2_combase_LoadLibraryExW(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlags)
+{
+    HMODULE hModule = LoadLibraryExW(lpLibFileName, hFile, dwFlags);
+    if (hModule && hModule == GetModuleHandleW(L"Windows.Ui.Xaml.dll"))
+    {
+        DWORD flOldProtect = 0;
+        IActivationFactory* pWindowsXamlManagerFactory = NULL;
+        HSTRING_HEADER hstringHeaderWindowsXamlManager;
+        HSTRING hstringWindowsXamlManager = NULL;
+        FARPROC DllGetActivationFactory = GetProcAddress(hModule, "DllGetActivationFactory");
+        if (!DllGetActivationFactory)
+        {
+            printf("Error in Windows11v22H2_combase_LoadLibraryExW on DllGetActivationFactory\n");
+            return hModule;
+        }
+        if (FAILED(WindowsCreateStringReference(L"Windows.UI.Xaml.Hosting.WindowsXamlManager", 0x2Au, &hstringHeaderWindowsXamlManager, &hstringWindowsXamlManager)))
+        {
+            printf("Error in Windows11v22H2_combase_LoadLibraryExW on WindowsCreateStringReference\n");
+            return hModule;
+        }
+        ((void(__fastcall*)(HSTRING, __int64*))DllGetActivationFactory)(hstringWindowsXamlManager, &pWindowsXamlManagerFactory);
+        if (pWindowsXamlManagerFactory)
+        {
+            IInspectable* pCoreWindow5 = NULL;
+            pWindowsXamlManagerFactory->lpVtbl->QueryInterface(pWindowsXamlManagerFactory, &uuidof_Windows_UI_Core_ICoreWindow5, &pCoreWindow5);
+            if (pCoreWindow5)
+            {
+                INT64* pCoreWindow5Vtbl = pCoreWindow5->lpVtbl;
+                if (VirtualProtect(pCoreWindow5->lpVtbl, sizeof(IInspectableVtbl) + sizeof(INT64), PAGE_EXECUTE_READWRITE, &flOldProtect))
+                {
+                    ICoreWindow5_get_DispatcherQueueFunc = pCoreWindow5Vtbl[6];
+                    pCoreWindow5Vtbl[6] = ICoreWindow5_get_DispatcherQueueHook;
+                    VirtualProtect(pCoreWindow5->lpVtbl, sizeof(IInspectableVtbl) + sizeof(INT64), flOldProtect, &flOldProtect);
+                }
+                pCoreWindow5->lpVtbl->Release(pCoreWindow5);
+            }
+            pWindowsXamlManagerFactory->lpVtbl->Release(pWindowsXamlManagerFactory);
+        }
+        WindowsDeleteString(hstringWindowsXamlManager);
+    }
+    return hModule;
+}
 #pragma endregion
 
 
@@ -2446,6 +2582,11 @@ INT64 Shell_TrayWndSubclassProc(
     else if (uMsg == 1368)
     {
         g_bIsDesktopRaised = (lParam & 1) == 0;
+    }
+    else if (uMsg == WM_SETTINGCHANGE && IsWindows11Version22H2OrHigher() && !wcscmp(lParam, L"EnsureXAML"))
+    {
+        EnsureXAML();
+        return 0;
     }
     return DefSubclassProc(hWnd, uMsg, wParam, lParam);
 }
@@ -10057,6 +10198,14 @@ DWORD Inject(BOOL bIsExplorer)
     //VnPatchIAT(hTwinuiPcshell, "api-ms-win-core-debug-l1-1-0.dll", "IsDebuggerPresent", IsDebuggerPresentHook);
     printf("Setup twinui.pcshell functions done\n");
 
+
+    if (IsWindows11Version22H2OrHigher())
+    {
+        HANDLE hCombase = LoadLibraryW(L"combase.dll");
+        // Fixed a bug that crashed Explorer when a folder window was opened after a first one was closed on OS builds 22621+
+        VnPatchIAT(hCombase, "api-ms-win-core-libraryloader-l1-2-0.dll", "LoadLibraryExW", Windows11v22H2_combase_LoadLibraryExW);
+        printf("Setup combase functions done\n");
+    }
 
 
     HANDLE hTwinui = LoadLibraryW(L"twinui.dll");
