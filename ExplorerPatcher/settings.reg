@@ -45,6 +45,13 @@
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
 ;b Show Task view button
 "ShowTaskViewButton"=dword:00000001
+;s Taskbar_CortanaButtonSection1 IsWindows11Version22H2OrHigher
+;s Taskbar_CortanaButtonSection2 !IsOldTaskbar
+[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
+;b Show Widgets button
+"TaskbarDa"=dword:00000001
+;g Taskbar_CortanaButtonSection2
+;g Taskbar_CortanaButtonSection1
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;b Automatically hide the taskbar
 ;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_AutoHideTaskbar"=dword:00000000
