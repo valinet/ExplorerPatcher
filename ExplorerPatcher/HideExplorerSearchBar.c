@@ -103,19 +103,14 @@ LRESULT CALLBACK HideExplorerSearchBarSubClass(
     DWORD_PTR dwRefData
 )
 {
-    switch (uMsg)
+    if (uMsg == WM_SIZE || uMsg == WM_PARENTNOTIFY)
     {
-    case WM_PARENTNOTIFY:
-        if ((WORD)wParam == 1)
-        {
-            HideExplorerSearchBar(hWnd);
-        }
-        break;
-
-    case WM_DESTROY:
-        RemoveWindowSubclass(hWnd, HideExplorerSearchBarSubClass, (UINT_PTR)HideExplorerSearchBarSubClass);
-        break;
+        if (uMsg == WM_SIZE && IsWindows11Version22H2OrHigher()) HideExplorerSearchBar(hWnd);
+        else if (uMsg == WM_PARENTNOTIFY && (WORD)wParam == 1) HideExplorerSearchBar(hWnd);
     }
-
+    else if (uMsg == WM_DESTROY)
+    {
+        RemoveWindowSubclass(hWnd, HideExplorerSearchBarSubClass, (UINT_PTR)HideExplorerSearchBarSubClass);
+    }
     return DefSubclassProc(hWnd, uMsg, wParam, lParam);
 }
