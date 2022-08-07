@@ -15,6 +15,11 @@ Please make sure you are connected to the Internet while installing, the applica
 * Support for OS builds 22621+. Read more [here](https://github.com/valinet/ExplorerPatcher/issues/1082#issuecomment-1206690333).
 * Added an option to shrink address bar height in File Explorer windows (thanks @krlvm).
 
+##### 2
+
+* Support for disabling the modern search bar in 32-bit applications as well (thanks @krlvm).
+* Fixed a bug that could prevent deleting registry keys when the application was supposed to (for example, when uninstalling or toggling certain settings).
+
 ## 22000.795.48
 
 Tested on OS build 22000.795.

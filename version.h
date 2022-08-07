@@ -12,5 +12,5 @@
 #define VER_STR(arg) #arg
 
 // The String form of the version numbers
-#define VER_FILE_STRING VALUE "FileVersion", "22622.450.50.1"
-#define VER_PRODUCT_STRING VALUE "ProductVersion", "22622.450.50.1"
+#define VER_FILE_STRING VALUE "FileVersion", "22622.450.50.2"
+#define VER_PRODUCT_STRING VALUE "ProductVersion", "22622.450.50.2"
