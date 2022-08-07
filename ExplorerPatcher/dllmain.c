@@ -70,7 +70,7 @@ DWORD bOldTaskbar = TRUE;
 DWORD bWasOldTaskbarSet = FALSE;
 DWORD bAllocConsole = FALSE;
 DWORD bHideExplorerSearchBar = FALSE;
-DWORD bShrinkExplorerAdressBar = FALSE;
+DWORD bShrinkExplorerAddressBar = FALSE;
 DWORD bMicaEffectOnTitlebar = FALSE;
 DWORD bHideIconAndTitleInExplorer = FALSE;
 DWORD bHideControlCenterButton = FALSE;
@@ -6105,7 +6105,7 @@ void WINAPI LoadSettings(LPARAM lParam)
             TEXT("ShrinkExplorerAddressBar"),
             0,
             NULL,
-            &bShrinkExplorerAdressBar,
+            &bShrinkExplorerAddressBar,
             &dwSize
         );
         dwSize = sizeof(DWORD);
@@ -9501,7 +9501,7 @@ HWND Windows11v22H2_explorer_CreateWindowExW(DWORD dwExStyle, LPCWSTR lpClassNam
 #pragma region "Shrink File Explorer address bar height"
 int explorerframe_GetSystemMetricsForDpi(int nIndex, UINT dpi)
 {
-    if (bShrinkExplorerAdressBar && nIndex == SM_CYFIXEDFRAME) return 0;
+    if (bShrinkExplorerAddressBar && nIndex == SM_CYFIXEDFRAME) return 0;
     return GetSystemMetricsForDpi(nIndex, dpi);
 }
 #pragma endregion
