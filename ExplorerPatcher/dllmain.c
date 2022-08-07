@@ -677,7 +677,7 @@ DWORD CheckForegroundThread(DWORD dwMode)
     elapsedCheckForeground = milliseconds_now();
     if (!dwMode)
     {
-        RegDeleteKeyW(HKEY_CURRENT_USER, _T(SEH_REGPATH));
+        RegDeleteTreeW(HKEY_CURRENT_USER, _T(SEH_REGPATH));
         TerminateShellExperienceHost();
         Sleep(100);
     }
@@ -11616,7 +11616,7 @@ HRESULT WINAPI _DllUnregisterServer()
             RegCloseKey(hKey);
             if (!dwLastError)
             {
-                RegDeleteKeyW(
+                RegDeleteTreeW(
                     HKEY_LOCAL_MACHINE,
                     L"SOFTWARE\\Classes\\CLSID\\" TEXT(EP_CLSID)
                 );
@@ -11649,7 +11649,7 @@ HRESULT WINAPI _DllUnregisterServer()
             RegCloseKey(hKey);
             if (!dwLastError)
             {
-                RegDeleteKeyW(
+                RegDeleteTreeW(
                     HKEY_LOCAL_MACHINE,
                     L"SOFTWARE\\WOW6432Node\\Classes\\CLSID\\" TEXT(EP_CLSID)
                 );
@@ -11676,7 +11676,7 @@ HRESULT WINAPI _DllUnregisterServer()
             RegCloseKey(hKey);
             if (!dwLastError)
             {
-                RegDeleteKeyW(
+                RegDeleteTreeW(
                     HKEY_LOCAL_MACHINE,
                     L"SOFTWARE\\Classes\\Drive\\shellex\\FolderExtensions\\" TEXT(EP_CLSID)
                 );
@@ -11703,7 +11703,7 @@ HRESULT WINAPI _DllUnregisterServer()
             RegCloseKey(hKey);
             if (!dwLastError)
             {
-                RegDeleteKeyW(
+                RegDeleteTreeW(
                     HKEY_LOCAL_MACHINE,
                     L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Browser Helper Objects\\" TEXT(EP_CLSID)
                 );

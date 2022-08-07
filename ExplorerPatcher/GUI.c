@@ -469,7 +469,7 @@ LSTATUS GUI_Internal_RegSetValueExW(
     {
         if (!*(DWORD*)lpData)
         {
-            RegDeleteKeyW(HKEY_CURRENT_USER, L"SOFTWARE\\Classes\\CLSID\\{d93ed569-3b3e-4bff-8355-3c44f6a52bb5}\\InProcServer32");
+            RegDeleteTreeW(HKEY_CURRENT_USER, L"SOFTWARE\\Classes\\CLSID\\{d93ed569-3b3e-4bff-8355-3c44f6a52bb5}");
         }
         else
         {

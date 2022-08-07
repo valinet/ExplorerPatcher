@@ -218,7 +218,7 @@ HRESULT WINAPI _DllUnregisterServer()
             RegCloseKey(hKey);
             if (!dwLastError)
             {
-                RegDeleteKeyW(
+                RegDeleteTreeW(
                     HKEY_LOCAL_MACHINE,
                     _T("SOFTWARE\\Classes\\CLSID\\") _T(CLSID_EPWeather_TEXT)
                 );
@@ -242,7 +242,7 @@ HRESULT WINAPI _DllUnregisterServer()
             RegCloseKey(hKey);
             if (!dwLastError)
             {
-                RegDeleteKeyW(
+                RegDeleteTreeW(
                     HKEY_LOCAL_MACHINE,
                     _T("SOFTWARE\\Classes\\AppID\\") _T(CLSID_EPWeather_TEXT)
                 );

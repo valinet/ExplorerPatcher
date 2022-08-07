@@ -310,19 +310,8 @@ BOOL SetupUninstallEntry(BOOL bInstall, WCHAR* wszPath)
             }
             if (hKey)
             {
-                dwLastError = RegDeleteTreeW(
-                    hKey,
-                    0
-                );
+                dwLastError = RegDeleteTreeW(hKey, NULL);
                 RegCloseKey(hKey);
-                if (!dwLastError)
-                {
-                    RegDeleteKeyW(
-                        HKEY_LOCAL_MACHINE,
-                        L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\" _T(EP_CLSID) L"_" _T(PRODUCT_NAME)
-                    );
-                }
-                return TRUE;
             }
         }
      }
