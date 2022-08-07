@@ -219,9 +219,9 @@
 [-HKEY_CURRENT_USER\Software\Classes\CLSID\{056440FD-8568-48e7-A632-72157243B55B}\InprocServer32]
 ;d Disable navigation bar **
 @=""
-[-HKEY_CURRENT_USER\Software\Classes\CLSID\{1d64637d-31e9-4b06-9124-e83fb178ac6e}\TreatAs]
-;d Disable modern search bar
-@="{64bc32b5-4eec-4de7-972d-bd8bd0324537}"
+[HKEY_CURRENT_USER\Software\ExplorerPatcher]
+;b Disable modern search bar
+;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_DisableModernSearchBar"=dword:00000000
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;b Shrink address bar height **
 "ShrinkExplorerAddressBar"=dword:00000000
