@@ -3908,15 +3908,16 @@ HRESULT stobject_CoCreateInstanceHook(
     DWORD dwVal = 0, dwSize = sizeof(DWORD);
     if (IsEqualGUID(rclsid, &CLSID_ImmersiveShell) &&
         IsEqualGUID(riid, &IID_IServiceProvider) &&
-        SHRegGetValueFromHKCUHKLMFunc && SHRegGetValueFromHKCUHKLMFunc(
+        SHRegGetValueFromHKCUHKLMFunc)
+    {
+        SHRegGetValueFromHKCUHKLMFunc(
             TEXT("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\ImmersiveShell"),
             TEXT("UseWin32BatteryFlyout"),
             SRRF_RT_REG_DWORD,
             NULL,
             &dwVal,
             (LPDWORD)(&dwSize)
-        ) == ERROR_SUCCESS)
-    {
+        );
         if (!dwVal)
         {
             if (hCheckForegroundThread)
@@ -3982,15 +3983,16 @@ HRESULT pnidui_CoCreateInstanceHook(
     DWORD dwVal = 0, dwSize = sizeof(DWORD);
     if (IsEqualGUID(rclsid, &CLSID_ImmersiveShell) && 
         IsEqualGUID(riid, &IID_IServiceProvider) &&
-        SHRegGetValueFromHKCUHKLMFunc && SHRegGetValueFromHKCUHKLMFunc(
+        SHRegGetValueFromHKCUHKLMFunc)
+    {
+        SHRegGetValueFromHKCUHKLMFunc(
             TEXT("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Control Panel\\Settings\\Network"),
             TEXT("ReplaceVan"),
             SRRF_RT_REG_DWORD,
             NULL,
             &dwVal,
             (LPDWORD)(&dwSize)
-        ) == ERROR_SUCCESS)
-    {
+        );
         if (dwVal)
         {
             if (dwVal == 5 || dwVal == 6)
