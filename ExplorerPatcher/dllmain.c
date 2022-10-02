@@ -12053,6 +12053,40 @@ void InjectShellExperienceHost()
 #endif
 }
 
+// On 22H2 builds, the Windows 10 flyouts for network and battery can be enabled
+// by patching either of the following functions in ShellExperienceHost. I didn't
+// see any differences when patching with any of the 3 methods, although
+// `SharedUtilities::IsWindowsLite` seems to be invoked in more places, whereas `GetProductInfo`
+// and `RtlGetDeviceFamilyInfoEnum` are only called in `FlightHelper::CalculateRepaintEnabled`
+// and either seems to get the job done. YMMV
+
+LSTATUS SEH_RegGetValueW(HKEY hkey, LPCWSTR lpSubKey, LPCWSTR lpValue, DWORD dwFlags, LPDWORD pdwType, PVOID pvData, LPDWORD pcbData) {
+    if (!lstrcmpW(lpValue, L"UseLiteLayout")) { *(DWORD*)pvData = 1; return ERROR_SUCCESS; }
+    return RegGetValueW(hkey, lpSubKey, lpValue, dwFlags, pdwType, pvData, pcbData);
+}
+
+BOOL SEH_RtlGetDeviceFamilyInfoEnum(INT64 u0, PDWORD u1, INT64 u2) {
+    *u1 = 10;
+    return TRUE;
+}
+
+BOOL SEH_GetProductInfo(DWORD dwOSMajorVersion, DWORD dwOSMinorVersion, DWORD dwSpMajorVersion, DWORD dwSpMinorVersion, PDWORD pdwReturnedProductType) {
+    *pdwReturnedProductType = 119;
+    return TRUE;
+}
+
+void InjectShellExperienceHostFor22H2OrHigher() {
+#ifdef _WIN64
+    HKEY hKey;
+    if (RegOpenKeyW(HKEY_CURRENT_USER, _T(SEH_REGPATH), &hKey) != ERROR_SUCCESS) return;
+    RegCloseKey(hKey);
+    HMODULE hQA = LoadLibraryW(L"Windows.UI.QuickActions.dll");
+    if (hQA) VnPatchIAT(hQA, "api-ms-win-core-sysinfo-l1-2-0.dll", "GetProductInfo", SEH_GetProductInfo);
+    //if (hQA) VnPatchIAT(hQA, "ntdll.dll", "RtlGetDeviceFamilyInfoEnum", SEH_RtlGetDeviceFamilyInfoEnum);
+    //if (hQA) VnPatchIAT(hQA, "api-ms-win-core-registry-l1-1-0.dll", "RegGetValueW", SEH_RegGetValueW);
+#endif
+}
+
 #define DLL_INJECTION_METHOD_DXGI 0
 #define DLL_INJECTION_METHOD_COM 1
 #define DLL_INJECTION_METHOD_START_INJECTION 2
@@ -12152,7 +12186,11 @@ HRESULT EntryPoint(DWORD dwMethod)
     }
     else if (bIsThisShellEH)
     {
-        if (IsWindows11())
+        if (IsWindows11Version22H2OrHigher())
+        {
+            InjectShellExperienceHostFor22H2OrHigher();
+        }
+        else if (IsWindows11())
         {
             InjectShellExperienceHost();
         }
