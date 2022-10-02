@@ -240,7 +240,47 @@ BOOL IsUpdateAvailableHelper(
                                                 DWORD dwLocalSecondLeft = 0;
                                                 DWORD dwLocalSecondRight = 0;
                                                 DWORD dwLocalRightMost = 0;
-                                                QueryVersionInfo(hModule, VS_VERSION_INFO, &dwLocalLeftMost, &dwLocalSecondLeft, &dwLocalSecondRight, &dwLocalRightMost);
+                                                BOOL bExtractedFromHash = FALSE;
+                                                CHAR hashCopy[100];
+                                                strcpy_s(hashCopy, 100, szCheckAgainst);
+                                                char* szLocalLeftMost = NULL, *szLocalSecondLeft = NULL, *szLocalSecondRight = NULL, *szLocalRightMost = NULL, *szLocalRealHash = NULL;
+                                                if (strchr(hashCopy, '.')) 
+                                                {
+                                                    szLocalLeftMost = hashCopy;
+                                                    if (szLocalSecondLeft = strchr(szLocalLeftMost, '.'))
+                                                    {
+                                                        *szLocalSecondLeft = 0;
+                                                        szLocalSecondLeft++;
+                                                        if (szLocalSecondRight = strchr(szLocalSecondLeft, '.'))
+                                                        {
+                                                            *szLocalSecondRight = 0;
+                                                            szLocalSecondRight++;
+                                                            if (szLocalRightMost = strchr(szLocalSecondRight, '.'))
+                                                            {
+                                                                *szLocalRightMost = 0;
+                                                                szLocalRightMost++;
+                                                                if (szLocalRealHash = strchr(szLocalRightMost, '.'))
+                                                                {
+                                                                    *szLocalRealHash = 0;
+                                                                    szLocalRealHash++;
+
+                                                                    bExtractedFromHash = TRUE;
+                                                                    dwLocalLeftMost = atoi(szLocalLeftMost);
+                                                                    dwLocalSecondLeft = atoi(szLocalSecondLeft);
+                                                                    dwLocalSecondRight = atoi(szLocalSecondRight);
+                                                                    dwLocalRightMost = atoi(szLocalRightMost);
+#ifdef UPDATES_VERBOSE_OUTPUT
+                                                                    printf("[Updates] Local version obtained from hash is %d.%d.%d.%d.\n", dwLocalLeftMost, dwLocalSecondLeft, dwLocalSecondRight, dwLocalRightMost);
+#endif
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                                if (!bExtractedFromHash) 
+                                                {
+                                                    QueryVersionInfo(hModule, VS_VERSION_INFO, &dwLocalLeftMost, &dwLocalSecondLeft, &dwLocalSecondRight, &dwLocalRightMost);
+                                                }
 
                                                 int res = 0;
                                                 if (!res)
