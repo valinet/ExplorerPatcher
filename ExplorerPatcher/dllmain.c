@@ -5764,6 +5764,24 @@ void sws_ReadSettings(sws_WindowSwitcher* sws)
                 &(sws->bAlwaysUseWindowTitleAndIcon),
                 &dwSize
             );
+            dwSize = sizeof(DWORD);
+            RegQueryValueExW(
+                hKey,
+                TEXT("ScrollWheelBehavior"),
+                0,
+                NULL,
+                &(sws->dwScrollWheelBehavior),
+                &dwSize
+            );
+            dwSize = sizeof(DWORD);
+            RegQueryValueExW(
+                hKey,
+                TEXT("ScrollWheelInvert"),
+                0,
+                NULL,
+                &(sws->bScrollWheelInvert),
+                &dwSize
+            );
             if (sws->bIsInitialized)
             {
                 sws_WindowSwitcher_UnregisterHotkeys(sws);
