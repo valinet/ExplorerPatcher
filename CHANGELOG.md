@@ -21,6 +21,17 @@ Please make sure you are connected to the Internet while installing, the applica
 * sws: Support for changing selection in window list using the mouse wheel (suggestion by andrewz).
 * Fix broken "Cascade windows", "Show windows stacked", "Show windows side by side", and "Undo ..." options in taskbar context menu (reported by iamk9008).
 
+##### 3
+
+* sws: Option to have the scroll wheel change the selection when using the switcher:
+  * "Never" (default), the same behavior as two versions ago, which means that, when the switcher is active, it does not react to the scroll wheel being used.
+  * "When cursor is over the switcher" has the switcher react to the scroll whell and advance/reverse the selection only when the cursor is above the switcher
+  * "Always" has the switcher react to the scroll whell and advance/reverse the selection regardless of where the cursor is placed. In this mode, background applications won't receive scroll wheel updates until the switcher is closed, regardless of the "Scroll inactive windows when hovering over them" setting from Windows.
+* sws: Fixed a bug that had the scroll wheel move selections in the opposite direction compared to Windows 7 Alt-Tab's behavior. When enabled, the scrolling up selects the previous window in the list, while scrolling down selects the next window in the list. To obtain the previous behavior, which is to scroll up to select the next window, and to scroll down to select the previous window, set `ScrollWheelInvert` to `1` in `HKCU\Software\ExplorerPatcher\sws` (5cef3b1).
+* sws: Fixed a bug that could unexpectedly move the switcher to another monitor when your cursor was placed on the other monitor, the option to have the switcher display on the monitor the cursor is placed on is enabled and the switcher finished refreshing its data in the background (https://github.com/valinet/sws/commit/8b68539201102801367ef8f3716b9f1260e2dbe5).
+* sws: Fixed a bug that could prevent hotkey associations from being properly cleaned up when you disabled the setting to have a per-application window list (https://github.com/valinet/sws/commit/c5776e5a6a0c5495892a15e16a1def31b225fc51).
+* sws: Fixed a bug that could prevent correct reload of settings when entries were directly deleted from the registry (cbc5f19).
+
 ## 22622.450.50
 
 Tested on OS build 22622.450.
