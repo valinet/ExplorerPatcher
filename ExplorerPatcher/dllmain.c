@@ -2487,7 +2487,34 @@ INT64 Shell_TrayWndSubclassProc(
                 }
                 DeleteMenu(hSubMenu, 424, MF_BYCOMMAND); // Lock the taskbar
                 DeleteMenu(hSubMenu, 425, MF_BYCOMMAND); // Lock all taskbars
-                DeleteMenu(hSubMenu, 416, MF_BYCOMMAND); // Undo
+                HWND hShellTray_Wnd = FindWindowExW(NULL, NULL, L"Shell_TrayWnd", NULL);
+                INT64* CTrayInstance = (BYTE*)(GetWindowLongPtrW(hShellTray_Wnd, 0)); // -> CTray
+                const unsigned int TRAYUI_OFFSET_IN_CTRAY = 110;
+                uintptr_t TrayUIInstance = *((INT64*)CTrayInstance + TRAYUI_OFFSET_IN_CTRAY) + 8;
+                if (TrayUIInstance)
+                {
+                    int offset = 656;
+                    if (IsWindows11Version22H2OrHigher()) offset = 640;
+                    if ((*(unsigned __int8(__fastcall**)(INT64))(**(INT64**)(TrayUIInstance + offset) + 104i64))(*(INT64*)(TrayUIInstance + offset)))
+                    {
+                        DeleteMenu(hSubMenu, 0x1A0u, 0);
+                    }
+                    else
+                    {
+                        WCHAR Buffer[MAX_PATH];
+                        WCHAR v40[MAX_PATH];
+                        WCHAR NewItem[MAX_PATH];
+                        LoadStringW(GetModuleHandleW(NULL), 0x216u, Buffer, 64);
+                        UINT v22 = (*(__int64(__fastcall**)(INT64))(**(INT64**)(TrayUIInstance + offset) + 112i64))(*(INT64*)(TrayUIInstance + offset));
+                        LoadStringW(GetModuleHandleW(NULL), v22, v40, 96);
+                        swprintf_s(NewItem, 0xA0ui64, Buffer, v40);
+                        ModifyMenuW(hSubMenu, 0x1A0u, 0, 0x1A0ui64, NewItem);
+                    }
+                }
+                else
+                {
+                    DeleteMenu(hSubMenu, 416, MF_BYCOMMAND); // Undo
+                }
                 DeleteMenu(hSubMenu, 437, MF_BYCOMMAND); // Show Pen button
                 DeleteMenu(hSubMenu, 438, MF_BYCOMMAND); // Show touchpad button
                 DeleteMenu(hSubMenu, 435, MF_BYCOMMAND); // Show People on the taskbar
@@ -2569,18 +2596,6 @@ INT64 Shell_TrayWndSubclassProc(
                 if (res == 3999)
                 {
                     LaunchPropertiesGUI(hModule);
-                }
-                else if (res == 403)
-                {
-                    CascadeWindows(NULL, 0, NULL, 0, NULL);
-                }
-                else if (res == 404)
-                {
-                    TileWindows(NULL, 0, NULL, 0, NULL);
-                }
-                else if (res == 405)
-                {
-                    TileWindows(NULL, 1, NULL, 0, NULL);
                 }
                 else
                 {
@@ -9509,6 +9524,31 @@ int explorerframe_GetSystemMetricsForDpi(int nIndex, UINT dpi)
 #pragma endregion
 
 
+#pragma region "Fix taskbar cascade and tile windows options not working"
+WORD explorer_TileWindows(
+    HWND hwndParent,
+    UINT wHow,
+    const RECT* lpRect,
+    UINT cKids,
+    const HWND* lpKids
+)
+{
+    return TileWindows((hwndParent == GetShellWindow()) ? GetDesktopWindow() : hwndParent, wHow, lpRect, cKids, lpKids);
+}
+
+WORD explorer_CascadeWindows(
+    HWND hwndParent,
+    UINT wHow,
+    const RECT* lpRect,
+    UINT cKids,
+    const HWND* lpKids
+)
+{
+    return CascadeWindows((hwndParent == GetShellWindow()) ? GetDesktopWindow() : hwndParent, wHow, lpRect, cKids, lpKids);
+}
+#pragma endregion
+
+
 DWORD InjectBasicFunctions(BOOL bIsExplorer, BOOL bInstall)
 {
     //Sleep(150);
@@ -10080,6 +10120,8 @@ DWORD Inject(BOOL bIsExplorer)
         if (IsOS(OS_ANYSERVER)) VnPatchIAT(hExplorer, "api-ms-win-shcore-sysinfo-l1-1-0.dll", "IsOS", explorer_IsOS);
         if (IsWindows11Version22H2OrHigher()) VnPatchDelayIAT(hExplorer, "ext-ms-win-rtcore-ntuser-window-ext-l1-1-0.dll", "CreateWindowExW", Windows11v22H2_explorer_CreateWindowExW);
     }
+    VnPatchIAT(hExplorer, "user32.dll", "TileWindows", explorer_TileWindows);
+    VnPatchIAT(hExplorer, "user32.dll", "CascadeWindows", explorer_CascadeWindows);
     VnPatchIAT(hExplorer, "API-MS-WIN-CORE-REGISTRY-L1-1-0.DLL", "RegOpenKeyExW", explorer_RegOpenKeyExW);
     VnPatchIAT(hExplorer, "shell32.dll", (LPCSTR)85, explorer_OpenRegStream);
     VnPatchIAT(hExplorer, "user32.dll", "TrackPopupMenuEx", explorer_TrackPopupMenuExHook);
