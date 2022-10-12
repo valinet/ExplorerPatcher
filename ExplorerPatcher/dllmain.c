@@ -5618,6 +5618,7 @@ void sws_ReadSettings(sws_WindowSwitcher* sws)
     {
         if (sws)
         {
+            sws_WindowSwitcher_InitializeDefaultSettings(sws);
             dwSize = sizeof(DWORD);
             RegQueryValueExW(
                 hKey,
