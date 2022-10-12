@@ -16,6 +16,11 @@ Please make sure you are connected to the Internet while installing, the applica
 * Fixed the Windows 10 network and battery flyouts on OS build 22621.
 * Weather: Fixed a bug that displayed the widget contents with incorrect left padding.
 
+##### 2
+
+* sws: Support for changing selection in window list using the mouse wheel (suggestion by andrewz).
+* Fix broken "Cascade windows", "Show windows stacked", "Show windows side by side", and "Undo ..." options in taskbar context menu (reported by iamk9008).
+
 ## 22622.450.50
 
 Tested on OS build 22622.450.
