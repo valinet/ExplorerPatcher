@@ -5618,6 +5618,8 @@ void sws_ReadSettings(sws_WindowSwitcher* sws)
     {
         if (sws)
         {
+            sws_WindowSwitcher_InitializeDefaultSettings(sws);
+            sws->dwWallpaperSupport = SWS_WALLPAPERSUPPORT_EXPLORER;
             dwSize = sizeof(DWORD);
             RegQueryValueExW(
                 hKey,
@@ -5808,8 +5810,6 @@ DWORD WindowSwitcher(DWORD unused)
             {
                 return 0;
             }
-            sws_WindowSwitcher_InitializeDefaultSettings(sws);
-            sws->dwWallpaperSupport = SWS_WALLPAPERSUPPORT_EXPLORER;
             sws_ReadSettings(sws);
             err = sws_error_Report(sws_error_GetFromInternalError(sws_WindowSwitcher_Initialize(&sws, FALSE)), NULL);
             if (err == SWS_ERROR_SUCCESS)
@@ -5862,6 +5862,7 @@ DWORD WindowSwitcher(DWORD unused)
             }
             else
             {
+                free(sws);
                 return 0;
             }
         }
