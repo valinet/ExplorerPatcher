@@ -32,6 +32,10 @@ Please make sure you are connected to the Internet while installing, the applica
 * sws: Fixed a bug that could prevent hotkey associations from being properly cleaned up when you disabled the setting to have a per-application window list (https://github.com/valinet/sws/commit/c5776e5a6a0c5495892a15e16a1def31b225fc51).
 * sws: Fixed a bug that could prevent correct reload of settings when entries were directly deleted from the registry (cbc5f19).
 
+##### 4
+
+* Windows 11 taskbar: Fixed a bug that could crash `explorer.exe` when right clicking certain system tray icons on 22621-based builds. Thanks for the reports about this issue. (a6a88b1)
+
 ## 22622.450.50
 
 Tested on OS build 22622.450.
