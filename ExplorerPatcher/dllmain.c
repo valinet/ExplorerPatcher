@@ -2235,7 +2235,7 @@ BOOL IsPointOnEmptyAreaOfNewTaskbar(POINT pt)
     }
     if (SUCCEEDED(hr) && bIsWindows11Version22H2OrHigher)
     {
-        bRet = (!wcscmp(elemName, L"") && !wcscmp(elemType, L"Taskbar.TaskbarFrameAutomationPeer"));
+        bRet = elemName && elemType && (!wcscmp(elemName, L"") && !wcscmp(elemType, L"Taskbar.TaskbarFrameAutomationPeer"));
     }
     if (SUCCEEDED(hr) && !bIsWindows11Version22H2OrHigher)
     {
