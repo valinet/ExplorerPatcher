@@ -36,6 +36,10 @@ Please make sure you are connected to the Internet while installing, the applica
 
 * Windows 11 taskbar: Fixed a bug that could crash `explorer.exe` when right clicking certain system tray icons on 22621-based builds. Thanks for the reports about this issue. (a6a88b1)
 
+##### 5
+
+* Windows 11 Start menu: Fixed a bug that prevented the menu from taking into account the "Layout" setting from Windows Settings - Personalization - Taskbar on 22621-based builds. (2572a80)
+
 ## 22622.450.50
 
 Tested on OS build 22622.450.
