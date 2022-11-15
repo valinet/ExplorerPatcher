@@ -622,13 +622,17 @@ void LVT_StartDocked_DisableRecommendedSection(HWND hWnd, BOOL bApply)
                                                                         pStartMenuPinnedList->lpVtbl->QueryInterface(pStartMenuPinnedList, &IID_Windows_UI_Xaml_IFrameworkElement, &pFrameworkElement);
                                                                         if (pFrameworkElement)
                                                                         {
+                                                                            static double StartMenuPinnedList_Height = 252.0;
+                                                                            double tempStartMenuPinnedList_Height = 0.0;
+                                                                            if (SUCCEEDED(pFrameworkElement->lpVtbl->get_Height(pFrameworkElement, &tempStartMenuPinnedList_Height)) && tempStartMenuPinnedList_Height != 510.0) StartMenuPinnedList_Height = tempStartMenuPinnedList_Height;
+
                                                                             if (bApply)
                                                                             {
                                                                                 pFrameworkElement->lpVtbl->put_Height(pFrameworkElement, 510.0);
                                                                             }
                                                                             else
                                                                             {
-                                                                                pFrameworkElement->lpVtbl->put_Height(pFrameworkElement, 252.0);
+                                                                                pFrameworkElement->lpVtbl->put_Height(pFrameworkElement, StartMenuPinnedList_Height);
                                                                             }
                                                                             pFrameworkElement->lpVtbl->Release(pFrameworkElement);
                                                                         }
