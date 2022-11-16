@@ -40,6 +40,10 @@ Please make sure you are connected to the Internet while installing, the applica
 
 * Windows 11 Start menu: Fixed a bug that prevented the menu from taking into account the "Layout" setting from Windows Settings - Personalization - Taskbar on 22621-based builds. (2572a80)
 
+##### 6
+
+* Fixed a bug that could cause the host process of ExplorerPatcher to crash under certain circumstances. (d7a0385)
+
 ## 22622.450.50
 
 Tested on OS build 22622.450.
