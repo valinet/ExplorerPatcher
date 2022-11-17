@@ -2,6 +2,20 @@
 
 This document includes the same release notes as in the [Releases](https://github.com/valinet/ExplorerPatcher/releases) section on GitHub.
 
+## 22621.819.52
+
+Tested on OS builds 22621.819 and 22000.1098.
+
+Please make sure you are connected to the Internet while installing, the application might need to perform one-time downloads for several resources in order to enable full functionality.
+
+#### Details
+
+##### 1
+
+* Windows 11 Start menu: Implemented centering on screen when taskbar is not at the bottom. (4212e35)
+* Windows 11 taskbar: Option to use the stock taskbar context menu. (451db3c)
+* Fixed a bug that could display the Start menu on a wrong monitor or outside the screen when the taskbar was moved to the top of the screen and the previous setting was at the right edge of the screen. (53fad19)
+
 ## 22621.608.51
 
 Tested on OS builds 22621.608 and 22000.1042.
