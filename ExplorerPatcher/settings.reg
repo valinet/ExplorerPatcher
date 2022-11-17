@@ -725,7 +725,7 @@
 ;d Enable SysListView32 for Explorer views *
 @=""
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
-;b Hide the program settings item ("Properties") from the taskbar context menu
+;b Do not change the taskbar context menu (e.g. do not display the "Properties" item)
 "NoPropertiesInContextMenu"=dword:00000000
 ;b Enable symbols download *
 "EnableSymbolDownload"=dword:00000001

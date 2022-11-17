@@ -2349,7 +2349,8 @@ LRESULT CALLBACK Shell_TrayWndMouseProc(
     _In_ LPARAM lParam
 )
 {
-    if (!bOldTaskbar && 
+    if (!bOldTaskbar &&
+        !bNoPropertiesInContextMenu &&
         nCode == HC_ACTION && 
         wParam == WM_RBUTTONUP && 
         IsPointOnEmptyAreaOfNewTaskbar(((MOUSEHOOKSTRUCT*)lParam)->pt)
