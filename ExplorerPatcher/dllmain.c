@@ -10994,6 +10994,7 @@ void StartMenu_LoadSettings(BOOL bRestartIfChanged)
         if (InterlockedExchange64(&dwTaskbarAl, dwVal) != dwVal)
         {
             StartUI_EnableRoundedCornersApply = TRUE;
+            StartDocked_DisableRecommendedSectionApply = TRUE;
         }
 
         RegCloseKey(hKey);
@@ -11259,7 +11260,7 @@ LSTATUS StartUI_RegCloseKey(HKEY hKey)
     return RegCloseKey(hKey);
 }
 
-int StartUI_SetWindowRgn(HWND hWnd, HRGN hRgn, BOOL bRedraw)
+int Start_SetWindowRgn(HWND hWnd, HRGN hRgn, BOOL bRedraw)
 {
     WCHAR wszDebug[MAX_PATH];
     BOOL bIsWindowVisible = FALSE;
@@ -11268,7 +11269,7 @@ int StartUI_SetWindowRgn(HWND hWnd, HRGN hRgn, BOOL bRedraw)
     {
         if (IsWindows11()) ShowWindow(hWnd, bIsWindowVisible ? SW_SHOW : SW_HIDE);
         DWORD TaskbarAl = InterlockedAdd(&dwTaskbarAl, 0);
-        if (bIsWindowVisible && (!TaskbarAl ? StartUI_EnableRoundedCornersApply : 1))
+        if (bIsWindowVisible && (!TaskbarAl ? (dwStartShowClassicMode ? StartUI_EnableRoundedCornersApply : StartDocked_DisableRecommendedSectionApply) : 1))
         {
             HWND hWndTaskbar = NULL;
             if (TaskbarAl)
@@ -11335,16 +11336,32 @@ int StartUI_SetWindowRgn(HWND hWnd, HRGN hRgn, BOOL bRedraw)
                 }
             }
             RECT rc;
-            LVT_StartUI_EnableRoundedCorners(hWnd, StartUI_EnableRoundedCorners, dwPos, hWndTaskbar, &rc);
-            if (!StartUI_EnableRoundedCorners)
+            if (dwStartShowClassicMode)
             {
-                StartUI_EnableRoundedCornersApply = FALSE;
+                LVT_StartUI_EnableRoundedCorners(hWnd, StartUI_EnableRoundedCorners, dwPos, hWndTaskbar, &rc);
+                if (!StartUI_EnableRoundedCorners)
+                {
+                    StartUI_EnableRoundedCornersApply = FALSE;
+                }
+            }
+            else
+            {
+                LVT_StartDocked_DisableRecommendedSection(hWnd, StartDocked_DisableRecommendedSection, &rc);
+                StartDocked_DisableRecommendedSectionApply = FALSE;
             }
             if (hWndTaskbar)
             {
                 if (rcC.left < 5 && rcC.top > 5)
                 {
-                    SetWindowPos(hWnd, NULL, mi.rcMonitor.left + (((mi.rcMonitor.right - mi.rcMonitor.left) - (rc.right - rc.left)) / 2), mi.rcMonitor.top, 0, 0, SWP_NOSIZE | SWP_FRAMECHANGED | SWP_ASYNCWINDOWPOS);
+                    if (dwStartShowClassicMode)
+                    {
+                        SetWindowPos(hWnd, NULL, mi.rcMonitor.left + (((mi.rcMonitor.right - mi.rcMonitor.left) - (rc.right - rc.left)) / 2), mi.rcMonitor.top, 0, 0, SWP_NOSIZE | SWP_FRAMECHANGED | SWP_ASYNCWINDOWPOS);
+                    }
+                    else
+                    {
+                        // Windows 11 Start menu knows how to center itself when the taskbar is at the bottom of the screen
+                        SetWindowPos(hWnd, NULL, mi.rcMonitor.left, mi.rcMonitor.top, 0, 0, SWP_NOSIZE | SWP_FRAMECHANGED | SWP_ASYNCWINDOWPOS);
+                    }
                 }
                 else if (rcC.left < 5 && rcC.top < 5 && rcC.right > rcC.bottom)
                 {
@@ -11363,21 +11380,6 @@ int StartUI_SetWindowRgn(HWND hWnd, HRGN hRgn, BOOL bRedraw)
             {
                 SetWindowPos(hWnd, NULL, mi.rcWork.left, mi.rcWork.top, 0, 0, SWP_NOSIZE | SWP_FRAMECHANGED | SWP_ASYNCWINDOWPOS);
             }
-        }
-    }
-    return SetWindowRgn(hWnd, hRgn, bRedraw);
-}
-
-int StartDocked_SetWindowRgn(HWND hWnd, HRGN hRgn, BOOL bRedraw)
-{
-    BOOL bIsWindowVisible = FALSE;
-    HRESULT hr = IsThreadCoreWindowVisible(&bIsWindowVisible);
-    if (SUCCEEDED(hr))
-    {
-        if (bIsWindowVisible && StartUI_EnableRoundedCornersApply)
-        {
-            LVT_StartDocked_DisableRecommendedSection(hWnd, StartDocked_DisableRecommendedSection);
-            StartDocked_DisableRecommendedSectionApply = FALSE;
         }
     }
     return SetWindowRgn(hWnd, hRgn, bRedraw);
@@ -11810,7 +11812,7 @@ void InjectStartMenu()
         hStartUI = GetModuleHandleW(L"StartUI.dll");
 
         // Fixes hang when Start menu closes
-        VnPatchDelayIAT(hStartUI, "ext-ms-win-ntuser-draw-l1-1-0.dll", "SetWindowRgn", StartUI_SetWindowRgn);
+        VnPatchDelayIAT(hStartUI, "ext-ms-win-ntuser-draw-l1-1-0.dll", "SetWindowRgn", Start_SetWindowRgn);
 
         if (IsWindows11())
         {
@@ -11840,7 +11842,7 @@ void InjectStartMenu()
         LoadLibraryW(L"StartDocked.dll");
         hStartDocked = GetModuleHandleW(L"StartDocked.dll");
 
-        VnPatchDelayIAT(hStartDocked, "ext-ms-win-ntuser-draw-l1-1-0.dll", "SetWindowRgn", StartDocked_SetWindowRgn);
+        VnPatchDelayIAT(hStartDocked, "ext-ms-win-ntuser-draw-l1-1-0.dll", "SetWindowRgn", Start_SetWindowRgn);
     }
 
     Setting* settings = calloc(6, sizeof(Setting));

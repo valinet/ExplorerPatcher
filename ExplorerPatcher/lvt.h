@@ -1024,7 +1024,7 @@ Windows_UI_Xaml_IDependencyObject* LVT_FindChildByName(Windows_UI_Xaml_IDependen
 
 void LVT_StartUI_EnableRoundedCorners(HWND, DWORD, DWORD, HWND, RECT*);
 
-void LVT_StartDocked_DisableRecommendedSection(HWND, BOOL);
+void LVT_StartDocked_DisableRecommendedSection(HWND, BOOL, RECT*);
 
 HRESULT IsThreadCoreWindowVisible(BOOL*);
 #endif
