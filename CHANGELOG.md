@@ -16,6 +16,10 @@ Please make sure you are connected to the Internet while installing, the applica
 * Windows 11 taskbar: Option to use the stock taskbar context menu. (451db3c)
 * Fixed a bug that could display the Start menu on a wrong monitor or outside the screen when the taskbar was moved to the top of the screen and the previous setting was at the right edge of the screen. (53fad19)
 
+##### 2
+
+* Windows 11 Start menu: Fixed a bug that prevented the disable "Recommended" section feature from working when the scaling level of the screen the Start menu is displayed on is set to 125% (120 DPI). (9f9d43e)
+
 ## 22621.608.51
 
 Tested on OS builds 22621.608 and 22000.1042.
