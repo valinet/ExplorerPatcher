@@ -10861,6 +10861,15 @@ void StartMenu_LoadSettings(BOOL bRestartIfChanged)
             &StartMenu_ShowAllApps,
             &dwSize
         );
+        dwSize = sizeof(DWORD);
+        RegQueryValueExW(
+            hKey,
+            TEXT("MonitorOverride"),
+            0,
+            NULL,
+            &bMonitorOverride,
+            &dwSize
+        );
         RegCloseKey(hKey);
     }
     RegCreateKeyExW(
@@ -11274,10 +11283,36 @@ int Start_SetWindowRgn(HWND hWnd, HRGN hRgn, BOOL bRedraw)
             HWND hWndTaskbar = NULL;
             if (TaskbarAl)
             {
+                HMONITOR hMonitorOfStartMenu = NULL;
+                if (bMonitorOverride == 1 || !bMonitorOverride) {
+                    POINT pt;
+                    if (!bMonitorOverride) GetCursorPos(&pt);
+                    else {
+                        pt.x = 0; pt.y = 0;
+                    }
+                    hMonitorOfStartMenu = MonitorFromPoint(pt, MONITOR_DEFAULTTOPRIMARY);
+                }
+                else {
+                    MonitorOverrideData mod;
+                    mod.cbIndex = 2;
+                    mod.dwIndex = bMonitorOverride;
+                    mod.hMonitor = NULL;
+                    EnumDisplayMonitors(NULL, NULL, ExtractMonitorByIndex, &mod);
+                    if (mod.hMonitor == NULL)
+                    {
+                        POINT pt; pt.x = 0; pt.y = 0;
+                        hMonitorOfStartMenu = MonitorFromPoint(pt, MONITOR_DEFAULTTOPRIMARY);
+                    }
+                    else
+                    {
+                        hMonitorOfStartMenu = mod.hMonitor;
+                    }
+                }
+
                 HWND hWndTemp = NULL;
 
                 HWND hShellTray_Wnd = FindWindowExW(NULL, NULL, L"Shell_TrayWnd", NULL);
-                if (hShellTray_Wnd && !hWndTaskbar && MonitorFromWindow(hWnd, MONITOR_DEFAULTTOPRIMARY) == MonitorFromWindow(hShellTray_Wnd, MONITOR_DEFAULTTOPRIMARY) && dwOldTaskbarAl)
+                if (hShellTray_Wnd && !hWndTaskbar && hMonitorOfStartMenu == MonitorFromWindow(hShellTray_Wnd, MONITOR_DEFAULTTOPRIMARY) && dwOldTaskbarAl)
                 {
                     hWndTaskbar = hShellTray_Wnd;
                 }
@@ -11292,7 +11327,7 @@ int Start_SetWindowRgn(HWND hWnd, HRGN hRgn, BOOL bRedraw)
                             L"Shell_SecondaryTrayWnd",
                             NULL
                         );
-                        if (hWndTemp && !hWndTaskbar && MonitorFromWindow(hWnd, MONITOR_DEFAULTTOPRIMARY) == MonitorFromWindow(hWndTemp, MONITOR_DEFAULTTOPRIMARY) && dwMMOldTaskbarAl)
+                        if (hWndTemp && !hWndTaskbar && hMonitorOfStartMenu == MonitorFromWindow(hWndTemp, MONITOR_DEFAULTTOPRIMARY) && dwMMOldTaskbarAl)
                         {
                             hWndTaskbar = hWndTemp;
                             break;

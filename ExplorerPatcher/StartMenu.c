@@ -66,29 +66,6 @@ void OpenStartOnMonitor(HMONITOR monitor)
     }
 }
 
-typedef struct _MonitorOverrideData
-{
-    DWORD cbIndex;
-    DWORD dwIndex;
-    HMONITOR hMonitor;
-} MonitorOverrideData;
-
-BOOL ExtractMonitorByIndex(HMONITOR hMonitor, HDC hDC, LPRECT lpRect, MonitorOverrideData* mod)
-{
-    POINT pt; pt.x = 0; pt.y = 0;
-    if (MonitorFromPoint(pt, MONITOR_DEFAULTTONULL) == hMonitor)
-    {
-        return TRUE;
-    }
-    if (mod->cbIndex == mod->dwIndex)
-    {
-        mod->hMonitor = hMonitor;
-        return FALSE;
-    }
-    mod->cbIndex++;
-    return TRUE;
-}
-
 LRESULT CALLBACK OpenStartOnCurentMonitorThreadHook(
     int code,
     WPARAM wParam,

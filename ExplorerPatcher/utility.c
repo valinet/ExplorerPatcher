@@ -1625,3 +1625,19 @@ void SpotlightHelper(DWORD dwOp, HWND hWnd, HMENU hMenu, LPPOINT pPt)
         CoTaskMemFree(pidl);
     }
 }
+
+BOOL ExtractMonitorByIndex(HMONITOR hMonitor, HDC hDC, LPRECT lpRect, MonitorOverrideData* mod)
+{
+    POINT pt; pt.x = 0; pt.y = 0;
+    if (MonitorFromPoint(pt, MONITOR_DEFAULTTONULL) == hMonitor)
+    {
+        return TRUE;
+    }
+    if (mod->cbIndex == mod->dwIndex)
+    {
+        mod->hMonitor = hMonitor;
+        return FALSE;
+    }
+    mod->cbIndex++;
+    return TRUE;
+}

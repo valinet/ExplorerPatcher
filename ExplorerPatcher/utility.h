@@ -584,4 +584,13 @@ BOOL DoesOSBuildSupportSpotlight();
 BOOL IsSpotlightEnabled();
 
 void SpotlightHelper(DWORD dwOp, HWND hWnd, HMENU hMenu, LPPOINT pPt);
+
+typedef struct _MonitorOverrideData
+{
+    DWORD cbIndex;
+    DWORD dwIndex;
+    HMONITOR hMonitor;
+} MonitorOverrideData;
+
+BOOL ExtractMonitorByIndex(HMONITOR hMonitor, HDC hDC, LPRECT lpRect, MonitorOverrideData* mod);
 #endif
