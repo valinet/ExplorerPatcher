@@ -173,6 +173,7 @@ LPCWSTR ep_weather_provider_google_script01 = L"\
 var im = document.getElementById('wob_tci');\n\
 function replaceImage(im, is_day) {\n\
 var final_img = 0;\n\
+if (im.src) {\n\
 if (im.src.endsWith('/sunny_s_cloudy.png')) {\n\
     if (is_day) final_img = ep_download_image_blob('https://user-images.githubusercontent.com/6503598/156949438-4e0c0e0d-67bc-4c76-b75e-e0ffcead3f48.png');\n\
     else        final_img = ep_download_image_blob('https://user-images.githubusercontent.com/6503598/156949442-63f14d44-ec0e-40b2-aa1b-8e4a27ec10f5.png');\n\
@@ -237,6 +238,7 @@ if (im.src.endsWith('/sunny_s_cloudy.png')) {\n\
     if (is_day) final_img = ep_download_image_blob('https://user-images.githubusercontent.com/6503598/156949445-60d12efa-a21d-40e0-b9a8-1b7a84e58944.png');\n\
     else        final_img = ep_download_image_blob('https://user-images.githubusercontent.com/6503598/156949445-60d12efa-a21d-40e0-b9a8-1b7a84e58944.png');\n\
 }\n\
+}\n\
 ";
 
 LPCWSTR ep_weather_provider_google_script02 = L"\
@@ -246,6 +248,7 @@ if (final_img != 0) {\n\
         final_int = setInterval(ep_set_final_img, 5000);\n\
 \n\
 var final_img3 = 0;\n\
+if (im.src) {\n\
 if (im.src.endsWith('/sunny_s_cloudy.png')) {\n\
     if (is_day) final_img3 = ep_download_image_blob('https://user-images.githubusercontent.com/6503598/156908235-1f97c25b-3561-485b-b7fb-bf926ef1208c.png');\n\
     else        final_img3 = ep_download_image_blob('https://user-images.githubusercontent.com/6503598/156908236-6e86fcb1-3fd4-41ff-bee6-006f01057c16.png');\n\
@@ -309,6 +312,7 @@ if (im.src.endsWith('/sunny_s_cloudy.png')) {\n\
 } else if (im.src.endsWith('/rain_s_snow.png')) {\n\
     if (is_day) final_img3 = ep_download_image_blob('https://user-images.githubusercontent.com/6503598/156908216-b68edf4b-1355-4889-b3ac-216cf2210457.png');\n\
     else        final_img3 = ep_download_image_blob('https://user-images.githubusercontent.com/6503598/156908216-b68edf4b-1355-4889-b3ac-216cf2210457.png');\n\
+}\n\
 }\n\
 \n\
         if (final_img3 != 0) { final_im = new Image(); final_im.src = final_img3; }\n\
