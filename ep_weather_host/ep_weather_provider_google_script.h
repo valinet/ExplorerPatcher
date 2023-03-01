@@ -417,6 +417,7 @@ function ep_weather_getData(imageBitmap, ch) {\n\
   //console.log(res);\n\
   document.body.style.backgroundColor='transparent';\n\
   document.body.style.backgroundColor='transparent';\n\
+  Array.from(document.getElementsByClassName(\"Ww4FFb\")).forEach((element) => {element.style.backgroundColor = \"transparent\";});\n\
   return res;\n\
 }\n\
 var ep_result;\n\
