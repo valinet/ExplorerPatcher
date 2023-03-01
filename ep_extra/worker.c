@@ -29,7 +29,7 @@ void* worker() {
             if (hLib) {
                 FARPROC proc = (FARPROC)(GetProcAddress(hLib, "setup"));
                 if (proc) {
-                    if (!proc()) FreeLibrary(hLib);
+                    if (proc()) FreeLibrary(hLib);
                 }
                 else FreeLibrary(hLib);
             }

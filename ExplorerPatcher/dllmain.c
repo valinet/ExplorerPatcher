@@ -9569,6 +9569,20 @@ WORD explorer_CascadeWindows(
 #pragma endregion
 
 
+#pragma region "Fix explorer crashing on Windows builds lower than 25158"
+HWND(*NtUserFindWindowEx)(HWND hWndParent, HWND hWndChildAfter, LPCWSTR lpszClass, LPCWSTR lpszWindow, DWORD dwType);
+HWND user32_NtUserFindWindowExHook(HWND hWndParent, HWND hWndChildAfter, LPCWSTR lpszClass, LPCWSTR lpszWindow, DWORD dwType) {
+    if (!NtUserFindWindowEx) NtUserFindWindowEx = GetProcAddress(GetModuleHandleW(L"win32u.dll"), "NtUserFindWindowEx");
+    HWND hWnd = NULL;
+    for (int i = 0; i < 5; ++i) {
+        if (hWnd) break;
+        hWnd = NtUserFindWindowEx(hWndParent, hWndChildAfter, lpszClass, lpszWindow, dwType);
+    }
+    return hWnd;
+}
+#pragma endregion
+
+
 DWORD InjectBasicFunctions(BOOL bIsExplorer, BOOL bInstall)
 {
     //Sleep(150);
@@ -10119,6 +10133,9 @@ DWORD Inject(BOOL bIsExplorer)
     GetWindowBand = GetProcAddress(hUser32, "GetWindowBand");
     SetWindowBand = GetProcAddress(hUser32, "SetWindowBand");
     SetWindowCompositionAttribute = GetProcAddress(hUser32, "SetWindowCompositionAttribute");
+    if (!IsWindows11BuildHigherThan25158()) {
+        VnPatchIAT(hUser32, "win32u.dll", "NtUserFindWindowEx", user32_NtUserFindWindowExHook);
+    }
     printf("Setup user32 functions done\n");
 
 
