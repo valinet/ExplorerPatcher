@@ -42,6 +42,12 @@ DEFINE_GUID(IID_IImmersiveLauncher10RS,
     0x32, 0x1f, 0xd1, 0xb4, 0x98, 0x64
 );
 
+DEFINE_GUID(IID_WindowsUdk_UI_Shell_ITaskbarSettings6,
+    0x5CBF9899,
+    0x3E66, 0x5556, 0xA1, 0x31,
+    0x1E, 0x3E, 0xE8, 0x14, 0x85, 0x90
+);
+
 typedef interface IImmersiveMonitorService IImmersiveMonitorService;
 
 typedef struct IImmersiveMonitorServiceVtbl

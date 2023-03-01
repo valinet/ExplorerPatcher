@@ -477,6 +477,73 @@ static ULONG STDMETHODCALLTYPE WindowsUdk_UI_Shell_ITaskbarSettings_AddRefReleas
     return 1;
 }
 
+static HRESULT STDMETHODCALLTYPE WindowsUdk_UI_Shell_ITaskbarSettings6_GetEffectiveSearchMode(
+    void* instanceof_WindowsUdk_UI_Shell_ITaskbarSettings6,
+    DWORD* pEffectiveSearchMode
+)
+{
+    *pEffectiveSearchMode = 1;
+    return 0;
+}
+
+static void* instanceof_WindowsUdk_UI_Shell_ITaskbarSettings6Vtbl[41] = { // : IInspectableVtbl
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_AddRefRelease,
+    WindowsUdk_UI_Shell_ITaskbarSettings_AddRefRelease,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings6_GetEffectiveSearchMode,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented
+};
+typedef struct instanceof_WindowsUdk_UI_Shell_ITaskbarSettings6 // : IInspectable
+{
+    void* lpVtbl;
+} WindowsUdk_UI_Shell_ITaskbarSettings6;
+static const WindowsUdk_UI_Shell_ITaskbarSettings6 instanceof_WindowsUdk_UI_Shell_ITaskbarSettings6 = { instanceof_WindowsUdk_UI_Shell_ITaskbarSettings6Vtbl };
+
+static HRESULT STDMETHODCALLTYPE WindowsUdk_UI_Shell_ITaskbarSettings_QueryInterface(void* instanceof_WindowsUdk_UI_Shell_ITaskbarSettings, REFIID riid, void** ppv)
+{
+    if (IsEqualIID(riid, &IID_WindowsUdk_UI_Shell_ITaskbarSettings6)) {
+        *ppv = &instanceof_WindowsUdk_UI_Shell_ITaskbarSettings6;
+        return S_OK;
+    }
+    return E_NOTIMPL;
+}
+
 static HRESULT STDMETHODCALLTYPE WindowsUdk_UI_Shell_ITaskbarSettings_GetAlignment_Left(
     void* instanceof_WindowsUdk_UI_Shell_ITaskbarSettings,
     DWORD* pAlignment
@@ -523,7 +590,7 @@ static HRESULT STDMETHODCALLTYPE WindowsUdk_UI_Shell_ITaskbarSettings_GetSearchM
 }
 
 static void* instanceof_WindowsUdk_UI_Shell_ITaskbarSettingsVtbl[41] = { // : IInspectableVtbl
-    WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
+    WindowsUdk_UI_Shell_ITaskbarSettings_QueryInterface,
     WindowsUdk_UI_Shell_ITaskbarSettings_AddRefRelease,
     WindowsUdk_UI_Shell_ITaskbarSettings_AddRefRelease,
     WindowsUdk_UI_Shell_ITaskbarSettings_NotImplemented,
