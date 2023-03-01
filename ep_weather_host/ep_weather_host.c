@@ -572,7 +572,7 @@ HRESULT STDMETHODCALLTYPE ICoreWebView2_NavigationCompleted(GenericObjectWithThi
         }
         else
         {
-            _epw_Weather_ExecuteDataScript(_this);
+            SetTimer(_this->hWnd, EP_WEATHER_TIMER_EXECUTEDATASCRIPT, EP_WEATHER_TIMER_EXECUTEDATASCRIPT_DELAY, NULL);
         }
     }
     else
@@ -1002,6 +1002,12 @@ LRESULT CALLBACK epw_Weather_WindowProc(_In_ HWND hWnd, _In_ UINT uMsg, _In_ WPA
         {
             _this->cntResizeWindow++;
         }
+        return 0;
+    }
+    else if (uMsg == WM_TIMER && wParam == EP_WEATHER_TIMER_EXECUTEDATASCRIPT)
+    {
+        _epw_Weather_ExecuteDataScript(_this);
+        KillTimer(_this->hWnd, EP_WEATHER_TIMER_EXECUTEDATASCRIPT);
         return 0;
     }
     else if (uMsg == EP_WEATHER_WM_REBOUND_BROWSER)
