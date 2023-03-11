@@ -2491,14 +2491,16 @@ INT64 Shell_TrayWndSubclassProc(
                 HWND hShellTray_Wnd = FindWindowExW(NULL, NULL, L"Shell_TrayWnd", NULL);
                 INT64* CTrayInstance = (BYTE*)(GetWindowLongPtrW(hShellTray_Wnd, 0)); // -> CTray
                 const unsigned int TRAYUI_OFFSET_IN_CTRAY = 110;
-                uintptr_t TrayUIInstance = *((INT64*)CTrayInstance + TRAYUI_OFFSET_IN_CTRAY) + 8;
+                uintptr_t TrayUIInstance = *((INT64*)CTrayInstance + TRAYUI_OFFSET_IN_CTRAY);
                 if (TrayUIInstance)
                 {
+                    TrayUIInstance += 8;
                     int offset = 656;
                     if (IsWindows11Version22H2OrHigher()) offset = 640;
-                    if ((*(unsigned __int8(__fastcall**)(INT64))(**(INT64**)(TrayUIInstance + offset) + 104i64))(*(INT64*)(TrayUIInstance + offset)))
+                    if (!**(INT64**)(TrayUIInstance + offset) 
+                        || (*(unsigned __int8(__fastcall**)(INT64))(**(INT64**)(TrayUIInstance + offset) + 104i64))(*(INT64*)(TrayUIInstance + offset)) )
                     {
-                        DeleteMenu(hSubMenu, 0x1A0u, 0);
+                        DeleteMenu(hSubMenu, 416, MF_BYCOMMAND); // Undo
                     }
                     else
                     {
