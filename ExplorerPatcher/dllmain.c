@@ -50,6 +50,7 @@ HANDLE hServiceWindowThread = NULL;
 RTL_OSVERSIONINFOW global_rovi;
 DWORD32 global_ubr;
 #endif
+#include <featurestagingapi.h>
 
 #define WINX_ADJUST_X 5
 #define WINX_ADJUST_Y 5
@@ -9583,6 +9584,29 @@ HWND user32_NtUserFindWindowExHook(HWND hWndParent, HWND hWndChildAfter, LPCWSTR
 #pragma endregion
 
 
+#pragma region "Infrastructure for reporting which OS features are enabled"
+#pragma pack(push, 1)
+struct RTL_FEATURE_CONFIGURATION {
+    unsigned int featureId;
+    unsigned __int32 group : 4;
+    unsigned __int32 enabledState : 2;
+    unsigned __int32 enabledStateOptions : 1;
+    unsigned __int32 unused1 : 1;
+    unsigned __int32 variant : 6;
+    unsigned __int32 variantPayloadKind : 2;
+    unsigned __int32 unused2 : 16;
+    unsigned int payload;
+};
+#pragma pack(pop)
+
+int (*RtlQueryFeatureConfigurationFunc)(UINT32 featureId, int sectionType, INT64* changeStamp, struct RTL_FEATURE_CONFIGURATION* buffer);
+int RtlQueryFeatureConfigurationHook(UINT32 featureId, int sectionType, INT64* changeStamp, struct RTL_FEATURE_CONFIGURATION* buffer) {
+    int rv = RtlQueryFeatureConfigurationFunc(featureId, sectionType, changeStamp, buffer);
+    return rv;
+}
+#pragma endregion
+
+
 DWORD InjectBasicFunctions(BOOL bIsExplorer, BOOL bInstall)
 {
     //Sleep(150);
@@ -10126,6 +10150,19 @@ DWORD Inject(BOOL bIsExplorer)
     {
         printf("Loaded symbols\n");
     }
+
+    RtlQueryFeatureConfigurationFunc = GetProcAddress(GetModuleHandleW(L"ntdll.dll"), "RtlQueryFeatureConfiguration");
+    rv = funchook_prepare(
+        funchook,
+        (void**)&RtlQueryFeatureConfigurationFunc,
+        RtlQueryFeatureConfigurationHook
+    );
+    if (rv != 0)
+    {
+        FreeLibraryAndExitThread(hModule, rv);
+        return FALSE;
+    }
+    printf("Setup ntdll functions done\n");
 
 
     HANDLE hUser32 = LoadLibraryW(L"user32.dll");
