@@ -9602,6 +9602,15 @@ struct RTL_FEATURE_CONFIGURATION {
 int (*RtlQueryFeatureConfigurationFunc)(UINT32 featureId, int sectionType, INT64* changeStamp, struct RTL_FEATURE_CONFIGURATION* buffer);
 int RtlQueryFeatureConfigurationHook(UINT32 featureId, int sectionType, INT64* changeStamp, struct RTL_FEATURE_CONFIGURATION* buffer) {
     int rv = RtlQueryFeatureConfigurationFunc(featureId, sectionType, changeStamp, buffer);
+    if (IsWindows11Version22H2Build1413OrHigher() && bOldTaskbar && featureId == 26008830) {
+        // Disable tablet optimized taskbar feature when using the Windows 10 taskbar
+        // 
+        // For now, this fixes Task View and Win-Tab, Alt-Tab breaking after pressing Win-Tab, 
+        // flyouts alignment, notification center alignment, Windows key shortcuts on
+        // OS builds 22621.1413+
+        //
+        buffer->enabledState = FEATURE_ENABLED_STATE_DISABLED;
+    }
     return rv;
 }
 #pragma endregion
