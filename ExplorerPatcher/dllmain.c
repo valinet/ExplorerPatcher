@@ -12249,6 +12249,7 @@ void InjectShellExperienceHostFor22H2OrHigher() {
 #endif
 }
 
+#ifdef _WIN64
 HRESULT InformUserAboutCrashCallback(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam, LONG_PTR lpRefData) {
     if (msg == TDN_HYPERLINK_CLICKED) {
         if (wcschr(lParam, L'\'')) {
@@ -12291,6 +12292,7 @@ HRESULT InformUserAboutCrashCallback(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
         return S_FALSE;
     }
     return S_OK;
+
 }
 
 DWORD InformUserAboutCrash(LPVOID msg) {
@@ -12332,6 +12334,7 @@ DWORD WINAPI ClearCrashCounter(INT64 timeout) {
     DWORD zero = 0;
     RegSetKeyValueW(HKEY_CURRENT_USER, _T(REGPATH), L"CrashCounter", REG_DWORD, &zero, sizeof(DWORD));
 }
+#endif
 
 #define DLL_INJECTION_METHOD_DXGI 0
 #define DLL_INJECTION_METHOD_COM 1
@@ -12421,6 +12424,7 @@ HRESULT EntryPoint(DWORD dwMethod)
     if (bIsThisExplorer)
     {
         BOOL desktopExists = IsDesktopWindowAlreadyPresent();
+#ifdef _WIN64
         if (!desktopExists) {
             DWORD crashCounterDisabled = 0, crashCounter = 0, crashThresholdTime = 10000, crashCounterThreshold = 3, dwTCSize = sizeof(DWORD);
             RegGetValueW(HKEY_CURRENT_USER, _T(REGPATH), L"CrashCounterDisabled", RRF_RT_DWORD, NULL, &crashCounterDisabled, &dwTCSize); dwTCSize = sizeof(DWORD);
@@ -12468,6 +12472,7 @@ HRESULT EntryPoint(DWORD dwMethod)
                 SHCreateThread(ClearCrashCounter, crashThresholdTime, 0, NULL);
             }
         }
+#endif
         Inject(!desktopExists);
         IncrementDLLReferenceCount(hModule);
         bInstanced = TRUE;
