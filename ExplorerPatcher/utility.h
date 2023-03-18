@@ -410,13 +410,45 @@ inline BOOL ExitExplorer()
     return PostMessageW(hWndTray, 0x5B4, 0, 0);
 }
 
-inline void StartExplorerWithDelay(int delay)
+inline void StartExplorerWithDelay(int delay, HANDLE userToken)
 {
     WCHAR wszPath[MAX_PATH];
     ZeroMemory(wszPath, MAX_PATH * sizeof(WCHAR));
     GetWindowsDirectoryW(wszPath, MAX_PATH);
     wcscat_s(wszPath, MAX_PATH, L"\\explorer.exe");
     Sleep(delay);
+    if (userToken != INVALID_HANDLE_VALUE)
+    {
+        HANDLE primaryUserToken = INVALID_HANDLE_VALUE;
+        if (ImpersonateLoggedOnUser(userToken))
+        {
+            DuplicateTokenEx(userToken, MAXIMUM_ALLOWED, NULL, SecurityImpersonation, TokenPrimary, &primaryUserToken);
+            RevertToSelf();
+        }
+        if (primaryUserToken != INVALID_HANDLE_VALUE)
+        {
+            PROCESS_INFORMATION processInfo;
+            ZeroMemory(&processInfo, sizeof(processInfo));
+            STARTUPINFOW startupInfo;
+            ZeroMemory(&startupInfo, sizeof(startupInfo));
+            startupInfo.cb = sizeof(startupInfo);
+            BOOL processCreated = CreateProcessWithTokenW(
+                primaryUserToken, LOGON_WITH_PROFILE, wszPath, NULL, 0, NULL, NULL, &startupInfo, &processInfo) != 0;
+            CloseHandle(primaryUserToken);
+            if (processInfo.hProcess != INVALID_HANDLE_VALUE)
+            {
+                CloseHandle(processInfo.hProcess);
+            }
+            if (processInfo.hThread != INVALID_HANDLE_VALUE)
+            {
+                CloseHandle(processInfo.hThread);
+            }
+            if (processCreated)
+            {
+                return;
+            }
+        }
+    }
     ShellExecuteW(
         NULL,
         L"open",

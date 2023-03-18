@@ -605,10 +605,62 @@ int WINAPI wWinMain(
     if (bOk || (!bOk && GetLastError() == ERROR_ALREADY_EXISTS))
     {
         bOk = TRUE;
+        HANDLE userToken = INVALID_HANDLE_VALUE;
 
         HWND hShellTrayWnd = FindWindowW(L"Shell_TrayWnd", NULL);
         if (hShellTrayWnd)
         {
+            DWORD explorerProcessId = 0;
+            GetWindowThreadProcessId(hShellTrayWnd, &explorerProcessId);
+            if (explorerProcessId != 0)
+            {
+                HANDLE explorerProcess = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, explorerProcessId);
+                if (explorerProcess != NULL) 
+                {
+                    OpenProcessToken(explorerProcess, TOKEN_QUERY | TOKEN_DUPLICATE | TOKEN_ASSIGN_PRIMARY, &userToken);
+                    CloseHandle(explorerProcess);
+                }
+                if (userToken) 
+                {
+                    HANDLE myToken = INVALID_HANDLE_VALUE;
+                    OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY | TOKEN_DUPLICATE | TOKEN_ASSIGN_PRIMARY, &myToken);
+                    if (myToken != INVALID_HANDLE_VALUE) 
+                    {
+                        DWORD cbSizeNeeded = 0;
+                        SetLastError(0);
+                        if (!GetTokenInformation(userToken, TokenUser, NULL, 0, &cbSizeNeeded) && GetLastError() == ERROR_INSUFFICIENT_BUFFER)
+                        {
+                            TOKEN_USER* userTokenInfo = malloc(cbSizeNeeded);
+                            if (userTokenInfo) 
+                            {
+                                if (GetTokenInformation(userToken, TokenUser, userTokenInfo, cbSizeNeeded, &cbSizeNeeded))
+                                {
+                                    cbSizeNeeded = 0;
+                                    SetLastError(0);
+                                    if (!GetTokenInformation(myToken, TokenUser, NULL, 0, &cbSizeNeeded) && GetLastError() == ERROR_INSUFFICIENT_BUFFER)
+                                    {
+                                        TOKEN_USER* myTokenInfo = malloc(cbSizeNeeded);
+                                        if (myTokenInfo)
+                                        {
+                                            if (GetTokenInformation(myToken, TokenUser, myTokenInfo, cbSizeNeeded, &cbSizeNeeded))
+                                            {
+                                                if (EqualSid(userTokenInfo->User.Sid, myTokenInfo->User.Sid))
+                                                {
+                                                    CloseHandle(userToken);
+                                                    userToken = INVALID_HANDLE_VALUE;
+                                                }
+                                            }
+                                            free(myTokenInfo);
+                                        }
+                                    }
+                                }
+                                free(userTokenInfo);
+                            }
+                        }
+                        CloseHandle(myToken);
+                    }
+                }
+            }
             PDWORD_PTR res = -1;
             if (!SendMessageTimeoutW(hShellTrayWnd, 1460, 0, 0, SMTO_ABORTIFHUNG, 2000, &res) && res)
             {
@@ -1187,7 +1239,8 @@ int WINAPI wWinMain(
             exit(0);
         }
 
-        StartExplorerWithDelay(1000);
+        StartExplorerWithDelay(1000, userToken);
+        if (userToken != INVALID_HANDLE_VALUE) CloseHandle(userToken);
     }
 
 	return GetLastError();
