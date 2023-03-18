@@ -572,8 +572,8 @@ HRESULT STDMETHODCALLTYPE ICoreWebView2_NavigationCompleted(GenericObjectWithThi
         }
         else
         {
-            _epw_Weather_ExecuteDataScript(_this);
-            //SetTimer(_this->hWnd, EP_WEATHER_TIMER_EXECUTEDATASCRIPT, EP_WEATHER_TIMER_EXECUTEDATASCRIPT_DELAY, NULL);
+            //_epw_Weather_ExecuteDataScript(_this);
+            SetTimer(_this->hWnd, EP_WEATHER_TIMER_EXECUTEDATASCRIPT, EP_WEATHER_TIMER_EXECUTEDATASCRIPT_DELAY, NULL);
         }
     }
     else
