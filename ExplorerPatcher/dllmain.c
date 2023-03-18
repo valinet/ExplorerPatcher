@@ -228,7 +228,7 @@ HRESULT WINAPI _DllGetClassObject(
 
 #pragma region "Updates"
 #ifdef _WIN64
-DWORD CheckForUpdatesThread(LPVOID unused)
+DWORD CheckForUpdatesThread(LPVOID timeout)
 {
     HRESULT hr = S_OK;
     HSTRING_HEADER header_AppIdHString;
@@ -252,7 +252,7 @@ DWORD CheckForUpdatesThread(LPVOID unused)
         );
         if (hShell_TrayWnd)
         {
-            Sleep(5000);
+            Sleep(timeout);
             break;
         }
         Sleep(100);
@@ -10783,7 +10783,7 @@ DWORD Inject(BOOL bIsExplorer)
 
 
 
-    CreateThread(NULL, 0, CheckForUpdatesThread, 0, 0, NULL);
+    CreateThread(NULL, 0, CheckForUpdatesThread, 5000, 0, NULL);
 
 
 
@@ -12249,6 +12249,90 @@ void InjectShellExperienceHostFor22H2OrHigher() {
 #endif
 }
 
+HRESULT InformUserAboutCrashCallback(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam, LONG_PTR lpRefData) {
+    if (msg == TDN_HYPERLINK_CLICKED) {
+        if (wcschr(lParam, L'\'')) {
+            for (int i = 0; i < wcslen(lParam); ++i) if (*(((wchar_t*)lParam) + i) == L'\'') *(((wchar_t*)lParam) + i) = L'"';
+            STARTUPINFO si;
+            PROCESS_INFORMATION pi;
+            ZeroMemory(&si, sizeof(si));
+            si.cb = sizeof(si);
+            ZeroMemory(&pi, sizeof(pi));
+            if (CreateProcessW(NULL, lParam, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
+                CloseHandle(pi.hProcess);
+                CloseHandle(pi.hThread);
+            }            
+            for (int i = 0; i < wcslen(lParam); ++i) if (*(((wchar_t*)lParam) + i) == L'"') *(((wchar_t*)lParam) + i) = L'\'';
+        }
+        else if (!wcsncmp(lParam, L"eplink://update", 15)) {
+            if (!wcsncmp(lParam, L"eplink://update/stable", 22)) {
+                DWORD no = 0;
+                RegSetKeyValueW(HKEY_CURRENT_USER, _T(REGPATH), L"UpdatePreferStaging", REG_DWORD, &no, sizeof(DWORD));
+            } else if (!wcsncmp(lParam, L"eplink://update/staging", 23)) {
+                DWORD yes = 1;
+                RegSetKeyValueW(HKEY_CURRENT_USER, _T(REGPATH), L"UpdatePreferStaging", REG_DWORD, &yes, sizeof(DWORD));
+            }
+            SetLastError(0);
+            HANDLE sigInstallUpdates = CreateEventW(NULL, FALSE, FALSE, L"EP_Ev_InstallUpdates_" _T(EP_CLSID));
+            if (sigInstallUpdates && GetLastError() == ERROR_ALREADY_EXISTS) {
+                SetEvent(sigInstallUpdates);
+            }
+            else {
+                CreateThread(NULL, 0, CheckForUpdatesThread, 0, 0, NULL);
+                Sleep(100);
+                SetLastError(0);
+                sigInstallUpdates = CreateEventW(NULL, FALSE, FALSE, L"EP_Ev_InstallUpdates_" _T(EP_CLSID));
+                if (sigInstallUpdates && GetLastError() == ERROR_ALREADY_EXISTS) {
+                    SetEvent(sigInstallUpdates);
+                }
+            }
+        }
+        else ShellExecuteW(NULL, L"open", lParam, L"", NULL, SW_SHOWNORMAL);
+        return S_FALSE;
+    }
+    return S_OK;
+}
+
+DWORD InformUserAboutCrash(LPVOID msg) {
+    TASKDIALOG_BUTTON buttons[1];
+    buttons[0].nButtonID = IDNO;
+    buttons[0].pszButtonText = L"Dismiss";
+
+    TASKDIALOGCONFIG td;
+    ZeroMemory(&td, sizeof(TASKDIALOGCONFIG));
+    td.cbSize = sizeof(TASKDIALOGCONFIG);
+    td.hInstance = hModule;
+    td.hwndParent = NULL;
+    td.dwFlags = TDF_SIZE_TO_CONTENT | TDF_ENABLE_HYPERLINKS;
+    td.pszWindowTitle = L"ExplorerPatcher";
+    td.pszMainInstruction = L"Unfortunately, File Explorer is crashing :(";
+    td.pszContent = msg;
+    td.cButtons = sizeof buttons / sizeof buttons[0];
+    td.pButtons = buttons;
+    td.cRadioButtons = 0;
+    td.pRadioButtons = NULL;
+    td.cxWidth = 0;
+    td.pfCallback = InformUserAboutCrashCallback;
+
+    HMODULE hComCtl32 = NULL;
+    HRESULT(*pfTaskDialogIndirect)(const TASKDIALOGCONFIG*, int*, int*, BOOL*) = NULL;
+    int res = td.nDefaultButton;
+    if (!(hComCtl32 = GetModuleHandleA("Comctl32.dll")) || 
+        !(pfTaskDialogIndirect = GetProcAddress(hComCtl32, "TaskDialogIndirect")) ||
+        FAILED(pfTaskDialogIndirect(&td, &res, NULL, NULL))) {
+        wcscat_s(msg, 10000, L" Would you like to open the ExplorerPatcher status web page on GitHub in your default browser?");
+        res = MessageBoxW(NULL, msg, L"ExplorerPatcher", MB_ICONASTERISK | MB_YESNO);
+    }
+    if (res == IDYES) ShellExecuteW(NULL, L"open", L"https://github.com/valinet/ExplorerPatcher/discussions/1102", L"", NULL, SW_SHOWNORMAL);
+    free(msg);
+}
+
+DWORD WINAPI ClearCrashCounter(INT64 timeout) {
+    Sleep(timeout);
+    DWORD zero = 0;
+    RegSetKeyValueW(HKEY_CURRENT_USER, _T(REGPATH), L"CrashCounter", REG_DWORD, &zero, sizeof(DWORD));
+}
+
 #define DLL_INJECTION_METHOD_DXGI 0
 #define DLL_INJECTION_METHOD_COM 1
 #define DLL_INJECTION_METHOD_START_INJECTION 2
@@ -12336,7 +12420,55 @@ HRESULT EntryPoint(DWORD dwMethod)
     bIsExplorerProcess = bIsThisExplorer;
     if (bIsThisExplorer)
     {
-        Inject(!IsDesktopWindowAlreadyPresent());
+        BOOL desktopExists = IsDesktopWindowAlreadyPresent();
+        if (!desktopExists) {
+            DWORD crashCounterDisabled = 0, crashCounter = 0, crashThresholdTime = 10000, crashCounterThreshold = 3, dwTCSize = sizeof(DWORD);
+            RegGetValueW(HKEY_CURRENT_USER, _T(REGPATH), L"CrashCounterDisabled", RRF_RT_DWORD, NULL, &crashCounterDisabled, &dwTCSize); dwTCSize = sizeof(DWORD);
+            if (crashCounterDisabled != 0 && crashCounterDisabled != 1) crashCounterDisabled = 0;
+            RegGetValueW(HKEY_CURRENT_USER, _T(REGPATH), L"CrashCounter", RRF_RT_DWORD, NULL, &crashCounter, &dwTCSize); dwTCSize = sizeof(DWORD);
+            if (crashCounter < 0) crashCounter = 0;
+            RegGetValueW(HKEY_CURRENT_USER, _T(REGPATH), L"CrashThresholdTime", RRF_RT_DWORD, NULL, &crashThresholdTime, &dwTCSize); dwTCSize = sizeof(DWORD);
+            if (crashThresholdTime < 100 || crashThresholdTime > 60000) crashThresholdTime = 10000;
+            RegGetValueW(HKEY_CURRENT_USER, _T(REGPATH), L"CrashCounterThreshold", RRF_RT_DWORD, NULL, &crashCounterThreshold, &dwTCSize); dwTCSize = sizeof(DWORD);
+            if (crashCounterThreshold <= 1 || crashCounterThreshold >= 10) crashCounterThreshold = 3;
+            if (!crashCounterDisabled) {
+                if (crashCounter >= crashCounterThreshold) {
+                    crashCounter = 0;
+                    RegSetKeyValueW(HKEY_CURRENT_USER, _T(REGPATH), L"CrashCounter", REG_DWORD, &crashCounter, sizeof(DWORD));
+                    wchar_t times[100];
+                    ZeroMemory(times, sizeof(wchar_t) * 100);
+                    swprintf_s(times, 100, crashCounterThreshold == 1 ? L"once" : L"%d times", crashCounterThreshold);
+                    wchar_t uninstallLink[MAX_PATH];
+                    ZeroMemory(uninstallLink, sizeof(wchar_t) * MAX_PATH);
+                    uninstallLink[0] = L'\'';
+                    SHGetFolderPathW(NULL, SPECIAL_FOLDER, NULL, SHGFP_TYPE_CURRENT, uninstallLink + 1);
+                    wcscat_s(uninstallLink, MAX_PATH, _T(APP_RELATIVE_PATH) L"\\" _T(SETUP_UTILITY_NAME) L"' /uninstall");
+                    wchar_t* msg = calloc(sizeof(wchar_t), 10000);
+                    swprintf_s(msg, 10000,
+                        L"It seems that File Explorer closed unexpectedly %s in less than %d seconds each time when starting up. "
+                        L"This might indicate a problem caused by ExplorerPatcher, which might be unaware of recent changes in Windows, for example "
+                        L"when running on a new OS build.\n"
+                        L"Here are a few recommendations:\n"
+                        L"\u2022 If an updated version is available, you can <A HREF=\"eplink://update\">update ExplorerPatcher and restart File Explorer</A>.\n"
+                        L"\u2022 On GitHub, you can <A HREF=\"https://github.com/valinet/ExplorerPatcher/releases\">view releases</A>, <A HREF=\"https://github.com/valinet/ExplorerPatcher/discussions/1102\">check the current status</A>, <A HREF=\"https://github.com/valinet/ExplorerPatcher/discussions\">discuss</A> or <A HREF=\"https://github.com/valinet/ExplorerPatcher/issues\">review the latest issues</A>.\n"
+                        L"\u2022 If you suspect this is not caused by ExplorerPatcher, please uninstall any recently installed shell extensions or similar utilities.\n"
+                        L"\u2022 If no fix is available for the time being, you can <A HREF=\"%s\">uninstall ExplorerPatcher</A>, and then later reinstall it when a fix is published on "
+                        L"GitHub. Rest assured, even if you uninstall, your program configuration will be preserved.\n"
+                        L"\n"
+                        L"I am sorry for the inconvenience this might cause; I am doing my best to try to keep this program updated and working.\n\n"
+                        L"ExplorerPatcher is disabled until the next File Explorer restart, in order to allow you to perform maintenance tasks and take the necessary actions.",
+                        times, crashThresholdTime / 1000, uninstallLink);
+                    SHCreateThread(InformUserAboutCrash, msg, 0, NULL);
+                    IncrementDLLReferenceCount(hModule);
+                    bInstanced = TRUE;
+                    return E_NOINTERFACE;
+                }
+                crashCounter++;
+                RegSetKeyValueW(HKEY_CURRENT_USER, _T(REGPATH), L"CrashCounter", REG_DWORD, &crashCounter, sizeof(DWORD));
+                SHCreateThread(ClearCrashCounter, crashThresholdTime, 0, NULL);
+            }
+        }
+        Inject(!desktopExists);
         IncrementDLLReferenceCount(hModule);
         bInstanced = TRUE;
     }
