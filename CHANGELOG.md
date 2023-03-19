@@ -12,10 +12,18 @@ Please make sure you are connected to the Internet while installing, the applica
 
 ##### 1
 
-* Windows 10 taskbar: Fixed a bug that made the following functionalities have issues or stop working: Task View button, `Win-Tab`, `Alt-Tab` after pressing `Win-Tab`, flyouts alignment, notification center alignment, `Win` key shortcuts (thanks @CthRio for the heads up). (0ad140c)
+* Windows 10 taskbar: Fixed a bug that made the following functionalities have issues or stop working: Task View button, `Win-Tab`, `Alt-Tab` after pressing `Win-Tab`, flyouts alignment, notification center alignment, `Win` key shortcuts on OS build 22621.1413+ (thanks @CthRio for the heads up). (0ad140c)
 * Setup: Fixed a bug that prevented File Explorer from starting automatically after servicing the application if the installer run using different credentials than the logged on user (thanks @Abestanis). (1738b45)
 * Weather: Fixed widget icons when using Microsoft icon pack. (2a1aad2)
 * Implemented a mechanism to stop repeated crashes. (d7e5b7d)
+
+##### 2
+
+* Weather: Fixed a bug that prevented the widget from displaying correctly. (a5e5287)
+
+##### 3
+
+* Windows 11 Start menu: Better enforcement for disabling the "Recommended" section. (27a8fd9)
 
 ## 22621.1344.53
 
