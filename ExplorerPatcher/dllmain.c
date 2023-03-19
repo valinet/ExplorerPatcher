@@ -11446,7 +11446,7 @@ int Start_SetWindowRgn(HWND hWnd, HRGN hRgn, BOOL bRedraw)
             else
             {
                 LVT_StartDocked_DisableRecommendedSection(hWnd, StartDocked_DisableRecommendedSection, &rc);
-                StartDocked_DisableRecommendedSectionApply = FALSE;
+                //StartDocked_DisableRecommendedSectionApply = FALSE;
             }
             if (hWndTaskbar)
             {
