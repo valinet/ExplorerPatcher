@@ -29,6 +29,10 @@ Please make sure you are connected to the Internet while installing, the applica
 
 * Windows 11 Start menu: Fixed a bug that prevented the menu from working when the setting "Disable Recommended section" is used and the display scaling is 125%. (5649a83)
 
+##### 5
+
+* Fixed a bug that could crash File Explorer on older OS builds, like 17763 (LTSC 2019). (6bc2ea5)
+
 ## 22621.1344.53
 
 Tested on OS builds 22621.1344, 22000.1574, and 19044.1466.
