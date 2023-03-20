@@ -573,9 +573,9 @@ void LVT_StartDocked_120DPIHack(int maxHeight)
                         pStartSizingFrame->lpVtbl->QueryInterface(pStartSizingFrame, &IID_Windows_UI_Xaml_IFrameworkElement, &pFrameworkElement);
                         if (pFrameworkElement)
                         {
-                            pIUIElement->lpVtbl->put_Visibility(pIUIElement, Windows_UI_Xaml_Visibility_Collapsed);
+                            if (!IsWindows11Version22H2Build1413OrHigher()) pIUIElement->lpVtbl->put_Visibility(pIUIElement, Windows_UI_Xaml_Visibility_Collapsed);
                             pFrameworkElement->lpVtbl->put_MaxHeight(pFrameworkElement, maxHeight);
-                            pIUIElement->lpVtbl->put_Visibility(pIUIElement, Windows_UI_Xaml_Visibility_Visible);
+                            if (!IsWindows11Version22H2Build1413OrHigher()) pIUIElement->lpVtbl->put_Visibility(pIUIElement, Windows_UI_Xaml_Visibility_Visible);
                             pFrameworkElement->lpVtbl->Release(pFrameworkElement);
                         }
                         pIUIElement->lpVtbl->Release(pIUIElement);
