@@ -10161,15 +10161,17 @@ DWORD Inject(BOOL bIsExplorer)
     }
 
     RtlQueryFeatureConfigurationFunc = GetProcAddress(GetModuleHandleW(L"ntdll.dll"), "RtlQueryFeatureConfiguration");
-    rv = funchook_prepare(
-        funchook,
-        (void**)&RtlQueryFeatureConfigurationFunc,
-        RtlQueryFeatureConfigurationHook
-    );
-    if (rv != 0)
-    {
-        FreeLibraryAndExitThread(hModule, rv);
-        return FALSE;
+    if (RtlQueryFeatureConfigurationFunc) {
+        rv = funchook_prepare(
+            funchook,
+            (void**)&RtlQueryFeatureConfigurationFunc,
+            RtlQueryFeatureConfigurationHook
+        );
+        if (rv != 0)
+        {
+            FreeLibraryAndExitThread(hModule, rv);
+            return FALSE;
+        }
     }
     printf("Setup ntdll functions done\n");
 
