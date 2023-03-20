@@ -25,6 +25,10 @@ Please make sure you are connected to the Internet while installing, the applica
 
 * Windows 11 Start menu: Better enforcement for disabling the "Recommended" section. (27a8fd9)
 
+##### 4
+
+* Windows 11 Start menu: Fixed a bug that prevented the menu from working when the setting "Disable Recommended section" is used and the display scaling is 125%. (5649a83)
+
 ## 22621.1344.53
 
 Tested on OS builds 22621.1344, 22000.1574, and 19044.1466.
