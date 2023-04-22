@@ -2,6 +2,16 @@
 
 This document includes the same release notes as in the [Releases](https://github.com/valinet/ExplorerPatcher/releases) section on GitHub.
 
+## 22621.1555.55
+
+Tested on OS build 22621.1555. Installer requires Internet connectivity.
+
+#### Details
+
+##### 1
+
+* Weather: Fixed a bug that prevented the widget from loading when using the Microsoft icon pack. (968d969)
+
 ## 22621.1413.54
 
 Tested on OS build 22621.1413.
