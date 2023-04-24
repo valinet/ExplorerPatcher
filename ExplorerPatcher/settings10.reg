@@ -255,13 +255,13 @@
 "AltTabSettings"=dword:00000000
 ;t The following settings only apply to the Simple Window Switcher:
 [HKEY_CURRENT_USER\Software\ExplorerPatcher\sws]
-;b Include desktop
+;b Show the desktop as the last window in the interaction list
 "IncludeWallpaper"=dword:00000001
-;b Always show on primary monitor
+;b Always display switcher on primary monitor
 "PrimaryOnly"=dword:00000000
-;b Show windows only from current monitor
+;b Display windows only from the monitor containing the cursor
 "PerMonitor"=dword:00000000
-;b Display only the most recent window (per application switcher)
+;b Group windows of the same app
 "SwitcherIsPerApplication"=dword:00000000
 ;b %PLACEHOLDER_0001%
 "NoPerApplicationList"=dword:00000000

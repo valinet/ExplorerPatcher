@@ -12,6 +12,17 @@ Tested on OS build 22621.1555. Installer requires Internet connectivity.
 
 * Weather: Fixed a bug that prevented the widget from loading when using the Microsoft icon pack. (968d969)
 
+##### 2
+
+* Simple Window Switcher
+	* Support for individual list and grouping for UWP apps (implemented grouping and naming enhancements based on using information associated with `AppUserModelID`s)
+	* Ability to switch between global and local window lists when the switcher is shown.
+	* Maintain position in the list when certain events occur, like closing windows or switching between the global and local window lists.
+	* `Del` key closes the currently selected window(s).
+	* Fixed a bug that prevented newly spawned windows while the switcher is open from going to the back of the list.
+	* Fixed a bug that prevented window lists from building properly when windows were slow to close.
+	* Fixed a bug that prevented proper activation of pop-up windows under certain conditions. For example, the switcher is now able to correctly switch to the "Error Checking" window in This PC - right click C: - Properties - Tools - Error checking - Check.
+
 ## 22621.1413.54
 
 Tested on OS build 22621.1413.

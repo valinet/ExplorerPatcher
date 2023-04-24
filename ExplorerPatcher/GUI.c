@@ -3143,7 +3143,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                 1,
                                 0
                             );
-                            swprintf(text + 3, MAX_LINE_LENGTH, L"Disable per-application window list ( Alt + %c )", key);
+                            swprintf(text + 3, MAX_LINE_LENGTH, L"Disable the interaction list for individual apps ( Alt + %c )", key);
                         }
                         if (tabOrder == _this->tabOrder)
                         {
