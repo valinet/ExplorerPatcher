@@ -2,6 +2,16 @@
 
 This document includes the same release notes as in the [Releases](https://github.com/valinet/ExplorerPatcher/releases) section on GitHub.
 
+## 22621.1992.56
+
+Tested on OS build 22621.1992. Installer requires Internet connectivity.
+
+#### Details
+
+##### 1
+
+* Windows 10 Start menu: Fixed a bug that prevented the menu from working on OS builds 22621.1413 and newer (46c5041). Please read these important notes regarding the fix [here](https://github.com/valinet/ExplorerPatcher/discussions/1679).
+
 ## 22621.1555.55
 
 Tested on OS build 22621.1555. Installer requires Internet connectivity.
