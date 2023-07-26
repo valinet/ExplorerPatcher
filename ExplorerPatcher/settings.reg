@@ -328,6 +328,8 @@
 ;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_NoStartMenuMorePrograms"=dword:00000000
 ;u Pin tiles to Windows 10 Start menu from File Explorer
 ;pin_tiles
+;y IMPORTANT, MUST READ: Notice regarding this feature (online)
+;https://github.com/valinet/ExplorerPatcher/discussions/1679
 ;g StartMenu_Windows10
 
 
