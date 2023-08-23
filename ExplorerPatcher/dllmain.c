@@ -11041,7 +11041,8 @@ void StartMenu_LoadSettings(BOOL bRestartIfChanged)
     if (hKey)
     {
         dwSize = sizeof(DWORD);
-        dwVal = 0;
+        if (IsWindows11()) dwVal = 0;
+        else dwVal = 1;
         RegQueryValueExW(
             hKey,
             TEXT("Start_ShowClassicMode"),
