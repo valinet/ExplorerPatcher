@@ -16,6 +16,10 @@ Tested on OS build 22621.1992. Installer requires Internet connectivity.
 
 * Windows 10 Start menu: Fixed a bug that prevented centering on Windows 10 (275a91f).
 
+##### 3
+
+* Windows 10 taskbar: Correct centering of taskbar items when search box is enabled in Windows 10 (2e43c67).
+
 ## 22621.1555.55
 
 Tested on OS build 22621.1555. Installer requires Internet connectivity.
