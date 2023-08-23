@@ -6,6 +6,7 @@ extern HWND PeopleButton_LastHWND;
 extern DWORD dwWeatherToLeft;
 extern DWORD dwOldTaskbarAl;
 extern DWORD dwMMOldTaskbarAl;
+extern DWORD dwSearchboxTaskbarMode;
 extern wchar_t* EP_TASKBAR_LENGTH_PROP_NAME;
 #define EP_TASKBAR_LENGTH_TOO_SMALL 20
 BOOL bTaskbarCenterHasPatchedSHWindowsPolicy = FALSE;
@@ -144,9 +145,11 @@ BOOL TaskbarCenter_GetClientRectHook(HWND hWnd, LPRECT lpRect)
 			{
 				GetClientRect(hWndStart, &rcStart);
 				HWND hTrayButton = NULL;
-				while (hTrayButton = FindWindowExW(hWndTaskbar, hTrayButton, L"TrayButton", NULL))
+				wchar_t* pCn = L"TrayButton";
+				if (!IsWindows11() && dwSearchboxTaskbarMode == 2) pCn = L"TrayDummySearchControl";
+				while (hTrayButton = FindWindowExW(hWndTaskbar, hTrayButton, pCn, NULL))
 				{
-					if (!IsWindowVisible(hTrayButton)) continue;
+					if (pCn == L"TrayButton" && !IsWindowVisible(hTrayButton)) continue;
 					RECT rcTrayButton;
 					GetClientRect(hTrayButton, &rcTrayButton);
 					if (bIsTaskbarHorizontal)
@@ -156,6 +159,10 @@ BOOL TaskbarCenter_GetClientRectHook(HWND hWnd, LPRECT lpRect)
 					else
 					{
 						rcStart.bottom += (rcTrayButton.bottom - rcTrayButton.top);
+					}
+					if (pCn == L"TrayDummySearchControl") {
+						pCn = L"TrayButton";
+						hTrayButton = NULL;
 					}
 				}
 			}
@@ -180,13 +187,19 @@ BOOL TaskbarCenter_GetClientRectHook(HWND hWnd, LPRECT lpRect)
 							GetClientRect(hWndStart, &rcTrayButton);
 							DWORD dwDim = (rcTrayButton.right - rcTrayButton.left);
 							HWND hTrayButton = NULL;
-							while (hTrayButton = FindWindowExW(hWndTaskbar, hTrayButton, L"TrayButton", NULL))
+							wchar_t* pCn = L"TrayButton";
+							if (!IsWindows11() && dwSearchboxTaskbarMode == 2) pCn = L"TrayDummySearchControl";
+							while (hTrayButton = FindWindowExW(hWndTaskbar, hTrayButton, pCn, NULL))
 							{
-								if (!IsWindowVisible(hTrayButton)) continue;
+								if (pCn == L"TrayButton" && !IsWindowVisible(hTrayButton)) continue;
 								GetClientRect(hTrayButton, &rcTrayButton);
 								MoveWindow(hTrayButton, ((mi.rcMonitor.right - mi.rcMonitor.left) - (rcStart.right - rcStart.left)) / 2 + dwDim, rcStart.top, rcTrayButton.right, rcTrayButton.bottom, TRUE);
 								if (!bIsPrimaryTaskbar) InvalidateRect(hTrayButton, NULL, TRUE);
 								dwDim += (rcTrayButton.right - rcTrayButton.left);
+								if (pCn == L"TrayDummySearchControl") {
+									pCn = L"TrayButton";
+									hTrayButton = NULL;
+								}
 							}
 						}
 						else
@@ -196,13 +209,19 @@ BOOL TaskbarCenter_GetClientRectHook(HWND hWnd, LPRECT lpRect)
 							GetClientRect(hWndStart, &rcTrayButton);
 							DWORD dwDim = (rcTrayButton.bottom - rcTrayButton.top);
 							HWND hTrayButton = NULL;
-							while (hTrayButton = FindWindowExW(hWndTaskbar, hTrayButton, L"TrayButton", NULL))
+							wchar_t* pCn = L"TrayButton";
+							if (!IsWindows11() && dwSearchboxTaskbarMode == 2) pCn = L"TrayDummySearchControl";
+							while (hTrayButton = FindWindowExW(hWndTaskbar, hTrayButton, pCn, NULL))
 							{
-								if (!IsWindowVisible(hTrayButton)) continue;
+								if (pCn == L"TrayButton" && !IsWindowVisible(hTrayButton)) continue;
 								GetClientRect(hTrayButton, &rcTrayButton);
 								MoveWindow(hTrayButton, rcStart.left, ((mi.rcMonitor.bottom - mi.rcMonitor.top) - (rcStart.bottom - rcStart.top)) / 2 + dwDim, rcTrayButton.right, rcTrayButton.bottom, TRUE);
 								InvalidateRect(hTrayButton, NULL, TRUE);
 								dwDim += (rcTrayButton.bottom - rcTrayButton.top);
+								if (pCn == L"TrayDummySearchControl") {
+									pCn = L"TrayButton";
+									hTrayButton = NULL;
+								}
 							}
 						}
 						if (!bIsPrimaryTaskbar) InvalidateRect(hWndStart, NULL, TRUE);
@@ -310,13 +329,19 @@ BOOL TaskbarCenter_GetClientRectHook(HWND hWnd, LPRECT lpRect)
 							GetClientRect(hWndStart, &rcTrayButton);
 							DWORD dwDim = (rcTrayButton.right - rcTrayButton.left);
 							HWND hTrayButton = NULL;
-							while (hTrayButton = FindWindowExW(hWndTaskbar, hTrayButton, L"TrayButton", NULL))
+							wchar_t* pCn = L"TrayButton";
+							if (!IsWindows11() && dwSearchboxTaskbarMode == 2) pCn = L"TrayDummySearchControl";
+							while (hTrayButton = FindWindowExW(hWndTaskbar, hTrayButton, pCn, NULL))
 							{
-								if (!IsWindowVisible(hTrayButton)) continue;
+								if (pCn == L"TrayButton" && !IsWindowVisible(hTrayButton)) continue;
 								GetClientRect(hTrayButton, &rcTrayButton);
 								MoveWindow(hTrayButton, (rc.left - mi.rcMonitor.left) + lpRect->left - (rcStart.right - rcStart.left) + dwDim, rcStart.top, rcTrayButton.right, rcTrayButton.bottom, TRUE);
 								if (!bIsPrimaryTaskbar) InvalidateRect(hTrayButton, NULL, TRUE);
 								dwDim += (rcTrayButton.right - rcTrayButton.left);
+								if (pCn == L"TrayDummySearchControl") {
+									pCn = L"TrayButton";
+									hTrayButton = NULL;
+								}
 							}
 						}
 						else
@@ -326,13 +351,19 @@ BOOL TaskbarCenter_GetClientRectHook(HWND hWnd, LPRECT lpRect)
 							GetClientRect(hWndStart, &rcTrayButton);
 							DWORD dwDim = (rcTrayButton.bottom - rcTrayButton.top);
 							HWND hTrayButton = NULL;
-							while (hTrayButton = FindWindowExW(hWndTaskbar, hTrayButton, L"TrayButton", NULL))
+							wchar_t* pCn = L"TrayButton";
+							if (!IsWindows11() && dwSearchboxTaskbarMode == 2) pCn = L"TrayDummySearchControl";
+							while (hTrayButton = FindWindowExW(hWndTaskbar, hTrayButton, pCn, NULL))
 							{
-								if (!IsWindowVisible(hTrayButton)) continue;
+								if (pCn == L"TrayButton" && !IsWindowVisible(hTrayButton)) continue;
 								GetClientRect(hTrayButton, &rcTrayButton);
 								MoveWindow(hTrayButton, rcStart.left, (rc.top - mi.rcMonitor.top) + lpRect->top - (rcStart.bottom - rcStart.top) + dwDim, rcTrayButton.right, rcTrayButton.bottom, TRUE);
 								InvalidateRect(hTrayButton, NULL, TRUE);
 								dwDim += (rcTrayButton.bottom - rcTrayButton.top);
+								if (pCn == L"TrayDummySearchControl") {
+									pCn = L"TrayButton";
+									hTrayButton = NULL;
+								}
 							}
 						}
 						if (!bIsPrimaryTaskbar) InvalidateRect(hWndStart, NULL, TRUE);
@@ -442,9 +473,11 @@ BOOL TaskbarCenter_GetClientRectHook(HWND hWnd, LPRECT lpRect)
 				GetClientRect(hWndStart, &rcTrayButton);
 				DWORD dwDim = bIsTaskbarHorizontal ? (rcTrayButton.right - rcTrayButton.left) : (rcTrayButton.bottom - rcTrayButton.top);
 				HWND hTrayButton = NULL;
-				while (hTrayButton = FindWindowExW(hWndTaskbar, hTrayButton, L"TrayButton", NULL))
+				wchar_t* pCn = L"TrayButton";
+				if (!IsWindows11() && dwSearchboxTaskbarMode == 2) pCn = L"TrayDummySearchControl";
+				while (hTrayButton = FindWindowExW(hWndTaskbar, hTrayButton, pCn, NULL))
 				{
-					if (!IsWindowVisible(hTrayButton)) continue;
+					if (pCn == L"TrayButton" && !IsWindowVisible(hTrayButton)) continue;
 					GetClientRect(hTrayButton, &rcTrayButton);
 					if (bIsTaskbarHorizontal)
 					{
@@ -456,6 +489,10 @@ BOOL TaskbarCenter_GetClientRectHook(HWND hWnd, LPRECT lpRect)
 					}
 					if (!bIsPrimaryTaskbar || !bIsTaskbarHorizontal) InvalidateRect(hTrayButton, NULL, TRUE);
 					dwDim += bIsTaskbarHorizontal ? (rcTrayButton.right - rcTrayButton.left) : (rcTrayButton.bottom - rcTrayButton.top);
+					if (pCn == L"TrayDummySearchControl") {
+						pCn = L"TrayButton";
+						hTrayButton = NULL;
+					}
 				}
 			}
 		}
