@@ -625,4 +625,30 @@ typedef struct _MonitorOverrideData
 } MonitorOverrideData;
 
 BOOL ExtractMonitorByIndex(HMONITOR hMonitor, HDC hDC, LPRECT lpRect, MonitorOverrideData* mod);
+
+inline BOOL MaskCompare(PVOID pBuffer, LPCSTR lpPattern, LPCSTR lpMask)
+{
+    for (PBYTE value = pBuffer; *lpMask; ++lpPattern, ++lpMask, ++value)
+    {
+        if (*lpMask == 'x' && *(LPCBYTE)lpPattern != *value)
+            return FALSE;
+    }
+
+    return TRUE;
+}
+
+inline PVOID FindPattern(PVOID pBase, SIZE_T dwSize, LPCSTR lpPattern, LPCSTR lpMask)
+{
+    dwSize -= strlen(lpMask);
+
+    for (SIZE_T index = 0; index < dwSize; ++index)
+    {
+        PBYTE pAddress = (PBYTE)pBase + index;
+
+        if (MaskCompare(pAddress, lpPattern, lpMask))
+            return pAddress;
+    }
+
+    return NULL;
+}
 #endif

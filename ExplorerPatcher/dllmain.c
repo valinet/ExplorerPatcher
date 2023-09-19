@@ -9209,7 +9209,7 @@ BOOL explorer_SetRect(LPRECT lprc, int xLeft, int yTop, int xRight, int yBottom)
 const UINT office_hotkeys[10] = { 0x57, 0x54, 0x59, 0x4F, 0x50, 0x44, 0x4C, 0x58, 0x4E, 0x20 };
 BOOL explorer_RegisterHotkeyHook(HWND hWnd, int id, UINT fsModifiers, UINT vk)
 {
-    if (fsModifiers == (MOD_ALT | MOD_CONTROL | MOD_SHIFT | MOD_WIN | MOD_NOREPEAT) && (
+    if (bDisableOfficeHotkeys && fsModifiers == (MOD_ALT | MOD_CONTROL | MOD_SHIFT | MOD_WIN | MOD_NOREPEAT) && (
         vk == office_hotkeys[0] ||
         vk == office_hotkeys[1] ||
         vk == office_hotkeys[2] ||
@@ -9224,6 +9224,21 @@ BOOL explorer_RegisterHotkeyHook(HWND hWnd, int id, UINT fsModifiers, UINT vk)
     {
         SetLastError(ERROR_HOTKEY_ALREADY_REGISTERED);
         return FALSE;
+    }
+    static BOOL bWinBHotkeyRegistered = FALSE;
+    if (!bWinBHotkeyRegistered && fsModifiers == (MOD_WIN | MOD_NOREPEAT) && vk == 'D') // right after Win+D
+    {
+#if 0
+        BOOL bMoment2PatchesEligible = IsWindows11Version22H2Build1413OrHigher();
+#else
+        BOOL bMoment2PatchesEligible = IsWindows11Version22H2Build2134OrHigher();
+#endif
+        if (bMoment2PatchesEligible && global_rovi.dwBuildNumber == 22621 && bOldTaskbar)
+        {
+            RegisterHotKey(hWnd, 514, MOD_WIN | MOD_NOREPEAT, 'B');
+            printf("Registered Win+B\n");
+        }
+        bWinBHotkeyRegistered = TRUE;
     }
     return RegisterHotKey(hWnd, id, fsModifiers, vk);
 }
@@ -9831,6 +9846,276 @@ INT64 twinui_pcshell_CMultitaskingViewManager__CreateXamlMTVHostHook(INT64 a1, u
     return twinui_pcshell_CMultitaskingViewManager__CreateXamlMTVHostFunc(a1, a2, a3, a4, a5);
 }
 
+BOOL Moment2PatchActionCenter(LPMODULEINFO mi)
+{
+    /***
+    Step 1:
+    Scan within the DLL.
+    ```0F 10 45 ?? F3 0F 7F 07 80 BE // rcMonitor = mi.rcMonitor; // movups - movdqu - cmp```
+    22621.1992: 7E2F0
+    22621.2283: 140D5
+
+    22621.1992 has a different compiled code structure than 22621.2283 therefore we have to use a different approach:
+    Short circuiting the `if (26008830 is enabled)`.
+    22621.1992: 7E313
+
+    Step 2:
+    Scan within the function for the real fix.
+    ```0F 10 45 ?? F3 0F 7F 07 48 // *a2 = mi.rcWork; // movups - movdqu - test```
+    22621.2283: 1414B
+
+    Step 3:
+    After the first jz starting from step 1, write a jmp to the address found in step 2.
+    +17 from the movups in step 1.
+    22621.2283: 140E6
+
+    Step 4:
+    Change jz to jmp after the real fix, short circuiting `if (b) unconditional_release_ref(...)`.
+    +11 from the movups in step 2.
+    22621.2283:
+    74 -> EB
+    ***/
+
+    PBYTE step1 = FindPattern(mi->lpBaseOfDll, mi->SizeOfImage, "\x0F\x10\x45\x00\xF3\x0F\x7F\x07\x80\xBE", "xxx?xxxxxx");
+    if (!step1) return FALSE;
+    printf("[CActionCenterExperienceManager::GetViewPosition()] step1 = %lX\n", step1 - (PBYTE)mi->lpBaseOfDll);
+
+    if (!IsWindows11Version22H2Build2134OrHigher()) // We're on 1413-1992
+    {
+        PBYTE featureCheckJz = step1 + 35;
+        if (*featureCheckJz != 0x0F && *(featureCheckJz + 1) != 0x84) return FALSE;
+
+        DWORD dwOldProtect = 0;
+        PBYTE jzAddr = featureCheckJz + 6 + *(DWORD*)(featureCheckJz + 2);
+        if (!VirtualProtect(featureCheckJz, 5, PAGE_EXECUTE_READWRITE, &dwOldProtect)) return FALSE;
+        featureCheckJz[0] = 0xE9;
+        *(DWORD*)(featureCheckJz + 1) = (DWORD)(jzAddr - featureCheckJz - 5);
+        VirtualProtect(featureCheckJz, 5, dwOldProtect, &dwOldProtect);
+        goto done;
+    }
+
+    PBYTE step2 = FindPattern(step1 + 1, 200, "\x0F\x10\x45\x00\xF3\x0F\x7F\x07\x48", "xxx?xxxxx");
+    if (!step2) return FALSE;
+    printf("[CActionCenterExperienceManager::GetViewPosition()] step2 = %lX\n", step2 - (PBYTE)mi->lpBaseOfDll);
+
+    PBYTE step3 = step1 + 17;
+    printf("[CActionCenterExperienceManager::GetViewPosition()] step3 = %lX\n", step3 - (PBYTE)mi->lpBaseOfDll);
+
+    PBYTE step4 = step2 + 11;
+    printf("[CActionCenterExperienceManager::GetViewPosition()] step4 = %lX\n", step4 - (PBYTE)mi->lpBaseOfDll);
+    if (*step4 != 0x74) return FALSE;
+
+    // Execution
+    DWORD dwOldProtect = 0;
+    if (!VirtualProtect(step3, 5, PAGE_EXECUTE_READWRITE, &dwOldProtect)) return FALSE;
+    step3[0] = 0xE9;
+    *(DWORD*)(step3 + 1) = (DWORD)(step2 - step3 - 5);
+    VirtualProtect(step3, 5, dwOldProtect, &dwOldProtect);
+
+    dwOldProtect = 0;
+    if (!VirtualProtect(step4, 1, PAGE_EXECUTE_READWRITE, &dwOldProtect)) return FALSE;
+    step4[0] = 0xEB;
+    VirtualProtect(step4, 1, dwOldProtect, &dwOldProtect);
+
+done:
+    printf("[CActionCenterExperienceManager::GetViewPosition()] Patched!\n");
+    return TRUE;
+}
+
+BOOL Moment2PatchControlCenter(LPMODULEINFO mi)
+{
+    /***
+    Step 1:
+    Scan within the DLL.
+    ```0F 10 44 24 ?? F3 0F 7F 44 24 ?? 80 BF // rcMonitor = mi.rcMonitor; // movups - movdqu - cmp```
+    22621.1992: 4B35B
+    22621.2283: 65C5C
+
+    Step 2:
+    Scan within the function for the real fix. This pattern applies to both ControlCenter and ToastCenter.
+    ```0F 10 45 ?? F3 0F 7F 44 24 ?? 48 // rcMonitor = mi.rcWork; // movups - movdqu - test```
+    22621.1992: 4B3FD and 4B418 (The second one is compiled out in later builds)
+    22621.2283: 65CE6
+
+    Step 3:
+    After the first jz starting from step 1, write a jmp to the address found in step 2.
+    +24 from the movups in step 1.
+    22621.1992: 4B373
+    22621.2283: 65C74
+
+    Step 4:
+    Change jz to jmp after the real fix, short circuiting `if (b) unconditional_release_ref(...)`.
+    +13 from the movups in step 2.
+    22621.1992: 4B40A
+    22621.2283: 65CE3
+    74 -> EB
+    ***/
+
+    PBYTE step1 = FindPattern(mi->lpBaseOfDll, mi->SizeOfImage, "\x0F\x10\x44\x24\x00\xF3\x0F\x7F\x44\x24\x00\x80\xBF", "xxxx?xxxxx?xx");
+    if (!step1) return FALSE;
+    printf("[CControlCenterExperienceManager::PositionView()] step1 = %lX\n", step1 - (PBYTE)mi->lpBaseOfDll);
+
+    PBYTE step2 = FindPattern(step1 + 1, 200, "\x0F\x10\x45\x00\xF3\x0F\x7F\x44\x24\x00\x48", "xxx?xxxxx?x");
+    if (!step2) return FALSE;
+    printf("[CControlCenterExperienceManager::PositionView()] step2 = %lX\n", step2 - (PBYTE)mi->lpBaseOfDll);
+
+    PBYTE step3 = step1 + 24;
+    printf("[CControlCenterExperienceManager::PositionView()] step3 = %lX\n", step3 - (PBYTE)mi->lpBaseOfDll);
+
+    PBYTE step4 = step2 + 13;
+    printf("[CControlCenterExperienceManager::PositionView()] step4 = %lX\n", step4 - (PBYTE)mi->lpBaseOfDll);
+    if (*step4 != 0x74) return FALSE;
+
+    // Execution
+    DWORD dwOldProtect = 0;
+    if (!VirtualProtect(step3, 5, PAGE_EXECUTE_READWRITE, &dwOldProtect)) return FALSE;
+    step3[0] = 0xE9;
+    *(DWORD*)(step3 + 1) = (DWORD)(step2 - step3 - 5);
+    VirtualProtect(step3, 5, dwOldProtect, &dwOldProtect);
+
+    dwOldProtect = 0;
+    if (!VirtualProtect(step4, 1, PAGE_EXECUTE_READWRITE, &dwOldProtect)) return FALSE;
+    step4[0] = 0xEB;
+    VirtualProtect(step4, 1, dwOldProtect, &dwOldProtect);
+
+    printf("[CControlCenterExperienceManager::PositionView()] Patched!\n");
+    return TRUE;
+}
+
+BOOL Moment2PatchToastCenter(LPMODULEINFO mi)
+{
+    /***
+    Step 1:
+    Scan within the DLL.
+    ```0F 10 45 84 ?? 0F 7F 44 24 ?? 48 8B CF // rcMonitor = mi.rcMonitor; // movups - movdqu - mov```
+    22621.1992: 40CE8
+    22621.2283: 501DB
+
+    Step 2:
+    Scan within the function for the real fix. This pattern applies to both ControlCenter and ToastCenter.
+    ```0F 10 45 ?? F3 0F 7F 44 24 ?? 48 // rcMonitor = mi.rcWork; // movups - movdqu - test```
+    22621.1992: 40D8B
+    22621.2283: 5025D
+
+    Step 3:
+    After the first jz starting from step 1, write a jmp to the address found in step 2.
+    +26 from the movups in step 1.
+    22621.1992: 40D02
+    22621.2283: 501F5
+
+    Step 4:
+    Change jz to jmp after the real fix, short circuiting `if (b) unconditional_release_ref(...)`.
+    +13 from the movups in step 2.
+    22621.1992: 40D98
+    22621.2283: 5026A
+
+    Note: We are skipping EdgeUI calls here.
+    ***/
+
+    PBYTE step1 = FindPattern(mi->lpBaseOfDll, mi->SizeOfImage, "\x0F\x10\x45\x84\x00\x0F\x7F\x44\x24\x00\x48\x8B\xCF", "xxxx?xxxx?xxx");
+    if (!step1) return FALSE;
+    printf("[CToastCenterExperienceManager::PositionView()] step1 = %lX\n", step1 - (PBYTE)mi->lpBaseOfDll);
+
+    PBYTE step2 = FindPattern(step1 + 1, 200, "\x0F\x10\x45\x00\xF3\x0F\x7F\x44\x24\x00\x48", "xxx?xxxxx?x");
+    if (!step2) return FALSE;
+    printf("[CToastCenterExperienceManager::PositionView()] step2 = %lX\n", step2 - (PBYTE)mi->lpBaseOfDll);
+
+    PBYTE step3 = step1 + 26;
+    printf("[CToastCenterExperienceManager::PositionView()] step3 = %lX\n", step3 - (PBYTE)mi->lpBaseOfDll);
+
+    PBYTE step4 = step2 + 13;
+    printf("[CToastCenterExperienceManager::PositionView()] step4 = %lX\n", step4 - (PBYTE)mi->lpBaseOfDll);
+    if (*step4 != 0x0F /*When the else block is big*/ && *step4 != 0x74) return FALSE;
+
+    // Execution
+    DWORD dwOldProtect = 0;
+    if (!VirtualProtect(step3, 5, PAGE_EXECUTE_READWRITE, &dwOldProtect)) return FALSE;
+    step3[0] = 0xE9;
+    *(DWORD*)(step3 + 1) = (DWORD)(step2 - step3 - 5);
+    VirtualProtect(step3, 5, dwOldProtect, &dwOldProtect);
+
+    dwOldProtect = 0;
+    if (*step4 == 0x74) // Same size, just change the opcode
+    {
+        if (!VirtualProtect(step4, 1, PAGE_EXECUTE_READWRITE, &dwOldProtect)) return FALSE;
+        step4[0] = 0xEB;
+        VirtualProtect(step4, 1, dwOldProtect, &dwOldProtect);
+    }
+    else // The big one
+    {
+        PBYTE jzAddr = step4 + 6 + *(DWORD*)(step4 + 2);
+        if (!VirtualProtect(step4, 5, PAGE_EXECUTE_READWRITE, &dwOldProtect)) return FALSE;
+        step4[0] = 0xE9;
+        *(DWORD*)(step4 + 1) = (DWORD)(jzAddr - step4 - 5);
+        VirtualProtect(step4, 5, dwOldProtect, &dwOldProtect);
+    }
+
+    printf("[CToastCenterExperienceManager::PositionView()] Patched!\n");
+    return TRUE;
+}
+
+BOOL Moment2PatchTaskView(LPMODULEINFO mi)
+{
+    /***
+    If we're using the old taskbar, it'll be stuck in an infinite loading since it's waiting for the new one to respond.
+    Let's skip those.
+
+    Step 1:
+    Scan within the DLL. We point to the assignment of the `GetWorkArea()` result.
+    ```0F 10 00 F3 0F 7F 46 ?? 4C 8B C7 // movups - movdqu - mov```
+    22621.2283: 24A1CA
+
+    Step 2:
+    Find the beginning, it should be 4C (mov) which is the preparation of the `UpdateWorkAreaAsync()` call.
+    +8 from step 1.
+    22621.2283: 24A1D2
+
+    Step 3:
+    Find the end, it should be before the next `IUnknown::operator=()` call.
+    ```48 8D 4E 60 48 8B 54 24 ?? E8```
+    22621.2283: 24A1F4
+
+    Step 4:
+    NOP everything between step 2 and 3.
+    ***/
+
+    if (!IsWindows11Version22H2Build2134OrHigher())
+    {
+        // 1413-1992, just short circuit the if
+        // TODO ONLY TESTED ON 1992
+        PBYTE step1 = FindPattern(mi->lpBaseOfDll, mi->SizeOfImage, "\x74\x27\x4D\x8B\xC6\x48\x8D\x55\xC0\x48\x8B\xCF", "xxxxxxxxxxxx"); // jz short - mov - lea - mov
+        if (!step1) return FALSE;
+
+        DWORD dwOldProtect = 0;
+        if (!VirtualProtect(step1, 1, PAGE_EXECUTE_READWRITE, &dwOldProtect)) return FALSE;
+        step1[0] = 0xEB;
+        VirtualProtect(step1, 1, dwOldProtect, &dwOldProtect);
+        goto done;
+    }
+
+    PBYTE step1 = FindPattern(mi->lpBaseOfDll, mi->SizeOfImage, "\x0F\x10\x00\xF3\x0F\x7F\x46\x00\x4C\x8B\xC7", "xxxxxxx?xxx");
+    if (!step1) return FALSE;
+    printf("[TaskViewFrame::RuntimeClassInitialize()] step1 = %lX\n", step1 - (PBYTE)mi->lpBaseOfDll);
+
+    PBYTE step2 = step1 + 8;
+    printf("[TaskViewFrame::RuntimeClassInitialize()] step2 = %lX\n", step2 - (PBYTE)mi->lpBaseOfDll);
+    if (*step2 != 0x4C) return FALSE;
+
+    PBYTE step3 = FindPattern(step2 + 1, 128, "\x48\x8D\x4E\x60\x48\x8B\x54\x24\x00\xE8", "xxxxxxxx?x");
+    if (!step3) return FALSE;
+    printf("[TaskViewFrame::RuntimeClassInitialize()] step3 = %lX\n", step3 - (PBYTE)mi->lpBaseOfDll);
+
+    // Execution
+    DWORD dwOldProtect = 0;
+    if (!VirtualProtect(step2, step3 - step2, PAGE_EXECUTE_READWRITE, &dwOldProtect)) return FALSE;
+    memset(step2, 0x90, step3 - step2);
+    VirtualProtect(step2, step3 - step2, dwOldProtect, &dwOldProtect);
+
+done:
+    printf("[TaskViewFrame::RuntimeClassInitialize()] Patched!\n");
+    return TRUE;
+}
+
 BOOL IsDebuggerPresentHook()
 {
     return FALSE;
@@ -10418,6 +10703,30 @@ DWORD Inject(BOOL bIsExplorer)
             return rv;
         }
     }*/
+
+#if 0
+    // Use this only for testing, since the RtlQueryFeatureConfiguration() hook is perfect.
+    // Only tested on 22621.1992.
+    BOOL bMoment2PatchesEligible = IsWindows11Version22H2Build1413OrHigher();
+#else
+    // This is the only way to fix stuff since the flag "26008830" and the code when it's not enabled are gone.
+    // Only tested on 22621.2283.
+    BOOL bMoment2PatchesEligible = IsWindows11Version22H2Build2134OrHigher();
+#endif
+    if (bMoment2PatchesEligible && global_rovi.dwBuildNumber == 22621 && bOldTaskbar) // TODO Test for 23H2
+    {
+        MODULEINFO miTwinuiPcshell;
+        GetModuleInformation(GetCurrentProcess(), hTwinuiPcshell, &miTwinuiPcshell, sizeof(MODULEINFO));
+
+        // Fix flyout placement: Our goal with these patches is to get `mi.rcWork` assigned
+        Moment2PatchActionCenter(&miTwinuiPcshell);
+        Moment2PatchControlCenter(&miTwinuiPcshell);
+        Moment2PatchToastCenter(&miTwinuiPcshell);
+
+        // Fix task view
+        Moment2PatchTaskView(&miTwinuiPcshell);
+    }
+
     VnPatchIAT(hTwinuiPcshell, "API-MS-WIN-CORE-REGISTRY-L1-1-0.DLL", "RegGetValueW", twinuipcshell_RegGetValueW);
     //VnPatchIAT(hTwinuiPcshell, "api-ms-win-core-debug-l1-1-0.dll", "IsDebuggerPresent", IsDebuggerPresentHook);
     printf("Setup twinui.pcshell functions done\n");
@@ -10760,7 +11069,7 @@ DWORD Inject(BOOL bIsExplorer)
 
 
 
-    if (bDisableOfficeHotkeys)
+    // if (bDisableOfficeHotkeys)
     {
         VnPatchIAT(hExplorer, "user32.dll", "RegisterHotKey", explorer_RegisterHotkeyHook);
     }
