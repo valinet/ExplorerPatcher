@@ -9229,11 +9229,11 @@ BOOL explorer_RegisterHotkeyHook(HWND hWnd, int id, UINT fsModifiers, UINT vk)
     if (!bWinBHotkeyRegistered && fsModifiers == (MOD_WIN | MOD_NOREPEAT) && vk == 'D') // right after Win+D
     {
 #if 0
-        BOOL bMoment2PatchesEligible = IsWindows11Version22H2Build1413OrHigher();
+        BOOL bPerformMoment2Patches = IsWindows11Version22H2Build1413OrHigher();
 #else
-        BOOL bMoment2PatchesEligible = IsWindows11Version22H2Build2134OrHigher();
+        BOOL bPerformMoment2Patches = IsWindows11Version22H2Build2134OrHigher();
 #endif
-        if (bMoment2PatchesEligible && global_rovi.dwBuildNumber == 22621 && bOldTaskbar)
+        if (bPerformMoment2Patches && global_rovi.dwBuildNumber == 22621 && bOldTaskbar)
         {
             RegisterHotKey(hWnd, 514, MOD_WIN | MOD_NOREPEAT, 'B');
             printf("Registered Win+B\n");
@@ -9625,7 +9625,7 @@ int RtlQueryFeatureConfigurationHook(UINT32 featureId, int sectionType, INT64* c
         // flyouts alignment, notification center alignment, Windows key shortcuts on
         // OS builds 22621.1413+
         //
-        buffer->enabledState = FEATURE_ENABLED_STATE_DISABLED;
+        // buffer->enabledState = FEATURE_ENABLED_STATE_DISABLED;
     }
     return rv;
 }
@@ -9845,6 +9845,14 @@ INT64 twinui_pcshell_CMultitaskingViewManager__CreateXamlMTVHostHook(INT64 a1, u
     if (!twinui_pcshell_IsUndockedAssetAvailableHook(a2, 0, 0, 0, NULL)) return twinui_pcshell_CMultitaskingViewManager__CreateDCompMTVHostFunc(a1, a2, a3, a4, a5);
     return twinui_pcshell_CMultitaskingViewManager__CreateXamlMTVHostFunc(a1, a2, a3, a4, a5);
 }
+
+#if _WIN64
+static struct
+{
+    int coroInstance_rcOut; // 22621.1992: 0x10
+    int coroInstance_pHardwareConfirmatorHost; // 22621.1992: 0xFD
+    int hardwareConfirmatorHost_bIsInLockScreen; // 22621.1992: 0xEC
+} g_Moment2PatchOffsets;
 
 BOOL Moment2PatchActionCenter(LPMODULEINFO mi)
 {
@@ -10115,6 +10123,188 @@ done:
     printf("[TaskViewFrame::RuntimeClassInitialize()] Patched!\n");
     return TRUE;
 }
+
+DEFINE_GUID(SID_EdgeUi,
+    0x0d189b30,
+    0x0f12b, 0x4b13, 0x94, 0xcf,
+    0x53, 0xcb, 0x0e, 0x0e, 0x24, 0x0d
+);
+
+DEFINE_GUID(IID_IEdgeUiManager,
+    0x6e6c3c52,
+    0x5a5e, 0x4b4b, 0xa0, 0xf8,
+    0x7f, 0xe1, 0x26, 0x21, 0xa9, 0x3e
+);
+
+// Reimplementation of HardwareConfirmatorHost::GetDisplayRect()
+void WINAPI HardwareConfirmatorShellcode(PBYTE pCoroInstance)
+{
+    PBYTE pHardwareConfirmatorHost = *(PBYTE*)(pCoroInstance + g_Moment2PatchOffsets.coroInstance_pHardwareConfirmatorHost);
+
+    RECT rc;
+    HMONITOR hMonitor = MonitorFromRect(&rc, MONITOR_DEFAULTTOPRIMARY);
+
+    HRESULT hr = S_OK;
+    IUnknown* pImmersiveShell = NULL;
+    hr = CoCreateInstance(
+        &CLSID_ImmersiveShell,
+        NULL,
+        CLSCTX_LOCAL_SERVER,
+        &IID_IServiceProvider,
+        &pImmersiveShell
+    );
+    if (SUCCEEDED(hr))
+    {
+        IImmersiveMonitorService* pMonitorService = NULL;
+        IUnknown_QueryService(
+            pImmersiveShell,
+            &SID_IImmersiveMonitorService,
+            &IID_IImmersiveMonitorService,
+            &pMonitorService
+        );
+        if (pMonitorService)
+        {
+            IUnknown* pEdgeUiManager = NULL;
+            pMonitorService->lpVtbl->QueryService(
+                pMonitorService,
+                hMonitor,
+                &SID_EdgeUi,
+                &IID_IEdgeUiManager,
+                &pEdgeUiManager
+            );
+            if (pEdgeUiManager)
+            {
+                if (*(pHardwareConfirmatorHost + g_Moment2PatchOffsets.hardwareConfirmatorHost_bIsInLockScreen))
+                {
+                    // Lock screen
+                    MONITORINFO mi;
+                    mi.cbSize = sizeof(MONITORINFO);
+                    if (GetMonitorInfoW(hMonitor, &mi))
+                        rc = mi.rcMonitor;
+                }
+                else
+                {
+                    // Desktop
+                    HRESULT(*pTheFunc)(IUnknown*, PRECT) = ((void**)pEdgeUiManager->lpVtbl)[19];
+                    hr = pTheFunc(pEdgeUiManager, &rc);
+                }
+
+                typedef struct { float x, y, width, height; } Windows_Foundation_Rect;
+                Windows_Foundation_Rect* out = pCoroInstance + g_Moment2PatchOffsets.coroInstance_rcOut;
+                out->x = (float)rc.left;
+                out->y = (float)rc.top;
+                out->width = (float)(rc.right - rc.left);
+                out->height = (float)(rc.bottom - rc.top);
+
+                pEdgeUiManager->lpVtbl->Release(pEdgeUiManager);
+            }
+            pMonitorService->lpVtbl->Release(pMonitorService);
+        }
+        pImmersiveShell->lpVtbl->Release(pImmersiveShell);
+    }
+
+    if (FAILED(hr))
+        printf("[HardwareConfirmatorShellcode] Failed. 0x%lX\n", hr);
+}
+
+BOOL Moment2PatchHardwareConfirmator(LPMODULEINFO mi)
+{
+    // Find required offsets
+
+    // pHardwareConfirmatorHost and bIsInLockScreen:
+    // Find in GetDisplayRectAsync$_ResumeCoro$1, inside `case 4:`
+    //
+    // 48 8B 83 ED 00 00 00     mov     rax, [rbx+0EDh]
+    //          ^^^^^^^^^^^ pHardwareConfirmatorHost
+    // 8A 80 EC 00 00 00        mov     al, [rax+0ECh]
+    //       ^^^^^^^^^^^ bIsInLockScreen
+    //
+    // if ( ADJ(this)->pHardwareConfirmatorHost->bIsInLockScreen )
+    // if ( *(_BYTE *)(*(_QWORD *)(this + 237) + 236i64) ) // 22621.2283
+    //                                    ^ HCH  ^ bIsInLockScreen
+    //
+    // 22621.2134: 1D55D
+    PBYTE match1 = FindPattern(mi->lpBaseOfDll, mi->SizeOfImage, "\x48\x8B\x83\x00\x00\x00\x00\x8A\x80\x00\x00\x00\x00", "xxx????xx????");
+    printf("[HardwareConfirmatorHost::GetDisplayRectAsync$_ResumeCoro$1()] match1 = %lX\n", match1 - (PBYTE)mi->lpBaseOfDll);
+    if (!match1) return FALSE;
+    g_Moment2PatchOffsets.coroInstance_pHardwareConfirmatorHost = *(int*)(match1 + 3);
+    g_Moment2PatchOffsets.hardwareConfirmatorHost_bIsInLockScreen = *(int*)(match1 + 9);
+
+    // coroInstance_rcOut:
+    // Also in GetDisplayRectAsync$_ResumeCoro$1, through `case 4:`
+    // We also use this as the point to jump to, which is the code to set the rect and finish the coroutine.
+    //
+    // v27 = *(_OWORD *)(this + 16);
+    // *(_OWORD *)(this - 16) = v27;
+    // if ( winrt_suspend_handler ) ...
+    //
+    // 0F 10 43 10              movups  xmm0, xmmword ptr [rbx+10h]
+    //          ^^ coroInstance_rcOut
+    // 0F 11 84 24 D0 00 00 00  movups  [rsp+158h+var_88], xmm0
+    //
+    // 22621.2134: 1D624
+    PBYTE match2 = FindPattern(mi->lpBaseOfDll, mi->SizeOfImage, "\x0F\x10\x43\x00\x0F\x11\x84\x24", "xxx?xxxx");
+    printf("[HardwareConfirmatorHost::GetDisplayRectAsync$_ResumeCoro$1()] match2 = %lX\n", match2 - (PBYTE)mi->lpBaseOfDll);
+    if (!match2) return FALSE;
+    g_Moment2PatchOffsets.coroInstance_rcOut = *(match2 + 3);
+
+    // Find where to put the shellcode
+    // We'll overwrite from this position:
+    //
+    // *(_OWORD *)(this + 32) = 0i64;
+    // *(_QWORD *)(this + 48) = MonitorFromRect((LPCRECT)(this + 32), 1u);
+    //
+    // 22621.2134: 1D21E
+    PBYTE writeAt = FindPattern(mi->lpBaseOfDll, mi->SizeOfImage, "\x48\x8D\x4B\x00\x0F", "xxx?x");
+    if (!writeAt) return FALSE;
+    printf("[HardwareConfirmatorHost::GetDisplayRectAsync$_ResumeCoro$1()] writeAt = %lX\n", writeAt - (PBYTE)mi->lpBaseOfDll);
+
+    // In 22621.2134+, after our jump location there is a cleanup for something we skipped. NOP them.
+    // From match2, bytes +17 until +37, which is 21 bytes to be NOP'd.
+    // 22621.2134: 1D635-1D64A
+    PBYTE cleanupBegin = NULL, cleanupEnd = NULL;
+    if (IsWindows11Version22H2Build2134OrHigher())
+    {
+        cleanupBegin = match2 + 17;
+        cleanupEnd = match2 + 38; // Exclusive
+        printf("[HardwareConfirmatorHost::GetDisplayRectAsync$_ResumeCoro$1()] cleanup = %lX-%lX\n", cleanupBegin - (PBYTE)mi->lpBaseOfDll, cleanupEnd - (PBYTE)mi->lpBaseOfDll);
+        if (*cleanupBegin != 0x49 || *cleanupEnd != 0x90 /*Already NOP here*/) return FALSE;
+    }
+
+    // Craft the shellcode
+    BYTE shellcode[] = {
+        // lea rcx, [rbx+0] ; rbx is the `this` which is the instance of the coro, we pass it to our function
+        0x48, 0x8D, 0x0B,
+        // mov rax, 1111111111111111h ; placeholder for the address of HardwareConfirmatorShellcode
+        0x48, 0xB8, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11,
+        // call rax
+        0xFF, 0xD0
+    };
+
+    uintptr_t pattern = 0x1111111111111111;
+    *(PBYTE*)(memmem(shellcode, sizeof(shellcode), &pattern, sizeof(uintptr_t))) = HardwareConfirmatorShellcode;
+
+    // Execution
+    DWORD dwOldProtect = 0;
+    SIZE_T totalSize = sizeof(shellcode) + 5;
+    if (!VirtualProtect(writeAt, totalSize, PAGE_EXECUTE_READWRITE, &dwOldProtect)) return FALSE;
+    memcpy(writeAt, shellcode, sizeof(shellcode));
+    PBYTE jmpLoc = writeAt + sizeof(shellcode);
+    jmpLoc[0] = 0xE9;
+    *(DWORD*)(jmpLoc + 1) = (DWORD)(match2 - jmpLoc - 5);
+    VirtualProtect(writeAt, totalSize, dwOldProtect, &dwOldProtect);
+
+    if (cleanupBegin)
+    {
+        dwOldProtect = 0;
+        if (!VirtualProtect(cleanupBegin, cleanupEnd - cleanupBegin, PAGE_EXECUTE_READWRITE, &dwOldProtect)) return FALSE;
+        memset(cleanupBegin, 0x90, cleanupEnd - cleanupBegin);
+        VirtualProtect(cleanupBegin, cleanupEnd - cleanupBegin, dwOldProtect, &dwOldProtect);
+    }
+
+    printf("[HardwareConfirmatorHost::GetDisplayRectAsync$_ResumeCoro$1()] Patched!\n");
+}
+#endif
 
 BOOL IsDebuggerPresentHook()
 {
@@ -10704,16 +10894,18 @@ DWORD Inject(BOOL bIsExplorer)
         }
     }*/
 
+#if _WIN64
 #if 0
     // Use this only for testing, since the RtlQueryFeatureConfiguration() hook is perfect.
     // Only tested on 22621.1992.
-    BOOL bMoment2PatchesEligible = IsWindows11Version22H2Build1413OrHigher();
+    BOOL bPerformMoment2Patches = IsWindows11Version22H2Build1413OrHigher();
 #else
     // This is the only way to fix stuff since the flag "26008830" and the code when it's not enabled are gone.
     // Only tested on 22621.2283.
-    BOOL bMoment2PatchesEligible = IsWindows11Version22H2Build2134OrHigher();
+    BOOL bPerformMoment2Patches = IsWindows11Version22H2Build2134OrHigher();
 #endif
-    if (bMoment2PatchesEligible && global_rovi.dwBuildNumber == 22621 && bOldTaskbar) // TODO Test for 23H2
+    bPerformMoment2Patches &= global_rovi.dwBuildNumber == 22621 && bOldTaskbar;
+    if (bPerformMoment2Patches) // TODO Test for 23H2
     {
         MODULEINFO miTwinuiPcshell;
         GetModuleInformation(GetCurrentProcess(), hTwinuiPcshell, &miTwinuiPcshell, sizeof(MODULEINFO));
@@ -10725,7 +10917,14 @@ DWORD Inject(BOOL bIsExplorer)
 
         // Fix task view
         Moment2PatchTaskView(&miTwinuiPcshell);
+
+        // Fix volume and brightness popups
+        HANDLE hHardwareConfirmator = LoadLibraryW(L"Windows.Internal.HardwareConfirmator.dll");
+        MODULEINFO miHardwareConfirmator;
+        GetModuleInformation(GetCurrentProcess(), hHardwareConfirmator, &miHardwareConfirmator, sizeof(MODULEINFO));
+        Moment2PatchHardwareConfirmator(&miHardwareConfirmator);
     }
+#endif
 
     VnPatchIAT(hTwinuiPcshell, "API-MS-WIN-CORE-REGISTRY-L1-1-0.DLL", "RegGetValueW", twinuipcshell_RegGetValueW);
     //VnPatchIAT(hTwinuiPcshell, "api-ms-win-core-debug-l1-1-0.dll", "IsDebuggerPresent", IsDebuggerPresentHook);
