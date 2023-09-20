@@ -64,6 +64,9 @@ DWORD32 global_ubr;
 #define POPUPMENU_WINX_TIMEOUT 700
 #define POPUPMENU_EX_ELAPSED 300
 
+// Only use this for developing fixes for 22621.2134+ using 22621.1413-1992.
+#define USE_MOMENT_3_FIXES_ON_MOMENT_2 0
+
 BOOL bIsExplorerProcess = FALSE;
 BOOL bInstanced = FALSE;
 HWND archivehWnd;
@@ -9225,22 +9228,29 @@ BOOL explorer_RegisterHotkeyHook(HWND hWnd, int id, UINT fsModifiers, UINT vk)
         SetLastError(ERROR_HOTKEY_ALREADY_REGISTERED);
         return FALSE;
     }
+
+    BOOL result = RegisterHotKey(hWnd, id, fsModifiers, vk);
+
     static BOOL bWinBHotkeyRegistered = FALSE;
     if (!bWinBHotkeyRegistered && fsModifiers == (MOD_WIN | MOD_NOREPEAT) && vk == 'D') // right after Win+D
     {
-#if 0
+#if USE_MOMENT_3_FIXES_ON_MOMENT_2
         BOOL bPerformMoment2Patches = IsWindows11Version22H2Build1413OrHigher();
 #else
         BOOL bPerformMoment2Patches = IsWindows11Version22H2Build2134OrHigher();
 #endif
         if (bPerformMoment2Patches && global_rovi.dwBuildNumber == 22621 && bOldTaskbar)
         {
+            // Might be better if we scan the GlobalKeylist array to prevent hardcoded numbers?
+            RegisterHotKey(hWnd, 500, MOD_WIN | MOD_NOREPEAT, 'A');
             RegisterHotKey(hWnd, 514, MOD_WIN | MOD_NOREPEAT, 'B');
-            printf("Registered Win+B\n");
+            RegisterHotKey(hWnd, 591, MOD_WIN | MOD_NOREPEAT, 'N');
+            printf("Registered Win+A, Win+B, and Win+N\n");
         }
         bWinBHotkeyRegistered = TRUE;
     }
-    return RegisterHotKey(hWnd, id, fsModifiers, vk);
+
+    return result;
 }
 
 BOOL twinui_RegisterHotkeyHook(HWND hWnd, int id, UINT fsModifiers, UINT vk)
@@ -9618,6 +9628,7 @@ struct RTL_FEATURE_CONFIGURATION {
 int (*RtlQueryFeatureConfigurationFunc)(UINT32 featureId, int sectionType, INT64* changeStamp, struct RTL_FEATURE_CONFIGURATION* buffer);
 int RtlQueryFeatureConfigurationHook(UINT32 featureId, int sectionType, INT64* changeStamp, struct RTL_FEATURE_CONFIGURATION* buffer) {
     int rv = RtlQueryFeatureConfigurationFunc(featureId, sectionType, changeStamp, buffer);
+#if !USE_MOMENT_3_FIXES_ON_MOMENT_2
     if (IsWindows11Version22H2Build1413OrHigher() && bOldTaskbar && featureId == 26008830) {
         // Disable tablet optimized taskbar feature when using the Windows 10 taskbar
         // 
@@ -9625,8 +9636,9 @@ int RtlQueryFeatureConfigurationHook(UINT32 featureId, int sectionType, INT64* c
         // flyouts alignment, notification center alignment, Windows key shortcuts on
         // OS builds 22621.1413+
         //
-        // buffer->enabledState = FEATURE_ENABLED_STATE_DISABLED;
+        buffer->enabledState = FEATURE_ENABLED_STATE_DISABLED;
     }
+#endif
     return rv;
 }
 #pragma endregion
@@ -10895,7 +10907,7 @@ DWORD Inject(BOOL bIsExplorer)
     }*/
 
 #if _WIN64
-#if 0
+#if USE_MOMENT_3_FIXES_ON_MOMENT_2
     // Use this only for testing, since the RtlQueryFeatureConfiguration() hook is perfect.
     // Only tested on 22621.1992.
     BOOL bPerformMoment2Patches = IsWindows11Version22H2Build1413OrHigher();
