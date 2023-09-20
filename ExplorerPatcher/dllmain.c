@@ -11115,7 +11115,10 @@ DWORD Inject(BOOL bIsExplorer)
     if (IsWindows11())
     {
         HANDLE hInputSwitch = LoadLibraryW(L"InputSwitch.dll");
-        printf("[IME] Context menu patch status: %d\n", PatchContextMenuOfNewMicrosoftIME(NULL));
+        if (bOldTaskbar)
+        {
+            printf("[IME] Context menu patch status: %d\n", PatchContextMenuOfNewMicrosoftIME(NULL));
+        }
         if (hInputSwitch)
         {
             VnPatchIAT(hInputSwitch, "user32.dll", "TrackPopupMenuEx", inputswitch_TrackPopupMenuExHook);

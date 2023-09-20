@@ -536,7 +536,19 @@ inline BOOL WINAPI PatchContextMenuOfNewMicrosoftIME(BOOL* bFound)
 {
     // huge thanks to @Simplestas: https://github.com/valinet/ExplorerPatcher/issues/598
     if (bFound) *bFound = FALSE;
-    const DWORD patch_from = 0x50653844, patch_to = 0x54653844; // cmp byte ptr [rbp+50h], r12b
+    DWORD patch_from, patch_to;
+    if (IsWindows11Version22H2OrHigher())
+    {
+        // cmp byte ptr [rbp+40h+arg_0], r13b
+        patch_from = 0x506D3844;
+        patch_to = 0x546D3844;
+    }
+    else
+    {
+        // cmp byte ptr [rbp+50h], r12b
+        patch_from = 0x50653844;
+        patch_to = 0x54653844;
+    }
     HMODULE hInputSwitch = NULL;
     if (!GetModuleHandleExW(0, L"InputSwitch.dll", &hInputSwitch))
     {
