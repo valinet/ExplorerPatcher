@@ -10078,60 +10078,78 @@ BOOL Moment2PatchTaskView(LPMODULEINFO mi)
 {
     /***
     If we're using the old taskbar, it'll be stuck in an infinite loading since it's waiting for the new one to respond.
-    Let's skip those.
+    Let's safely skip those by NOPing the `TaskViewFrame::UpdateWorkAreaAsync()` and `WaitForCompletion()` calls, and
+    turning off the COM object cleanup.
 
     Step 1:
-    Scan within the DLL. We point to the assignment of the `GetWorkArea()` result.
-    ```0F 10 00 F3 0F 7F 46 ?? 4C 8B C7 // movups - movdqu - mov```
-    22621.2283: 24A1CA
+    Scan within the DLL to find the beginning, which is the preparation of the 1st call.
+    It should be 4C 8B or 4D 8B (mov r8, ...).
+    For the patterns, they're +1 from the result since it can be either of those.
 
-    Step 2:
-    Find the beginning, it should be 4C (mov) which is the preparation of the `UpdateWorkAreaAsync()` call.
-    +8 from step 1.
+    Pattern 1 (up to 22621.2134):
+    ```8B ?? 48 8D 55 C0    48 8B ?? E8 ?? ?? ?? ?? 48 8B 08 E8```
+    22621.1992: 7463C
+    22621.2134: 3B29C
+
+    Pattern 2 (22621.2283+):
+    ```8B ?? 48 8D 54 24 ?? 48 8B ?? E8 ?? ?? ?? ?? 48 8B 08 E8```
     22621.2283: 24A1D2
 
-    Step 3:
-    Find the end, it should be before the next `IUnknown::operator=()` call.
-    ```48 8D 4E 60 48 8B 54 24 ?? E8```
-    22621.2283: 24A1F4
+    Step 2:
+    In place of the 1st call's call op (E8), we overwrite it with setting the value of the reference passed into the 2nd
+    argument (rdx) to 0. This is to skip the cleanup that happens right after the 2nd call.
+    ```48 C7 02 00 00 00 00 mov qword ptr [rdx], 0```
+    Start from -13 of the byte after 2nd call's end.
+    22621.1992: 74646
+    22621.2134: 3B2A6
+    22621.2283: 24A1DD
 
-    Step 4:
-    NOP everything between step 2 and 3.
+    Step 3:
+    NOP the rest of the 2nd call.
+
+    Summary:
+    ```
+       48 8B ?? 48 8D 55 C0    48 8B ?? E8 ?? ?? ?? ?? 48 8B 08 E8 ?? ?? ?? ?? // ~22621.2134
+       48 8B ?? 48 8D 54 24 ?? 48 8B ?? E8 ?? ?? ?? ?? 48 8B 08 E8 ?? ?? ?? ?? // 22621.2283~
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ^^^^^^^^^^^^^^^^^^^^^^^
+       1st: TaskViewFrame::UpdateWorkAreaAsync()       2nd: WaitForCompletion()
+       48 8B ?? 48 8D 54 24 ?? 48 8B ?? 48 C7 02 00 00 00 00 90 90 90 90 90 90 // Result
+       -------------------------------- xxxxxxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxxx
+       We need rdx                      Step 2               Step 3
+    ```
+
+    Notes:
+    - In 22621.1992 and 22621.2134, `~AsyncOperationCompletedHandler()` is inlined, while it is not in 22621.2283. We
+      can see `unconditional_release_ref()` calls right in `RuntimeClassInitialize()` in 1992 and 2134.
+    - In 22621.2134, there is `33 FF xor edi, edi` before the jz for inlined cleanup. The value of edi is used in two
+      more cleanup calls after our area of interest, therefore we can't just NOP all those calls. And I think detecting
+      such things is too much work.
     ***/
 
-    if (!IsWindows11Version22H2Build2134OrHigher())
+    int twoCallsLength = 1 + 18 + 4; // 4C/4D + pattern length + 4 bytes for the 2nd call's call address
+    PBYTE step1 = FindPattern(mi->lpBaseOfDll, mi->SizeOfImage, "\x8B\x00\x48\x8D\x55\xC0\x48\x8B\x00\xE8\x00\x00\x00\x00\x48\x8B\x08\xE8", "x?xxxxxx?x????xxxx");
+    if (!step1)
     {
-        // 1413-1992, just short circuit the if
-        // TODO ONLY TESTED ON 1992
-        PBYTE step1 = FindPattern(mi->lpBaseOfDll, mi->SizeOfImage, "\x74\x27\x4D\x8B\xC6\x48\x8D\x55\xC0\x48\x8B\xCF", "xxxxxxxxxxxx"); // jz short - mov - lea - mov
+        twoCallsLength += 1; // Add 1 to the pattern length
+        step1 = FindPattern(mi->lpBaseOfDll, mi->SizeOfImage, "\x8B\x00\x48\x8D\x54\x24\x00\x48\x8B\x00\xE8\x00\x00\x00\x00\x48\x8B\x08\xE8", "x?xxxx?xx?x????xxxx");
         if (!step1) return FALSE;
-
-        DWORD dwOldProtect = 0;
-        if (!VirtualProtect(step1, 1, PAGE_EXECUTE_READWRITE, &dwOldProtect)) return FALSE;
-        step1[0] = 0xEB;
-        VirtualProtect(step1, 1, dwOldProtect, &dwOldProtect);
-        goto done;
     }
-
-    PBYTE step1 = FindPattern(mi->lpBaseOfDll, mi->SizeOfImage, "\x0F\x10\x00\xF3\x0F\x7F\x46\x00\x4C\x8B\xC7", "xxxxxxx?xxx");
-    if (!step1) return FALSE;
+    step1 -= 1; // Point to the 4C/4D
     printf("[TaskViewFrame::RuntimeClassInitialize()] step1 = %lX\n", step1 - (PBYTE)mi->lpBaseOfDll);
 
-    PBYTE step2 = step1 + 8;
+    PBYTE step2 = step1 + twoCallsLength - 13;
     printf("[TaskViewFrame::RuntimeClassInitialize()] step2 = %lX\n", step2 - (PBYTE)mi->lpBaseOfDll);
-    if (*step2 != 0x4C) return FALSE;
 
-    PBYTE step3 = FindPattern(step2 + 1, 128, "\x48\x8D\x4E\x60\x48\x8B\x54\x24\x00\xE8", "xxxxxxxx?x");
-    if (!step3) return FALSE;
-    printf("[TaskViewFrame::RuntimeClassInitialize()] step3 = %lX\n", step3 - (PBYTE)mi->lpBaseOfDll);
+    PBYTE step3 = step2 + 7;
 
     // Execution
     DWORD dwOldProtect = 0;
-    if (!VirtualProtect(step2, step3 - step2, PAGE_EXECUTE_READWRITE, &dwOldProtect)) return FALSE;
-    memset(step2, 0x90, step3 - step2);
-    VirtualProtect(step2, step3 - step2, dwOldProtect, &dwOldProtect);
+    if (!VirtualProtect(step1, twoCallsLength, PAGE_EXECUTE_READWRITE, &dwOldProtect)) return FALSE;
+    const BYTE step2Payload[] = { 0x48, 0xC7, 0x02, 0x00, 0x00, 0x00, 0x00 };
+    memcpy(step2, step2Payload, sizeof(step2Payload));
+    memset(step3, 0x90, twoCallsLength - (step3 - step1));
+    VirtualProtect(step1, twoCallsLength, dwOldProtect, &dwOldProtect);
 
-done:
     printf("[TaskViewFrame::RuntimeClassInitialize()] Patched!\n");
     return TRUE;
 }
