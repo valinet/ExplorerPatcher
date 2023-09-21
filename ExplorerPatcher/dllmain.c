@@ -9886,7 +9886,8 @@ BOOL Moment2PatchActionCenter(LPMODULEINFO mi)
 
     Step 3:
     After the first jz starting from step 1, write a jmp to the address found in step 2.
-    +17 from the movups in step 1.
+    Find within couple bytes from step 1:
+    ```48 8D // lea```
     22621.2283: 140E6
 
     Step 4:
@@ -9902,6 +9903,7 @@ BOOL Moment2PatchActionCenter(LPMODULEINFO mi)
 
     if (!IsWindows11Version22H2Build2134OrHigher()) // We're on 1413-1992
     {
+#if USE_MOMENT_3_FIXES_ON_MOMENT_2
         PBYTE featureCheckJz = step1 + 35;
         if (*featureCheckJz != 0x0F && *(featureCheckJz + 1) != 0x84) return FALSE;
 
@@ -9912,13 +9914,17 @@ BOOL Moment2PatchActionCenter(LPMODULEINFO mi)
         *(DWORD*)(featureCheckJz + 1) = (DWORD)(jzAddr - featureCheckJz - 5);
         VirtualProtect(featureCheckJz, 5, dwOldProtect, &dwOldProtect);
         goto done;
+#else
+        return FALSE;
+#endif
     }
 
     PBYTE step2 = FindPattern(step1 + 1, 200, "\x0F\x10\x45\x00\xF3\x0F\x7F\x07\x48", "xxx?xxxxx");
     if (!step2) return FALSE;
     printf("[CActionCenterExperienceManager::GetViewPosition()] step2 = %lX\n", step2 - (PBYTE)mi->lpBaseOfDll);
 
-    PBYTE step3 = step1 + 17;
+    PBYTE step3 = FindPattern(step1 + 1, 32, "\x48\x8D", "xx");
+    if (!step3) return FALSE;
     printf("[CActionCenterExperienceManager::GetViewPosition()] step3 = %lX\n", step3 - (PBYTE)mi->lpBaseOfDll);
 
     PBYTE step4 = step2 + 11;
@@ -9959,7 +9965,8 @@ BOOL Moment2PatchControlCenter(LPMODULEINFO mi)
 
     Step 3:
     After the first jz starting from step 1, write a jmp to the address found in step 2.
-    +24 from the movups in step 1.
+    Find within couple bytes from step 1:
+    ```48 8D // lea```
     22621.1992: 4B373
     22621.2283: 65C74
 
@@ -9975,11 +9982,12 @@ BOOL Moment2PatchControlCenter(LPMODULEINFO mi)
     if (!step1) return FALSE;
     printf("[CControlCenterExperienceManager::PositionView()] step1 = %lX\n", step1 - (PBYTE)mi->lpBaseOfDll);
 
-    PBYTE step2 = FindPattern(step1 + 1, 200, "\x0F\x10\x45\x00\xF3\x0F\x7F\x44\x24\x00\x48", "xxx?xxxxx?x");
+    PBYTE step2 = FindPattern(step1 + 1, 256, "\x0F\x10\x45\x00\xF3\x0F\x7F\x44\x24\x00\x48", "xxx?xxxxx?x");
     if (!step2) return FALSE;
     printf("[CControlCenterExperienceManager::PositionView()] step2 = %lX\n", step2 - (PBYTE)mi->lpBaseOfDll);
 
-    PBYTE step3 = step1 + 24;
+    PBYTE step3 = FindPattern(step1 + 1, 32, "\x48\x8D", "xx");
+    if (!step3) return FALSE;
     printf("[CControlCenterExperienceManager::PositionView()] step3 = %lX\n", step3 - (PBYTE)mi->lpBaseOfDll);
 
     PBYTE step4 = step2 + 13;
@@ -10019,7 +10027,8 @@ BOOL Moment2PatchToastCenter(LPMODULEINFO mi)
 
     Step 3:
     After the first jz starting from step 1, write a jmp to the address found in step 2.
-    +26 from the movups in step 1.
+    Find within couple bytes from step 1:
+    ```48 8D // lea```
     22621.1992: 40D02
     22621.2283: 501F5
 
@@ -10040,7 +10049,8 @@ BOOL Moment2PatchToastCenter(LPMODULEINFO mi)
     if (!step2) return FALSE;
     printf("[CToastCenterExperienceManager::PositionView()] step2 = %lX\n", step2 - (PBYTE)mi->lpBaseOfDll);
 
-    PBYTE step3 = step1 + 26;
+    PBYTE step3 = FindPattern(step1 + 1, 32, "\x48\x8D", "xx");
+    if (!step3) return FALSE;
     printf("[CToastCenterExperienceManager::PositionView()] step3 = %lX\n", step3 - (PBYTE)mi->lpBaseOfDll);
 
     PBYTE step4 = step2 + 13;
@@ -10087,7 +10097,7 @@ BOOL Moment2PatchTaskView(LPMODULEINFO mi)
     For the patterns, they're +1 from the result since it can be either of those.
 
     Pattern 1 (up to 22621.2134):
-    ```8B ?? 48 8D 55 C0    48 8B ?? E8 ?? ?? ?? ?? 48 8B 08 E8```
+    ```8B ?? 48 8D 55 ??    48 8B ?? E8 ?? ?? ?? ?? 48 8B 08 E8```
     22621.1992: 7463C
     22621.2134: 3B29C
 
@@ -10109,7 +10119,7 @@ BOOL Moment2PatchTaskView(LPMODULEINFO mi)
 
     Summary:
     ```
-       48 8B ?? 48 8D 55 C0    48 8B ?? E8 ?? ?? ?? ?? 48 8B 08 E8 ?? ?? ?? ?? // ~22621.2134
+       48 8B ?? 48 8D 55 ??    48 8B ?? E8 ?? ?? ?? ?? 48 8B 08 E8 ?? ?? ?? ?? // ~22621.2134
        48 8B ?? 48 8D 54 24 ?? 48 8B ?? E8 ?? ?? ?? ?? 48 8B 08 E8 ?? ?? ?? ?? // 22621.2283~
        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ^^^^^^^^^^^^^^^^^^^^^^^
        1st: TaskViewFrame::UpdateWorkAreaAsync()       2nd: WaitForCompletion()
@@ -10127,7 +10137,7 @@ BOOL Moment2PatchTaskView(LPMODULEINFO mi)
     ***/
 
     int twoCallsLength = 1 + 18 + 4; // 4C/4D + pattern length + 4 bytes for the 2nd call's call address
-    PBYTE step1 = FindPattern(mi->lpBaseOfDll, mi->SizeOfImage, "\x8B\x00\x48\x8D\x55\xC0\x48\x8B\x00\xE8\x00\x00\x00\x00\x48\x8B\x08\xE8", "x?xxxxxx?x????xxxx");
+    PBYTE step1 = FindPattern(mi->lpBaseOfDll, mi->SizeOfImage, "\x8B\x00\x48\x8D\x55\x00\x48\x8B\x00\xE8\x00\x00\x00\x00\x48\x8B\x08\xE8", "x?xxx?xx?x????xxxx");
     if (!step1)
     {
         twoCallsLength += 1; // Add 1 to the pattern length
@@ -10931,7 +10941,7 @@ DWORD Inject(BOOL bIsExplorer)
     BOOL bPerformMoment2Patches = IsWindows11Version22H2Build1413OrHigher();
 #else
     // This is the only way to fix stuff since the flag "26008830" and the code when it's not enabled are gone.
-    // Only tested on 22621.2283.
+    // Tested on 22621.2134, 22621.2283, and 22621.2359 (RP).
     BOOL bPerformMoment2Patches = IsWindows11Version22H2Build2134OrHigher();
 #endif
     bPerformMoment2Patches &= global_rovi.dwBuildNumber == 22621 && bOldTaskbar;
