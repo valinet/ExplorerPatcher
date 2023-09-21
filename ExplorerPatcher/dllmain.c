@@ -10096,8 +10096,8 @@ BOOL Moment2PatchTaskView(LPMODULEINFO mi)
     22621.2283: 24A1D2
 
     Step 2:
-    In place of the 1st call's call op (E8), we overwrite it with setting the value of the reference passed into the 2nd
-    argument (rdx) to 0. This is to skip the cleanup that happens right after the 2nd call.
+    In place of the 1st call's call op (E8), overwrite it with a code to set the value of the com_ptr passed into the
+    2nd argument (rdx) to 0. This is to skip the cleanup that happens right after the 2nd call.
     ```48 C7 02 00 00 00 00 mov qword ptr [rdx], 0```
     Start from -13 of the byte after 2nd call's end.
     22621.1992: 74646
@@ -10120,10 +10120,10 @@ BOOL Moment2PatchTaskView(LPMODULEINFO mi)
 
     Notes:
     - In 22621.1992 and 22621.2134, `~AsyncOperationCompletedHandler()` is inlined, while it is not in 22621.2283. We
-      can see `unconditional_release_ref()` calls right in `RuntimeClassInitialize()` in 1992 and 2134.
-    - In 22621.2134, there is `33 FF xor edi, edi` before the jz for inlined cleanup. The value of edi is used in two
-      more cleanup calls after our area of interest, therefore we can't just NOP all those calls. And I think detecting
-      such things is too much work.
+      can see `unconditional_release_ref()` calls right in `RuntimeClassInitialize()` of 1992 and 2134.
+    - In 22621.2134, there is `33 FF xor edi, edi` before the jz for the inlined cleanup. The value of edi is used in
+      two more cleanup calls after our area of interest (those covered by twoCallsLength), therefore we can't just NOP
+      everything. And I think detecting such things is too much work.
     ***/
 
     int twoCallsLength = 1 + 18 + 4; // 4C/4D + pattern length + 4 bytes for the 2nd call's call address
