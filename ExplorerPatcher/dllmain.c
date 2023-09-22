@@ -10817,6 +10817,167 @@ DWORD Inject(BOOL bIsExplorer)
 
 
     HANDLE hTwinuiPcshell = LoadLibraryW(L"twinui.pcshell.dll");
+    MODULEINFO miTwinuiPcshell;
+    GetModuleInformation(GetCurrentProcess(), hTwinuiPcshell, &miTwinuiPcshell, sizeof(MODULEINFO));
+
+    if (IsWindows11Version22H2OrHigher())
+    {
+        // All patterns here have been tested to work on:
+        // - 22621.1, 22621.1992, 22621.2134, 22621.2283, 22621.2359 (RP)
+        // - 23545.1000
+
+        // ZeroMemory(symbols_PTRS.twinui_pcshell_PTRS, sizeof(symbols_PTRS.twinui_pcshell_PTRS));
+        if (!symbols_PTRS.twinui_pcshell_PTRS[0] || symbols_PTRS.twinui_pcshell_PTRS[0] == 0xFFFFFFFF)
+        {
+            // Ref: CMultitaskingViewFrame::v_WndProc()
+            // 4D 8B CF 4D 8B C4 8B D6 48 8B 49 08 E8 ? ? ? ? E9
+            //                                        ^^^^^^^
+            PBYTE match = FindPattern(
+                hTwinuiPcshell,
+                miTwinuiPcshell.lpBaseOfDll,
+                "\x4D\x8B\xCF\x4D\x8B\xC4\x8B\xD6\x48\x8B\x49\x08\xE8\x00\x00\x00\x00\xE9",
+                "xxxxxxxxxxxxx????x"
+            );
+            if (match)
+            {
+                match += 12;
+                symbols_PTRS.twinui_pcshell_PTRS[0] = match + 5 + *(int*)(match + 1) - hTwinuiPcshell;
+                printf("symbols_PTRS.twinui_pcshell_PTRS[0] = %llX\n", symbols_PTRS.twinui_pcshell_PTRS[0]);
+            }
+        }
+        if (!symbols_PTRS.twinui_pcshell_PTRS[1] || symbols_PTRS.twinui_pcshell_PTRS[1] == 0xFFFFFFFF)
+        {
+            // 48 89 5C 24 ? 48 89 74 24 ? 57 48 83 EC 30 49 8B D8 48 8B FA 48 8B F1 49 83 20 00 41 B0 03 B2 01
+            PBYTE match = FindPattern(
+                hTwinuiPcshell,
+                miTwinuiPcshell.lpBaseOfDll,
+                "\x48\x89\x5C\x24\x00\x48\x89\x74\x24\x00\x57\x48\x83\xEC\x30\x49\x8B\xD8\x48\x8B\xFA\x48\x8B\xF1\x49\x83\x20\x00\x41\xB0\x03\xB2\x01",
+                "xxxx?xxxx?xxxxxxxxxxxxxxxxxxxxxxx"
+            );
+            if (match)
+            {
+                symbols_PTRS.twinui_pcshell_PTRS[1] = match - hTwinuiPcshell;
+                printf("symbols_PTRS.twinui_pcshell_PTRS[1] = %llX\n", symbols_PTRS.twinui_pcshell_PTRS[1]);
+            }
+        }
+        if (!symbols_PTRS.twinui_pcshell_PTRS[2] || symbols_PTRS.twinui_pcshell_PTRS[2] == 0xFFFFFFFF)
+        {
+            // Ref: SwitchItemThumbnailElement::ShowContextMenu()
+            // E8 ? ? ? ? E8 ? ? ? ? 0F B7 C8 E8 ? ? ? ? F7 D8
+            //    ^^^^^^^
+            PBYTE match = FindPattern(
+                hTwinuiPcshell,
+                miTwinuiPcshell.lpBaseOfDll,
+                "\xE8\x00\x00\x00\x00\xE8\x00\x00\x00\x00\x0F\xB7\xC8\xE8\x00\x00\x00\x00\xF7\xD8",
+                "x????x????xxxx????xx"
+            );
+            if (match)
+            {
+                symbols_PTRS.twinui_pcshell_PTRS[2] = match + 5 + *(int*)(match + 1) - hTwinuiPcshell;
+                printf("symbols_PTRS.twinui_pcshell_PTRS[2] = %llX\n", symbols_PTRS.twinui_pcshell_PTRS[2]);
+            }
+        }
+        if (!symbols_PTRS.twinui_pcshell_PTRS[3] || symbols_PTRS.twinui_pcshell_PTRS[3] == 0xFFFFFFFF)
+        {
+            // Ref: SwitchItemThumbnailElement::ShowContextMenu()
+            // E8 ? ? ? ? 85 DB 74 29
+            //    ^^^^^^^
+            PBYTE match = FindPattern(
+                hTwinuiPcshell,
+                miTwinuiPcshell.lpBaseOfDll,
+                "\xE8\x00\x00\x00\x00\x85\xDB\x74\x29",
+                "x????xxxx"
+            );
+            if (match)
+            {
+                symbols_PTRS.twinui_pcshell_PTRS[3] = match + 5 + *(int*)(match + 1) - hTwinuiPcshell;
+                printf("symbols_PTRS.twinui_pcshell_PTRS[3] = %llX\n", symbols_PTRS.twinui_pcshell_PTRS[3]);
+            }
+        }
+        if (!symbols_PTRS.twinui_pcshell_PTRS[4] || symbols_PTRS.twinui_pcshell_PTRS[4] == 0xFFFFFFFF)
+        {
+            // E8 ? ? ? ? 90 49 8D 56 38 49 8B CE
+            //    ^^^^^^^
+            PBYTE match = FindPattern(
+                hTwinuiPcshell,
+                miTwinuiPcshell.lpBaseOfDll,
+                "\xE8\x00\x00\x00\x00\x90\x49\x8D\x56\x38\x49\x8B\xCE",
+                "x????xxxxxxxx"
+            );
+            if (match)
+            {
+                symbols_PTRS.twinui_pcshell_PTRS[4] = match + 5 + *(int*)(match + 1) - hTwinuiPcshell;
+                printf("symbols_PTRS.twinui_pcshell_PTRS[4] = %llX\n", symbols_PTRS.twinui_pcshell_PTRS[4]);
+            }
+        }
+        if (!symbols_PTRS.twinui_pcshell_PTRS[5] || symbols_PTRS.twinui_pcshell_PTRS[5] == 0xFFFFFFFF)
+        {
+            // E8 ? ? ? ? 90 48 8D 56 38 48 8B CE
+            //    ^^^^^^^
+            PBYTE match = FindPattern(
+                hTwinuiPcshell,
+                miTwinuiPcshell.lpBaseOfDll,
+                "\xE8\x00\x00\x00\x00\x90\x48\x8D\x56\x38\x48\x8B\xCE",
+                "x????xxxxxxxx"
+            );
+            if (match)
+            {
+                symbols_PTRS.twinui_pcshell_PTRS[5] = match + 5 + *(int*)(match + 1) - hTwinuiPcshell;
+                printf("symbols_PTRS.twinui_pcshell_PTRS[5] = %llX\n", symbols_PTRS.twinui_pcshell_PTRS[5]);
+            }
+        }
+        if (!symbols_PTRS.twinui_pcshell_PTRS[6] || symbols_PTRS.twinui_pcshell_PTRS[6] == 0xFFFFFFFF)
+        {
+            // 48 83 EC 28 41 B0 03 B2 01
+            PBYTE match = FindPattern(
+                hTwinuiPcshell,
+                miTwinuiPcshell.lpBaseOfDll,
+                "\x48\x83\xEC\x28\x41\xB0\x03\xB2\x01",
+                "xxxxxxxxx"
+            );
+            if (match)
+            {
+                symbols_PTRS.twinui_pcshell_PTRS[6] = match - hTwinuiPcshell;
+                printf("symbols_PTRS.twinui_pcshell_PTRS[6] = %llX\n", symbols_PTRS.twinui_pcshell_PTRS[6]);
+            }
+        }
+        if (!symbols_PTRS.twinui_pcshell_PTRS[7] || symbols_PTRS.twinui_pcshell_PTRS[7] == 0xFFFFFFFF)
+        {
+            // Ref: CMultitaskingViewManager::_CreateMTVHost()
+            // 4C 89 74 24 ? ? 8B ? ? 8B ? 8B D7 48 8B CE E8 ? ? ? ? 8B
+            //                                               ^^^^^^^
+            PBYTE match = FindPattern(
+                hTwinuiPcshell,
+                miTwinuiPcshell.lpBaseOfDll,
+                "\x4C\x89\x74\x24\x00\x00\x8B\x00\x00\x8B\x00\x8B\xD7\x48\x8B\xCE\xE8\x00\x00\x00\x00\x8B",
+                "xxxx??x??x?xxxxxx????x"
+            );
+            if (match)
+            {
+                match += 16;
+                symbols_PTRS.twinui_pcshell_PTRS[7] = match + 5 + *(int*)(match + 1) - hTwinuiPcshell;
+                printf("symbols_PTRS.twinui_pcshell_PTRS[7] = %llX\n", symbols_PTRS.twinui_pcshell_PTRS[7]);
+            }
+        }
+        if (!symbols_PTRS.twinui_pcshell_PTRS[8] || symbols_PTRS.twinui_pcshell_PTRS[8] == 0xFFFFFFFF)
+        {
+            // Ref: CMultitaskingViewManager::_CreateMTVHost
+            // 4C 89 74 24 ? ? 8B ? ? 8B ? 8B D7 48 8B CE E8 ? ? ? ? 90
+            //                                               ^^^^^^^
+            PBYTE match = FindPattern(
+                hTwinuiPcshell,
+                miTwinuiPcshell.lpBaseOfDll,
+                "\x4C\x89\x74\x24\x00\x00\x8B\x00\x00\x8B\x00\x8B\xD7\x48\x8B\xCE\xE8\x00\x00\x00\x00\x90",
+                "xxxx??x??x?xxxxxx????x"
+            );
+            if (match)
+            {
+                match += 16;
+                symbols_PTRS.twinui_pcshell_PTRS[8] = match + 5 + *(int*)(match + 1) - hTwinuiPcshell;
+                printf("symbols_PTRS.twinui_pcshell_PTRS[8] = %llX\n", symbols_PTRS.twinui_pcshell_PTRS[8]);
+            }
+        }
+    }
 
     if (symbols_PTRS.twinui_pcshell_PTRS[0] && symbols_PTRS.twinui_pcshell_PTRS[0] != 0xFFFFFFFF)
     {
