@@ -63,6 +63,13 @@ inline BOOL IsWindows11Version22H2OrHigher()
     return FALSE;
 }
 
+inline BOOL IsWindows11BuildHigherThan22631()
+{
+    if (!global_rovi.dwMajorVersion) global_ubr = VnGetOSVersionAndUBR(&global_rovi);
+    if (global_rovi.dwBuildNumber > 22631) return TRUE;
+    return FALSE;
+}
+
 inline BOOL IsWindows11BuildHigherThan25158()
 {
     if (!global_rovi.dwMajorVersion) global_ubr = VnGetOSVersionAndUBR(&global_rovi);
@@ -72,7 +79,7 @@ inline BOOL IsWindows11BuildHigherThan25158()
 
 inline BOOL IsWindows11Version22H2Build1413OrHigher()
 {
-    if (IsWindows11BuildHigherThan25158()) return TRUE;
+    if (IsWindows11BuildHigherThan22631()) return TRUE;
     if (!global_rovi.dwMajorVersion) global_ubr = VnGetOSVersionAndUBR(&global_rovi);
     if (global_ubr >= 1413) return TRUE;
     return FALSE;
@@ -80,7 +87,7 @@ inline BOOL IsWindows11Version22H2Build1413OrHigher()
 
 inline BOOL IsWindows11Version22H2Build2134OrHigher()
 {
-    if (IsWindows11BuildHigherThan25158()) return TRUE;
+    if (IsWindows11BuildHigherThan22631()) return TRUE;
     if (!global_rovi.dwMajorVersion) global_ubr = VnGetOSVersionAndUBR(&global_rovi);
     if (global_ubr >= 2134) return TRUE;
     return FALSE;

@@ -1274,6 +1274,13 @@ BOOL LoadSymbols(symbols_addr* symbols_PTRS, HMODULE hModule)
     if (!bNeedToDownload && (!bIsTwinuiPcshellHardcoded || !bIsStartHardcoded))
     {
         bNeedToDownload = wcscmp(szReportedVersion, szStoredVersion);
+        if (bNeedToDownload)
+        {
+            ZeroMemory(
+                symbols_PTRS,
+                sizeof(symbols_addr)
+            );
+        }
     }
     return bNeedToDownload;
 }

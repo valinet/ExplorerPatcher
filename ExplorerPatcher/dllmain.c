@@ -9239,7 +9239,7 @@ BOOL explorer_RegisterHotkeyHook(HWND hWnd, int id, UINT fsModifiers, UINT vk)
 #else
         BOOL bPerformMoment2Patches = IsWindows11Version22H2Build2134OrHigher();
 #endif
-        if (bPerformMoment2Patches && global_rovi.dwBuildNumber == 22621 && bOldTaskbar)
+        if (bPerformMoment2Patches && bOldTaskbar)
         {
             // Might be better if we scan the GlobalKeylist array to prevent hardcoded numbers?
             RegisterHotKey(hWnd, 500, MOD_WIN | MOD_NOREPEAT, 'A');
@@ -9858,7 +9858,7 @@ INT64 twinui_pcshell_CMultitaskingViewManager__CreateXamlMTVHostHook(INT64 a1, u
     return twinui_pcshell_CMultitaskingViewManager__CreateXamlMTVHostFunc(a1, a2, a3, a4, a5);
 }
 
-#if _WIN64
+#ifdef _WIN64
 static struct
 {
     int coroInstance_rcOut; // 22621.1992: 0x10
@@ -9866,45 +9866,36 @@ static struct
     int hardwareConfirmatorHost_bIsInLockScreen; // 22621.1992: 0xEC
 } g_Moment2PatchOffsets;
 
+inline PBYTE GetTargetOfJzBeforeMe(PBYTE anchor)
+{
+    // Check big jz
+    if (*(anchor - 6) == 0x0F && *(anchor - 5) == 0x84)
+        return anchor + *(int*)(anchor - 4);
+    // Check small jz
+    if (*(anchor - 2) == 0x74)
+        return anchor + *(char*)(anchor - 1);
+    return NULL;
+}
+
+// CActionCenterExperienceManager::GetViewPosition() patcher
 BOOL Moment2PatchActionCenter(LPMODULEINFO mi)
 {
-    /***
-    Step 1:
-    Scan within the DLL.
-    ```0F 10 45 ?? F3 0F 7F 07 80 BE // rcMonitor = mi.rcMonitor; // movups - movdqu - cmp```
-    22621.1992: 7E2F0
-    22621.2283: 140D5
+    // Step 1:
+    // Scan within the DLL for `*a2 = mi.rcMonitor`.
+    // ```0F 10 45 ?? F3 0F 7F ?? 80 ?? C8 // movups - movdqu - cmp```
+    // 22621.1992: 7E2F0
+    // 22621.2283: 140D5
+    PBYTE rcMonitorAssignment = FindPattern(mi->lpBaseOfDll, mi->SizeOfImage, "\x0F\x10\x45\x00\xF3\x0F\x7F\x00\x80\x00\xC8", "xxx?xxx?x?x");
+    if (!rcMonitorAssignment) return FALSE;
+    printf("[AC] rcMonitorAssignment = %llX\n", rcMonitorAssignment - (PBYTE)mi->lpBaseOfDll);
 
-    22621.1992 has a different compiled code structure than 22621.2283 therefore we have to use a different approach:
-    Short circuiting the `if (26008830 is enabled)`.
-    22621.1992: 7E313
-
-    Step 2:
-    Scan within the function for the real fix.
-    ```0F 10 45 ?? F3 0F 7F 07 48 // *a2 = mi.rcWork; // movups - movdqu - test```
-    22621.2283: 1414B
-
-    Step 3:
-    After the first jz starting from step 1, write a jmp to the address found in step 2.
-    Find within couple bytes from step 1:
-    ```48 8D // lea```
-    22621.2283: 140E6
-
-    Step 4:
-    Change jz to jmp after the real fix, short circuiting `if (b) unconditional_release_ref(...)`.
-    +11 from the movups in step 2.
-    22621.2283: 14156
-    74 -> EB
-    ***/
-
-    PBYTE step1 = FindPattern(mi->lpBaseOfDll, mi->SizeOfImage, "\x0F\x10\x45\x00\xF3\x0F\x7F\x07\x80\xBE", "xxx?xxxxxx");
-    if (!step1) return FALSE;
-    printf("[CActionCenterExperienceManager::GetViewPosition()] step1 = %lX\n", step1 - (PBYTE)mi->lpBaseOfDll);
-
+    // 22621.1992 has a different compiled code structure than 22621.2283 therefore we have to use a different approach:
+    // Short circuiting the `if (26008830 is enabled)`.
+    // 22621.1992: 7E313
     if (!IsWindows11Version22H2Build2134OrHigher()) // We're on 1413-1992
     {
 #if USE_MOMENT_3_FIXES_ON_MOMENT_2
-        PBYTE featureCheckJz = step1 + 35;
+        PBYTE featureCheckJz = rcMonitorAssignment + 35;
         if (*featureCheckJz != 0x0F && *(featureCheckJz + 1) != 0x84) return FALSE;
 
         DWORD dwOldProtect = 0;
@@ -9919,171 +9910,166 @@ BOOL Moment2PatchActionCenter(LPMODULEINFO mi)
 #endif
     }
 
-    PBYTE step2 = FindPattern(step1 + 1, 200, "\x0F\x10\x45\x00\xF3\x0F\x7F\x07\x48", "xxx?xxxxx");
-    if (!step2) return FALSE;
-    printf("[CActionCenterExperienceManager::GetViewPosition()] step2 = %lX\n", step2 - (PBYTE)mi->lpBaseOfDll);
+    // Step 2:
+    // Scan within the function for the 8 bytes long `*a2 = mi.rcWork`.
+    // ```0F 10 45 ?? F3 0F 7F ?? 48 // movups - movdqu - test```
+    // 22621.2283: 1414B
+    PBYTE rcWorkAssignment = FindPattern(rcMonitorAssignment + 1, 200, "\x0F\x10\x45\x00\xF3\x0F\x7F\x00\x48", "xxx?xxx?x");
+    if (!rcWorkAssignment) return FALSE;
+    printf("[AC] rcWorkAssignment = %llX\n", rcWorkAssignment - (PBYTE)mi->lpBaseOfDll);
 
-    PBYTE step3 = FindPattern(step1 + 1, 32, "\x48\x8D", "xx");
-    if (!step3) return FALSE;
-    printf("[CActionCenterExperienceManager::GetViewPosition()] step3 = %lX\n", step3 - (PBYTE)mi->lpBaseOfDll);
+    // Step 3:
+    // Copy `*a2 = mi.rcWork` into right after the first jz starting from step 1.
+    // Find within couple bytes from step 1:
+    // ```48 8D // lea```
+    // 22621.2283: 140E6
+    PBYTE blockBegin = FindPattern(rcMonitorAssignment + 1, 32, "\x48\x8D", "xx");
+    if (!blockBegin) return FALSE;
+    printf("[AC] blockBegin = %llX\n", blockBegin - (PBYTE)mi->lpBaseOfDll);
 
-    PBYTE step4 = step2 + 11;
-    printf("[CActionCenterExperienceManager::GetViewPosition()] step4 = %lX\n", step4 - (PBYTE)mi->lpBaseOfDll);
-    if (*step4 != 0x74) return FALSE;
+    // Step 4:
+    // Exit the block by writing a long jmp into the address referenced by the jz right before step 3, into right after
+    // the 8 bytes `rcMonitor = mi.rcWork` we've written.
+    PBYTE blockEnd = GetTargetOfJzBeforeMe(blockBegin);
+    if (!blockEnd) return FALSE;
+    printf("[AC] blockEnd = %llX\n", blockEnd - (PBYTE)mi->lpBaseOfDll);
 
     // Execution
     DWORD dwOldProtect = 0;
-    if (!VirtualProtect(step3, 5, PAGE_EXECUTE_READWRITE, &dwOldProtect)) return FALSE;
-    step3[0] = 0xE9;
-    *(DWORD*)(step3 + 1) = (DWORD)(step2 - step3 - 5);
-    VirtualProtect(step3, 5, dwOldProtect, &dwOldProtect);
+    if (!VirtualProtect(blockBegin, 8 /**a2 = mi.rcWork*/ + 5 /*jmp*/, PAGE_EXECUTE_READWRITE, &dwOldProtect)) return FALSE;
 
-    dwOldProtect = 0;
-    if (!VirtualProtect(step4, 1, PAGE_EXECUTE_READWRITE, &dwOldProtect)) return FALSE;
-    step4[0] = 0xEB;
-    VirtualProtect(step4, 1, dwOldProtect, &dwOldProtect);
+    // Step 2
+    memcpy(blockBegin, rcWorkAssignment, 8);
+
+    // Step 3
+    PBYTE jmpToEnd = blockBegin + 8;
+    jmpToEnd[0] = 0xE9;
+    *(DWORD*)(jmpToEnd + 1) = (DWORD)(blockEnd - jmpToEnd - 5);
+
+    VirtualProtect(blockBegin, 8 + 5, dwOldProtect, &dwOldProtect);
 
 done:
-    printf("[CActionCenterExperienceManager::GetViewPosition()] Patched!\n");
+    printf("[AC] Patched!\n");
     return TRUE;
 }
 
+// CControlCenterExperienceManager::PositionView() patcher
 BOOL Moment2PatchControlCenter(LPMODULEINFO mi)
 {
-    /***
-    Step 1:
-    Scan within the DLL.
-    ```0F 10 44 24 ?? F3 0F 7F 44 24 ?? 80 BF // rcMonitor = mi.rcMonitor; // movups - movdqu - cmp```
-    22621.1992: 4B35B
-    22621.2283: 65C5C
+    // Step 1:
+    // Scan within the DLL for `rcMonitor = mi.rcMonitor`.
+    // ```0F 10 44 24 ?? F3 0F 7F 44 24 ?? 80 BF // movups - movdqu - cmp```
+    // 22621.1992: 4B35B
+    // 22621.2283: 65C5C
+    PBYTE rcMonitorAssignment = FindPattern(mi->lpBaseOfDll, mi->SizeOfImage, "\x0F\x10\x44\x24\x00\xF3\x0F\x7F\x44\x24\x00\x80\xBF", "xxxx?xxxxx?xx");
+    if (!rcMonitorAssignment) return FALSE;
+    printf("[CC] rcMonitorAssignment = %llX\n", rcMonitorAssignment - (PBYTE)mi->lpBaseOfDll);
 
-    Step 2:
-    Scan within the function for the real fix. This pattern applies to both ControlCenter and ToastCenter.
-    ```0F 10 45 ?? F3 0F 7F 44 24 ?? 48 // rcMonitor = mi.rcWork; // movups - movdqu - test```
-    22621.1992: 4B3FD and 4B418 (The second one is compiled out in later builds)
-    22621.2283: 65CE6
+    // Step 2:
+    // Scan within the function for the 10 bytes long `rcMonitor = mi.rcWork`.
+    // This pattern applies to both ControlCenter and ToastCenter.
+    // ```0F 10 45 ?? F3 0F 7F 44 24 ?? 48 // movups - movdqu - test```
+    // 22621.1992: 4B3FD and 4B418 (The second one is compiled out in later builds)
+    // 22621.2283: 65CE6
+    PBYTE rcWorkAssignment = FindPattern(rcMonitorAssignment + 1, 256, "\x0F\x10\x45\x00\xF3\x0F\x7F\x44\x24\x00\x48", "xxx?xxxxx?x");
+    if (!rcWorkAssignment) return FALSE;
+    printf("[CC] rcWorkAssignment = %llX\n", rcWorkAssignment - (PBYTE)mi->lpBaseOfDll);
 
-    Step 3:
-    After the first jz starting from step 1, write a jmp to the address found in step 2.
-    Find within couple bytes from step 1:
-    ```48 8D // lea```
-    22621.1992: 4B373
-    22621.2283: 65C74
+    // Step 3:
+    // Copy the `rcMonitor = mi.rcWork` into right after the first jz starting from step 1.
+    // Find within couple bytes from step 1:
+    // ```48 8D // lea```
+    // 22621.1992: 4B373
+    // 22621.2283: 65C74
+    PBYTE blockBegin = FindPattern(rcMonitorAssignment + 1, 32, "\x48\x8D", "xx");
+    if (!blockBegin) return FALSE;
+    printf("[CC] blockBegin = %llX\n", blockBegin - (PBYTE)mi->lpBaseOfDll);
 
-    Step 4:
-    Change jz to jmp after the real fix, short circuiting `if (b) unconditional_release_ref(...)`.
-    +13 from the movups in step 2.
-    22621.1992: 4B40A
-    22621.2283: 65CE3
-    74 -> EB
-    ***/
-
-    PBYTE step1 = FindPattern(mi->lpBaseOfDll, mi->SizeOfImage, "\x0F\x10\x44\x24\x00\xF3\x0F\x7F\x44\x24\x00\x80\xBF", "xxxx?xxxxx?xx");
-    if (!step1) return FALSE;
-    printf("[CControlCenterExperienceManager::PositionView()] step1 = %lX\n", step1 - (PBYTE)mi->lpBaseOfDll);
-
-    PBYTE step2 = FindPattern(step1 + 1, 256, "\x0F\x10\x45\x00\xF3\x0F\x7F\x44\x24\x00\x48", "xxx?xxxxx?x");
-    if (!step2) return FALSE;
-    printf("[CControlCenterExperienceManager::PositionView()] step2 = %lX\n", step2 - (PBYTE)mi->lpBaseOfDll);
-
-    PBYTE step3 = FindPattern(step1 + 1, 32, "\x48\x8D", "xx");
-    if (!step3) return FALSE;
-    printf("[CControlCenterExperienceManager::PositionView()] step3 = %lX\n", step3 - (PBYTE)mi->lpBaseOfDll);
-
-    PBYTE step4 = step2 + 13;
-    printf("[CControlCenterExperienceManager::PositionView()] step4 = %lX\n", step4 - (PBYTE)mi->lpBaseOfDll);
-    if (*step4 != 0x74) return FALSE;
+    // Step 4:
+    // Exit the block by writing a long jmp into the address referenced by the jz right before step 3, into right after
+    // the 10 bytes `rcMonitor = mi.rcWork` we've written.
+    PBYTE blockEnd = GetTargetOfJzBeforeMe(blockBegin);
+    if (!blockEnd) return FALSE;
+    printf("[CC] blockEnd = %llX\n", blockEnd - (PBYTE)mi->lpBaseOfDll);
 
     // Execution
     DWORD dwOldProtect = 0;
-    if (!VirtualProtect(step3, 5, PAGE_EXECUTE_READWRITE, &dwOldProtect)) return FALSE;
-    step3[0] = 0xE9;
-    *(DWORD*)(step3 + 1) = (DWORD)(step2 - step3 - 5);
-    VirtualProtect(step3, 5, dwOldProtect, &dwOldProtect);
+    if (!VirtualProtect(blockBegin, 10 /*rcMonitor = mi.rcWork*/ + 5 /*jmp*/, PAGE_EXECUTE_READWRITE, &dwOldProtect)) return FALSE;
 
-    dwOldProtect = 0;
-    if (!VirtualProtect(step4, 1, PAGE_EXECUTE_READWRITE, &dwOldProtect)) return FALSE;
-    step4[0] = 0xEB;
-    VirtualProtect(step4, 1, dwOldProtect, &dwOldProtect);
+    // Step 2
+    memcpy(blockBegin, rcWorkAssignment, 10);
 
-    printf("[CControlCenterExperienceManager::PositionView()] Patched!\n");
+    // Step 3
+    PBYTE jmpToEnd = blockBegin + 10;
+    jmpToEnd[0] = 0xE9;
+    *(DWORD*)(jmpToEnd + 1) = (DWORD)(blockEnd - jmpToEnd - 5);
+
+    VirtualProtect(blockBegin, 10 + 5, dwOldProtect, &dwOldProtect);
+
+    printf("[CC] Patched!\n");
     return TRUE;
 }
 
+// CToastCenterExperienceManager::PositionView() patcher
 BOOL Moment2PatchToastCenter(LPMODULEINFO mi)
 {
-    /***
-    Step 1:
-    Scan within the DLL.
-    ```0F 10 45 84 ?? 0F 7F 44 24 ?? 48 8B CF // rcMonitor = mi.rcMonitor; // movups - movdqu - mov```
-    22621.1992: 40CE8
-    22621.2283: 501DB
+    // Step 1:
+    // Scan within the DLL for `rcMonitor = mi.rcMonitor`.
+    // ```0F 10 45 84 ?? 0F 7F 44 24 ?? 48 8B CF // movups - movdqu - mov```
+    // 22621.1992: 40CE8
+    // 22621.2283: 501DB
+    PBYTE rcMonitorAssignment = FindPattern(mi->lpBaseOfDll, mi->SizeOfImage, "\x0F\x10\x45\x84\x00\x0F\x7F\x44\x24\x00\x48\x8B\xCF", "xxxx?xxxx?xxx");
+    if (!rcMonitorAssignment) return FALSE;
+    printf("[TC] rcMonitorAssignment = %llX\n", rcMonitorAssignment - (PBYTE)mi->lpBaseOfDll);
 
-    Step 2:
-    Scan within the function for the real fix. This pattern applies to both ControlCenter and ToastCenter.
-    ```0F 10 45 ?? F3 0F 7F 44 24 ?? 48 // rcMonitor = mi.rcWork; // movups - movdqu - test```
-    22621.1992: 40D8B
-    22621.2283: 5025D
+    // Step 2:
+    // Scan within the function for the 10 bytes long `rcMonitor = mi.rcWork`.
+    // This pattern applies to both ControlCenter and ToastCenter.
+    // ```0F 10 45 ?? F3 0F 7F 44 24 ?? 48 // movups - movdqu - test```
+    // 22621.1992: 40D8B
+    // 22621.2283: 5025D
+    PBYTE rcWorkAssignment = FindPattern(rcMonitorAssignment + 1, 200, "\x0F\x10\x45\x00\xF3\x0F\x7F\x44\x24\x00\x48", "xxx?xxxxx?x");
+    if (!rcWorkAssignment) return FALSE;
+    printf("[TC] rcWorkAssignment = %llX\n", rcWorkAssignment - (PBYTE)mi->lpBaseOfDll);
 
-    Step 3:
-    After the first jz starting from step 1, write a jmp to the address found in step 2.
-    Find within couple bytes from step 1:
-    ```48 8D // lea```
-    22621.1992: 40D02
-    22621.2283: 501F5
+    // Step 3:
+    // Copy the `rcMonitor = mi.rcWork` into right after the first jz starting from step 1.
+    // Find within couple bytes from step 1:
+    // ```48 8D // lea```
+    // 22621.1992: 40D02
+    // 22621.2283: 501F5
+    PBYTE blockBegin = FindPattern(rcMonitorAssignment + 1, 32, "\x48\x8D", "xx");
+    if (!blockBegin) return FALSE;
+    printf("[TC] blockBegin = %llX\n", blockBegin - (PBYTE)mi->lpBaseOfDll);
 
-    Step 4:
-    Change jz to jmp after the real fix, short circuiting `if (b) unconditional_release_ref(...)`.
-    +13 from the movups in step 2.
-    22621.1992: 40D98
-    22621.2283: 5026A
-
-    Note: We are skipping EdgeUI calls here.
-    ***/
-
-    PBYTE step1 = FindPattern(mi->lpBaseOfDll, mi->SizeOfImage, "\x0F\x10\x45\x84\x00\x0F\x7F\x44\x24\x00\x48\x8B\xCF", "xxxx?xxxx?xxx");
-    if (!step1) return FALSE;
-    printf("[CToastCenterExperienceManager::PositionView()] step1 = %lX\n", step1 - (PBYTE)mi->lpBaseOfDll);
-
-    PBYTE step2 = FindPattern(step1 + 1, 200, "\x0F\x10\x45\x00\xF3\x0F\x7F\x44\x24\x00\x48", "xxx?xxxxx?x");
-    if (!step2) return FALSE;
-    printf("[CToastCenterExperienceManager::PositionView()] step2 = %lX\n", step2 - (PBYTE)mi->lpBaseOfDll);
-
-    PBYTE step3 = FindPattern(step1 + 1, 32, "\x48\x8D", "xx");
-    if (!step3) return FALSE;
-    printf("[CToastCenterExperienceManager::PositionView()] step3 = %lX\n", step3 - (PBYTE)mi->lpBaseOfDll);
-
-    PBYTE step4 = step2 + 13;
-    printf("[CToastCenterExperienceManager::PositionView()] step4 = %lX\n", step4 - (PBYTE)mi->lpBaseOfDll);
-    if (*step4 != 0x0F /*When the else block is big*/ && *step4 != 0x74) return FALSE;
+    // Step 4:
+    // Exit the block by writing a long jmp into the address referenced by the jz right before step 3, into right after
+    // the 10 bytes `rcMonitor = mi.rcWork` we've written.
+    //
+    // Note: We are skipping EdgeUI calls here.
+    PBYTE blockEnd = GetTargetOfJzBeforeMe(blockBegin);
+    if (!blockEnd) return FALSE;
+    printf("[TC] blockEnd = %llX\n", blockEnd - (PBYTE)mi->lpBaseOfDll);
 
     // Execution
     DWORD dwOldProtect = 0;
-    if (!VirtualProtect(step3, 5, PAGE_EXECUTE_READWRITE, &dwOldProtect)) return FALSE;
-    step3[0] = 0xE9;
-    *(DWORD*)(step3 + 1) = (DWORD)(step2 - step3 - 5);
-    VirtualProtect(step3, 5, dwOldProtect, &dwOldProtect);
+    if (!VirtualProtect(blockBegin, 10 /*rcMonitor = mi.rcWork*/ + 5 /*jmp*/, PAGE_EXECUTE_READWRITE, &dwOldProtect)) return FALSE;
 
-    dwOldProtect = 0;
-    if (*step4 == 0x74) // Same size, just change the opcode
-    {
-        if (!VirtualProtect(step4, 1, PAGE_EXECUTE_READWRITE, &dwOldProtect)) return FALSE;
-        step4[0] = 0xEB;
-        VirtualProtect(step4, 1, dwOldProtect, &dwOldProtect);
-    }
-    else // The big one
-    {
-        PBYTE jzAddr = step4 + 6 + *(DWORD*)(step4 + 2);
-        if (!VirtualProtect(step4, 5, PAGE_EXECUTE_READWRITE, &dwOldProtect)) return FALSE;
-        step4[0] = 0xE9;
-        *(DWORD*)(step4 + 1) = (DWORD)(jzAddr - step4 - 5);
-        VirtualProtect(step4, 5, dwOldProtect, &dwOldProtect);
-    }
+    // Step 2
+    memcpy(blockBegin, rcWorkAssignment, 10);
 
-    printf("[CToastCenterExperienceManager::PositionView()] Patched!\n");
+    // Step 3
+    PBYTE jmpToEnd = blockBegin + 10;
+    jmpToEnd[0] = 0xE9;
+    *(DWORD*)(jmpToEnd + 1) = (DWORD)(blockEnd - jmpToEnd - 5);
+
+    VirtualProtect(blockBegin, 10 + 5, dwOldProtect, &dwOldProtect);
+
+    printf("[TC] Patched!\n");
     return TRUE;
 }
 
+// TaskViewFrame::RuntimeClassInitialize() patcher
 BOOL Moment2PatchTaskView(LPMODULEINFO mi)
 {
     /***
@@ -10096,12 +10082,12 @@ BOOL Moment2PatchTaskView(LPMODULEINFO mi)
     It should be 4C 8B or 4D 8B (mov r8, ...).
     For the patterns, they're +1 from the result since it can be either of those.
 
-    Pattern 1 (up to 22621.2134):
+    Pattern 1:
     ```8B ?? 48 8D 55 ??    48 8B ?? E8 ?? ?? ?? ?? 48 8B 08 E8```
     22621.1992: 7463C
     22621.2134: 3B29C
 
-    Pattern 2 (22621.2283+):
+    Pattern 2:
     ```8B ?? 48 8D 54 24 ?? 48 8B ?? E8 ?? ?? ?? ?? 48 8B 08 E8```
     22621.2283: 24A1D2
 
@@ -10119,11 +10105,11 @@ BOOL Moment2PatchTaskView(LPMODULEINFO mi)
 
     Summary:
     ```
-       48 8B ?? 48 8D 55 ??    48 8B ?? E8 ?? ?? ?? ?? 48 8B 08 E8 ?? ?? ?? ?? // ~22621.2134
-       48 8B ?? 48 8D 54 24 ?? 48 8B ?? E8 ?? ?? ?? ?? 48 8B 08 E8 ?? ?? ?? ?? // 22621.2283~
+       48 8B ?? 48 8D 55 ??    48 8B ?? E8 ?? ?? ?? ?? 48 8B 08 E8 ?? ?? ?? ?? // Pattern 1
+       48 8B ?? 48 8D 54 24 ?? 48 8B ?? E8 ?? ?? ?? ?? 48 8B 08 E8 ?? ?? ?? ?? // Pattern 2
        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ^^^^^^^^^^^^^^^^^^^^^^^
        1st: TaskViewFrame::UpdateWorkAreaAsync()       2nd: WaitForCompletion()
-       48 8B ?? 48 8D 54 24 ?? 48 8B ?? 48 C7 02 00 00 00 00 90 90 90 90 90 90 // Result
+       48 8B ?? 48 8D 54 24 ?? 48 8B ?? 48 C7 02 00 00 00 00 90 90 90 90 90 90 // Result according to Pattern 2
        -------------------------------- xxxxxxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxxx
        We need rdx                      Step 2               Step 3
     ```
@@ -10137,30 +10123,30 @@ BOOL Moment2PatchTaskView(LPMODULEINFO mi)
     ***/
 
     int twoCallsLength = 1 + 18 + 4; // 4C/4D + pattern length + 4 bytes for the 2nd call's call address
-    PBYTE step1 = FindPattern(mi->lpBaseOfDll, mi->SizeOfImage, "\x8B\x00\x48\x8D\x55\x00\x48\x8B\x00\xE8\x00\x00\x00\x00\x48\x8B\x08\xE8", "x?xxx?xx?x????xxxx");
-    if (!step1)
+    PBYTE firstCallPrep = FindPattern(mi->lpBaseOfDll, mi->SizeOfImage, "\x8B\x00\x48\x8D\x55\x00\x48\x8B\x00\xE8\x00\x00\x00\x00\x48\x8B\x08\xE8", "x?xxx?xx?x????xxxx");
+    if (!firstCallPrep)
     {
         twoCallsLength += 1; // Add 1 to the pattern length
-        step1 = FindPattern(mi->lpBaseOfDll, mi->SizeOfImage, "\x8B\x00\x48\x8D\x54\x24\x00\x48\x8B\x00\xE8\x00\x00\x00\x00\x48\x8B\x08\xE8", "x?xxxx?xx?x????xxxx");
-        if (!step1) return FALSE;
+        firstCallPrep = FindPattern(mi->lpBaseOfDll, mi->SizeOfImage, "\x8B\x00\x48\x8D\x54\x24\x00\x48\x8B\x00\xE8\x00\x00\x00\x00\x48\x8B\x08\xE8", "x?xxxx?xx?x????xxxx");
+        if (!firstCallPrep) return FALSE;
     }
-    step1 -= 1; // Point to the 4C/4D
-    printf("[TaskViewFrame::RuntimeClassInitialize()] step1 = %lX\n", step1 - (PBYTE)mi->lpBaseOfDll);
+    firstCallPrep -= 1; // Point to the 4C/4D
+    printf("[TV] firstCallPrep = %llX\n", firstCallPrep - (PBYTE)mi->lpBaseOfDll);
 
-    PBYTE step2 = step1 + twoCallsLength - 13;
-    printf("[TaskViewFrame::RuntimeClassInitialize()] step2 = %lX\n", step2 - (PBYTE)mi->lpBaseOfDll);
+    PBYTE firstCallCall = firstCallPrep + twoCallsLength - 13;
+    printf("[TV] firstCallCall = %llX\n", firstCallCall - (PBYTE)mi->lpBaseOfDll);
 
-    PBYTE step3 = step2 + 7;
+    PBYTE nopBegin = firstCallCall + 7;
 
     // Execution
     DWORD dwOldProtect = 0;
-    if (!VirtualProtect(step1, twoCallsLength, PAGE_EXECUTE_READWRITE, &dwOldProtect)) return FALSE;
+    if (!VirtualProtect(firstCallPrep, twoCallsLength, PAGE_EXECUTE_READWRITE, &dwOldProtect)) return FALSE;
     const BYTE step2Payload[] = { 0x48, 0xC7, 0x02, 0x00, 0x00, 0x00, 0x00 };
-    memcpy(step2, step2Payload, sizeof(step2Payload));
-    memset(step3, 0x90, twoCallsLength - (step3 - step1));
-    VirtualProtect(step1, twoCallsLength, dwOldProtect, &dwOldProtect);
+    memcpy(firstCallCall, step2Payload, sizeof(step2Payload));
+    memset(nopBegin, 0x90, twoCallsLength - (nopBegin - firstCallPrep));
+    VirtualProtect(firstCallPrep, twoCallsLength, dwOldProtect, &dwOldProtect);
 
-    printf("[TaskViewFrame::RuntimeClassInitialize()] Patched!\n");
+    printf("[TV] Patched!\n");
     return TRUE;
 }
 
@@ -10247,6 +10233,7 @@ void WINAPI HardwareConfirmatorShellcode(PBYTE pCoroInstance)
         printf("[HardwareConfirmatorShellcode] Failed. 0x%lX\n", hr);
 }
 
+// [HardwareConfirmatorHost::GetDisplayRectAsync$_ResumeCoro$1() patcher
 BOOL Moment2PatchHardwareConfirmator(LPMODULEINFO mi)
 {
     // Find required offsets
@@ -10265,7 +10252,7 @@ BOOL Moment2PatchHardwareConfirmator(LPMODULEINFO mi)
     //
     // 22621.2134: 1D55D
     PBYTE match1 = FindPattern(mi->lpBaseOfDll, mi->SizeOfImage, "\x48\x8B\x83\x00\x00\x00\x00\x8A\x80\x00\x00\x00\x00", "xxx????xx????");
-    printf("[HardwareConfirmatorHost::GetDisplayRectAsync$_ResumeCoro$1()] match1 = %lX\n", match1 - (PBYTE)mi->lpBaseOfDll);
+    printf("[HC] match1 = %llX\n", match1 - (PBYTE)mi->lpBaseOfDll);
     if (!match1) return FALSE;
     g_Moment2PatchOffsets.coroInstance_pHardwareConfirmatorHost = *(int*)(match1 + 3);
     g_Moment2PatchOffsets.hardwareConfirmatorHost_bIsInLockScreen = *(int*)(match1 + 9);
@@ -10284,7 +10271,7 @@ BOOL Moment2PatchHardwareConfirmator(LPMODULEINFO mi)
     //
     // 22621.2134: 1D624
     PBYTE match2 = FindPattern(mi->lpBaseOfDll, mi->SizeOfImage, "\x0F\x10\x43\x00\x0F\x11\x84\x24", "xxx?xxxx");
-    printf("[HardwareConfirmatorHost::GetDisplayRectAsync$_ResumeCoro$1()] match2 = %lX\n", match2 - (PBYTE)mi->lpBaseOfDll);
+    printf("[HC] match2 = %llX\n", match2 - (PBYTE)mi->lpBaseOfDll);
     if (!match2) return FALSE;
     g_Moment2PatchOffsets.coroInstance_rcOut = *(match2 + 3);
 
@@ -10297,7 +10284,7 @@ BOOL Moment2PatchHardwareConfirmator(LPMODULEINFO mi)
     // 22621.2134: 1D21E
     PBYTE writeAt = FindPattern(mi->lpBaseOfDll, mi->SizeOfImage, "\x48\x8D\x4B\x00\x0F", "xxx?x");
     if (!writeAt) return FALSE;
-    printf("[HardwareConfirmatorHost::GetDisplayRectAsync$_ResumeCoro$1()] writeAt = %lX\n", writeAt - (PBYTE)mi->lpBaseOfDll);
+    printf("[HC] writeAt = %llX\n", writeAt - (PBYTE)mi->lpBaseOfDll);
 
     // In 22621.2134+, after our jump location there is a cleanup for something we skipped. NOP them.
     // From match2, bytes +17 until +37, which is 21 bytes to be NOP'd.
@@ -10307,7 +10294,7 @@ BOOL Moment2PatchHardwareConfirmator(LPMODULEINFO mi)
     {
         cleanupBegin = match2 + 17;
         cleanupEnd = match2 + 38; // Exclusive
-        printf("[HardwareConfirmatorHost::GetDisplayRectAsync$_ResumeCoro$1()] cleanup = %lX-%lX\n", cleanupBegin - (PBYTE)mi->lpBaseOfDll, cleanupEnd - (PBYTE)mi->lpBaseOfDll);
+        printf("[HC] cleanup = %llX-%llX\n", cleanupBegin - (PBYTE)mi->lpBaseOfDll, cleanupEnd - (PBYTE)mi->lpBaseOfDll);
         if (*cleanupBegin != 0x49 || *cleanupEnd != 0x90 /*Already NOP here*/) return FALSE;
     }
 
@@ -10342,7 +10329,8 @@ BOOL Moment2PatchHardwareConfirmator(LPMODULEINFO mi)
         VirtualProtect(cleanupBegin, cleanupEnd - cleanupBegin, dwOldProtect, &dwOldProtect);
     }
 
-    printf("[HardwareConfirmatorHost::GetDisplayRectAsync$_ResumeCoro$1()] Patched!\n");
+    printf("[HC] Patched!\n");
+    return TRUE;
 }
 #endif
 
@@ -10866,6 +10854,7 @@ DWORD Inject(BOOL bIsExplorer)
             ((uintptr_t)hTwinuiPcshell + symbols_PTRS.twinui_pcshell_PTRS[5]);
     }
 
+    rv = -1;
     if (symbols_PTRS.twinui_pcshell_PTRS[6] && symbols_PTRS.twinui_pcshell_PTRS[6] != 0xFFFFFFFF)
     {
         CLauncherTipContextMenu_ShowLauncherTipContextMenuFunc = (INT64(*)(void*, POINT*))
@@ -10875,13 +10864,13 @@ DWORD Inject(BOOL bIsExplorer)
             (void**)&CLauncherTipContextMenu_ShowLauncherTipContextMenuFunc,
             CLauncherTipContextMenu_ShowLauncherTipContextMenuHook
         );
-        if (rv != 0)
-        {
-            FreeLibraryAndExitThread(hModule, rv);
-            return rv;
-        }
+    }
+    if (rv != 0)
+    {
+        printf("Failed to hook CLauncherTipContextMenu_ShowLauncherTipContextMenu(). rv = %d\n", rv);
     }
 
+    rv = -1;
     if (symbols_PTRS.twinui_pcshell_PTRS[7] && symbols_PTRS.twinui_pcshell_PTRS[7] != 0xFFFFFFFF)
     {
         if (IsWindows11Version22H2OrHigher())
@@ -10895,11 +10884,6 @@ DWORD Inject(BOOL bIsExplorer)
                 (void**)&twinui_pcshell_CMultitaskingViewManager__CreateXamlMTVHostFunc,
                 twinui_pcshell_CMultitaskingViewManager__CreateXamlMTVHostHook
             );
-            if (rv != 0)
-            {
-                FreeLibraryAndExitThread(hModule, rv);
-                return rv;
-            }
         }
         else
         {
@@ -10910,15 +10894,18 @@ DWORD Inject(BOOL bIsExplorer)
                 (void**)&twinui_pcshell_IsUndockedAssetAvailableFunc,
                 twinui_pcshell_IsUndockedAssetAvailableHook
             );
-            if (rv != 0)
-            {
-                FreeLibraryAndExitThread(hModule, rv);
-                return rv;
-            }
         }
     }
+    if (rv != 0)
+    {
+        if (IsWindows11Version22H2OrHigher())
+            printf("Failed to hook twinui_pcshell_CMultitaskingViewManager__CreateXamlMTVHost(). rv = %d\n", rv);
+        else
+            printf("Failed to hook twinui_pcshell_IsUndockedAssetAvailable(). rv = %d\n", rv);
+    }
 
-    /*if (symbols_PTRS.twinui_pcshell_PTRS[TWINUI_PCSHELL_SB_CNT - 1] && symbols_PTRS.twinui_pcshell_PTRS[TWINUI_PCSHELL_SB_CNT - 1] != 0xFFFFFFFF)
+    /*rv = -1;
+    if (symbols_PTRS.twinui_pcshell_PTRS[TWINUI_PCSHELL_SB_CNT - 1] && symbols_PTRS.twinui_pcshell_PTRS[TWINUI_PCSHELL_SB_CNT - 1] != 0xFFFFFFFF)
     {
         winrt_Windows_Internal_Shell_implementation_MeetAndChatManager_OnMessageFunc = (INT64(*)(void*, POINT*))
             ((uintptr_t)hTwinuiPcshell + symbols_PTRS.twinui_pcshell_PTRS[TWINUI_PCSHELL_SB_CNT - 1]);
@@ -10927,29 +10914,27 @@ DWORD Inject(BOOL bIsExplorer)
             (void**)&winrt_Windows_Internal_Shell_implementation_MeetAndChatManager_OnMessageFunc,
             winrt_Windows_Internal_Shell_implementation_MeetAndChatManager_OnMessageHook
         );
-        if (rv != 0)
-        {
-            FreeLibraryAndExitThread(hModule, rv);
-            return rv;
-        }
+    }
+    if (rv != 0)
+    {
+        printf("Failed to hook winrt_Windows_Internal_Shell_implementation_MeetAndChatManager_OnMessage(). rv = %d\n", rv);
     }*/
 
-#if _WIN64
+#ifdef _WIN64
 #if USE_MOMENT_3_FIXES_ON_MOMENT_2
     // Use this only for testing, since the RtlQueryFeatureConfiguration() hook is perfect.
     // Only tested on 22621.1992.
     BOOL bPerformMoment2Patches = IsWindows11Version22H2Build1413OrHigher();
 #else
     // This is the only way to fix stuff since the flag "26008830" and the code when it's not enabled are gone.
-    // Tested on 22621.2134, 22621.2283, and 22621.2359 (RP).
+    // Tested on:
+    // - 22621.2134, 22621.2283, 22621.2359 (RP)
+    // - 23545.1000
     BOOL bPerformMoment2Patches = IsWindows11Version22H2Build2134OrHigher();
 #endif
-    bPerformMoment2Patches &= global_rovi.dwBuildNumber == 22621 && bOldTaskbar;
-    if (bPerformMoment2Patches) // TODO Test for 23H2
+    bPerformMoment2Patches &= bOldTaskbar;
+    if (bPerformMoment2Patches)
     {
-        MODULEINFO miTwinuiPcshell;
-        GetModuleInformation(GetCurrentProcess(), hTwinuiPcshell, &miTwinuiPcshell, sizeof(MODULEINFO));
-
         // Fix flyout placement: Our goal with these patches is to get `mi.rcWork` assigned
         Moment2PatchActionCenter(&miTwinuiPcshell);
         Moment2PatchControlCenter(&miTwinuiPcshell);

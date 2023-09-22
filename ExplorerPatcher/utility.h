@@ -583,11 +583,12 @@ inline BOOL WINAPI PatchContextMenuOfNewMicrosoftIME(BOOL* bFound)
             {
                 *ptr = patch_to;
                 VirtualProtect(ptr, sizeof(DWORD), prot, &prot);
+                return TRUE;
             }
             break;
         }
     }
-    return TRUE;
+    return FALSE;
 }
 
 extern UINT PleaseWaitTimeout;
