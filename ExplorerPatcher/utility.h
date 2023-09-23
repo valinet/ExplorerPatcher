@@ -73,22 +73,159 @@ HRESULT ShellExecuteFromExplorer(
 void ToggleTaskbarAutohide();
 
 #pragma region "Weird stuff"
-INT64 STDMETHODCALLTYPE nimpl4_1(INT64 a1, DWORD* a2);
-INT64 STDMETHODCALLTYPE nimpl4_0(INT64 a1, DWORD* a2);
-__int64 STDMETHODCALLTYPE nimpl2(__int64 a1, uintptr_t* a2);
-ULONG STDMETHODCALLTYPE nimpl3();
-HRESULT STDMETHODCALLTYPE nimpl();
-HRESULT STDMETHODCALLTYPE nimpl1(__int64 a1, uintptr_t* a2, uintptr_t* a3);
-HRESULT STDMETHODCALLTYPE nimpl1_2(__int64 a1, uintptr_t* a2, uintptr_t* a3);
-HRESULT STDMETHODCALLTYPE nimpl1_3(__int64 a1, uintptr_t* a2, uintptr_t* a3);
-__int64 STDMETHODCALLTYPE nimpl4(__int64 a1, __int64 a2, __int64 a3, BYTE* a4);
-typedef struct _IActivationFactoryAA
+typedef interface WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensionsStatics WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensionsStatics;
+
+DEFINE_GUID(IID_WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensionsStatics,
+    0x18c02f2e,
+    0x2754, 0x5a20, 0x8b, 0xd5,
+    0x0b, 0x34, 0xce, 0x79, 0xda, 0x2b
+);
+
+typedef struct WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensionsStaticsVtbl // : IInspectableVtbl
 {
-    CONST_VTBL struct IActivationFactoryVtbl* lpVtbl;
-    struct IActivationFactoryVtbl* lpVtbl2;
-    struct IActivationFactoryVtbl* lpVtbl3;
-} IActivationFactoryAA;
-extern const IActivationFactoryAA XamlExtensionsFactory;
+    BEGIN_INTERFACE
+
+    HRESULT(STDMETHODCALLTYPE* QueryInterface)(
+        __RPC__in WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensionsStatics* This,
+        /* [in] */ __RPC__in REFIID riid,
+        /* [annotation][iid_is][out] */
+        _COM_Outptr_  void** ppvObject);
+
+    ULONG(STDMETHODCALLTYPE* AddRef)(
+        __RPC__in WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensionsStatics* This);
+
+    ULONG(STDMETHODCALLTYPE* Release)(
+        __RPC__in WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensionsStatics* This);
+
+    HRESULT(STDMETHODCALLTYPE* GetIids)(
+        __RPC__in WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensionsStatics* This,
+        /* [out] */ __RPC__out ULONG* iidCount,
+        /* [size_is][size_is][out] */ __RPC__deref_out_ecount_full_opt(*iidCount) IID** iids);
+
+    HRESULT(STDMETHODCALLTYPE* GetRuntimeClassName)(
+        __RPC__in WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensionsStatics* This,
+        /* [out] */ __RPC__deref_out_opt HSTRING* className);
+
+    HRESULT(STDMETHODCALLTYPE* GetTrustLevel)(
+        __RPC__in WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensionsStatics* This,
+        /* [out] */ __RPC__out TrustLevel* trustLevel);
+
+    HRESULT(STDMETHODCALLTYPE* Current)(
+        __RPC__in WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensionsStatics* This,
+        /* [out] */ __RPC__out void** _instance_of_winrt_WindowsUdk_ApplicationModel_AppExtensions_XamlExtensions);
+
+    END_INTERFACE
+} WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensionsStaticsVtbl;
+
+interface WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensionsStatics // : IInspectable
+{
+    const struct WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensionsStaticsVtbl* lpVtbl;
+};
+
+typedef interface WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensionsStatics2 WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensionsStatics2;
+
+DEFINE_GUID(IID_WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensionsStatics2,
+    0x0fe87da5,
+    0xa7a6, 0x5de3, 0x83, 0x5f,
+    0xd9, 0x8c, 0x87, 0x56, 0x01, 0x44
+);
+
+typedef struct WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensionsStatics2Vtbl // : IInspectableVtbl
+{
+    BEGIN_INTERFACE
+
+    HRESULT(STDMETHODCALLTYPE* QueryInterface)(
+        __RPC__in WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensionsStatics2* This,
+        /* [in] */ __RPC__in REFIID riid,
+        /* [annotation][iid_is][out] */
+        _COM_Outptr_  void** ppvObject);
+
+    ULONG(STDMETHODCALLTYPE* AddRef)(
+        __RPC__in WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensionsStatics2* This);
+
+    ULONG(STDMETHODCALLTYPE* Release)(
+        __RPC__in WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensionsStatics2* This);
+
+    HRESULT(STDMETHODCALLTYPE* GetIids)(
+        __RPC__in WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensionsStatics2* This,
+        /* [out] */ __RPC__out ULONG* iidCount,
+        /* [size_is][size_is][out] */ __RPC__deref_out_ecount_full_opt(*iidCount) IID** iids);
+
+    HRESULT(STDMETHODCALLTYPE* GetRuntimeClassName)(
+        __RPC__in WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensionsStatics2* This,
+        /* [out] */ __RPC__deref_out_opt HSTRING* className);
+
+    HRESULT(STDMETHODCALLTYPE* GetTrustLevel)(
+        __RPC__in WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensionsStatics2* This,
+        /* [out] */ __RPC__out TrustLevel* trustLevel);
+
+    HRESULT(STDMETHODCALLTYPE* GetForCategory)(
+        __RPC__in WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensionsStatics2* This,
+        __RPC__in HSTRING a2,
+        /* [out] */ __RPC__out void** _instance_of_winrt_WindowsUdk_ApplicationModel_AppExtensions_XamlExtensions);
+
+    END_INTERFACE
+} WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensionsStatics2Vtbl;
+
+interface WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensionsStatics2 // : IInspectable
+{
+    const struct WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensionsStatics2Vtbl* lpVtbl;
+};
+
+typedef interface WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensions2 WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensions2;
+
+DEFINE_GUID(IID_WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensions2,
+    0x34a95314,
+    0xca5c, 0x5fad, 0xae, 0x7c,
+    0x1a, 0x90, 0x18, 0x11, 0x66, 0xc1
+);
+
+typedef struct WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensions2Vtbl // : IInspectableVtbl
+{
+    BEGIN_INTERFACE
+
+    HRESULT(STDMETHODCALLTYPE* QueryInterface)(
+        __RPC__in WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensions2* This,
+        /* [in] */ __RPC__in REFIID riid,
+        /* [annotation][iid_is][out] */
+        _COM_Outptr_  void** ppvObject);
+
+    ULONG(STDMETHODCALLTYPE* AddRef)(
+        __RPC__in WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensions2* This);
+
+    ULONG(STDMETHODCALLTYPE* Release)(
+        __RPC__in WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensions2* This);
+
+    HRESULT(STDMETHODCALLTYPE* GetIids)(
+        __RPC__in WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensions2* This,
+        /* [out] */ __RPC__out ULONG* iidCount,
+        /* [size_is][size_is][out] */ __RPC__deref_out_ecount_full_opt(*iidCount) IID** iids);
+
+    HRESULT(STDMETHODCALLTYPE* GetRuntimeClassName)(
+        __RPC__in WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensions2* This,
+        /* [out] */ __RPC__deref_out_opt HSTRING* className);
+
+    HRESULT(STDMETHODCALLTYPE* GetTrustLevel)(
+        __RPC__in WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensions2* This,
+        /* [out] */ __RPC__out TrustLevel* trustLevel);
+
+    HRESULT(STDMETHODCALLTYPE* IsExtensionAvailable)(
+        __RPC__in WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensions2* This,
+        __RPC__in HSTRING a2,
+        __RPC__in HSTRING a3,
+        /* [out] */ __RPC__out BYTE* a4);
+
+    END_INTERFACE
+} WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensions2Vtbl;
+
+interface WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensions2 // : IInspectable
+{
+    const struct WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensions2Vtbl* lpVtbl;
+};
+
+extern const WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensionsStatics instanceof_WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensionsStatics;
+extern const WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensionsStatics2 instanceof_WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensionsStatics2;
+extern const WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensions2 instanceof_WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensions2;
 #pragma endregion
 
 inline int FileExistsW(wchar_t* file)

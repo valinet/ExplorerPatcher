@@ -4277,18 +4277,21 @@ INT64 winrt_Windows_Internal_Shell_implementation_MeetAndChatManager_OnMessageHo
 
 #pragma region "Enable old taskbar"
 #ifdef _WIN64
-DEFINE_GUID(GUID_18C02F2E_2754_5A20_8BD5_0B34CE79DA2B,
-    0x18C02F2E,
-    0x2754, 0x5A20, 0x8b, 0xd5,
-    0x0b, 0x34, 0xce, 0x79, 0xda, 0x2b
-);
 HRESULT explorer_RoGetActivationFactoryHook(HSTRING activatableClassId, GUID* iid, void** factory)
 {
     PCWSTR StringRawBuffer = WindowsGetStringRawBuffer(activatableClassId, 0);
-    if (!wcscmp(StringRawBuffer, L"WindowsUdk.ApplicationModel.AppExtensions.XamlExtensions") && IsEqualGUID(iid, &GUID_18C02F2E_2754_5A20_8BD5_0B34CE79DA2B))
+    if (!wcscmp(StringRawBuffer, L"WindowsUdk.ApplicationModel.AppExtensions.XamlExtensions"))
     {
-        *factory = &XamlExtensionsFactory;
-        return S_OK;
+        if (IsEqualGUID(iid, &IID_WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensionsStatics))
+        {
+            *factory = &instanceof_WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensionsStatics;
+            return S_OK;
+        }
+        if (IsEqualGUID(iid, &IID_WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensionsStatics2))
+        {
+            *factory = &instanceof_WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensionsStatics2;
+            return S_OK;
+        }
     }
     return RoGetActivationFactory(activatableClassId, iid, factory);
 }
@@ -9629,17 +9632,36 @@ struct RTL_FEATURE_CONFIGURATION {
 int (*RtlQueryFeatureConfigurationFunc)(UINT32 featureId, int sectionType, INT64* changeStamp, struct RTL_FEATURE_CONFIGURATION* buffer);
 int RtlQueryFeatureConfigurationHook(UINT32 featureId, int sectionType, INT64* changeStamp, struct RTL_FEATURE_CONFIGURATION* buffer) {
     int rv = RtlQueryFeatureConfigurationFunc(featureId, sectionType, changeStamp, buffer);
+    switch (featureId)
+    {
 #if !USE_MOMENT_3_FIXES_ON_MOMENT_2
-    if (IsWindows11Version22H2Build1413OrHigher() && bOldTaskbar && featureId == 26008830) {
-        // Disable tablet optimized taskbar feature when using the Windows 10 taskbar
-        // 
-        // For now, this fixes Task View and Win-Tab, Alt-Tab breaking after pressing Win-Tab, 
-        // flyouts alignment, notification center alignment, Windows key shortcuts on
-        // OS builds 22621.1413+
-        //
-        buffer->enabledState = FEATURE_ENABLED_STATE_DISABLED;
-    }
+        case 26008830: // STTest
+        {
+            if (bOldTaskbar)
+            {
+                // Disable tablet optimized taskbar feature when using the Windows 10 taskbar
+                //
+                // For now, this fixes Task View and Win-Tab, Alt-Tab breaking after pressing Win-Tab,
+                // flyouts alignment, notification center alignment, Windows key shortcuts on
+                // OS builds 22621.1413+
+                //
+                buffer->enabledState = FEATURE_ENABLED_STATE_DISABLED;
+            }
+            break;
+        }
 #endif
+#if 0
+        case 42952021: // CategorySpecificXamlExtensions
+        {
+            if (bOldTaskbar)
+            {
+                // Make CTray::Init() use IXamlExtensionsStatics (first version, that we can modify)
+                buffer->enabledState = FEATURE_ENABLED_STATE_DISABLED;
+            }
+            break;
+        }
+#endif
+    }
     return rv;
 }
 #pragma endregion
@@ -10962,7 +10984,7 @@ DWORD Inject(BOOL bIsExplorer)
         }
         if (!symbols_PTRS.twinui_pcshell_PTRS[8] || symbols_PTRS.twinui_pcshell_PTRS[8] == 0xFFFFFFFF)
         {
-            // Ref: CMultitaskingViewManager::_CreateMTVHost
+            // Ref: CMultitaskingViewManager::_CreateMTVHost()
             // 4C 89 74 24 ? ? 8B ? ? 8B ? 8B D7 48 8B CE E8 ? ? ? ? 90
             //                                               ^^^^^^^
             PBYTE match = FindPattern(

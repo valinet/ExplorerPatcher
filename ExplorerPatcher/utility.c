@@ -6,102 +6,124 @@ RTL_OSVERSIONINFOW global_rovi;
 DWORD32 global_ubr;
 
 #pragma region "Weird stuff"
-INT64 STDMETHODCALLTYPE nimpl4_1(INT64 a1, DWORD* a2)
-{
-    *a2 = 1;
-    return 0;
-}
-INT64 STDMETHODCALLTYPE nimpl4_0(INT64 a1, DWORD* a2)
-{
-    *a2 = 0;
-    return 0;
-}
-__int64 STDMETHODCALLTYPE nimpl2(__int64 a1, uintptr_t* a2)
-{
-    __int64 v2; // rax
+/***
+Let me explain the weird stuff. This was not documented here before so updating this was a hell of a task.
 
-    v2 = a1 + 8;
-    if (!a1)
-        v2 = 0i64;
+Our target is in `CTray::Init()`. It constructs either the Windows 11 or the Windows 10 taskbar based on the result of
+`winrt::WindowsUdk::ApplicationModel::AppExtensions::XamlExtensions::IsExtensionAvailable()`. We have to make the last
+argument of that function be set to false, so that we'll get the Windows 10 taskbar. In order to make a patch that does
+not use patterns, we hook `RoGetActivationFactory` and return a dummy object with our own specially crafted vtable.
 
-    *a2 = v2;
-    return 0i64;
-}
-ULONG STDMETHODCALLTYPE nimpl3()
+So the calls are as follows:
+
+`CTray::Init()` calls `factory_cache_entry<XamlExtensions, IXamlExtensionsStatics>::call()` to get an interface to
+`XamlExtensions` (located in windowsudk.shellcommon.dll) through `IXamlExtensionsStatics`. First, the factory cache
+system tries to retrieve its activation factory. It calls `RoGetActivationFactory` with the `IID` of
+`IXamlExtensionsStatics`. Our hook makes that function return a dummy `IXamlExtensionsStatics` with our own vtable.
+Despite the name, it is an activation factory. (Ref: `explorer_RoGetActivationFactoryHook()` in dllmain.c)
+
+Then, the cache system checks if the factory implements `IAgileObject` by calling `QueryInterface(IID_IAgileObject)` of
+the factory. This will be used to determine if the factory should be cached or not. We intercept this call and do
+nothing to make the process easy, so the factory will never be cached. In reality, `XamlExtensions` does not implement
+`IAgileObject`.
+
+Then, the cache system calls the lambda that's passed into `factory_cache_entry<~>::call()` in order to retrieve an
+interface that can be used. The lambda that `CTray::Init()` passes into the system, retrieves an instance of
+`XamlExtensions` by calling `IXamlExtensionsStatics::Current()` of the factory using COM. Here, we intercept the call
+through our custom `IXamlExtensionsStatics` vtable and return a dummy `XamlExtensions` instance with our own vtable
+whose `QueryInterface()` with the IID of `IXamlExtensions2` returns a dummy `IXamlExtensions2` with our own vtable.
+
+On builds with the "Never combine" feature on the new taskbar, it uses `IXamlExtensionsStatics2::GetForCategory()`
+instead of `IXamlExtensionsStatics::Current()`.
+
+Now that `CTray::Init()` has an instance of `XamlExtensions`, it calls `IXamlExtensions2::IsExtensionAvailable()`.
+As the name says, if the extension (or Windows 11 taskbar) is available, `CTray::Init()` will continue to make the
+Windows 11 taskbar through `CTray::InitializeTrayUIComponent()`. Otherwise, it will make the Windows 10 taskbar through
+`TrayUI_CreateInstance()` that has been since ages.
+
+`CTray::Init()` gets that value through the `IXamlExtensions2` interface of the `XamlExtensions` instance. COM calls are
+made, which are `QueryInterface(IID_IXamlExtensions2)` and `IXamlExtensions2::IsExtensionAvailable()` itself. We
+intercept the former call through our custom vtable for our dummy `XamlExtensions` instance to return a dummy
+`IXamlExtensions2` with our own vtable too. Then, we intercept the latter call through our custom `IXamlExtensions2`
+vtable to have the last argument set to false, and now we have the good old taskbar.
+***/
+
+static ULONG STDMETHODCALLTYPE nimplAddRefRelease(IUnknown* This)
 {
     return 1;
 }
-HRESULT STDMETHODCALLTYPE nimpl()
+
+static HRESULT STDMETHODCALLTYPE nimplReturnHResultNotImpl(IUnknown* This)
 {
     return E_NOTIMPL;
 }
-HRESULT STDMETHODCALLTYPE nimpl1(__int64 a1, uintptr_t* a2, uintptr_t* a3)
+
+static HRESULT STDMETHODCALLTYPE WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensionsStatics_QueryInterface(WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensionsStatics* This, REFIID riid, void** ppvObject)
 {
-    __int64 v4 = a1; // rcx
+    // Should only be called with IID_IAgileObject
+    return E_NOTIMPL;
+}
 
-    if (*a2 != 0x5FADCA5C34A95314i64 || a2[1] != 0xC1661118901A7CAEui64)
-        return E_NOTIMPL;
-
-    *a3 = v4;
+static HRESULT STDMETHODCALLTYPE WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensionsStatics_Current(WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensionsStatics* This, void** _instance_of_winrt_WindowsUdk_ApplicationModel_AppExtensions_XamlExtensions)
+{
+    *_instance_of_winrt_WindowsUdk_ApplicationModel_AppExtensions_XamlExtensions = &instanceof_WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensions2;
     return S_OK;
 }
-HRESULT STDMETHODCALLTYPE nimpl1_2(__int64 a1, uintptr_t* a2, uintptr_t* a3)
+
+static HRESULT STDMETHODCALLTYPE WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensionsStatics2_GetForCategory(WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensionsStatics2* This, HSTRING a2, void** _instance_of_winrt_WindowsUdk_ApplicationModel_AppExtensions_XamlExtensions)
 {
-    __int64 v4 = a1 - sizeof(__int64); // rcx
-
-    if (*a2 != 0x5FADCA5C34A95314i64 || a2[1] != 0xC1661118901A7CAEui64)
-        return E_NOTIMPL;
-
-    *a3 = v4;
+    *_instance_of_winrt_WindowsUdk_ApplicationModel_AppExtensions_XamlExtensions = &instanceof_WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensions2;
     return S_OK;
 }
-HRESULT STDMETHODCALLTYPE nimpl1_3(__int64 a1, uintptr_t* a2, uintptr_t* a3)
+
+static HRESULT STDMETHODCALLTYPE WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensions2_QueryInterface(WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensions2* This, REFIID riid, void** ppvObject)
 {
-    __int64 v4 = a1 - 2 * sizeof(__int64); // rcx
-
-    if (*a2 != 0x5FADCA5C34A95314i64 || a2[1] != 0xC1661118901A7CAEui64)
-        return E_NOTIMPL;
-
-    *a3 = v4;
-    return S_OK;
+    if (IsEqualIID(riid, &IID_WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensions2))
+    {
+        *ppvObject = &instanceof_WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensions2;
+        return S_OK;
+    }
+    return E_NOTIMPL;
 }
-__int64 STDMETHODCALLTYPE nimpl4(__int64 a1, __int64 a2, __int64 a3, BYTE* a4)
+
+static HRESULT STDMETHODCALLTYPE WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensions2_IsExtensionAvailable(WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensions2* This, HSTRING a2, HSTRING a3, BYTE* a4)
 {
     *a4 = 0;
-    return 0i64;
+    return S_OK;
 }
-const IActivationFactoryVtbl _IActivationFactoryVtbl = {
-    .QueryInterface = nimpl1,
-    .AddRef = nimpl3,
-    .Release = nimpl3,
-    .GetIids = nimpl,
-    .GetRuntimeClassName = nimpl,
-    .GetTrustLevel = nimpl,
-    .ActivateInstance = nimpl2
+
+static const WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensionsStaticsVtbl instanceof_WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensionsStaticsVtbl = {
+    .QueryInterface = WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensionsStatics_QueryInterface,
+    .AddRef = nimplAddRefRelease,
+    .Release = nimplAddRefRelease,
+    .GetIids = nimplReturnHResultNotImpl,
+    .GetRuntimeClassName = nimplReturnHResultNotImpl,
+    .GetTrustLevel = nimplReturnHResultNotImpl,
+    .Current = WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensionsStatics_Current
 };
-const IActivationFactoryVtbl _IActivationFactoryVtbl2 = {
-    .QueryInterface = nimpl1_2,
-    .AddRef = nimpl3,
-    .Release = nimpl3,
-    .GetIids = nimpl,
-    .GetRuntimeClassName = nimpl,
-    .GetTrustLevel = nimpl,
-    .ActivateInstance = nimpl
+const WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensionsStatics instanceof_WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensionsStatics = { &instanceof_WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensionsStaticsVtbl };
+
+static const WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensionsStatics2Vtbl instanceof_WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensionsStatics2Vtbl = {
+    .QueryInterface = WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensionsStatics_QueryInterface,
+    .AddRef = nimplAddRefRelease,
+    .Release = nimplAddRefRelease,
+    .GetIids = nimplReturnHResultNotImpl,
+    .GetRuntimeClassName = nimplReturnHResultNotImpl,
+    .GetTrustLevel = nimplReturnHResultNotImpl,
+    .GetForCategory = WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensionsStatics2_GetForCategory
 };
-const IActivationFactoryVtbl _IActivationFactoryVtbl3 = {
-    .QueryInterface = nimpl1_3,
-    .AddRef = nimpl3,
-    .Release = nimpl3,
-    .GetIids = nimpl,
-    .GetRuntimeClassName = nimpl,
-    .GetTrustLevel = nimpl,
-    .ActivateInstance = nimpl4
+const WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensionsStatics2 instanceof_WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensionsStatics2 = { &instanceof_WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensionsStatics2Vtbl };
+
+static const WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensions2Vtbl instanceof_WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensions2Vtbl = {
+    .QueryInterface = WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensions2_QueryInterface,
+    .AddRef = nimplAddRefRelease,
+    .Release = nimplAddRefRelease,
+    .GetIids = nimplReturnHResultNotImpl,
+    .GetRuntimeClassName = nimplReturnHResultNotImpl,
+    .GetTrustLevel = nimplReturnHResultNotImpl,
+    .IsExtensionAvailable = WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensions2_IsExtensionAvailable
 };
-const IActivationFactoryAA XamlExtensionsFactory = {
-    .lpVtbl = &_IActivationFactoryVtbl,
-    .lpVtbl2 = &_IActivationFactoryVtbl2,
-    .lpVtbl3 = &_IActivationFactoryVtbl3
-};
+const WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensions2 instanceof_WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensions2 = { &instanceof_WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensions2Vtbl };
 #pragma endregion
 
 void printf_guid(GUID guid) 
