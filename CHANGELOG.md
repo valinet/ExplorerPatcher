@@ -2,6 +2,24 @@
 
 This document includes the same release notes as in the [Releases](https://github.com/valinet/ExplorerPatcher/releases) section on GitHub.
 
+## 22621.2283.57
+
+Tested on OS build 22621.2283. Installer requires Internet connectivity.
+
+#### Details
+
+##### 1
+
+* Taskbar10: Fixed Action Center, Control Center, and notification toasts placements on OS builds 22621.2134+ (thanks @Amrsatrio).
+* Taskbar10: Fixed a bug that prevented Task View and/or the window switcher (`Alt`+`Tab`) from working on OS builds 22621.2134+ (thanks @Amrsatrio).
+* Taskbar10: Fixed a bug that prevented the volume and brightness flyouts from displaying (thanks @Amrsatrio).
+* Taskbar10: Fixed a bug that prevented the `Win`+`A` (Action Center), `Win`+`N` (Control Center), and `Win`+`B` (Focus on tray overflow button) shortcuts from working on OS builds 22621.2134+ (thanks @Amrsatrio).
+* Taskbar10: Fixed the context menu of the new IME button OS builds 22621.2134+ (thanks @Amrsatrio).
+* Taskbar11: Fixed a bug that crashed `explorer.exe` when right clicking the taskbar on OS builds 22621.2134+.
+* Quality of life improvements regarding symbol data (thanks @Amrsatrio).
+
+Learn about known issues and track the progress regarding this update [here](https://github.com/valinet/ExplorerPatcher/pull/2097). Special thanks to @Amrsatrio for providing support towards fixing ExplorerPatcher on newer OS builds.
+
 ## 22621.1992.56
 
 Tested on OS build 22621.1992. Installer requires Internet connectivity.
