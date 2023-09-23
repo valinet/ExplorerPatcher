@@ -59,37 +59,32 @@ inline HRESULT SetMicaMaterialForThisWindow(HWND hWnd, BOOL bApply)
 inline BOOL IsWindows11Version22H2OrHigher()
 {
     if (!global_rovi.dwMajorVersion) global_ubr = VnGetOSVersionAndUBR(&global_rovi);
-    if (global_rovi.dwBuildNumber >= 22621) return TRUE;
-    return FALSE;
+    return global_rovi.dwBuildNumber >= 22621;
 }
 
-inline BOOL IsWindows11BuildHigherThan22631()
+inline BOOL IsWindows11Version23H2OrHigher()
 {
     if (!global_rovi.dwMajorVersion) global_ubr = VnGetOSVersionAndUBR(&global_rovi);
-    if (global_rovi.dwBuildNumber > 22631) return TRUE;
-    return FALSE;
+    return global_rovi.dwBuildNumber >= 22631;
 }
 
 inline BOOL IsWindows11BuildHigherThan25158()
 {
     if (!global_rovi.dwMajorVersion) global_ubr = VnGetOSVersionAndUBR(&global_rovi);
-    if (global_rovi.dwBuildNumber > 25158) return TRUE;
-    return FALSE;
+    return global_rovi.dwBuildNumber > 25158;
 }
 
 inline BOOL IsWindows11Version22H2Build1413OrHigher()
 {
-    if (IsWindows11BuildHigherThan22631()) return TRUE;
     if (!global_rovi.dwMajorVersion) global_ubr = VnGetOSVersionAndUBR(&global_rovi);
-    if (global_ubr >= 1413) return TRUE;
-    return FALSE;
+    if (global_rovi.dwBuildNumber > 22621) return TRUE;
+    return global_rovi.dwBuildNumber == 22621 && global_ubr >= 1413;
 }
 
 inline BOOL IsWindows11Version22H2Build2134OrHigher()
 {
-    if (IsWindows11BuildHigherThan22631()) return TRUE;
     if (!global_rovi.dwMajorVersion) global_ubr = VnGetOSVersionAndUBR(&global_rovi);
-    if (global_ubr >= 2134) return TRUE;
-    return FALSE;
+    if (global_rovi.dwBuildNumber > 22621) return TRUE;
+    return global_rovi.dwBuildNumber == 22621 && global_ubr >= 2134;
 }
 #endif
