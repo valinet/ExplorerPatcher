@@ -2500,6 +2500,7 @@ INT64 Shell_TrayWndSubclassProc(
                 {
                     int offset = 656;
                     if (IsWindows11Version22H2OrHigher()) offset = 640;
+                    if (IsWindows11Version22H2Build2134OrHigher()) offset = 648;
                     if ((*(unsigned __int8(__fastcall**)(INT64))(**(INT64**)(TrayUIInstance + offset) + 104i64))(*(INT64*)(TrayUIInstance + offset)))
                     {
                         DeleteMenu(hSubMenu, 0x1A0u, 0);
