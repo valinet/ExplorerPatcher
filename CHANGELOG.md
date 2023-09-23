@@ -20,6 +20,10 @@ Tested on OS build 22621.2283. Installer requires Internet connectivity.
 
 Learn about known issues and track the progress regarding this update [here](https://github.com/valinet/ExplorerPatcher/pull/2097). Special thanks to @Amrsatrio for providing support towards fixing ExplorerPatcher on newer OS builds.
 
+##### 2
+
+* Fixed a bug that crashed `explorer.exe` on OS builds lower than 22621 (Windows 11 22H2). (dfee1ae)
+
 ## 22621.1992.56
 
 Tested on OS build 22621.1992. Installer requires Internet connectivity.
