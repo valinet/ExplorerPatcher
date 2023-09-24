@@ -1915,86 +1915,106 @@ DWORD FixTaskbarAutohide(DWORD unused)
 #pragma region "EnsureXAML on OS builds 22621+"
 #ifdef _WIN64
 DEFINE_GUID(uuidof_Windows_Internal_Shell_XamlExplorerHost_IXamlApplicationStatics,
-    0xECC13292, 0x27EF, 0x547A, 0xAC, 0x8B, 0x76, 0xCD, 0x17, 0x32, 0x21, 0x86);
+    0xECC13292,
+    0x27EF, 0x547A, 0xAC, 0x8B,
+    0x76, 0xCD, 0x17, 0x32, 0x21, 0x86
+);
+
+// 22621.2134+. Still named IXamlApplicationStatics.
+DEFINE_GUID(uuidof_Windows_Internal_Shell_XamlExplorerHost_IXamlApplicationStatics2,
+    0x5148D7B1,
+    0x800E, 0x5C86, 0x8F, 0x69,
+    0x55, 0x81, 0x97, 0x48, 0x31, 0x23
+);
 
 DEFINE_GUID(uuidof_Windows_UI_Core_ICoreWindow5,
-    0x28258A12, 0x7D82, 0x505B, 0xB2, 0x10, 0x71, 0x2B, 0x04, 0xA5, 0x88, 0x82);
+    0x28258A12,
+    0x7D82, 0x505B, 0xB2, 0x10,
+    0x71, 0x2B, 0x04, 0xA5, 0x88, 0x82
+);
 
 BOOL bIsXAMLEnsured = FALSE;
 void EnsureXAML()
 {
-    signed int v0; // eax
-    signed int v2; // eax
+    if (bIsXAMLEnsured)
+        return;
+    bIsXAMLEnsured = TRUE;
+    ULONGLONG initTime = GetTickCount64();
+    HRESULT hr;
 
-    if (!bIsXAMLEnsured)
+    HSTRING_HEADER hstringheaderXamlApplication;
+    HSTRING hstringXamlApplication = NULL;
+    hr = WindowsCreateStringReference(L"Windows.Internal.Shell.XamlExplorerHost.XamlApplication", 55, &hstringheaderXamlApplication, &hstringXamlApplication);
+    if (FAILED(hr))
     {
-        bIsXAMLEnsured = TRUE;
-        ULONGLONG initTime = GetTickCount64();
+        printf("[EnsureXAML] WindowsCreateStringReference(XamlApplication) failed. 0x%lX\n", hr);
+        goto cleanup;
+    }
 
-        IInspectable* pUIXamlApplicationFactory = NULL;
-        HSTRING_HEADER hstringheaderXamlApplication;
-        HSTRING hstringXamlApplication = NULL;
-        IInspectable* pCoreWindow5 = NULL;
-        HSTRING_HEADER hstringheaderWindowsXamlManager;
-        HSTRING hstringWindowsXamlManager = NULL;
-
-        if (FAILED(WindowsCreateStringReference(L"Windows.Internal.Shell.XamlExplorerHost.XamlApplication", 0x37u, &hstringheaderXamlApplication, &hstringXamlApplication)) || !hstringXamlApplication)
+    IInspectable* pXamlApplicationStatics = NULL;
+    hr = RoGetActivationFactory(hstringXamlApplication, &uuidof_Windows_Internal_Shell_XamlExplorerHost_IXamlApplicationStatics, &pXamlApplicationStatics);
+    if (FAILED(hr))
+    {
+        hr = RoGetActivationFactory(hstringXamlApplication, &uuidof_Windows_Internal_Shell_XamlExplorerHost_IXamlApplicationStatics2, &pXamlApplicationStatics);
+        if (FAILED(hr))
         {
-            printf("Error in sub_1800135EC on WindowsCreateStringReference.\n");
-            goto cleanup;
-        }
-        if (FAILED(RoGetActivationFactory(hstringXamlApplication, &uuidof_Windows_Internal_Shell_XamlExplorerHost_IXamlApplicationStatics, &pUIXamlApplicationFactory)) || !pUIXamlApplicationFactory)
-        {
-            printf("Error in sub_1800135EC on RoGetActivationFactory.\n");
+            printf("[EnsureXAML] RoGetActivationFactory(IXamlApplicationStatics) failed. 0x%lX\n", hr);
             goto cleanup0;
         }
-
-        IUnknown* pXamlApplication = NULL;
-        (*(void(__fastcall**)(__int64, __int64*))(*(INT64*)pUIXamlApplicationFactory + 48))(pUIXamlApplicationFactory, &pXamlApplication); // get_Current
-        if (!pXamlApplication)
-        {
-            printf("Error in sub_1800135EC on pUIXamlApplicationFactory + 48.\n");
-            goto cleanup1;
-        }
-        else pXamlApplication->lpVtbl->Release(pXamlApplication);
-
-        if (FAILED(WindowsCreateStringReference(L"Windows.UI.Xaml.Hosting.WindowsXamlManager", 0x2Au, &hstringheaderWindowsXamlManager, &hstringWindowsXamlManager)))
-        {
-            printf("Error in sub_1800135EC on WindowsCreateStringReference 2.\n");
-            goto cleanup1;
-        }
-        if (FAILED(RoGetActivationFactory(hstringWindowsXamlManager, &uuidof_Windows_UI_Core_ICoreWindow5, &pCoreWindow5)))
-        {
-            printf("Error in sub_1800135EC on RoGetActivationFactory 2.\n");
-            goto cleanup2;
-        }
-
-        if (pCoreWindow5)
-        {
-            IUnknown* pDispatcherQueue = NULL;
-            (*(void(__fastcall**)(__int64, __int64*))(*(INT64*)pCoreWindow5 + 48))(pCoreWindow5, &pDispatcherQueue); // get_DispatcherQueue
-            if (!pDispatcherQueue)
-            {
-                printf("Error in sub_1800135EC on pCoreWindow5 + 48.\n");
-                goto cleanup3;
-            }
-            // Keep pDispatcherQueue referenced in memory
-        }
-
-        ULONGLONG finalTime = GetTickCount64();
-        printf("EnsureXAML %lld ms.\n", finalTime - initTime);
-
-    cleanup3:
-        if (pCoreWindow5) pCoreWindow5->lpVtbl->Release(pCoreWindow5);
-    cleanup2:
-        if (hstringWindowsXamlManager) WindowsDeleteString(hstringWindowsXamlManager);
-    cleanup1:
-        if (pUIXamlApplicationFactory) pUIXamlApplicationFactory->lpVtbl->Release(pUIXamlApplicationFactory);
-    cleanup0:
-        if (hstringXamlApplication) WindowsDeleteString(hstringXamlApplication);
-    cleanup:
-        ;
     }
+
+    IUnknown* pXamlApplication = NULL;
+    HRESULT (*IXamlApplicationStatics_get_Current)(IInspectable*, void**) = ((void**)pXamlApplicationStatics->lpVtbl)[6];
+    hr = IXamlApplicationStatics_get_Current(pXamlApplicationStatics, &pXamlApplication);
+    if (FAILED(hr))
+    {
+        printf("[EnsureXAML] IXamlApplicationStatics::get_Current() failed.\n");
+        goto cleanup1;
+    }
+    pXamlApplication->lpVtbl->Release(pXamlApplication);
+
+    HSTRING_HEADER hstringheaderWindowsXamlManager;
+    HSTRING hstringWindowsXamlManager = NULL;
+    hr = WindowsCreateStringReference(L"Windows.UI.Xaml.Hosting.WindowsXamlManager", 42, &hstringheaderWindowsXamlManager, &hstringWindowsXamlManager);
+    if (FAILED(hr))
+    {
+        printf("[EnsureXAML] WindowsCreateStringReference(WindowsXamlManager) failed. 0x%lX\n", hr);
+        goto cleanup1;
+    }
+
+    __x_ABI_CWindows_CUI_CCore_CICoreWindow5* pCoreWindow5 = NULL;
+    hr = RoGetActivationFactory(hstringWindowsXamlManager, &uuidof_Windows_UI_Core_ICoreWindow5, &pCoreWindow5);
+    if (FAILED(hr))
+    {
+        printf("[EnsureXAML] RoGetActivationFactory(ICoreWindow5) failed. 0x%lX\n", hr);
+        goto cleanup2;
+    }
+
+    if (pCoreWindow5)
+    {
+        __x_ABI_CWindows_CSystem_CIDispatcherQueue* pDispatcherQueue = NULL;
+        hr = pCoreWindow5->lpVtbl->get_DispatcherQueue(pCoreWindow5, &pDispatcherQueue);
+        if (FAILED(hr))
+        {
+            printf("[EnsureXAML] ICoreWindow5::get_DispatcherQueue() failed.\n");
+            goto cleanup3;
+        }
+        // Keep pDispatcherQueue referenced in memory
+    }
+
+    ULONGLONG finalTime = GetTickCount64();
+    printf("[EnsureXAML] %lld ms.\n", finalTime - initTime);
+
+cleanup3:
+    if (pCoreWindow5) pCoreWindow5->lpVtbl->Release(pCoreWindow5);
+cleanup2:
+    if (hstringWindowsXamlManager) WindowsDeleteString(hstringWindowsXamlManager);
+cleanup1:
+    if (pXamlApplicationStatics) pXamlApplicationStatics->lpVtbl->Release(pXamlApplicationStatics);
+cleanup0:
+    if (hstringXamlApplication) WindowsDeleteString(hstringXamlApplication);
+cleanup:
+    ;
 }
 
 HRESULT(*ICoreWindow5_get_DispatcherQueueFunc)(INT64, INT64);
@@ -8573,13 +8593,27 @@ HRESULT shell32_DriveTypeCategorizer_CreateInstanceHook(IUnknown* pUnkOuter, REF
 
 
 #pragma region "File Explorer command bar and ribbon support"
+DEFINE_GUID(CLSID_XamlIslandViewAdapter,
+    0x6480100B,
+    0x5A83, 0x4D1E, 0x9F, 0x69,
+    0x8A, 0xE5, 0xA8, 0x8E, 0x9A, 0x33
+);
+
 DEFINE_GUID(CLSID_UIRibbonFramework,
-    0x926749FA, 0x2615, 0x4987, 0x88, 0x45, 0xC3, 0x3E, 0x65, 0xF2, 0xB9, 0x57);
+    0x926749FA,
+    0x2615, 0x4987, 0x88, 0x45,
+    0xC3, 0x3E, 0x65, 0xF2, 0xB9, 0x57
+);
+
 DEFINE_GUID(IID_UIRibbonFramework,
-    0xF4F0385D, 0x6872, 0x43A8, 0xAD, 0x09, 0x4C, 0x33, 0x9C, 0xB3, 0xF5, 0xC5);
+    0xF4F0385D,
+    0x6872, 0x43A8, 0xAD, 0x09,
+    0x4C, 0x33, 0x9C, 0xB3, 0xF5, 0xC5
+);
+
 HRESULT ExplorerFrame_CoCreateInstanceHook(REFCLSID rclsid, LPUNKNOWN pUnkOuter, DWORD dwClsContext, REFIID riid, LPVOID* ppv)
 {
-    if ((dwFileExplorerCommandUI != 0) && *(INT64*)&rclsid->Data1 == 0x4D1E5A836480100B && *(INT64*)rclsid->Data4 == 0x339A8EA8E58A699F)
+    if (dwFileExplorerCommandUI != 0 && IsEqualCLSID(rclsid, &CLSID_XamlIslandViewAdapter))
     {
         return REGDB_E_CLASSNOTREG;
     }
@@ -9642,6 +9676,29 @@ int RtlQueryFeatureConfigurationHook(UINT32 featureId, int sectionType, INT64* c
                 // For now, this fixes Task View and Win-Tab, Alt-Tab breaking after pressing Win-Tab,
                 // flyouts alignment, notification center alignment, Windows key shortcuts on
                 // OS builds 22621.1413+
+                //
+                // Removed in 22621.2134+
+                //
+                buffer->enabledState = FEATURE_ENABLED_STATE_DISABLED;
+            }
+            break;
+        }
+#endif
+#if 1
+        case 40729001: // WASDKInFileExplorer
+        {
+            if (dwFileExplorerCommandUI != 0)
+            {
+                // Disable the new Windows App SDK views (in Home and Gallery) when not using the Windows 11 command bar
+                //
+                // There is an issue where Explorer crashes when one goes to a page with WASDK, goes to another page
+                // without WASDK, and returning to a page with WASDK.
+                //
+                // However this also disables the new Gallery page altogether.
+                // TODO- We have to find a way to either fix the crashing or make Gallery use the non WASDK view in the
+                // TODO  same way as when Explorer is opened into Control Panel then going to Gallery.
+                //
+                // TODO- We cannot rely on feature flag patches because they will eventually be removed.
                 //
                 buffer->enabledState = FEATURE_ENABLED_STATE_DISABLED;
             }
@@ -11520,7 +11577,6 @@ DWORD Inject(BOOL bIsExplorer)
             0,
             ArchiveMenuThread,
             params,
-            0,
             0,
             0
         );
