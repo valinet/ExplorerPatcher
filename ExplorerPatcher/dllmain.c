@@ -1225,14 +1225,31 @@ typedef struct
     IUnknown* iunk;
     BOOL bShouldCenterWinXHorizontally;
 } ShowLauncherTipContextMenuParameters;
-DWORD ShowLauncherTipContextMenu(
-    ShowLauncherTipContextMenuParameters* params
-)
+
+static DWORD ShowLauncherTipContextMenu(ShowLauncherTipContextMenuParameters *params)
 {
+    static ATOM windowRegistrationAtom = 0;
+
+    // We can't register a class more than once.
+    if (windowRegistrationAtom == 0) {
+        WNDCLASSW wc = {
+            .hInstance     = GetModuleHandleW(NULL),
+            .hCursor       = LoadCursorW(NULL, IDC_ARROW),
+            .hbrBackground = (HBRUSH)GetStockObject(WHITE_BRUSH),
+            .lpfnWndProc   = CLauncherTipContextMenu_WndProc,
+            .lpszClassName = LAUNCHERTIP_CLASS_NAME,
+            .style         = CS_DBLCLKS,
+        };
+
+        ATOM tmp = RegisterClassW(&wc);
+        if (tmp != 0)
+            windowRegistrationAtom = tmp;
+    }
+
     // Adjust this based on info from: CLauncherTipContextMenu::SetSite
     // and CLauncherTipContextMenu::CLauncherTipContextMenu
-    // 22000.739: 0xe8
-    // 22000.778: 0xf0
+    // 22000.739: 0xE8
+    // 22000.778: 0xF0
     // What has happened, between .739 and .778 is that the launcher tip
     // context menu object now implements a new interface, ILauncherTipContextMenuMigration;
     // thus, members have shifted 8 bytes (one 64-bit value which will hold the
@@ -1241,181 +1258,99 @@ DWORD ShowLauncherTipContextMenu(
     // from the menu (check out "CLauncherTipContextMenu::RunMigrationTasks"); it
     // seems you can disable this by setting a DWORD "WinXMigrationLevel" = 1 in
     // HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced
-    int offset_in_class = 0;
+    size_t offset_in_class = 0;
     if (global_rovi.dwBuildNumber >= 22621 || (global_rovi.dwBuildNumber == 22000 && global_ubr >= 778))
-    {
         offset_in_class = 8;
-    }
-
-    WNDCLASS wc = { 0 };
-    wc.style = CS_DBLCLKS;
-    wc.lpfnWndProc = CLauncherTipContextMenu_WndProc;
-    wc.hbrBackground = (HBRUSH)GetStockObject(WHITE_BRUSH);
-    wc.hInstance = GetModuleHandle(NULL);
-    wc.lpszClassName = LAUNCHERTIP_CLASS_NAME;
-    wc.hCursor = LoadCursorW(NULL, IDC_ARROW);
-    RegisterClass(&wc);
 
     hWinXWnd = CreateWindowInBand(
-        0,
-        LAUNCHERTIP_CLASS_NAME,
-        0,
-        WS_POPUP,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        GetModuleHandle(NULL),
-        (char*)params->_this - 0x58,
+        0, windowRegistrationAtom, NULL, WS_POPUP,
+        0, 0, 0, 0,
+        NULL, NULL, GetModuleHandleW(NULL),
+        (LPVOID)((char *)params->_this - 0x58),
         7
     );
     // DO NOT USE ShowWindow here; it breaks the window order
     // and renders the desktop toggle unusable; but leave
     // SetForegroundWindow as is so that the menu gets dismissed
     // when the user clicks outside it
-    // 
+    //
     // ShowWindow(hWinXWnd, SW_SHOW);
     SetForegroundWindow(hWinXWnd);
+    HMENU hMenu;
 
-    while (!(*((HMENU*)((char*)params->_this + 0xe8 + offset_in_class))))
-    {
+    while (!(hMenu = *(HMENU *)((char *)params->_this + 0xE8 + offset_in_class)))
         Sleep(1);
-    }
-    if (!(*((HMENU*)((char*)params->_this + 0xe8 + offset_in_class))))
-    {
+    if (!hMenu)
         goto finalize;
-    }
-   
-    TCHAR buffer[260];
-    LoadStringW(GetModuleHandleW(L"ExplorerFrame.dll"), 50222, buffer + (bNoMenuAccelerator ? 0 : 1), 260);
-    if (!bNoMenuAccelerator)
-    {
-        buffer[0] = L'&';
-    }
-    wchar_t* p = wcschr(buffer, L'(');
-    if (p)
-    {
-        p--;
-        if (*p == L' ')
-        {
-            *p = 0;
-        }
-        else
-        {
-            p++;
-            *p = 0;
-        }
+
+    size_t  buffer_offset = (bNoMenuAccelerator ? 0 : 1);
+    wchar_t buffer[MAX_PATH];
+    buffer[0] = bNoMenuAccelerator ? L'\0' : L'&';
+    buffer[1] = L'\0';
+
+    int buffer_size = LoadStringW(GetModuleHandleW(L"ExplorerFrame.dll"), 50222,
+                                  buffer + buffer_offset, _countof(buffer) - buffer_offset);
+    wchar_t *p = wcschr(buffer, L'(');
+    if (p) {
+        if (p > buffer && *(p - 1) == L' ')
+            --p;
+        *p = L'\0';
     }
 
+    MENUITEMINFOW menuInfo = {
+        .cbSize     = sizeof menuInfo,
+        .fMask      = MIIM_ID | MIIM_STRING | MIIM_DATA,
+        .wID        = 3999,
+        .dwItemData = 0,
+        .fType      = MFT_STRING,
+        .dwTypeData = buffer,
+        .cch        = buffer_size,
+    };
     BOOL bCreatedMenu = FALSE;
-    MENUITEMINFOW menuInfo;
-    ZeroMemory(&menuInfo, sizeof(MENUITEMINFOW));
-    menuInfo.cbSize = sizeof(MENUITEMINFOW);
-    menuInfo.fMask = MIIM_ID | MIIM_STRING | MIIM_DATA;
-    menuInfo.wID = 3999;
-    menuInfo.dwItemData = 0;
-    menuInfo.fType = MFT_STRING;
-    menuInfo.dwTypeData = buffer;
-    menuInfo.cch = wcslen(buffer);
-    if (bPropertiesInWinX)
-    {
-        InsertMenuItemW(
-            *((HMENU*)((char*)params->_this + 0xe8 + offset_in_class)),
-            GetMenuItemCount(*((HMENU*)((char*)params->_this + 0xe8 + offset_in_class))) - 1,
-            TRUE,
-            &menuInfo
-        );
+    if (bPropertiesInWinX) {
+        InsertMenuItemW(hMenu, GetMenuItemCount(hMenu) - 1, TRUE, &menuInfo);
         bCreatedMenu = TRUE;
     }
 
-    INT64* unknown_array = NULL;
-    if (bSkinMenus)
-    {
+    INT64 *unknown_array = NULL;
+    if (bSkinMenus) {
         unknown_array = calloc(4, sizeof(INT64));
         if (ImmersiveContextMenuHelper_ApplyOwnerDrawToMenuFunc)
-        {
-            ImmersiveContextMenuHelper_ApplyOwnerDrawToMenuFunc(
-                *((HMENU*)((char*)params->_this + 0xe8 + offset_in_class)),
-                hWinXWnd,
-                &(params->point),
-                0xc,
-                unknown_array
-            );
-        }
+            ImmersiveContextMenuHelper_ApplyOwnerDrawToMenuFunc(hMenu, hWinXWnd, &(params->point), 0xC, unknown_array);
     }
 
     BOOL res = TrackPopupMenu(
-        *((HMENU*)((char*)params->_this + 0xe8 + offset_in_class)),
+        hMenu,
         TPM_RETURNCMD | TPM_RIGHTBUTTON | (params->bShouldCenterWinXHorizontally ? TPM_CENTERALIGN : 0),
-        params->point.x,
-        params->point.y,
-        0,
-        hWinXWnd,
-        0
+        params->point.x, params->point.y, 0, hWinXWnd, NULL
     );
 
-    if (bSkinMenus)
-    {
+    if (bSkinMenus) {
         if (ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc)
-        {
-            ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc(
-                *((HMENU*)((char*)params->_this + 0xe8 + offset_in_class)),
-                hWinXWnd,
-                &(params->point)
-            );
-        }
+            ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc(hMenu, hWinXWnd, &(params->point));
         free(unknown_array);
     }
 
     if (bCreatedMenu)
-    {
-        RemoveMenu(
-            *((HMENU*)((char*)params->_this + 0xe8 + offset_in_class)),
-            3999,
-            MF_BYCOMMAND
-        );
-    }
+        RemoveMenu(hMenu, 3999, MF_BYCOMMAND);
 
-    if (res > 0)
-    {
-        if (bCreatedMenu && res == 3999)
-        {
+    if (res > 0) {
+        if (bCreatedMenu && res == 3999) {
             LaunchPropertiesGUI(hModule);
-        }
-        else if (res < 4000)
-        {
-            INT64 info = *(INT64*)((char*)(*(INT64*)((char*)params->_this + 0xa8 + offset_in_class - 0x58)) + (INT64)res * 8 - 8);
+        } else if (res < 4000) {
+            INT64 info = *(INT64 *)((char *)(*(INT64 *)((char *)params->_this + 0xA8 + offset_in_class - 0x58)) + (INT64)res * 8 - 8);
             if (CLauncherTipContextMenu_ExecuteCommandFunc)
-            {
-                CLauncherTipContextMenu_ExecuteCommandFunc(
-                    (char*)params->_this - 0x58,
-                    &info
-                );
-            }
-        }
-        else
-        {
-            INT64 info = *(INT64*)((char*)(*(INT64*)((char*)params->_this + 0xc8 + offset_in_class - 0x58)) + ((INT64)res - 4000) * 8);
+                CLauncherTipContextMenu_ExecuteCommandFunc((char *)params->_this - 0x58, &info);
+        } else {
+            INT64 info = *(INT64 *)((char *)(*(INT64 *)((char *)params->_this + 0xC8 + offset_in_class - 0x58)) + ((INT64)res - 4000) * 8);
             if (CLauncherTipContextMenu_ExecuteShutdownCommandFunc)
-            {
-                CLauncherTipContextMenu_ExecuteShutdownCommandFunc(
-                    (char*)params->_this - 0x58,
-                    &info
-                );
-            }
+                CLauncherTipContextMenu_ExecuteShutdownCommandFunc((char *)params->_this - 0x58, &info);
         }
     }
 
 finalize:
     params->iunk->lpVtbl->Release(params->iunk);
-    SendMessage(
-        hWinXWnd,
-        WM_CLOSE,
-        0,
-        0
-    );
+    SendMessageW(hWinXWnd, WM_CLOSE, 0, 0);
     free(params);
     hIsWinXShown = NULL;
     return 0;
