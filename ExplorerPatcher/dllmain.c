@@ -9928,12 +9928,27 @@ INT64 twinui_pcshell_IsUndockedAssetAvailableHook(INT a1, INT64 a2, INT64 a3, co
     }
 }
 
-INT64(*twinui_pcshell_CMultitaskingViewManager__CreateDCompMTVHostFunc)(INT64 a1, unsigned int a2, INT64 a3, INT64 a4, INT64* a5);
-INT64(*twinui_pcshell_CMultitaskingViewManager__CreateXamlMTVHostFunc)(INT64 a1, unsigned int a2, INT64 a3, INT64 a4, INT64* a5);
-INT64 twinui_pcshell_CMultitaskingViewManager__CreateXamlMTVHostHook(INT64 a1, unsigned int a2, INT64 a3, INT64 a4, INT64* a5)
+INT64(*twinui_pcshell_CMultitaskingViewManager__CreateDCompMTVHostFunc)(INT64 this, unsigned int a2, INT64 a3, INT64 a4, INT64* a5);
+INT64(*twinui_pcshell_CMultitaskingViewManager__CreateXamlMTVHostFunc)(INT64 this, unsigned int a2, INT64 a3, INT64 a4, INT64* a5);
+INT64 twinui_pcshell_CMultitaskingViewManager__CreateXamlMTVHostHook(INT64 this, unsigned int a2, INT64 a3, INT64 a4, INT64* a5)
 {
-    if (!twinui_pcshell_IsUndockedAssetAvailableHook(a2, 0, 0, 0, NULL)) return twinui_pcshell_CMultitaskingViewManager__CreateDCompMTVHostFunc(a1, a2, a3, a4, a5);
-    return twinui_pcshell_CMultitaskingViewManager__CreateXamlMTVHostFunc(a1, a2, a3, a4, a5);
+    if (!twinui_pcshell_IsUndockedAssetAvailableHook(a2, 0, 0, NULL))
+        return twinui_pcshell_CMultitaskingViewManager__CreateDCompMTVHostFunc(this, a2, a3, a4, a5);
+    return twinui_pcshell_CMultitaskingViewManager__CreateXamlMTVHostFunc(this, a2, a3, a4, a5);
+}
+
+HRESULT(*twinui_pcshell_PenMenuSystemTrayManager__GetDynamicSystemTrayHeightForMonitorFunc)(IInspectable* this, HMONITOR hMonitor, float* outHeight);
+HRESULT twinui_pcshell_PenMenuSystemTrayManager__GetDynamicSystemTrayHeightForMonitorHook(IInspectable* this, HMONITOR hMonitor, float* outHeight)
+{
+    if (bOldTaskbar)
+    {
+        MONITORINFO mi;
+        mi.cbSize = sizeof(MONITORINFO);
+        GetMonitorInfoW(hMonitor, &mi);
+        *outHeight = (float)(mi.rcMonitor.bottom - mi.rcWork.bottom);
+        return S_OK;
+    }
+    return twinui_pcshell_PenMenuSystemTrayManager__GetDynamicSystemTrayHeightForMonitorFunc(this, hMonitor, outHeight);
 }
 
 #ifdef _WIN64
@@ -11211,6 +11226,29 @@ DWORD Inject(BOOL bIsExplorer)
         MODULEINFO miHardwareConfirmator;
         GetModuleInformation(GetCurrentProcess(), hHardwareConfirmator, &miHardwareConfirmator, sizeof(MODULEINFO));
         Moment2PatchHardwareConfirmator(&miHardwareConfirmator);
+
+        // Fix pen menu
+        // 48 89 5C 24 ? 48 89 74 24 ? 57 48 83 EC 50 49 8B F0 48 81 C1
+        twinui_pcshell_PenMenuSystemTrayManager__GetDynamicSystemTrayHeightForMonitorFunc = FindPattern(
+            hTwinuiPcshell,
+            miTwinuiPcshell.SizeOfImage,
+            "\x48\x89\x5C\x24\x00\x48\x89\x74\x24\x00\x57\x48\x83\xEC\x50\x49\x8B\xF0\x48\x81\xC1",
+            "xxxx?xxxx?xxxxxxxxxxx"
+        );
+        rv = -1;
+        if (twinui_pcshell_PenMenuSystemTrayManager__GetDynamicSystemTrayHeightForMonitorFunc)
+        {
+            printf("PenMenuSystemTrayManager::GetDynamicSystemTrayHeightForMonitor() = %llX\n", (PBYTE)twinui_pcshell_PenMenuSystemTrayManager__GetDynamicSystemTrayHeightForMonitorFunc - (PBYTE)hTwinuiPcshell);
+            rv = funchook_prepare(
+               funchook,
+               (void**)&twinui_pcshell_PenMenuSystemTrayManager__GetDynamicSystemTrayHeightForMonitorFunc,
+               twinui_pcshell_PenMenuSystemTrayManager__GetDynamicSystemTrayHeightForMonitorHook
+           );
+        }
+        if (rv != 0)
+        {
+            printf("Failed to hook PenMenuSystemTrayManager::GetDynamicSystemTrayHeightForMonitor(). rv = %d\n", rv);
+        }
     }
 #endif
 
