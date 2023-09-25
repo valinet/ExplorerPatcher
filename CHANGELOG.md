@@ -2,6 +2,20 @@
 
 This document includes the same release notes as in the [Releases](https://github.com/valinet/ExplorerPatcher/releases) section on GitHub.
 
+## 22621.2361.58
+
+Tested on OS builds 22000.2416, 22621.1, 22621.2134, 22621.2361, 22631.2338, and 23545.1000.
+
+#### Details
+
+##### 1
+
+* Taskbar10: Fixed Windows 10 taskbar not showing up on Windows 11 builds with "Never combine" on the new taskbar. (bc3bbc7)
+* Taskbar10: Fixed pen menu crashing `explorer.exe` on 22621.2134+. (1977d78)
+* Taskbar11: Fixed a bug that crashed `explorer.exe` when right clicking the new taskbar on Windows 11 builds with "Never combine" on the new taskbar. (6023718)
+* File Explorer: EP now tries to avoid crashes related to the new Windows App SDK views. (b426d2c)
+* On OS builds 22621+, fixed a bug that crashed `explorer.exe` when required functions in `twinui.pcshell.dll` (for Win+X and Windows 10 Alt+Tab) could not be found using the fallback method. (6023718)
+
 ## 22621.2283.57
 
 Tested on OS build 22621.2283. Installer requires Internet connectivity.
