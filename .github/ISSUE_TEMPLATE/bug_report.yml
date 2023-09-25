@@ -21,7 +21,7 @@ body:
   - type: input
     attributes:
       label: ExplorerPatcher version
-      description: Find your ExplorerPatcher in the About tab of ExplorerPatcher's
+      description: Find your ExplorerPatcher version in the About tab of ExplorerPatcher's
         properties window, or by going to Installed Apps in Windows Settings
       placeholder: 22621.2283.57.2
     validations:
