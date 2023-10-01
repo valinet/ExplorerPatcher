@@ -157,6 +157,9 @@
     <ClCompile Include="StartMenu.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="StartMenuSettings.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="symbols.c">
       <Filter>Source Files</Filter>
     </ClCompile>
