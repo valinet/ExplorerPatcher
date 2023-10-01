@@ -12337,7 +12337,7 @@ int Start_SetWindowRgn(HWND hWnd, HRGN hRgn, BOOL bRedraw)
                 SetWindowPos(hWnd, NULL, mi.rcWork.left, mi.rcWork.top, 0, 0, SWP_NOSIZE | SWP_FRAMECHANGED | SWP_ASYNCWINDOWPOS);
             }
         }
-        if (bIsWindowVisible && IsWindows11Version22H2Build2134OrHigher())
+        if (bIsWindowVisible && dwStartShowClassicMode && IsWindows11Version22H2Build2134OrHigher())
         {
             extern void NeedsRo_SyncSettingsFromRegToCDS();
             NeedsRo_SyncSettingsFromRegToCDS();
