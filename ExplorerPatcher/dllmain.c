@@ -13105,7 +13105,7 @@ void InjectShellExperienceHostFor22H2OrHigher() {
     if (RegOpenKeyW(HKEY_CURRENT_USER, _T(SEH_REGPATH), &hKey) != ERROR_SUCCESS) return;
     RegCloseKey(hKey);
     HMODULE hQA = LoadLibraryW(L"Windows.UI.QuickActions.dll");
-    if (hQA) VnPatchIAT(hQA, "api-ms-win-core-sysinfo-l1-2-0.dll", "GetProductInfo", SEH_GetProductInfo);
+    //if (hQA) VnPatchIAT(hQA, "api-ms-win-core-sysinfo-l1-2-0.dll", "GetProductInfo", SEH_GetProductInfo);
     //if (hQA) VnPatchIAT(hQA, "ntdll.dll", "RtlGetDeviceFamilyInfoEnum", SEH_RtlGetDeviceFamilyInfoEnum);
     //if (hQA) VnPatchIAT(hQA, "api-ms-win-core-registry-l1-1-0.dll", "RegGetValueW", SEH_RegGetValueW);
 #endif
