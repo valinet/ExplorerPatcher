@@ -11506,50 +11506,19 @@ DWORD Inject(BOOL bIsExplorer)
         ResetEvent(hEvent);
     }*/
 
-    if (bOldTaskbar)
-    {
-        if (IsWindows11())
-        {
-            CreateThread(
-                0,
-                0,
-                PlayStartupSound,
-                0,
-                0,
-                0
-            );
+    if (IsWindows11()) {
+        if (bOldTaskbar) {
+            CreateThread(0, 0, PlayStartupSound, 0, 0, 0);
             printf("Play startup sound thread...\n");
-        }
-    }
-
-
-    if (bOldTaskbar)
-    {
-        if (IsWindows11())
-        {
-            CreateThread(
-                0,
-                0,
-                SignalShellReady,
-                dwExplorerReadyDelay,
-                0,
-                0
-            );
+            CreateThread(0, 0, SignalShellReady, dwExplorerReadyDelay, 0, 0);
             printf("Signal shell ready...\n");
+        } else {
+            CreateThread(0, 0, FixTaskbarAutohide, 0, 0, 0);
+            if (!IsWindows11Version22H2Build2361OrHigher()) {
+                RegDeleteKeyValueW(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", L"TaskbarGlomLevel");
+                RegDeleteKeyValueW(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", L"MMTaskbarGlomLevel");
+            }
         }
-    }
-    else
-    {
-        CreateThread(
-            0,
-            0,
-            FixTaskbarAutohide,
-            0,
-            0,
-            0
-        );
-        RegDeleteKeyValueW(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", L"TaskbarGlomLevel");
-        RegDeleteKeyValueW(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", L"MMTaskbarGlomLevel");
     }
 
     if (IsWindows11Version22H2OrHigher() && bOldTaskbar)

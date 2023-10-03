@@ -7,6 +7,7 @@
 #include <winstring.h>
 #include <stdio.h>
 #include <Shlwapi.h>
+#include "osutility.h"
 
 #define LVT_LOC_NONE 0
 #define LVT_LOC_BOTTOMLEFT 1
