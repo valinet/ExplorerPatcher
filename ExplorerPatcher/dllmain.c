@@ -9301,34 +9301,6 @@ BOOL twinui_RegisterHotkeyHook(HWND hWnd, int id, UINT fsModifiers, UINT vk)
 #pragma endregion
 
 
-#pragma region "Redirect certain library loads to other versions"
-HMODULE patched_LoadLibraryExW(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlags)
-{
-    if (IsWindows11Version22H2OrHigher())
-        return LoadLibraryExW(lpLibFileName, hFile, dwFlags);
-
-    WCHAR path[MAX_PATH];
-    GetSystemDirectoryW(path, MAX_PATH);
-    wcscat_s(path, MAX_PATH, L"\\AppResolver.dll");
-    if (!_wcsicmp(path, lpLibFileName))
-    {
-        GetWindowsDirectoryW(path, MAX_PATH);
-        wcscat_s(path, MAX_PATH, L"\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\AppResolverLegacy.dll");
-        return LoadLibraryExW(path, hFile, dwFlags);
-    }
-    GetSystemDirectoryW(path, MAX_PATH);
-    wcscat_s(path, MAX_PATH, L"\\StartTileData.dll");
-    if (!_wcsicmp(path, lpLibFileName))
-    {
-        GetWindowsDirectoryW(path, MAX_PATH);
-        wcscat_s(path, MAX_PATH, L"\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\StartTileDataLegacy.dll");
-        return LoadLibraryExW(path, hFile, dwFlags);
-    }
-    return LoadLibraryExW(lpLibFileName, hFile, dwFlags);
-}
-#pragma endregion
-
-
 #pragma region "Fix taskbar thumbnails and acrylic in newer OS builds (22572+)"
 #ifdef _WIN64
 unsigned int (*GetTaskbarColor)(INT64 u1, INT64 u2) = NULL;
@@ -9859,53 +9831,6 @@ DWORD InjectBasicFunctions(BOOL bIsExplorer, BOOL bInstall)
             }
             FreeLibrary(hWindowsUIFileExplorer);
             FreeLibrary(hWindowsUIFileExplorer);
-        }
-    }
-
-    DWORD dwPermitOldStartTileData = FALSE;
-    DWORD dwSize = sizeof(DWORD);
-    if (bInstall)
-    {
-        dwSize = sizeof(DWORD);
-        RegGetValueW(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", L"Start_ShowClassicMode", RRF_RT_DWORD, NULL, &dwStartShowClassicMode, &dwSize);
-        dwSize = sizeof(DWORD);
-        RegGetValueW(HKEY_CURRENT_USER, L"Software\\ExplorerPatcher", L"PermitOldStartTileDataOneShot", RRF_RT_DWORD, NULL, &dwPermitOldStartTileData, &dwSize);
-    }
-    if (dwStartShowClassicMode && dwPermitOldStartTileData)
-    {
-        HANDLE hCombase = LoadLibraryW(L"combase.dll");
-        if (hCombase)
-        {
-            if (bInstall)
-            {
-                WCHAR wszPath[MAX_PATH], wszExpectedPath[MAX_PATH];
-                ZeroMemory(wszPath, MAX_PATH);
-                ZeroMemory(wszExpectedPath, MAX_PATH);
-                DWORD dwLength = MAX_PATH;
-                HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, GetCurrentProcessId());
-                if (hProcess)
-                {
-                    QueryFullProcessImageNameW(hProcess, 0, wszPath, &dwLength);
-                    CloseHandle(hProcess);
-                }
-                if (GetWindowsDirectoryW(wszExpectedPath, MAX_PATH))
-                {
-                    wcscat_s(wszExpectedPath, MAX_PATH, L"\\explorer.exe");
-                    if (!_wcsicmp(wszPath, wszExpectedPath))
-                    {
-                        dwPermitOldStartTileData = FALSE;
-                        dwSize = sizeof(DWORD);
-                        RegDeleteKeyValueW(HKEY_CURRENT_USER, L"Software\\ExplorerPatcher", L"PermitOldStartTileDataOneShot");
-                        VnPatchIAT(hCombase, "api-ms-win-core-libraryloader-l1-2-0.dll", "LoadLibraryExW", patched_LoadLibraryExW);
-                    }
-                }
-                else
-                {
-                    VnPatchIAT(hCombase, "api-ms-win-core-libraryloader-l1-2-0.dll", "LoadLibraryExW", LoadLibraryExW);
-                    FreeLibrary(hCombase);
-                    FreeLibrary(hCombase);
-                }
-            }
         }
     }
 
@@ -10672,7 +10597,8 @@ cleanup:
 #pragma region "Fix Pin to Start from Explorer not working when using Windows 10 start menu"
 #ifdef _WIN64
 HRESULT(*AppResolver_StartDocked_GetStartScreenManagerExtensionStaticsFunc)(void** out);
-HRESULT AppResolver_StartDocked_GetStartScreenManagerExtensionStatics(void** out)
+HRESULT(*StartTileData_StartDocked_GetStartScreenManagerExtensionStaticsFunc)(void** out);
+HRESULT StartDocked_GetStartScreenManagerExtensionStaticsHook(void** out)
 {
     if (dwStartShowClassicMode)
     {
@@ -10686,53 +10612,54 @@ typedef struct CCacheShortcut CCacheShortcut;
 extern HRESULT(*AppResolver_CAppResolverCacheBuilder__AddUserPinnedShortcutToStartFunc)(const CCacheShortcut* a2, const void* a3);
 extern HRESULT AppResolver_CAppResolverCacheBuilder__AddUserPinnedShortcutToStart(const CCacheShortcut* a2, const void* a3);
 
-void PatchAppResolver()
+static void FindGetStartScreenManagerExtensionStatics(const MODULEINFO* pModuleInfo, HRESULT(**ppfnOut)(void**))
+{
+    // StartDocked::GetStartScreenManagerExtensionStatics
+    // 48 89 5C 24 ? 48 89 74 24 ? 55 57 41 56 48 8D 6C 24 ? 48 81 EC ? ? ? ? 48 8B 05 ? ? ? ? 48 33 C4 48 89 45 37 ?? 8B F1 48 83 21 00
+    PBYTE match = FindPattern(
+        pModuleInfo->lpBaseOfDll,
+        pModuleInfo->SizeOfImage,
+        "\x48\x89\x5C\x24\x00\x48\x89\x74\x24\x00\x55\x57\x41\x56\x48\x8D\x6C\x24\x00\x48\x81\xEC\x00\x00\x00\x00\x48\x8B\x05\x00\x00\x00\x00\x48\x33\xC4\x48\x89\x45\x37\x00\x8B\xF1\x48\x83\x21\x00",
+        "xxxx?xxxx?xxxxxxxx?xxx????xxx????xxxxxxx?xxxxxx"
+    );
+    if (match)
+    {
+        *ppfnOut = match;
+    }
+}
+
+static void PatchAppResolver()
 {
     HANDLE hAppResolver = LoadLibraryW(L"AppResolver.dll");
     MODULEINFO miAppResolver;
     GetModuleInformation(GetCurrentProcess(), hAppResolver, &miAppResolver, sizeof(MODULEINFO));
 
-    // StartDocked::GetStartScreenManagerExtensionStatics
-    // 48 89 5C 24 ? 48 89 74 24 ? 55 57 41 56 48 8D 6C 24 ? 48 81 EC ? ? ? ? 48 8B 05 ? ? ? ? 48 33 C4 48 89 45 37 ?? 8B F1 48 83 21 00
-    PBYTE match = FindPattern(
-        hAppResolver,
-        miAppResolver.SizeOfImage,
-        "\x48\x89\x5C\x24\x00\x48\x89\x74\x24\x00\x55\x57\x41\x56\x48\x8D\x6C\x24\x00\x48\x81\xEC\x00\x00\x00\x00\x48\x8B\x05\x00\x00\x00\x00\x48\x33\xC4\x48\x89\x45\x37\x00\x8B\xF1\x48\x83\x21\x00",
-        "xxxx?xxxx?xxxxxxxx?xxx????xxx????xxxxxxx?xxxxxx"
-    );
-    int rv = -1;
-    if (match)
+    FindGetStartScreenManagerExtensionStatics(&miAppResolver, &AppResolver_StartDocked_GetStartScreenManagerExtensionStaticsFunc);
+    if (AppResolver_StartDocked_GetStartScreenManagerExtensionStaticsFunc)
     {
-        AppResolver_StartDocked_GetStartScreenManagerExtensionStaticsFunc = match;
-        printf("StartDocked::GetStartScreenManagerExtensionStatics() = %llX\n", match - (PBYTE)hAppResolver);
-        rv = funchook_prepare(
-            funchook,
-            (void**)&AppResolver_StartDocked_GetStartScreenManagerExtensionStaticsFunc,
-            AppResolver_StartDocked_GetStartScreenManagerExtensionStatics
-        );
-    }
-    if (rv != 0)
-    {
-        printf("Failed to hook StartDocked::GetStartScreenManagerExtensionStatics(). rv = %d\n", rv);
+        printf("AppResolver.dll!StartDocked::GetStartScreenManagerExtensionStatics() = %llX\n", (PBYTE)AppResolver_StartDocked_GetStartScreenManagerExtensionStaticsFunc - (PBYTE)hAppResolver);
     }
 
     // CAppResolverCacheBuilder::_AddUserPinnedShortcutToStart()
     // 8B ? 48 8B D3 E8 ? ? ? ? 48 8B 8D
     //                  ^^^^^^^
-    match = FindPattern(
+    PBYTE match = FindPattern(
         hAppResolver,
         miAppResolver.SizeOfImage,
         "\x8B\x00\x48\x8B\xD3\xE8\x00\x00\x00\x00\x48\x8B\x8D",
         "x?xxxx????xxx"
     );
-    rv = -1;
     if (match)
     {
         match += 5;
         match = match + 5 + *(int*)(match + 1);
         AppResolver_CAppResolverCacheBuilder__AddUserPinnedShortcutToStartFunc = match;
         printf("CAppResolverCacheBuilder::_AddUserPinnedShortcutToStart() = %llX\n", match - (PBYTE)hAppResolver);
-        extern HRESULT AppResolver_CAppResolverCacheBuilder__AddUserPinnedShortcutToStart(const void* a2, const void* a3);
+    }
+
+    int rv = -1;
+    if (AppResolver_CAppResolverCacheBuilder__AddUserPinnedShortcutToStartFunc)
+    {
         rv = funchook_prepare(
             funchook,
             (void**)&AppResolver_CAppResolverCacheBuilder__AddUserPinnedShortcutToStartFunc,
@@ -10742,6 +10669,48 @@ void PatchAppResolver()
     if (rv != 0)
     {
         printf("Failed to hook CAppResolverCacheBuilder::_AddUserPinnedShortcutToStart(). rv = %d\n", rv);
+        return; // Must be hooked properly otherwise our GetStartScreenManagerExtensionStatics hook will make it crash
+    }
+
+    rv = -1;
+    if (AppResolver_StartDocked_GetStartScreenManagerExtensionStaticsFunc)
+    {
+        rv = funchook_prepare(
+            funchook,
+            (void**)&AppResolver_StartDocked_GetStartScreenManagerExtensionStaticsFunc,
+            StartDocked_GetStartScreenManagerExtensionStaticsHook
+        );
+    }
+    if (rv != 0)
+    {
+        printf("Failed to hook AppResolver.dll!StartDocked::GetStartScreenManagerExtensionStatics(). rv = %d\n", rv);
+    }
+}
+
+static void PatchStartTileData()
+{
+    HANDLE hStartTileData = LoadLibraryW(L"StartTileData.dll");
+    MODULEINFO miStartTileData;
+    GetModuleInformation(GetCurrentProcess(), hStartTileData, &miStartTileData, sizeof(MODULEINFO));
+
+    FindGetStartScreenManagerExtensionStatics(&miStartTileData, &StartTileData_StartDocked_GetStartScreenManagerExtensionStaticsFunc);
+    if (StartTileData_StartDocked_GetStartScreenManagerExtensionStaticsFunc)
+    {
+        printf("StartTileData.dll!StartDocked::GetStartScreenManagerExtensionStatics() = %llX\n", (PBYTE)StartTileData_StartDocked_GetStartScreenManagerExtensionStaticsFunc - (PBYTE)hStartTileData);
+    }
+
+    int rv = -1;
+    if (StartTileData_StartDocked_GetStartScreenManagerExtensionStaticsFunc)
+    {
+        rv = funchook_prepare(
+            funchook,
+            (void**)&StartTileData_StartDocked_GetStartScreenManagerExtensionStaticsFunc,
+            StartDocked_GetStartScreenManagerExtensionStaticsHook
+        );
+    }
+    if (rv != 0)
+    {
+        printf("Failed to hook StartTileData.dll!StartDocked::GetStartScreenManagerExtensionStatics(). rv = %d\n", rv);
     }
 }
 #endif
@@ -11099,6 +11068,7 @@ DWORD Inject(BOOL bIsExplorer)
 
         // Fix Pin to Start/Unpin from Start
         PatchAppResolver();
+        PatchStartTileData();
     }
     //VnPatchIAT(hExplorer, "api-ms-win-core-libraryloader-l1-2-0.dll", "LoadStringW", explorer_LoadStringWHook);
     if (bClassicThemeMitigations)
@@ -12855,10 +12825,9 @@ void InjectStartMenu()
 
         if (IsWindows11())
         {
-            // Redirects to StartTileData from 22000.51 which works with the legacy menu
-            LoadLibraryW(L"combase.dll");
-            HANDLE hCombase = GetModuleHandleW(L"combase.dll");
-            VnPatchIAT(hCombase, "api-ms-win-core-libraryloader-l1-2-0.dll", "LoadLibraryExW", patched_LoadLibraryExW);
+            // Fixes Pin to Start/Unpin from Start
+            PatchAppResolver();
+            PatchStartTileData();
 
             // Redirects to pri files from 22000.51 which work with the legacy menu
             LoadLibraryW(L"MrmCoreR.dll");

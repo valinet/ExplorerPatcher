@@ -951,18 +951,18 @@ int WINAPI wWinMain(
         {
             GetWindowsDirectoryW(wszPath, MAX_PATH);
             wcscat_s(wszPath, MAX_PATH, L"\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\AppResolverLegacy.dll");
-            if (ShouldDownloadOrDelete(bInstall, hInstance, wszPath, "BAD744C69B92BBD508D3950B41822683") && IsConnectedToInternet() == TRUE)
+            if (FileExistsW(wszPath))
             {
-                DownloadFile(L"https://github.com/valinet/ExplorerPatcher/files/8148997/AppResolverLegacy.dll.txt", 10 * 1024 * 1024, wszPath);
+                bOk = DeleteFileW(wszPath);
             }
         }
         if (bOk && IsWindows11())
         {
             GetWindowsDirectoryW(wszPath, MAX_PATH);
             wcscat_s(wszPath, MAX_PATH, L"\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\StartTileDataLegacy.dll");
-            if (ShouldDownloadOrDelete(bInstall, hInstance, wszPath, "aa36a082e3b33297b6930eea6e98f8cf") && IsConnectedToInternet() == TRUE)
+            if (FileExistsW(wszPath))
             {
-                DownloadFile(L"https://github.com/valinet/ExplorerPatcher/files/8136435/StartTileDataLegacy.pri.txt", 10 * 1024 * 1024, wszPath);
+                bOk = DeleteFileW(wszPath);
             }
         }
         if (bOk && IsWindows11())
@@ -977,12 +977,16 @@ int WINAPI wWinMain(
         if (bOk && IsWindows11())
         {
             GetWindowsDirectoryW(wszPath, MAX_PATH);
-            wcscat_s(wszPath, MAX_PATH, L"\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\en-US");
-            CreateDirectoryW(wszPath, NULL);
-            wcscat_s(wszPath, MAX_PATH, L"\\StartTileDataLegacy.dll.mui");
-            if (ShouldDownloadOrDelete(bInstall, hInstance, wszPath, "0ed61f384c39116f424eb2fa6b3b9ef8") && IsConnectedToInternet() == TRUE)
+            wcscat_s(wszPath, MAX_PATH, L"\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\en-US\\StartTileDataLegacy.dll.mui");
+            if (FileExistsW(wszPath))
             {
-                DownloadFile(L"https://github.com/valinet/ExplorerPatcher/files/8136433/StartTileDataLegacy.dll.mui.txt", 10 * 1024 * 1024, wszPath);
+                bOk = DeleteFileW(wszPath);
+                if (bOk)
+                {
+                    GetWindowsDirectoryW(wszPath, MAX_PATH);
+                    wcscat_s(wszPath, MAX_PATH, L"\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\en-US");
+                    bOk = RemoveDirectoryW(wszPath);
+                }
             }
         }
         if (bOk && IsWindows11())
