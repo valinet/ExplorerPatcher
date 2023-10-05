@@ -9304,6 +9304,9 @@ BOOL twinui_RegisterHotkeyHook(HWND hWnd, int id, UINT fsModifiers, UINT vk)
 #pragma region "Redirect certain library loads to other versions"
 HMODULE patched_LoadLibraryExW(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlags)
 {
+    if (IsWindows11Version22H2OrHigher())
+        return LoadLibraryExW(lpLibFileName, hFile, dwFlags);
+
     WCHAR path[MAX_PATH];
     GetSystemDirectoryW(path, MAX_PATH);
     wcscat_s(path, MAX_PATH, L"\\AppResolver.dll");
@@ -9313,7 +9316,6 @@ HMODULE patched_LoadLibraryExW(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlag
         wcscat_s(path, MAX_PATH, L"\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\AppResolverLegacy.dll");
         return LoadLibraryExW(path, hFile, dwFlags);
     }
-    if (IsWindows11Version22H2Build1413OrHigher()) return LoadLibraryExW(lpLibFileName, hFile, dwFlags);
     GetSystemDirectoryW(path, MAX_PATH);
     wcscat_s(path, MAX_PATH, L"\\StartTileData.dll");
     if (!_wcsicmp(path, lpLibFileName))
