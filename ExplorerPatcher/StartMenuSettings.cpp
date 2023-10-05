@@ -243,20 +243,20 @@ namespace ABI::WindowsInternal::Shell::UnifiedTile::CuratedTileCollections
     MIDL_INTERFACE("adbf8965-6056-4126-ab26-6660af4661ce")
     IStartTileCollection : public IInspectable
     {
-        virtual HRESULT STDMETHODCALLTYPE PinToStart(IUnifiedTileIdentifier*, TilePinSize);
-        virtual HRESULT STDMETHODCALLTYPE PinToStartAtLocation(IUnifiedTileIdentifier*, ICuratedTileGroup*, Windows::Foundation::Point, Windows::Foundation::Size);
-        virtual HRESULT STDMETHODCALLTYPE UnpinFromStart(IUnifiedTileIdentifier*);
-        virtual HRESULT STDMETHODCALLTYPE ReplaceTinyOrMediumTile(IUnifiedTileIdentifier*, IUnifiedTileIdentifier*);
-        virtual HRESULT STDMETHODCALLTYPE get_LastGroupId(GUID*);
-        virtual HRESULT STDMETHODCALLTYPE put_LastGroupId(GUID);
-        virtual HRESULT STDMETHODCALLTYPE get_CustomizationRestriction(StartCollectionCustomizationRestrictionType*);
-        virtual HRESULT STDMETHODCALLTYPE put_CustomizationRestriction(StartCollectionCustomizationRestrictionType);
-        virtual HRESULT STDMETHODCALLTYPE get_GroupCellWidth(unsigned int*);
-        virtual HRESULT STDMETHODCALLTYPE put_GroupCellWidth(unsigned int);
-        virtual HRESULT STDMETHODCALLTYPE get_PreferredColumnCount(unsigned int*);
-        virtual HRESULT STDMETHODCALLTYPE put_PreferredColumnCount(unsigned int);
-        virtual HRESULT STDMETHODCALLTYPE get_CurrentColumnCount(unsigned int*);
-        virtual HRESULT STDMETHODCALLTYPE put_CurrentColumnCount(unsigned int);
+        virtual HRESULT STDMETHODCALLTYPE PinToStart(IUnifiedTileIdentifier*, TilePinSize) = 0;
+        virtual HRESULT STDMETHODCALLTYPE PinToStartAtLocation(IUnifiedTileIdentifier*, ICuratedTileGroup*, Windows::Foundation::Point, Windows::Foundation::Size) = 0;
+        virtual HRESULT STDMETHODCALLTYPE UnpinFromStart(IUnifiedTileIdentifier*) = 0;
+        virtual HRESULT STDMETHODCALLTYPE ReplaceTinyOrMediumTile(IUnifiedTileIdentifier*, IUnifiedTileIdentifier*) = 0;
+        virtual HRESULT STDMETHODCALLTYPE get_LastGroupId(GUID*) = 0;
+        virtual HRESULT STDMETHODCALLTYPE put_LastGroupId(GUID) = 0;
+        virtual HRESULT STDMETHODCALLTYPE get_CustomizationRestriction(StartCollectionCustomizationRestrictionType*) = 0;
+        virtual HRESULT STDMETHODCALLTYPE put_CustomizationRestriction(StartCollectionCustomizationRestrictionType) = 0;
+        virtual HRESULT STDMETHODCALLTYPE get_GroupCellWidth(unsigned int*) = 0;
+        virtual HRESULT STDMETHODCALLTYPE put_GroupCellWidth(unsigned int) = 0;
+        virtual HRESULT STDMETHODCALLTYPE get_PreferredColumnCount(unsigned int*) = 0;
+        virtual HRESULT STDMETHODCALLTYPE put_PreferredColumnCount(unsigned int) = 0;
+        virtual HRESULT STDMETHODCALLTYPE get_CurrentColumnCount(unsigned int*) = 0;
+        virtual HRESULT STDMETHODCALLTYPE put_CurrentColumnCount(unsigned int) = 0;
     };
 
     MIDL_INTERFACE("ffffffff-ffff-ffff-ffff-ffffffffffff")
@@ -301,7 +301,7 @@ HRESULT AppResolver_CAppResolverCacheBuilder__AddUserPinnedShortcutToStart(const
     using namespace ABI::WindowsInternal::Shell::UnifiedTile::Private;
     using namespace ABI::WindowsInternal::Shell::UnifiedTile::CuratedTileCollections;
 
-    if (dwStartShowClassicMode)
+    if (!dwStartShowClassicMode)
     {
         return AppResolver_CAppResolverCacheBuilder__AddUserPinnedShortcutToStartFunc(a2, a3);
     }
