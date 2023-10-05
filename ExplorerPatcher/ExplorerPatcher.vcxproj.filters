@@ -225,5 +225,6 @@
     <None Include="settings10.reg">
       <Filter>Settings</Filter>
     </None>
+    <None Include="packages.config" />
   </ItemGroup>
 </Project>
