@@ -155,6 +155,53 @@ extern "C" BOOL NeedsRo_SyncSettingsFromRegToCDS()
     return TRUE;
 }
 
+namespace ABI::WindowsUdk::ApplicationModel::AppExtensions
+{
+    enum AppExtensionOptions {};
+
+    MIDL_INTERFACE("836da1ed-5be8-5365-8452-6af327aa427b")
+    IExtensionFactoryStatics : public IInspectable
+    {
+        virtual HRESULT STDMETHODCALLTYPE IsExtensionAvailable(HSTRING, HSTRING, bool*) = 0;
+        virtual HRESULT STDMETHODCALLTYPE IsExtensionAvailableWithOptions(HSTRING, HSTRING, AppExtensionOptions, bool*) = 0;
+        virtual HRESULT STDMETHODCALLTYPE GetInstance(HSTRING, HSTRING, IInspectable**) = 0;
+        virtual HRESULT STDMETHODCALLTYPE GetInstanceWithOptions(HSTRING, HSTRING, AppExtensionOptions, IInspectable**) = 0;
+        virtual HRESULT STDMETHODCALLTYPE GetFactory(HSTRING, HSTRING, IInspectable**) = 0;
+        virtual HRESULT STDMETHODCALLTYPE GetFactoryWithOptions(HSTRING, HSTRING, AppExtensionOptions, IInspectable**) = 0;
+    };
+}
+
+class DummyExtensionFactory : ABI::WindowsUdk::ApplicationModel::AppExtensions::IExtensionFactoryStatics
+{
+public:
+    HRESULT QueryInterface(REFIID riid, void** ppvObject) override { return E_NOINTERFACE; }
+    ULONG AddRef() override { return 1; }
+    ULONG Release() override { return 1; }
+    HRESULT GetIids(ULONG* iidCount, IID** iids) override { return E_NOTIMPL; }
+    HRESULT GetRuntimeClassName(HSTRING* className) override { return E_NOTIMPL; }
+    HRESULT GetTrustLevel(TrustLevel* trustLevel) override { return E_NOTIMPL; }
+
+    // Keep the value of result as zero (set by the caller) and return S_OK to make the Windows 10 code run
+    HRESULT IsExtensionAvailable(HSTRING, HSTRING, bool*) override { return S_OK; }
+    HRESULT IsExtensionAvailableWithOptions(HSTRING, HSTRING, ABI::WindowsUdk::ApplicationModel::AppExtensions::AppExtensionOptions, bool*) override { return S_OK; }
+    HRESULT GetInstance(HSTRING, HSTRING, IInspectable**) override { return S_OK; }
+    HRESULT GetInstanceWithOptions(HSTRING, HSTRING, ABI::WindowsUdk::ApplicationModel::AppExtensions::AppExtensionOptions, IInspectable**) override { return S_OK; }
+    HRESULT GetFactory(HSTRING, HSTRING, IInspectable**) override { return S_OK; }
+    HRESULT GetFactoryWithOptions(HSTRING, HSTRING, ABI::WindowsUdk::ApplicationModel::AppExtensions::AppExtensionOptions, IInspectable**) override { return S_OK; }
+};
+
+static const DummyExtensionFactory instanceof_WindowsUdk_ApplicationModel_AppExtensions_IExtensionFactoryStatics;
+
+extern "C" HRESULT AppResolver_StartTileData_RoGetActivationFactory(HSTRING activatableClassId, REFIID iid, void** factory)
+{
+    if (IsEqualGUID(iid, __uuidof(ABI::WindowsUdk::ApplicationModel::AppExtensions::IExtensionFactoryStatics)))
+    {
+        *factory = const_cast<DummyExtensionFactory*>(&instanceof_WindowsUdk_ApplicationModel_AppExtensions_IExtensionFactoryStatics);
+        return S_OK;
+    }
+    return RoGetActivationFactory(activatableClassId, iid, factory);
+}
+
 namespace ABI::WindowsInternal::Shell::UnifiedTile
 {
     MIDL_INTERFACE("d3653510-4fff-4bfa-905b-ea038b142fa5")
@@ -284,18 +331,17 @@ namespace ABI::WindowsInternal::Shell::UnifiedTile::CuratedTileCollections
 
 struct CCacheShortcut
 {
-public:
     const wchar_t* GetAppID(const void* a2) const
     {
-        DWORD dwOffset = *((DWORD*)this + 11); // Same offset in Windows 10 and 11
+        DWORD dwOffset = *(DWORD*)((PBYTE)this + 44); // Same offset in Windows 10 and 11
         return dwOffset != -1 ? (wchar_t*)((char*)a2 + dwOffset) : nullptr;
     }
 };
 
 extern "C"
 {
-HRESULT(*AppResolver_CAppResolverCacheBuilder__AddUserPinnedShortcutToStartFunc)(const CCacheShortcut* a2, const void* a3);
-HRESULT AppResolver_CAppResolverCacheBuilder__AddUserPinnedShortcutToStart(const CCacheShortcut* a2, const void* a3)
+HRESULT(*AppResolver_CAppResolverCacheBuilder__AddUserPinnedShortcutToStartFunc)(void* _this, const CCacheShortcut* a2, const void* a3);
+HRESULT AppResolver_CAppResolverCacheBuilder__AddUserPinnedShortcutToStart(void* _this, const CCacheShortcut* a2, const void* a3)
 {
     using namespace ABI::WindowsInternal::Shell::UnifiedTile;
     using namespace ABI::WindowsInternal::Shell::UnifiedTile::Private;
@@ -303,7 +349,7 @@ HRESULT AppResolver_CAppResolverCacheBuilder__AddUserPinnedShortcutToStart(const
 
     if (!dwStartShowClassicMode)
     {
-        return AppResolver_CAppResolverCacheBuilder__AddUserPinnedShortcutToStartFunc(a2, a3);
+        return AppResolver_CAppResolverCacheBuilder__AddUserPinnedShortcutToStartFunc(_this, a2, a3);
     }
 
     Microsoft::WRL::ComPtr<IWin32UnifiedTileIdentifierFactory> pTileIdentifierFactory;

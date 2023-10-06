@@ -10602,37 +10602,11 @@ cleanup:
 
 #pragma region "Fix Pin to Start from Explorer not working when using Windows 10 start menu"
 #ifdef _WIN64
-HRESULT(*AppResolver_StartDocked_GetStartScreenManagerExtensionStaticsFunc)(void** out);
-HRESULT(*StartTileData_StartDocked_GetStartScreenManagerExtensionStaticsFunc)(void** out);
-HRESULT StartDocked_GetStartScreenManagerExtensionStaticsHook(void** out)
-{
-    if (dwStartShowClassicMode)
-    {
-        // Keep the value of out as NULL and return S_OK to execute the old code
-        return S_OK;
-    }
-    return AppResolver_StartDocked_GetStartScreenManagerExtensionStaticsFunc(out);
-}
+extern HRESULT AppResolver_StartTileData_RoGetActivationFactory(HSTRING activatableClassId, REFIID iid, void** factory);
 
 typedef struct CCacheShortcut CCacheShortcut;
-extern HRESULT(*AppResolver_CAppResolverCacheBuilder__AddUserPinnedShortcutToStartFunc)(const CCacheShortcut* a2, const void* a3);
-extern HRESULT AppResolver_CAppResolverCacheBuilder__AddUserPinnedShortcutToStart(const CCacheShortcut* a2, const void* a3);
-
-static void FindGetStartScreenManagerExtensionStatics(const MODULEINFO* pModuleInfo, HRESULT(**ppfnOut)(void**))
-{
-    // StartDocked::GetStartScreenManagerExtensionStatics
-    // 48 89 5C 24 ? 48 89 74 24 ? 55 57 41 56 48 8D 6C 24 ? 48 81 EC ? ? ? ? 48 8B 05 ? ? ? ? 48 33 C4 48 89 45 37 ?? 8B F1 48 83 21 00
-    PBYTE match = FindPattern(
-        pModuleInfo->lpBaseOfDll,
-        pModuleInfo->SizeOfImage,
-        "\x48\x89\x5C\x24\x00\x48\x89\x74\x24\x00\x55\x57\x41\x56\x48\x8D\x6C\x24\x00\x48\x81\xEC\x00\x00\x00\x00\x48\x8B\x05\x00\x00\x00\x00\x48\x33\xC4\x48\x89\x45\x37\x00\x8B\xF1\x48\x83\x21\x00",
-        "xxxx?xxxx?xxxxxxxx?xxx????xxx????xxxxxxx?xxxxxx"
-    );
-    if (match)
-    {
-        *ppfnOut = match;
-    }
-}
+extern HRESULT(*AppResolver_CAppResolverCacheBuilder__AddUserPinnedShortcutToStartFunc)(void* _this, const CCacheShortcut* a2, const void* a3);
+extern HRESULT AppResolver_CAppResolverCacheBuilder__AddUserPinnedShortcutToStart(void* _this, const CCacheShortcut* a2, const void* a3);
 
 static void PatchAppResolver()
 {
@@ -10640,11 +10614,7 @@ static void PatchAppResolver()
     MODULEINFO miAppResolver;
     GetModuleInformation(GetCurrentProcess(), hAppResolver, &miAppResolver, sizeof(MODULEINFO));
 
-    FindGetStartScreenManagerExtensionStatics(&miAppResolver, &AppResolver_StartDocked_GetStartScreenManagerExtensionStaticsFunc);
-    if (AppResolver_StartDocked_GetStartScreenManagerExtensionStaticsFunc)
-    {
-        printf("AppResolver.dll!StartDocked::GetStartScreenManagerExtensionStatics() = %llX\n", (PBYTE)AppResolver_StartDocked_GetStartScreenManagerExtensionStaticsFunc - (PBYTE)hAppResolver);
-    }
+    VnPatchDelayIAT(hAppResolver, "api-ms-win-core-winrt-l1-1-0.dll", "RoGetActivationFactory", AppResolver_StartTileData_RoGetActivationFactory);
 
     // CAppResolverCacheBuilder::_AddUserPinnedShortcutToStart()
     // 8B ? 48 8B D3 E8 ? ? ? ? 48 8B 8D
@@ -10675,49 +10645,14 @@ static void PatchAppResolver()
     if (rv != 0)
     {
         printf("Failed to hook CAppResolverCacheBuilder::_AddUserPinnedShortcutToStart(). rv = %d\n", rv);
-        return; // Must be hooked properly otherwise our GetStartScreenManagerExtensionStatics hook will make it crash
-    }
-
-    rv = -1;
-    if (AppResolver_StartDocked_GetStartScreenManagerExtensionStaticsFunc)
-    {
-        rv = funchook_prepare(
-            funchook,
-            (void**)&AppResolver_StartDocked_GetStartScreenManagerExtensionStaticsFunc,
-            StartDocked_GetStartScreenManagerExtensionStaticsHook
-        );
-    }
-    if (rv != 0)
-    {
-        printf("Failed to hook AppResolver.dll!StartDocked::GetStartScreenManagerExtensionStatics(). rv = %d\n", rv);
     }
 }
 
 static void PatchStartTileData()
 {
     HANDLE hStartTileData = LoadLibraryW(L"StartTileData.dll");
-    MODULEINFO miStartTileData;
-    GetModuleInformation(GetCurrentProcess(), hStartTileData, &miStartTileData, sizeof(MODULEINFO));
 
-    FindGetStartScreenManagerExtensionStatics(&miStartTileData, &StartTileData_StartDocked_GetStartScreenManagerExtensionStaticsFunc);
-    if (StartTileData_StartDocked_GetStartScreenManagerExtensionStaticsFunc)
-    {
-        printf("StartTileData.dll!StartDocked::GetStartScreenManagerExtensionStatics() = %llX\n", (PBYTE)StartTileData_StartDocked_GetStartScreenManagerExtensionStaticsFunc - (PBYTE)hStartTileData);
-    }
-
-    int rv = -1;
-    if (StartTileData_StartDocked_GetStartScreenManagerExtensionStaticsFunc)
-    {
-        rv = funchook_prepare(
-            funchook,
-            (void**)&StartTileData_StartDocked_GetStartScreenManagerExtensionStaticsFunc,
-            StartDocked_GetStartScreenManagerExtensionStaticsHook
-        );
-    }
-    if (rv != 0)
-    {
-        printf("Failed to hook StartTileData.dll!StartDocked::GetStartScreenManagerExtensionStatics(). rv = %d\n", rv);
-    }
+    VnPatchIAT(hStartTileData, "api-ms-win-core-winrt-l1-1-0.dll", "RoGetActivationFactory", AppResolver_StartTileData_RoGetActivationFactory);
 }
 #endif
 #pragma endregion
