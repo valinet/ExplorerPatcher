@@ -194,7 +194,7 @@ static const DummyExtensionFactory instanceof_WindowsUdk_ApplicationModel_AppExt
 
 extern "C" HRESULT AppResolver_StartTileData_RoGetActivationFactory(HSTRING activatableClassId, REFIID iid, void** factory)
 {
-    if (IsEqualGUID(iid, __uuidof(ABI::WindowsUdk::ApplicationModel::AppExtensions::IExtensionFactoryStatics)))
+    if (dwStartShowClassicMode && IsEqualGUID(iid, __uuidof(ABI::WindowsUdk::ApplicationModel::AppExtensions::IExtensionFactoryStatics)))
     {
         *factory = const_cast<DummyExtensionFactory*>(&instanceof_WindowsUdk_ApplicationModel_AppExtensions_IExtensionFactoryStatics);
         return S_OK;
