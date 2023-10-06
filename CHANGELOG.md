@@ -22,7 +22,14 @@ Tested on OS builds 22000.2416, 22621.1, 22621.2134, 22621.2361, 22631.2338, and
 * Taskbar10: Fixed Wi-Fi flyout buttons on OS build 22621 (0706393)
 * Start10: Fixed start menu folders, show recently added, and show frequently used apps settings not being applied on OS builds 22621.2134+ (e28940d)
 
+##### 3
+
+* Start10: Pin to Start/Unpin from Start has been properly fixed on Start Menu and Explorer (but not Search yet) of all Windows 11 builds. (15c07a0)
+* Start10: Fixed non-UWP apps not appearing on Dev channel builds 23545+. (a4f5bd0)
+
 Many thanks to @Amrsatrio for sustained efforts in maintaining and improving ExplorerPatcher.
+
+Thanks to @ARestrepo228 for hints on fixing Pin to Start/Unpin from Start.
 
 ## 22621.2283.57
 
