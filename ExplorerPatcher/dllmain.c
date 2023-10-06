@@ -11048,7 +11048,10 @@ DWORD Inject(BOOL bIsExplorer)
     if (bOldTaskbar && global_rovi.dwBuildNumber >= 22572)
     {
         VnPatchIAT(hExplorer, "dwmapi.dll", "DwmUpdateThumbnailProperties", explorer_DwmUpdateThumbnailPropertiesHook);
-        PatchExplorer_UpdateWindowAccentProperties();
+        if (global_rovi.dwBuildNumber < 25000) // TODO Needs fixing in Canary
+        {
+            PatchExplorer_UpdateWindowAccentProperties();
+        }
     }
     if (IsWindows11())
     {
