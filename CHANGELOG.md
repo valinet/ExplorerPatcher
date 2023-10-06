@@ -28,6 +28,12 @@ Tested on OS builds 22000.2416, 22621.1, 22621.2134, 22621.2361, 22631.2338, and
 * Start10: Fixed non-UWP apps not appearing on Dev channel builds 23545+. (a4f5bd0)
 * File Explorer: Fixed command bar settings not being applied on non-primary Explorer instances on Windows 11. (001e8d8)
 
+##### 4
+
+* Taskbar11: Restored the fix for the bug that reset the "never combine" setting on OS builds 22621.2361+, which was removed in 22621.2361.58.3 by accident. (9f04110)
+* Start: "Start menu style" now requires restart so that Pin to Start/Unpin from Start on Explorer works properly. (bdd71ef)
+* Taskbar10: Disabled the patch for proper acrylic background on Canary builds (25000+) for now. (4ee742f)
+
 Many thanks to @Amrsatrio for sustained efforts in maintaining and improving ExplorerPatcher.
 
 Thanks to @ARestrepo228 for hints on fixing Pin to Start/Unpin from Start.
