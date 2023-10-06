@@ -9834,8 +9834,14 @@ DWORD InjectBasicFunctions(BOOL bIsExplorer, BOOL bInstall)
         }
     }
 
+    if (bInstall)
+    {
+        DWORD dwSize = sizeof(DWORD);
+        RegGetValueW(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", L"Start_ShowClassicMode", RRF_RT_DWORD, NULL, &dwStartShowClassicMode, &dwSize);
+    }
+
 #ifdef _WIN64
-    // As of writing this function is never invoked with bInstall=TRUE, so we don't handle the case if it's false for now
+    // As of writing, this function is never invoked with bInstall=TRUE, so we don't handle the case if it's false for now
     RtlQueryFeatureConfigurationFunc = GetProcAddress(GetModuleHandleW(L"ntdll.dll"), "RtlQueryFeatureConfiguration");
     int rv = -1;
     if (RtlQueryFeatureConfigurationFunc)
