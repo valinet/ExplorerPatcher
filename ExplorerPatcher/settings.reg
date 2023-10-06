@@ -248,7 +248,7 @@
 
 ;T Start menu
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
-;z 2 Start menu style
+;z 2 Start menu style *
 ;x 0 Windows 11 (default)
 ;x 1 Windows 10
 "Start_ShowClassicMode"=dword:00000000
