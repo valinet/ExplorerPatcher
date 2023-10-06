@@ -11533,7 +11533,7 @@ DWORD Inject(BOOL bIsExplorer)
         else
         {
             CreateThread(0, 0, FixTaskbarAutohide, 0, 0, 0);
-            if (IsWindows11Version23H2OrHigher())
+            if (!IsWindows11Version22H2Build2361OrHigher())
             {
                 RegDeleteKeyValueW(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", L"TaskbarGlomLevel");
                 RegDeleteKeyValueW(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", L"MMTaskbarGlomLevel");

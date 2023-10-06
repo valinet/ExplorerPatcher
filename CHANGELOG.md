@@ -26,6 +26,7 @@ Tested on OS builds 22000.2416, 22621.1, 22621.2134, 22621.2361, 22631.2338, and
 
 * Start10: Pin to Start/Unpin from Start has been properly fixed on Start Menu and Explorer (but not Search yet) of all Windows 11 builds. (15c07a0)
 * Start10: Fixed non-UWP apps not appearing on Dev channel builds 23545+. (a4f5bd0)
+* File Explorer: Fixed command bar settings not being applied on non-primary Explorer instances on Windows 11. (001e8d8)
 
 Many thanks to @Amrsatrio for sustained efforts in maintaining and improving ExplorerPatcher.
 
