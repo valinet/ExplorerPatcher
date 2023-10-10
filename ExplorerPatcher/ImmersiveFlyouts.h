@@ -57,8 +57,7 @@ typedef struct IExperienceManagerVtbl // : IInspectable
 
     HRESULT(STDMETHODCALLTYPE* ShowFlyout)(
         IExperienceManager* This,
-        /* [in] */ RECT* rect,
-        /* [in] */ HWND hWnd);
+        /* [in] */ __x_ABI_CWindows_CFoundation_CRect* rect);
 
     HRESULT(STDMETHODCALLTYPE* HideFlyout)(
         IExperienceManager* This);
@@ -192,5 +191,14 @@ void InvokeActionCenter();
 #define INVOKE_FLYOUT_CLOCK 2
 #define INVOKE_FLYOUT_BATTERY 3
 #define INVOKE_FLYOUT_SOUND 4
-void InvokeFlyout(BOOL bAction, DWORD dwWhich);
+
+HRESULT InvokeFlyoutRect(BOOL bAction, DWORD dwWhich, __x_ABI_CWindows_CFoundation_CRect* pRc);
+
+inline HRESULT InvokeFlyout(BOOL bAction, DWORD dwWhich)
+{
+    __x_ABI_CWindows_CFoundation_CRect rc;
+    ZeroMemory(&rc, sizeof(rc));
+    return InvokeFlyoutRect(bAction, dwWhich, &rc);
+}
+
 #endif

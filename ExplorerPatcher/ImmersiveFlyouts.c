@@ -56,7 +56,7 @@ void InvokeActionCenter()
     }
 }
 
-void InvokeFlyout(BOOL bAction, DWORD dwWhich)
+HRESULT InvokeFlyoutRect(BOOL bAction, DWORD dwWhich, __x_ABI_CWindows_CFoundation_CRect* pRc)
 {
     HRESULT hr = S_OK;
     IUnknown* pImmersiveShell = NULL;
@@ -70,13 +70,13 @@ void InvokeFlyout(BOOL bAction, DWORD dwWhich)
     if (SUCCEEDED(hr))
     {
         IShellExperienceManagerFactory* pShellExperienceManagerFactory = NULL;
-        IUnknown_QueryService(
+        hr = IUnknown_QueryService(
             pImmersiveShell,
             &CLSID_ShellExperienceManagerFactory,
             &CLSID_ShellExperienceManagerFactory,
             &pShellExperienceManagerFactory
         );
-        if (pShellExperienceManagerFactory)
+        if (SUCCEEDED(hr))
         {
             HSTRING_HEADER hstringHeader;
             HSTRING hstring = NULL;
@@ -102,18 +102,18 @@ void InvokeFlyout(BOOL bAction, DWORD dwWhich)
                 &hstringHeader,
                 &hstring
             );
-            if (hstring)
+            if (SUCCEEDED(hr))
             {
                 IUnknown* pIntf = NULL;
-                pShellExperienceManagerFactory->lpVtbl->GetExperienceManager(
+                hr = pShellExperienceManagerFactory->lpVtbl->GetExperienceManager(
                     pShellExperienceManagerFactory,
                     hstring,
                     &pIntf
                 );
-                if (pIntf)
+                if (SUCCEEDED(hr))
                 {
                     IExperienceManager* pExperienceManager = NULL;
-                    pIntf->lpVtbl->QueryInterface(
+                    hr = pIntf->lpVtbl->QueryInterface(
                         pIntf,
                         dwWhich == INVOKE_FLYOUT_NETWORK ? &IID_NetworkFlyoutExperienceManager :
                         (dwWhich == INVOKE_FLYOUT_CLOCK ? &IID_TrayClockFlyoutExperienceManager :
@@ -121,17 +121,15 @@ void InvokeFlyout(BOOL bAction, DWORD dwWhich)
                                 (dwWhich == INVOKE_FLYOUT_SOUND ? &IID_TrayMtcUvcFlyoutExperienceManager : &IID_IUnknown))),
                         &pExperienceManager
                     );
-                    if (pExperienceManager)
+                    if (SUCCEEDED(hr))
                     {
-                        RECT rc;
-                        SetRect(&rc, 0, 0, 0, 0);
                         if (bAction == INVOKE_FLYOUT_SHOW)
                         {
-                            pExperienceManager->lpVtbl->ShowFlyout(pExperienceManager, &rc, NULL);
+                            hr = pExperienceManager->lpVtbl->ShowFlyout(pExperienceManager, pRc);
                         }
                         else if (bAction == INVOKE_FLYOUT_HIDE)
                         {
-                            pExperienceManager->lpVtbl->HideFlyout(pExperienceManager);
+                            hr = pExperienceManager->lpVtbl->HideFlyout(pExperienceManager);
                         }
                         pExperienceManager->lpVtbl->Release(pExperienceManager);
                     }
@@ -143,4 +141,5 @@ void InvokeFlyout(BOOL bAction, DWORD dwWhich)
         }
         pImmersiveShell->lpVtbl->Release(pImmersiveShell);
     }
+    return hr;
 }

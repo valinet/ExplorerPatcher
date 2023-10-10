@@ -10009,10 +10009,10 @@ BOOL Moment2PatchControlCenter(LPMODULEINFO mi)
 {
     // Step 1:
     // Scan within the DLL for `rcMonitor = mi.rcMonitor`.
-    // ```0F 10 44 24 ?? F3 0F 7F 44 24 ?? 80 BF // movups - movdqu - cmp```
+    // ```0F 10 44 24 ?? F3 0F 7F 44 24 ?? 80 // movups - movdqu - cmp```
     // 22621.1992: 4B35B
     // 22621.2283: 65C5C
-    PBYTE rcMonitorAssignment = FindPattern(mi->lpBaseOfDll, mi->SizeOfImage, "\x0F\x10\x44\x24\x00\xF3\x0F\x7F\x44\x24\x00\x80\xBF", "xxxx?xxxxx?xx");
+    PBYTE rcMonitorAssignment = FindPattern(mi->lpBaseOfDll, mi->SizeOfImage, "\x0F\x10\x44\x24\x00\xF3\x0F\x7F\x44\x24\x00\x80", "xxxx?xxxxx?x");
     if (!rcMonitorAssignment) return FALSE;
     printf("[CC] rcMonitorAssignment = %llX\n", rcMonitorAssignment - (PBYTE)mi->lpBaseOfDll);
 
@@ -10066,11 +10066,23 @@ BOOL Moment2PatchToastCenter(LPMODULEINFO mi)
 {
     // Step 1:
     // Scan within the DLL for `rcMonitor = mi.rcMonitor`.
-    // ```0F 10 45 84 ?? 0F 7F 44 24 ?? 48 8B CF // movups - movdqu - mov```
+    //
+    // Pattern 1:
+    // Will have a match if CToastCenterExperienceManager::ShouldShowWithinWorkArea() is present.
+    // ```0F 10 45 ?? ?? 0F 7F 44 24 ?? 48 8B CF // movups - movdqu - mov```
     // 22621.1992: 40CE8
     // 22621.2283: 501DB
-    PBYTE rcMonitorAssignment = FindPattern(mi->lpBaseOfDll, mi->SizeOfImage, "\x0F\x10\x45\x84\x00\x0F\x7F\x44\x24\x00\x48\x8B\xCF", "xxxx?xxxx?xxx");
-    if (!rcMonitorAssignment) return FALSE;
+    //
+    // Pattern 2:
+    // Will have a match if CToastCenterExperienceManager::ShouldShowWithinWorkArea() is inlined.
+    // ```0F 10 45 ?? ?? 0F 7F 44 24 ?? 44 // movups - movdqu - cmp```
+    // 25951.1000: 36B2C4
+    PBYTE rcMonitorAssignment = FindPattern(mi->lpBaseOfDll, mi->SizeOfImage, "\x0F\x10\x45\x00\x00\x0F\x7F\x44\x24\x00\x48\x8B\xCF", "xxx??xxxx?xxx");
+    if (!rcMonitorAssignment)
+    {
+        rcMonitorAssignment = FindPattern(mi->lpBaseOfDll, mi->SizeOfImage, "\x0F\x10\x45\x00\x00\x0F\x7F\x44\x24\x00\x44", "xxx??xxxx?x");
+        if (!rcMonitorAssignment) return FALSE;
+    }
     printf("[TC] rcMonitorAssignment = %llX\n", rcMonitorAssignment - (PBYTE)mi->lpBaseOfDll);
 
     // Step 2:
@@ -10266,12 +10278,11 @@ void WINAPI HardwareConfirmatorShellcode(PBYTE pCoroInstance)
                     hr = pTheFunc(pEdgeUiManager, &rc);
                 }
 
-                typedef struct { float x, y, width, height; } Windows_Foundation_Rect;
-                Windows_Foundation_Rect* out = pCoroInstance + g_Moment2PatchOffsets.coroInstance_rcOut;
-                out->x = (float)rc.left;
-                out->y = (float)rc.top;
-                out->width = (float)(rc.right - rc.left);
-                out->height = (float)(rc.bottom - rc.top);
+                __x_ABI_CWindows_CFoundation_CRect* out = pCoroInstance + g_Moment2PatchOffsets.coroInstance_rcOut;
+                out->X = (float)rc.left;
+                out->Y = (float)rc.top;
+                out->Width = (float)(rc.right - rc.left);
+                out->Height = (float)(rc.bottom - rc.top);
 
                 pEdgeUiManager->lpVtbl->Release(pEdgeUiManager);
             }
@@ -11057,13 +11068,13 @@ DWORD Inject(BOOL bIsExplorer)
     {
         // Find a pointer to ITrayUIHost needed to have a working Windows 10 taskbar context menu on Windows 11 taskbar
         // Ref: CTray::Init()
-        // 4C 8D 05 ? ? ? ? 48 8D 0D ? ? ? ? E8 ? ? ? ? 48 8B 8D
+        // 4C 8D 05 ? ? ? ? 48 8D 0D ? ? ? ? E8 ? ? ? ? 48 8B
         //                           ^^^^^^^
         PBYTE match = FindPattern(
             hExplorer,
             miExplorer.SizeOfImage,
-            "\x4C\x8D\x05\x00\x00\x00\x00\x48\x8D\x0D\x00\x00\x00\x00\xE8\x00\x00\x00\x00\x48\x8B\x8D",
-            "xxx????xxx????x????xxx"
+            "\x4C\x8D\x05\x00\x00\x00\x00\x48\x8D\x0D\x00\x00\x00\x00\xE8\x00\x00\x00\x00\x48\x8B",
+            "xxx????xxx????x????xx"
         );
         if (match)
         {
