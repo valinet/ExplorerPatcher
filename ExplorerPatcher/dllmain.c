@@ -9345,11 +9345,11 @@ void PatchExplorer_UpdateWindowAccentProperties()
             PIMAGE_NT_HEADERS64 ntHeader = (PIMAGE_NT_HEADERS64)((u_char*)dosHeader + dosHeader->e_lfanew);
             if (ntHeader->Signature == IMAGE_NT_SIGNATURE)
             {
-                char* pPatchArea = NULL;
+                PBYTE pPatchArea = NULL;
                 // test al, al; jz rip+0x11; and ...
-                char p1[] = { 0x84, 0xC0, 0x74, 0x11, 0x83, 0x65 };
-                char p2[] = { 0xF3, 0xF3, 0xF3, 0xFF };
-                char* pattern1 = p1;
+                BYTE p1[] = { 0x84, 0xC0, 0x74, 0x11, 0x83, 0x65 };
+                BYTE p2[] = { 0xF3, 0xF3, 0xF3, 0xFF };
+                PBYTE pattern1 = p1;
                 int sizeof_pattern1 = 6;
                 if (global_rovi.dwBuildNumber >= 22581)
                 {
@@ -9364,12 +9364,13 @@ void PatchExplorer_UpdateWindowAccentProperties()
                     {
                         if (section->SizeOfRawData && !bTwice)
                         {
-                            char* pCandidate = NULL;
+                            PBYTE pSectionBegin = (PBYTE)hExplorer + section->VirtualAddress;
+                            PBYTE pCandidate = NULL;
                             while (TRUE)
                             {
                                 pCandidate = memmem(
-                                    !pCandidate ? hExplorer + section->VirtualAddress : pCandidate,
-                                    !pCandidate ? section->SizeOfRawData : (uintptr_t)section->SizeOfRawData - (uintptr_t)(pCandidate - (hExplorer + section->VirtualAddress)),
+                                    !pCandidate ? pSectionBegin : pCandidate,
+                                    !pCandidate ? section->SizeOfRawData : (uintptr_t)section->SizeOfRawData - (uintptr_t)(pCandidate - pSectionBegin),
                                     pattern1,
                                     sizeof_pattern1
                                 );
@@ -9399,8 +9400,9 @@ void PatchExplorer_UpdateWindowAccentProperties()
                         _DecodedInst* decodedInstructions = calloc(110, sizeof(_DecodedInst));
                         if (decodedInstructions)
                         {
+                            PBYTE diasmBegin = pPatchArea - dec_size;
                             unsigned int decodedInstructionsCount = 0;
-                            _DecodeResult res = distorm_decode(0, (const unsigned char*)(pPatchArea - dec_size), dec_size + 20, Decode64Bits, decodedInstructions, 100, &decodedInstructionsCount);
+                            _DecodeResult res = distorm_decode(0, diasmBegin, dec_size + 20, Decode64Bits, decodedInstructions, 100, &decodedInstructionsCount);
                             int status = 0;
                             for (int i = decodedInstructionsCount - 1; i >= 0; i--)
                             {
@@ -9414,7 +9416,7 @@ void PatchExplorer_UpdateWindowAccentProperties()
                                 }
                                 else if (status == 2 && strcmp(decodedInstructions[i].instructionHex.p, "cc"))
                                 {
-                                    GetTaskbarColor = pPatchArea - dec_size + decodedInstructions[i].offset;
+                                    GetTaskbarColor = diasmBegin + decodedInstructions[i].offset;
                                     status = 3;
                                 }
                                 else if (status == 3 && !strncmp(decodedInstructions[i].instructionHex.p, "e8", 2))
@@ -9423,8 +9425,8 @@ void PatchExplorer_UpdateWindowAccentProperties()
                                 }
                                 else if (status == 4 && !strncmp(decodedInstructions[i].instructionHex.p, "e8", 2))
                                 {
-                                    uint32_t* off = pPatchArea - dec_size + decodedInstructions[i].offset + 1;
-                                    GetTaskbarTheme = pPatchArea - dec_size + decodedInstructions[i].offset + decodedInstructions[i].size + (*off);
+                                    uint32_t* off = diasmBegin + decodedInstructions[i].offset + 1;
+                                    GetTaskbarTheme = diasmBegin + decodedInstructions[i].offset + decodedInstructions[i].size + (*off);
                                     break;
                                 }
                                 if (status >= 2)
@@ -11059,10 +11061,7 @@ DWORD Inject(BOOL bIsExplorer)
     if (bOldTaskbar && global_rovi.dwBuildNumber >= 22572)
     {
         VnPatchIAT(hExplorer, "dwmapi.dll", "DwmUpdateThumbnailProperties", explorer_DwmUpdateThumbnailPropertiesHook);
-        if (global_rovi.dwBuildNumber < 25000) // TODO Needs fixing in Canary
-        {
-            PatchExplorer_UpdateWindowAccentProperties();
-        }
+        PatchExplorer_UpdateWindowAccentProperties();
     }
     if (IsWindows11())
     {
@@ -11280,12 +11279,12 @@ DWORD Inject(BOOL bIsExplorer)
         Moment2PatchHardwareConfirmator(&miHardwareConfirmator);
 
         // Fix pen menu
-        // 48 89 5C 24 ? 48 89 74 24 ? 57 48 83 EC 50 49 8B F0 48 81 C1
+        // 48 89 5C 24 ? 48 89 74 24 ? 57 48 83 EC 50 49 8B ? 48 81 C1
         twinui_pcshell_PenMenuSystemTrayManager__GetDynamicSystemTrayHeightForMonitorFunc = FindPattern(
             hTwinuiPcshell,
             miTwinuiPcshell.SizeOfImage,
-            "\x48\x89\x5C\x24\x00\x48\x89\x74\x24\x00\x57\x48\x83\xEC\x50\x49\x8B\xF0\x48\x81\xC1",
-            "xxxx?xxxx?xxxxxxxxxxx"
+            "\x48\x89\x5C\x24\x00\x48\x89\x74\x24\x00\x57\x48\x83\xEC\x50\x49\x8B\x00\x48\x81\xC1",
+            "xxxx?xxxx?xxxxxxx?xxx"
         );
         rv = -1;
         if (twinui_pcshell_PenMenuSystemTrayManager__GetDynamicSystemTrayHeightForMonitorFunc)
@@ -12992,8 +12991,8 @@ void InjectShellExperienceHost()
             PIMAGE_NT_HEADERS64 ntHeader = (PIMAGE_NT_HEADERS64)((u_char*)dosHeader + dosHeader->e_lfanew);
             if (ntHeader->Signature == IMAGE_NT_SIGNATURE)
             {
-                char* pSEHPatchArea = NULL;
-                char seh_pattern1[14] =
+                PBYTE pSEHPatchArea = NULL;
+                BYTE seh_pattern1[14] =
                 {
                     // mov al, 1
                     0xB0, 0x01,
@@ -13012,8 +13011,8 @@ void InjectShellExperienceHost()
                     // ret
                     0xC3
                 };
-                char seh_off = 12;
-                char seh_pattern2[5] =
+                BYTE seh_off = 12;
+                BYTE seh_pattern2[5] =
                 {
                     // mov r8b, 3
                     0x41, 0xB0, 0x03,
@@ -13028,14 +13027,15 @@ void InjectShellExperienceHost()
                     {
                         if (section->SizeOfRawData && !bTwice)
                         {
-                            DWORD dwOldProtect;
-                            //VirtualProtect(hQA + section->VirtualAddress, section->SizeOfRawData, PAGE_EXECUTE_READWRITE, &dwOldProtect);
-                            char* pCandidate = NULL;
+                            PBYTE pSectionBegin = (PBYTE)hQA + section->VirtualAddress;
+                            //DWORD dwOldProtect;
+                            //VirtualProtect(pSectionBegin, section->SizeOfRawData, PAGE_EXECUTE_READWRITE, &dwOldProtect);
+                            PBYTE pCandidate = NULL;
                             while (TRUE)
                             {
                                 pCandidate = memmem(
-                                    !pCandidate ? hQA + section->VirtualAddress : pCandidate,
-                                    !pCandidate ? section->SizeOfRawData : (uintptr_t)section->SizeOfRawData - (uintptr_t)(pCandidate - (hQA + section->VirtualAddress)),
+                                    !pCandidate ? pSectionBegin : pCandidate,
+                                    !pCandidate ? section->SizeOfRawData : (uintptr_t)section->SizeOfRawData - (uintptr_t)(pCandidate - pSectionBegin),
                                     seh_pattern1,
                                     sizeof(seh_pattern1)
                                 );
@@ -13043,7 +13043,7 @@ void InjectShellExperienceHost()
                                 {
                                     break;
                                 }
-                                char* pCandidate2 = pCandidate - seh_off - sizeof(seh_pattern2);
+                                PBYTE pCandidate2 = pCandidate - seh_off - sizeof(seh_pattern2);
                                 if (pCandidate2 > section->VirtualAddress)
                                 {
                                     if (memmem(pCandidate2, sizeof(seh_pattern2), seh_pattern2, sizeof(seh_pattern2)))
@@ -13060,7 +13060,7 @@ void InjectShellExperienceHost()
                                 }
                                 pCandidate += sizeof(seh_pattern1);
                             }
-                            //VirtualProtect(hQA + section->VirtualAddress, section->SizeOfRawData, dwOldProtect, &dwOldProtect);
+                            //VirtualProtect(pSectionBegin, section->SizeOfRawData, dwOldProtect, &dwOldProtect);
                         }
                     }
                     section++;
