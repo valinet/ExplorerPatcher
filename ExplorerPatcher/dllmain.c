@@ -10705,7 +10705,7 @@ DWORD Inject(BOOL bIsExplorer)
     Explorer_RefreshUI(99);
 
 #ifdef _WIN64
-    // if (bIsExplorer)
+    if (bIsExplorerProcess)
     {
         funchook = funchook_create();
         // printf("funchook create %d\n", funchook != 0);
@@ -10890,10 +10890,13 @@ DWORD Inject(BOOL bIsExplorer)
     if (!bIsExplorer)
     {
 #ifdef _WIN64
-        rv = funchook_install(funchook, 0);
-        if (rv != 0)
+        if (bIsExplorerProcess)
         {
-            printf("Failed to install hooks. rv = %d\n", rv);
+            rv = funchook_install(funchook, 0);
+            if (rv != 0)
+            {
+                printf("Failed to install hooks. rv = %d\n", rv);
+            }
         }
 #endif
         return 0;
