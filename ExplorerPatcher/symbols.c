@@ -85,7 +85,6 @@ static BOOL ProcessTwinuiPcshellSymbols(const char* pszSettingsPath, DWORD* pOff
         return FALSE;
     }
 
-    DWORD dwZero = 0;
     CHAR szHash[100];
     WCHAR wszPath[MAX_PATH];
 
@@ -152,7 +151,6 @@ static BOOL ProcessTwinuiPcshellSymbols(const char* pszSettingsPath, DWORD* pOff
         }
 
         //printf("[Symbols] Hooking Win+C is not available in this build.\n");
-        RegSetValueExW(hKey, TEXT(TWINUI_PCSHELL_SB_8), 0, REG_DWORD, &dwZero, sizeof(DWORD));
         if (VnGetSymbols(
             pszSettingsPath,
             pOffsets,
@@ -161,7 +159,6 @@ static BOOL ProcessTwinuiPcshellSymbols(const char* pszSettingsPath, DWORD* pOff
         ))
         {
             printf("[Symbols] Windows 10 window switcher style may not be available in this build.\n");
-            RegSetValueExW(hKey, TEXT(TWINUI_PCSHELL_SB_7), 0, REG_DWORD, &dwZero, sizeof(DWORD));
             if (VnGetSymbols(
                 pszSettingsPath,
                 pOffsets,
