@@ -765,7 +765,7 @@ BOOL NeedsRo_PositionStartMenuForMonitor(
     return TRUE;
 }
 
-DWORD GetStartMenuPosition(FARPROC SHRegGetValueFromHKCUHKLMFunc)
+DWORD GetStartMenuPosition(t_SHRegGetValueFromHKCUHKLM SHRegGetValueFromHKCUHKLMFunc)
 {
     DWORD dwSize = sizeof(DWORD);
 
@@ -776,7 +776,7 @@ DWORD GetStartMenuPosition(FARPROC SHRegGetValueFromHKCUHKLMFunc)
         SRRF_RT_REG_DWORD,
         NULL,
         &dwTaskbarAl,
-        (LPDWORD)(&dwSize)
+        &dwSize
     ) != ERROR_SUCCESS)
     {
         dwTaskbarAl = 1;

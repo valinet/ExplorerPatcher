@@ -258,7 +258,15 @@ __declspec(dllexport) CALLBACK ZZRestartExplorer(HWND hWnd, HINSTANCE hInstance,
 #define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
 #define MAX(X, Y) (((X) > (Y)) ? (X) : (Y))
 
-FARPROC SHRegGetValueFromHKCUHKLMFunc;
+typedef LSTATUS(*t_SHRegGetValueFromHKCUHKLM)(
+    PCWSTR pwszKey,
+    PCWSTR pwszValue,
+    int/*SRRF*/ srrfFlags,
+    DWORD* pdwType,
+    void* pvData,
+    DWORD* pcbData
+);
+t_SHRegGetValueFromHKCUHKLM SHRegGetValueFromHKCUHKLMFunc;
 
 inline LSTATUS SHRegGetValueFromHKCUHKLMWithOpt(
     PCWSTR pwszKey,

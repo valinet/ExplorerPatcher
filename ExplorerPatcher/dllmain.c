@@ -164,7 +164,7 @@ DWORD dwSpotlightDesktopMenuMask = 0;
 DWORD dwSpotlightUpdateSchedule = 0;
 int Code = 0;
 HRESULT InjectStartFromExplorer();
-void InvokeClockFlyout();
+BOOL InvokeClockFlyout();
 void WINAPI Explorer_RefreshUI(int unused);
 int (*SHWindowsPolicy)(REFIID);
 
@@ -911,79 +911,79 @@ BOOL CALLBACK ToggleImmersiveCallback(HWND hWnd, LPARAM lParam)
     return TRUE;
 }
 
-void ToggleHelp()
+BOOL ToggleHelp()
 {
-    PostMessageW(FindWindowExW(NULL, NULL, L"Shell_TrayWnd", NULL), WM_HOTKEY, 505, 0);
+    return PostMessageW(FindWindowExW(NULL, NULL, L"Shell_TrayWnd", NULL), WM_HOTKEY, 505, 0);
 }
 
-void ToggleRunDialog()
+BOOL ToggleRunDialog()
 {
-    PostMessageW(FindWindowExW(NULL, NULL, L"Shell_TrayWnd", NULL), WM_HOTKEY, 502, MAKELPARAM(MOD_WIN, 0x52));
+    return PostMessageW(FindWindowExW(NULL, NULL, L"Shell_TrayWnd", NULL), WM_HOTKEY, 502, MAKELPARAM(MOD_WIN, 0x52));
 }
 
-void ToggleSystemProperties()
+BOOL ToggleSystemProperties()
 {
-    PostMessageW(FindWindowExW(NULL, NULL, L"Shell_TrayWnd", NULL), WM_HOTKEY, 512, 0);
+    return PostMessageW(FindWindowExW(NULL, NULL, L"Shell_TrayWnd", NULL), WM_HOTKEY, 512, 0);
 }
 
-void FocusSystray()
+BOOL FocusSystray()
 {
-    PostMessageW(FindWindowExW(NULL, NULL, L"Shell_TrayWnd", NULL), WM_HOTKEY, 514, 0);
+    return PostMessageW(FindWindowExW(NULL, NULL, L"Shell_TrayWnd", NULL), WM_HOTKEY, 514, 0);
 }
 
-void TriggerAeroShake()
+BOOL TriggerAeroShake()
 {
-    PostMessageW(FindWindowExW(NULL, NULL, L"Shell_TrayWnd", NULL), WM_HOTKEY, 515, 0);
+    return PostMessageW(FindWindowExW(NULL, NULL, L"Shell_TrayWnd", NULL), WM_HOTKEY, 515, 0);
 }
 
-void PeekDesktop()
+BOOL PeekDesktop()
 {
-    PostMessageW(FindWindowExW(NULL, NULL, L"Shell_TrayWnd", NULL), WM_HOTKEY, 516, 0);
+    return PostMessageW(FindWindowExW(NULL, NULL, L"Shell_TrayWnd", NULL), WM_HOTKEY, 516, 0);
 }
 
-void ToggleEmojiPanel()
+BOOL ToggleEmojiPanel()
 {
-    PostMessageW(FindWindowExW(NULL, NULL, L"Shell_TrayWnd", NULL), WM_HOTKEY, 579, 0);
+    return PostMessageW(FindWindowExW(NULL, NULL, L"Shell_TrayWnd", NULL), WM_HOTKEY, 579, 0);
 }
 
-void ShowDictationPanel()
+BOOL ShowDictationPanel()
 {
-    PostMessageW(FindWindowExW(NULL, NULL, L"Shell_TrayWnd", NULL), WM_HOTKEY, 577, 0);
+    return PostMessageW(FindWindowExW(NULL, NULL, L"Shell_TrayWnd", NULL), WM_HOTKEY, 577, 0);
 }
 
-void ToggleClipboardViewer()
+BOOL ToggleClipboardViewer()
 {
-    PostMessageW(FindWindowExW(NULL, NULL, L"Shell_TrayWnd", NULL), WM_HOTKEY, 578, 0);
+    return PostMessageW(FindWindowExW(NULL, NULL, L"Shell_TrayWnd", NULL), WM_HOTKEY, 578, 0);
 }
 
-void ToggleSearch()
+BOOL ToggleSearch()
 {
-    PostMessageW(FindWindowExW(NULL, NULL, L"Shell_TrayWnd", NULL), WM_HOTKEY, 507, MAKELPARAM(MOD_WIN, 0x53));
+    return PostMessageW(FindWindowExW(NULL, NULL, L"Shell_TrayWnd", NULL), WM_HOTKEY, 507, MAKELPARAM(MOD_WIN, 0x53));
 }
 
-void ToggleTaskView()
+BOOL ToggleTaskView()
 {
-    EnumThreadWindows(GetWindowThreadProcessId(FindWindowExW(NULL, NULL, L"ApplicationManager_ImmersiveShellWindow", NULL), NULL), ToggleImmersiveCallback, 11);
+    return EnumThreadWindows(GetWindowThreadProcessId(FindWindowExW(NULL, NULL, L"ApplicationManager_ImmersiveShellWindow", NULL), NULL), ToggleImmersiveCallback, 11);
 }
 
-void ToggleWidgetsPanel()
+BOOL ToggleWidgetsPanel()
 {
-    EnumThreadWindows(GetWindowThreadProcessId(FindWindowExW(NULL, NULL, L"ApplicationManager_ImmersiveShellWindow", NULL), NULL), ToggleImmersiveCallback, 0x66);
+    return EnumThreadWindows(GetWindowThreadProcessId(FindWindowExW(NULL, NULL, L"ApplicationManager_ImmersiveShellWindow", NULL), NULL), ToggleImmersiveCallback, 0x66);
 }
 
-void ToggleMainClockFlyout()
+BOOL ToggleMainClockFlyout()
 {
-    EnumThreadWindows(GetWindowThreadProcessId(FindWindowExW(NULL, NULL, L"ApplicationManager_ImmersiveShellWindow", NULL), NULL), ToggleImmersiveCallback, 0x6B);
+    return EnumThreadWindows(GetWindowThreadProcessId(FindWindowExW(NULL, NULL, L"ApplicationManager_ImmersiveShellWindow", NULL), NULL), ToggleImmersiveCallback, 0x6B);
 }
 
-void ToggleNotificationsFlyout()
+BOOL ToggleNotificationsFlyout()
 {
-    PostMessageW(FindWindowExW(NULL, NULL, L"Shell_TrayWnd", NULL), WM_HOTKEY, 591, 0);
+    return PostMessageW(FindWindowExW(NULL, NULL, L"Shell_TrayWnd", NULL), WM_HOTKEY, 591, 0);
 }
 
-void ToggleActionCenter()
+BOOL ToggleActionCenter()
 {
-    PostMessageW(FindWindowExW(NULL, NULL, L"Shell_TrayWnd", NULL), WM_HOTKEY, 500, MAKELPARAM(MOD_WIN, 0x41));
+    return PostMessageW(FindWindowExW(NULL, NULL, L"Shell_TrayWnd", NULL), WM_HOTKEY, 500, MAKELPARAM(MOD_WIN, 0x41));
 }
 
 #ifdef _WIN64
@@ -1734,7 +1734,7 @@ LONG_PTR __stdcall CTaskBtnGroup_GetIdealSpanHook(ITaskBtnGroup* _this, LONG_PTR
     return ret;
 }
 
-void explorer_QISearch(void* that, LPCQITAB pqit, REFIID riid, void** ppv)
+HRESULT explorer_QISearch(void* that, LPCQITAB pqit, REFIID riid, void** ppv)
 {
     HRESULT hr = QISearch(that, pqit, riid, ppv);
     if (SUCCEEDED(hr) && IsEqualGUID(pqit[0].piid, &IID_ITaskGroup) && bPinnedItemsActAsQuickLaunch)
@@ -1907,6 +1907,8 @@ DWORD FixTaskbarAutohide(DWORD unused)
         }
     }
     SetEvent(hCanStartSws);
+
+    return 0;
 }
 #endif
 #pragma endregion
@@ -2871,7 +2873,7 @@ BOOL CheckIfMenuContainsOwnPropertiesItem(HMENU hMenu)
             mii.cbSize = sizeof(MENUITEMINFO);
             mii.fMask = MIIM_DATA | MIIM_ID;
             BOOL b = GetMenuItemInfoW(hMenu, i, TRUE, &mii);
-            if (b && (mii.wID >= 12000 && mii.wID <= 12200) && mii.dwItemData == CheckForUpdatesThread)
+            if (b && (mii.wID >= 12000 && mii.wID <= 12200) && mii.dwItemData == (ULONG_PTR)CheckForUpdatesThread)
             {
                 return TRUE;
             }
@@ -3064,33 +3066,6 @@ BOOL TrackPopupMenuHook(
 #define TB_POS_TOP 2
 #define TB_POS_LEFT 3
 #define TB_POS_RIGHT 4
-void PopupMenuAdjustCoordinatesAndFlags(int* x, int* y, UINT* uFlags)
-{
-    POINT pt;
-    GetCursorPos(&pt);
-    RECT rc;
-    UINT tbPos = GetTaskbarLocationAndSize(pt, &rc);
-    if (tbPos == TB_POS_BOTTOM)
-    {
-        *y = MIN(*y, rc.top);
-        *uFlags |= TPM_CENTERALIGN | TPM_BOTTOMALIGN;
-    }
-    else if (tbPos == TB_POS_TOP)
-    {
-        *y = MAX(*y, rc.bottom);
-        *uFlags |= TPM_CENTERALIGN | TPM_TOPALIGN;
-    }
-    else if (tbPos == TB_POS_LEFT)
-    {
-        *x = MAX(*x, rc.right);
-        *uFlags |= TPM_VCENTERALIGN | TPM_LEFTALIGN;
-    }
-    if (tbPos == TB_POS_RIGHT)
-    {
-        *x = MIN(*x, rc.left);
-        *uFlags |= TPM_VCENTERALIGN | TPM_RIGHTALIGN;
-    }
-}
 UINT GetTaskbarLocationAndSize(POINT ptCursor, RECT* rc)
 {
     MONITORINFO mi;
@@ -3126,6 +3101,33 @@ UINT GetTaskbarLocationAndSize(POINT ptCursor, RECT* rc)
         }
     }
     return TB_POS_NOWHERE;
+}
+void PopupMenuAdjustCoordinatesAndFlags(int* x, int* y, UINT* uFlags)
+{
+    POINT pt;
+    GetCursorPos(&pt);
+    RECT rc;
+    UINT tbPos = GetTaskbarLocationAndSize(pt, &rc);
+    if (tbPos == TB_POS_BOTTOM)
+    {
+        *y = MIN(*y, rc.top);
+        *uFlags |= TPM_CENTERALIGN | TPM_BOTTOMALIGN;
+    }
+    else if (tbPos == TB_POS_TOP)
+    {
+        *y = MAX(*y, rc.bottom);
+        *uFlags |= TPM_CENTERALIGN | TPM_TOPALIGN;
+    }
+    else if (tbPos == TB_POS_LEFT)
+    {
+        *x = MAX(*x, rc.right);
+        *uFlags |= TPM_VCENTERALIGN | TPM_LEFTALIGN;
+    }
+    if (tbPos == TB_POS_RIGHT)
+    {
+        *x = MIN(*x, rc.left);
+        *uFlags |= TPM_VCENTERALIGN | TPM_RIGHTALIGN;
+    }
 }
 INT64 OwnerDrawSubclassProc(
     _In_ HWND   hWnd,
@@ -4131,7 +4133,7 @@ void ClockButton_ToggleFlyoutCallback(
     *((INT64*)params->TrayUIInstance + params->CLOCKBUTTON_OFFSET_IN_TRAYUI) = params->oldClockButtonInstance;
     free(params);
 }
-void InvokeClockFlyout()
+BOOL InvokeClockFlyout()
 {
     POINT ptCursor;
     GetCursorPos(&ptCursor);
@@ -4174,14 +4176,13 @@ void InvokeClockFlyout()
         }
         else if (ShouldShowLegacyClockExperience() == 2)
         {
-            ToggleNotificationsFlyout();
-            return 0;
+            return ToggleNotificationsFlyout();
         }
         // On the main monitor, the TrayUI component of CTray handles this
         // message and basically does a `ClockButton::ToggleFlyout`; that's
         // the only place in code where that is used, otherwise, clicking and
         // dismissing the clock flyout probably involves 2 separate methods
-        PostMessageW(hShellTray_Wnd, WM_TOGGLE_CLOCK_FLYOUT, 0, 0);
+        return PostMessageW(hShellTray_Wnd, WM_TOGGLE_CLOCK_FLYOUT, 0, 0);
     }
     else
     {
@@ -4227,8 +4228,7 @@ void InvokeClockFlyout()
             }
             else if (ShouldShowLegacyClockExperience() == 2)
             {
-                ToggleNotificationsFlyout();
-                return 0;
+                return ToggleNotificationsFlyout();
             }
             if (bOldTaskbar)
             {
@@ -4259,15 +4259,16 @@ void InvokeClockFlyout()
                     params->TrayUIInstance = TrayUIInstance;
                     params->CLOCKBUTTON_OFFSET_IN_TRAYUI = CLOCKBUTTON_OFFSET_IN_TRAYUI;
                     params->oldClockButtonInstance = oldClockButtonInstance;
-                    SendMessageCallbackW(hShellTray_Wnd, WM_TOGGLE_CLOCK_FLYOUT, 0, 0, ClockButton_ToggleFlyoutCallback, params);
+                    return SendMessageCallbackW(hShellTray_Wnd, WM_TOGGLE_CLOCK_FLYOUT, 0, 0, ClockButton_ToggleFlyoutCallback, params);
                 }
             }
             else
             {
-                PostMessageW(hShellTray_Wnd, WM_TOGGLE_CLOCK_FLYOUT, 0, 0);
+                return PostMessageW(hShellTray_Wnd, WM_TOGGLE_CLOCK_FLYOUT, 0, 0);
             }
         }
     }
+    return FALSE;
 }
 INT64 winrt_Windows_Internal_Shell_implementation_MeetAndChatManager_OnMessageHook(
     void* _this,
@@ -9844,21 +9845,26 @@ DWORD InjectBasicFunctions(BOOL bIsExplorer, BOOL bInstall)
 
 #ifdef _WIN64
     // As of writing, this function is never invoked with bInstall=TRUE, so we don't handle the case if it's false for now
-    RtlQueryFeatureConfigurationFunc = GetProcAddress(GetModuleHandleW(L"ntdll.dll"), "RtlQueryFeatureConfiguration");
-    int rv = -1;
-    if (RtlQueryFeatureConfigurationFunc)
+    if (bIsExplorerProcess)
     {
-        rv = funchook_prepare(
-            funchook,
-            (void**)&RtlQueryFeatureConfigurationFunc,
-            RtlQueryFeatureConfigurationHook
-        );
-    }
-    if (rv != 0)
-    {
-        printf("Failed to hook RtlQueryFeatureConfiguration(). rv = %d\n", rv);
+        RtlQueryFeatureConfigurationFunc = GetProcAddress(GetModuleHandleW(L"ntdll.dll"), "RtlQueryFeatureConfiguration");
+        int rv = -1;
+        if (RtlQueryFeatureConfigurationFunc)
+        {
+            rv = funchook_prepare(
+                funchook,
+                (void**)&RtlQueryFeatureConfigurationFunc,
+                RtlQueryFeatureConfigurationHook
+            );
+        }
+        if (rv != 0)
+        {
+            printf("Failed to hook RtlQueryFeatureConfiguration(). rv = %d\n", rv);
+        }
     }
 #endif
+
+    return 0;
 }
 
 
@@ -10959,20 +10965,25 @@ DWORD Inject(BOOL bIsExplorer)
         &symbols_PTRS,
         sizeof(symbols_addr)
     );
-    if (LoadSymbols(&symbols_PTRS, hModule))
+    LoadSymbolsResult loadSymbolsResult = LoadSymbols(&symbols_PTRS);
+    if (loadSymbolsResult.bSuccess)
     {
-        if (bEnableSymbolDownload)
+        if (NeedToDownloadSymbols(&loadSymbolsResult))
         {
-            printf("Attempting to download symbol data; for now, the program may have limited functionality.\n");
-            DownloadSymbolsParams* params = malloc(sizeof(DownloadSymbolsParams));
-            params->hModule = hModule;
-            params->bVerbose = FALSE;
-            CreateThread(0, 0, DownloadSymbols, params, 0, 0);
+            if (bEnableSymbolDownload)
+            {
+                printf("Attempting to download symbol data; for now, the program may have limited functionality.\n");
+                DownloadSymbolsParams* params = malloc(sizeof(DownloadSymbolsParams));
+                params->hModule = hModule;
+                params->bVerbose = FALSE;
+                params->loadResult = loadSymbolsResult;
+                CreateThread(0, 0, DownloadSymbols, params, 0, 0);
+            }
         }
-    }
-    else
-    {
-        printf("Loaded symbols\n");
+        else
+        {
+            printf("Loaded symbols\n");
+        }
     }
 
 
@@ -12052,14 +12063,14 @@ INT64 StartDocked_StartSizingFrame_StartSizingFrameHook(void* _this)
     if (hModule)
     {
         DWORD dwStatus = 0, dwSize = sizeof(DWORD);
-        FARPROC SHRegGetValueFromHKCUHKLMFunc = GetProcAddress(hModule, "SHRegGetValueFromHKCUHKLM");
+        t_SHRegGetValueFromHKCUHKLM SHRegGetValueFromHKCUHKLMFunc = GetProcAddress(hModule, "SHRegGetValueFromHKCUHKLM");
         if (!SHRegGetValueFromHKCUHKLMFunc || SHRegGetValueFromHKCUHKLMFunc(
             TEXT("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced"),
             TEXT("TaskbarAl"),
             SRRF_RT_REG_DWORD,
             NULL,
             &dwStatus,
-            (LPDWORD)(&dwSize)
+            &dwSize
         ) != ERROR_SUCCESS)
         {
             dwStatus = 0;
@@ -12757,7 +12768,7 @@ HRESULT WINAPI _DllCanUnloadNow()
     return S_FALSE;
 }
 
-void InjectStartMenu()
+DWORD InjectStartMenu()
 {
 #ifdef _WIN64
     funchook = funchook_create();
@@ -12858,56 +12869,56 @@ void InjectStartMenu()
     );
 
     int rv;
-    DWORD dwVal0 = 0x62254, dwVal1 = 0x188EBC, dwVal2 = 0x187120, dwVal3 = 0x3C10, dwVal4 = 0;
+    DWORD dwVal0 = 0, dwVal1 = 0, dwVal2 = 0, dwVal3 = 0, dwVal4 = 0;
 
     HMODULE hModule = LoadLibraryW(L"Shlwapi.dll");
     if (hModule)
     {
         DWORD dwStatus = 0, dwSize = sizeof(DWORD);
-        FARPROC SHRegGetValueFromHKCUHKLMFunc = GetProcAddress(hModule, "SHRegGetValueFromHKCUHKLM");
+        t_SHRegGetValueFromHKCUHKLM SHRegGetValueFromHKCUHKLM = GetProcAddress(hModule, "SHRegGetValueFromHKCUHKLM");
 
-        if (SHRegGetValueFromHKCUHKLMFunc)
+        if (SHRegGetValueFromHKCUHKLM)
         {
             dwSize = sizeof(DWORD);
-            SHRegGetValueFromHKCUHKLMFunc(
+            SHRegGetValueFromHKCUHKLM(
                 TEXT(REGPATH_STARTMENU) TEXT("\\") TEXT(STARTDOCKED_SB_NAME),
                 TEXT(STARTDOCKED_SB_0),
                 SRRF_RT_REG_DWORD,
                 NULL,
                 &dwVal0,
-                (LPDWORD)(&dwSize)
+                &dwSize
             );
-            SHRegGetValueFromHKCUHKLMFunc(
+            SHRegGetValueFromHKCUHKLM(
                 TEXT(REGPATH_STARTMENU) TEXT("\\") TEXT(STARTDOCKED_SB_NAME),
                 TEXT(STARTDOCKED_SB_1),
                 SRRF_RT_REG_DWORD,
                 NULL,
                 &dwVal1,
-                (LPDWORD)(&dwSize)
+                &dwSize
             );
-            SHRegGetValueFromHKCUHKLMFunc(
+            SHRegGetValueFromHKCUHKLM(
                 TEXT(REGPATH_STARTMENU) TEXT("\\") TEXT(STARTDOCKED_SB_NAME),
                 TEXT(STARTDOCKED_SB_2),
                 SRRF_RT_REG_DWORD,
                 NULL,
                 &dwVal2,
-                (LPDWORD)(&dwSize)
+                &dwSize
             );
-            SHRegGetValueFromHKCUHKLMFunc(
+            SHRegGetValueFromHKCUHKLM(
                 TEXT(REGPATH_STARTMENU) TEXT("\\") TEXT(STARTDOCKED_SB_NAME),
                 TEXT(STARTDOCKED_SB_3),
                 SRRF_RT_REG_DWORD,
                 NULL,
                 &dwVal3,
-                (LPDWORD)(&dwSize)
+                &dwSize
             );
-            SHRegGetValueFromHKCUHKLMFunc(
+            SHRegGetValueFromHKCUHKLM(
                 TEXT(REGPATH_STARTMENU) TEXT("\\") TEXT(STARTUI_SB_NAME),
                 TEXT(STARTUI_SB_0),
                 SRRF_RT_REG_DWORD,
                 NULL,
                 &dwVal4,
-                (LPDWORD)(&dwSize)
+                &dwSize
             );
         }
         FreeLibrary(hModule);
@@ -12971,6 +12982,7 @@ void InjectStartMenu()
         return rv;
     }
 #endif
+    return 0;
 }
 
 void InjectShellExperienceHost()

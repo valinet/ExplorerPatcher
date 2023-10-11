@@ -40,14 +40,28 @@ typedef struct symbols_addr
 } symbols_addr;
 #pragma pack(pop)
 
+typedef struct _LoadSymbolsResult
+{
+    BOOL bSuccess : 1;
+    BOOL bNeedToDownloadTwinuiPcshellSymbols : 1;
+    BOOL bNeedToDownloadStartDockedSymbols : 1;
+    BOOL bNeedToDownloadStartUISymbols : 1;
+} LoadSymbolsResult;
+
+inline BOOL NeedToDownloadSymbols(const LoadSymbolsResult* pLoadResult)
+{
+    return pLoadResult->bNeedToDownloadTwinuiPcshellSymbols || pLoadResult->bNeedToDownloadStartDockedSymbols || pLoadResult->bNeedToDownloadStartUISymbols;
+}
+
 typedef struct _DownloadSymbolsParams
 {
     HMODULE hModule;
     BOOL bVerbose;
+    LoadSymbolsResult loadResult;
 } DownloadSymbolsParams;
 DWORD DownloadSymbols(DownloadSymbolsParams* params);
 
-BOOL LoadSymbols(symbols_addr* symbols_PTRS, HMODULE hModule);
+LoadSymbolsResult LoadSymbols(symbols_addr* symbols_PTRS);
 
 inline BOOL IsBuild(RTL_OSVERSIONINFOW rovi, DWORD32 ubr, DWORD BuildNumber, DWORD BuildMinor)
 {
