@@ -10446,7 +10446,10 @@ BOOL explorer_IsOS(DWORD dwOS)
 void TryToFindTwinuiPCShellOffsets(DWORD* pOffsets)
 {
     // We read from the file instead of from memory because other tweak software might've modified the functions we're looking for
-    HANDLE hFile = CreateFileW(L"twinui.pcshell.dll", GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    WCHAR wszPath[MAX_PATH];
+    GetSystemDirectoryW(wszPath, MAX_PATH);
+    wcscat_s(wszPath, MAX_PATH, L"\\twinui.pcshell.dll");
+    HANDLE hFile = CreateFileW(wszPath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if (hFile == INVALID_HANDLE_VALUE)
     {
         printf("Failed to open twinui.pcshell.dll\n");
@@ -10647,7 +10650,7 @@ static void PatchAppResolver()
     if (match)
     {
         match += 5;
-        match = match + 5 + *(int*)(match + 1);
+        match += 5 + *(int*)(match + 1);
         AppResolver_CAppResolverCacheBuilder__AddUserPinnedShortcutToStartFunc = match;
         printf("CAppResolverCacheBuilder::_AddUserPinnedShortcutToStart() = %llX\n", match - (PBYTE)hAppResolver);
     }
@@ -10672,6 +10675,381 @@ static void PatchStartTileData()
     HANDLE hStartTileData = LoadLibraryW(L"StartTileData.dll");
 
     VnPatchIAT(hStartTileData, "api-ms-win-core-winrt-l1-1-0.dll", "RoGetActivationFactory", AppResolver_StartTileData_RoGetActivationFactory);
+}
+#endif
+#pragma endregion
+
+
+#pragma region "Fix Windows 10 start menu animation on 22000.65+"
+#ifdef _WIN64
+static struct
+{
+    int startExperienceManager_singleViewShellExperience;
+    int startExperienceManager_singleViewShellExperienceEventHandler;
+    int startExperienceManager_openingAnimation;
+    int startExperienceManager_closingAnimation;
+    int startExperienceManager_bMaybeFullScreenMode;
+} g_SMAnimationPatchOffsets;
+
+enum EDGEUI_TRAYSTUCKPLACE {};
+enum DWMTRANSITION_TARGET {};
+
+HRESULT(*CStartExperienceManager_GetMonitorInformationFunc)(void* _this, void* experience, RECT* a3, enum EDGEUI_TRAYSTUCKPLACE* pTsp, bool* a5, RECT* a6, HMONITOR* a7);
+HRESULT(*CExperienceManagerAnimationHelper_BeginFunc)(void* _this, void*, enum DWMTRANSITION_TARGET, const RECT*, const RECT*, const RECT*, const RECT*, const RECT*);
+HRESULT(*CExperienceManagerAnimationHelper_EndFunc)(void* _this);
+
+HRESULT(*OnViewCloakingFunc)(void* eventHandler, void* experience);
+HRESULT OnViewCloakingHook(void* eventHandler, void* experience)
+{
+    PBYTE _this = (PBYTE)eventHandler - g_SMAnimationPatchOffsets.startExperienceManager_singleViewShellExperienceEventHandler;
+    bool bMaybeFullScreenMode = *(_this + g_SMAnimationPatchOffsets.startExperienceManager_bMaybeFullScreenMode);
+    if (bMaybeFullScreenMode)
+        return S_OK;
+
+    RECT rc;
+    enum EDGEUI_TRAYSTUCKPLACE tsp;
+    bool bUnknown;
+    RECT rc2;
+    HMONITOR hMonitor;
+    HRESULT hr = CStartExperienceManager_GetMonitorInformationFunc(_this, experience, &rc, &tsp, &bUnknown, &rc2, &hMonitor);
+    if (FAILED(hr))
+        return hr;
+
+    enum DWMTRANSITION_TARGET target = 0x51;
+    if (*(bool*)((PBYTE)experience + 0x34))
+        target = 0x52;
+    else if (tsp == 0)
+        target = 0x4D;
+    else if (tsp == 1)
+        target = 0x4F;
+    else if (tsp == 2)
+        target = 0x4E;
+    else if (tsp == 3)
+        target = 0x50;
+
+    hr = CExperienceManagerAnimationHelper_BeginFunc(
+        _this + g_SMAnimationPatchOffsets.startExperienceManager_closingAnimation,
+        *(void**)((PBYTE)experience + 0x18), // viewWrapper
+        target | 0x200000u, NULL, NULL, NULL, NULL, &rc);
+
+    return hr;
+}
+
+// Note: `void* experience` is never valid because the compiler optimized out the argument passing. At least on 22621.1992
+HRESULT CStartExperienceManager_GetMonitorInformationHook(void* _this, void* experience, RECT* a3, enum EDGEUI_TRAYSTUCKPLACE* pTsp, bool* a5, RECT* a6, HMONITOR* a7)
+{
+    HRESULT hr = CStartExperienceManager_GetMonitorInformationFunc(_this, experience, a3, pTsp, a5, a6, a7);
+    // We add code to OnViewUncloaking through this function
+    if (SUCCEEDED(hr) && *(PBYTE)_ReturnAddress() == 0x85 && *((PBYTE)_ReturnAddress() + 1) == 0xC0 && *((PBYTE)_ReturnAddress() + 2) == 0x78)
+    {
+        experience = (PBYTE)_this + g_SMAnimationPatchOffsets.startExperienceManager_singleViewShellExperience;
+        enum DWMTRANSITION_TARGET target = 0x51;
+        if (*(bool*)((PBYTE)experience + 0x34))
+            target = 0x52;
+        else if (*pTsp == 0)
+            target = 0x4E;
+        else if (*pTsp == 1)
+            target = 0x50;
+        else if (*pTsp == 2)
+            target = 0x4D;
+        else if (*pTsp == 3)
+            target = 0x4F;
+        CExperienceManagerAnimationHelper_BeginFunc(
+            (PBYTE)_this + g_SMAnimationPatchOffsets.startExperienceManager_openingAnimation,
+            *(void**)((PBYTE)experience + 0x18), // viewWrapper
+            target | 0x200000u, NULL, NULL, NULL, NULL, a3);
+        return E_FAIL; // Don't invoke ReportUsage() called in OnViewUncloaking
+    }
+    return hr;
+}
+
+HRESULT(*OnViewUncloakingFunc)(void* eventHandler, void* experience);
+
+HRESULT(*OnViewUncloakedFunc)(void* eventHandler, void* experience);
+HRESULT OnViewUncloakedHook(void* eventHandler, void* experience)
+{
+    PBYTE _this = (PBYTE)eventHandler - g_SMAnimationPatchOffsets.startExperienceManager_singleViewShellExperienceEventHandler;
+    CExperienceManagerAnimationHelper_EndFunc(_this + g_SMAnimationPatchOffsets.startExperienceManager_openingAnimation);
+    return S_OK;
+}
+
+BOOL FixStartMenuAnimation(LPMODULEINFO mi)
+{
+    // The idea here is to re-add the code that got removed in 22000.65+. We can see that "STest03" is the feature flag
+    // that experiments with the new start menu. So, because in 22000.51 one can enable the old start menu with proper
+    // behavior by setting the Start_ShowClassicMode registry value to 1, and there is a convenient function called
+    // `StartDocked::ShouldUseStartDocked()`, we crosscheck the removed code and piece together a patch for proper
+    // animations on 22000.65+.
+
+    // ### Offset of SingleViewShellExperience instance and its event handler
+    // ```
+    // 48 8D 8E ?? ?? ?? ?? 44 8D 45 ?? 48 8D 56 ?? E8
+    //          ^^^^^^^^^^^ SVSE                 ^^ SVSEEH
+    // ```
+    // Ref: CStartExperienceManager::CStartExperienceManager()
+    PBYTE match1 = FindPattern(
+        mi->lpBaseOfDll,
+        mi->SizeOfImage,
+        "\x48\x8D\x8E\x00\x00\x00\x00\x44\x8D\x45\x00\x48\x8D\x56\x00\xE8",
+        "xxx????xxx?xxx?x"
+    );
+    if (match1)
+    {
+        g_SMAnimationPatchOffsets.startExperienceManager_singleViewShellExperience = *(int*)(match1 + 3);
+        g_SMAnimationPatchOffsets.startExperienceManager_singleViewShellExperienceEventHandler = (int)*(char*)(match1 + 14);
+        printf("[SMA] match1 = %llX\n", match1 - (PBYTE)mi->lpBaseOfDll);
+    }
+
+    // ### Offsets of Animation Helpers
+    // ```
+    // 40 88 AE ?? ?? ?? ?? C7 86 ?? ?? ?? ?? 38 00 00 00
+    //          ^^^^^^^^^^^ AH1
+    // ```
+    // Ref: CStartExperienceManager::CStartExperienceManager()
+    // AH2 is located right after AH1. AH is 32 bytes
+    PBYTE match2 = FindPattern(
+        mi->lpBaseOfDll,
+        mi->SizeOfImage,
+        "\x40\x88\xAE\x00\x00\x00\x00\xC7\x86\x00\x00\x00\x00\x38\x00\x00\x00",
+        "xxx????xx????xxxx"
+    );
+    if (match2)
+    {
+        g_SMAnimationPatchOffsets.startExperienceManager_openingAnimation = *(int*)(match2 + 3);
+        g_SMAnimationPatchOffsets.startExperienceManager_closingAnimation = g_SMAnimationPatchOffsets.startExperienceManager_openingAnimation + 32;
+        printf("[SMA] match2 = %llX\n", match2 - (PBYTE)mi->lpBaseOfDll);
+    }
+
+    // ### Offset of bMaybeFullScreenMode
+    // ```
+    // 80 B9 ?? ?? ?? ?? 00 0F 85 ?? ?? ?? ?? 45 33 C0 B2 01
+    //       ^^^^^^^^^^^ bMaybeFullScreenMode
+    // ```
+    // Ref: CStartExperienceManager::OnViewHidden()
+    // TODO Broke on 25951 Canary
+    PBYTE match3 = FindPattern(
+        mi->lpBaseOfDll,
+        mi->SizeOfImage,
+        "\x80\xB9\x00\x00\x00\x00\x00\x0F\x85\x00\x00\x00\x00\x45\x33\xC0\xB2\x01",
+        "xx????xxx????xxxxx"
+    );
+    if (match3)
+    {
+        g_SMAnimationPatchOffsets.startExperienceManager_bMaybeFullScreenMode = g_SMAnimationPatchOffsets.startExperienceManager_singleViewShellExperienceEventHandler + *(int*)(match3 + 2);
+        printf("[SMA] match3 = %llX\n", match3 - (PBYTE)mi->lpBaseOfDll);
+    }
+
+    // ### Offset of CStartExperienceManager::GetMonitorInformation()
+    // ```
+    // E8 ?? ?? ?? ?? 8B ?? 85 C0 0F 88 ?? ?? ?? ?? C6 44 24
+    //    ^^^^^^^^^^^
+    // ```
+    // Ref: CStartExperienceManager::PositionMenu()
+    PBYTE match4 = FindPattern(
+        mi->lpBaseOfDll,
+        mi->SizeOfImage,
+        "\xE8\x00\x00\x00\x00\x8B\x00\x85\xC0\x0F\x88\x00\x00\x00\x00\xC6\x44\x24",
+        "x????x?xxxx????xxx"
+    );
+    if (match4)
+    {
+        match4 += 5 + *(int*)(match4 + 1);
+        CStartExperienceManager_GetMonitorInformationFunc = match4;
+        printf("[SMA] CStartExperienceManager::GetMonitorInformation() = %llX\n", match4 - (PBYTE)mi->lpBaseOfDll);
+    }
+
+    // ### Offset of CExperienceManagerAnimationHelper::Begin()
+    // ```
+    // 44 8B C7 E8 ?? ?? ?? ?? 85 C0 79 19
+    //             ^^^^^^^^^^^
+    // ```
+    // Ref: CJumpViewExperienceManager::OnViewUncloaking()
+    PBYTE match5 = FindPattern(
+        mi->lpBaseOfDll,
+        mi->SizeOfImage,
+        "\x44\x8B\xC7\xE8\x00\x00\x00\x00\x85\xC0\x79\x19",
+        "xxxx????xxxx"
+    );
+    if (match5)
+    {
+        match5 += 3;
+        match5 += 5 + *(int*)(match5 + 1);
+        CExperienceManagerAnimationHelper_BeginFunc = match5;
+        printf("[SMA] CExperienceManagerAnimationHelper::Begin() = %llX\n", match5 - (PBYTE)mi->lpBaseOfDll);
+    }
+
+    // ### Offset of CExperienceManagerAnimationHelper::End()
+    // ```
+    // 40 53 48 83 EC 20 80 39 00 74
+    // ```
+    PBYTE match6 = FindPattern(
+        mi->lpBaseOfDll,
+        mi->SizeOfImage,
+        "\x40\x53\x48\x83\xEC\x20\x80\x39\x00\x74",
+        "xxxxxxxxxx"
+    );
+    if (match6)
+    {
+        CExperienceManagerAnimationHelper_EndFunc = match6;
+        printf("[SMA] CExperienceManagerAnimationHelper::End() = %llX\n", match6 - (PBYTE)mi->lpBaseOfDll);
+    }
+
+    // ### CStartExperienceManager::Hide()
+    // ```
+    // 74 ?? ?? 03 00 00 00 44 88
+    // ^^ Turn jz into jmp
+    // ```
+    // Perform on exactly two matches
+    PBYTE match7a = FindPattern(
+        mi->lpBaseOfDll,
+        mi->SizeOfImage,
+        "\x74\x00\x00\x03\x00\x00\x00\x44\x88",
+        "x??xxxxxx"
+    );
+    PBYTE match7b = NULL;
+    if (match7a)
+    {
+        printf("[SMA] match7a in CStartExperienceManager::Hide() = %llX\n", match7a - (PBYTE)mi->lpBaseOfDll);
+        match7b = FindPattern(
+            match7a + 14,
+            mi->SizeOfImage - (match7a + 14 - (PBYTE)mi->lpBaseOfDll),
+            "\x74\x00\x00\x03\x00\x00\x00\x44\x88",
+            "x??xxxxxx"
+        );
+        if (match7b)
+        {
+            printf("[SMA] match7b in CStartExperienceManager::Hide() = %llX\n", match7b - (PBYTE)mi->lpBaseOfDll);
+        }
+    }
+
+    // ### CStartExperienceManager::OnViewCloaking()
+    // ```
+    // 48 83 EC 28 80 B9 ?? ?? ?? ?? 00 75 ?? 45 33 C0
+    // ```
+    // Just hook
+    // TODO: Broke on 25951 Canary
+    PBYTE match8 = FindPattern(
+        mi->lpBaseOfDll,
+        mi->SizeOfImage,
+        "\x48\x83\xEC\x28\x80\xB9\x00\x00\x00\x00\x00\x75\x00\x45\x33\xC0",
+        "xxxxxx????xx?xxx"
+    );
+    if (match8)
+    {
+        OnViewCloakingFunc = match8;
+        printf("[SMA] CStartExperienceManager::OnViewCloaking() = %llX\n", match8 - (PBYTE)mi->lpBaseOfDll);
+    }
+
+    // ### CStartExperienceManager::OnViewHidden()
+    // ```
+    // 80 B9 ?? ?? ?? ?? 00 0F 85 ?? ?? ?? ?? 45 33 C0 B2 01
+    //                                        ^^ Start overwriting here. 17 bytes, rest NOP
+    // ```
+    // TODO Broke on 25951 Canary
+    PBYTE match9 = FindPattern(
+        mi->lpBaseOfDll,
+        mi->SizeOfImage,
+        "\x80\xB9\x00\x00\x00\x00\x00\x0F\x85\x00\x00\x00\x00\x45\x33\xC0\xB2\x01",
+        "xx????xxx????xxxxx"
+    );
+    if (match9)
+    {
+        printf("[SMA] match9 in CStartExperienceManager::OnViewHidden() = %llX\n", match9 - (PBYTE)mi->lpBaseOfDll);
+    }
+
+    // ### CStartExperienceManager::OnViewUncloaked()
+    // ```
+    // 48 83 EC 28 45 33 C0 48 8D 0D ?? ?? ?? ?? B2 01 E8 ?? ?? ?? ?? 33 C0
+    // ```
+    // Just hook
+    // TODO: Broke on 25951 Canary
+    PBYTE match10 = FindPattern(
+        mi->lpBaseOfDll,
+        mi->SizeOfImage,
+        "\x48\x83\xEC\x28\x45\x33\xC0\x48\x8D\x0D\x00\x00\x00\x00\xB2\x01\xE8\x00\x00\x00\x00\x33\xC0",
+        "xxxxxxxxxx????xxx????xx"
+    );
+    if (match10)
+    {
+        OnViewUncloakedFunc = match10;
+        printf("[SMA] CStartExperienceManager::OnViewUncloaked() = %llX\n", match10 - (PBYTE)mi->lpBaseOfDll);
+    }
+
+    if (!match1 || !match2 || !match3 || !match4 || !match5 || !match6 || !match7a || !match7b || !match8 || !match9 || !match10)
+    {
+        printf("[SMA] Not all offsets were found, cannot perform patch\n");
+        return FALSE;
+    }
+
+    int rv = funchook_prepare(
+        funchook,
+        (void**)&CStartExperienceManager_GetMonitorInformationFunc,
+        CStartExperienceManager_GetMonitorInformationHook
+    );
+    if (rv != 0)
+    {
+        printf("Failed to hook CStartExperienceManager::GetMonitorInformation(). rv = %d\n", rv);
+    }
+
+    DWORD dwOldProtect = 0;
+    if (VirtualProtect(match7a + 11, 3, PAGE_EXECUTE_READWRITE, &dwOldProtect))
+    {
+        match7a[0] = 0xEB;
+        VirtualProtect(match7a + 11, 3, dwOldProtect, &dwOldProtect);
+
+        dwOldProtect = 0;
+        if (VirtualProtect(match7b + 11, 3, PAGE_EXECUTE_READWRITE, &dwOldProtect))
+        {
+            match7b[0] = 0xEB;
+            VirtualProtect(match7b + 11, 3, dwOldProtect, &dwOldProtect);
+        }
+    }
+
+    rv = funchook_prepare(
+        funchook,
+        (void**)&OnViewCloakingFunc,
+        OnViewCloakingHook
+    );
+    if (rv != 0)
+    {
+        printf("Failed to hook CStartExperienceManager::OnViewCloaking(). rv = %d\n", rv);
+    }
+
+    PBYTE begin = match9 + 13;
+    PBYTE end = begin + 17;
+
+    // Craft the code to call End()
+    BYTE code[] = {
+        // lea rcx, [rbx+<offset>] ; rbx is the `this`, offset to closingAnimation
+        0x48, 0x8D, 0x8B, 0x11, 0x11, 0x11, 0x11,
+        // call CExperienceManagerAnimationHelper::End
+        0xE8, 0x22, 0x22, 0x22, 0x22,
+    };
+
+    *(int*)(code + 3) = -g_SMAnimationPatchOffsets.startExperienceManager_singleViewShellExperienceEventHandler + g_SMAnimationPatchOffsets.startExperienceManager_closingAnimation;
+    *(int*)(code + 8) = (int)((PBYTE)CExperienceManagerAnimationHelper_EndFunc - (begin + sizeof(code)));
+
+    PBYTE nopBegin = begin + sizeof(code);
+
+    dwOldProtect = 0;
+    if (VirtualProtect(begin, end - begin, PAGE_EXECUTE_READWRITE, &dwOldProtect))
+    {
+        memcpy(begin, code, sizeof(code));
+        memset(nopBegin, 0x90, end - nopBegin);
+        VirtualProtect(begin, end - begin, dwOldProtect, &dwOldProtect);
+    }
+
+    rv = funchook_prepare(
+        funchook,
+        (void**)&OnViewUncloakedFunc,
+        OnViewUncloakedHook
+    );
+    if (rv != 0)
+    {
+        printf("Failed to hook CStartExperienceManager::OnViewUncloaked(). rv = %d\n", rv);
+    }
+
+    return TRUE;
 }
 #endif
 #pragma endregion
@@ -11313,6 +11691,22 @@ DWORD Inject(BOOL bIsExplorer)
         if (rv != 0)
         {
             printf("Failed to hook PenMenuSystemTrayManager::GetDynamicSystemTrayHeightForMonitor(). rv = %d\n", rv);
+        }
+    }
+
+    if ((global_rovi.dwBuildNumber > 22000 || global_rovi.dwBuildNumber == 22000 && global_ubr >= 65) // Allow on 22000.65+
+        && global_rovi.dwBuildNumber < 25000 // But not on 25xxx (yet)
+        && dwStartShowClassicMode)
+    {
+        // Make sure crash counter is enabled. If one of the patches make Explorer crash while the start menu is open,
+        // we don't want to softlock the user. The system reopens the start menu if Explorer terminates while it's open.
+        DWORD crashCounterDisabled = 0, dwTCSize = sizeof(DWORD);
+        RegGetValueW(HKEY_CURRENT_USER, _T(REGPATH), L"CrashCounterDisabled", RRF_RT_DWORD, NULL, &crashCounterDisabled, &dwTCSize); dwTCSize = sizeof(DWORD);
+        if (crashCounterDisabled != 0 && crashCounterDisabled != 1) crashCounterDisabled = 0;
+
+        if (!crashCounterDisabled)
+        {
+            FixStartMenuAnimation(&miTwinuiPcshell);
         }
     }
 #endif
@@ -12213,7 +12607,8 @@ int Start_SetWindowRgn(HWND hWnd, HRGN hRgn, BOOL bRedraw)
     HRESULT hr = IsThreadCoreWindowVisible(&bIsWindowVisible);
     if (SUCCEEDED(hr))
     {
-        if (IsWindows11()) ShowWindow(hWnd, bIsWindowVisible ? SW_SHOW : SW_HIDE);
+        if (global_rovi.dwBuildNumber >= 25000 && dwStartShowClassicMode)
+            ShowWindow(hWnd, bIsWindowVisible ? SW_SHOW : SW_HIDE);
         DWORD TaskbarAl = InterlockedAdd(&dwTaskbarAl, 0);
         if (bIsWindowVisible && (!TaskbarAl ? (dwStartShowClassicMode ? StartUI_EnableRoundedCornersApply : StartDocked_DisableRecommendedSectionApply) : 1))
         {
