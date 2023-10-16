@@ -9693,6 +9693,15 @@ int RtlQueryFeatureConfigurationHook(UINT32 featureId, int sectionType, INT64* c
             break;
         }
 #endif
+        case 44656322: // ID44656322
+        {
+            if (bOldTaskbar)
+            {
+                // Fixes start menu positioning when the taskbar is at the left or right side
+                buffer->enabledState = FEATURE_ENABLED_STATE_DISABLED;
+            }
+            break;
+        }
     }
     return rv;
 }
