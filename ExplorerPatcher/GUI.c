@@ -1619,7 +1619,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                         }
                                         else
                                         {
-                                            BeginExplorerRestart();
+                                            BeginExplorerRestart(NULL);
                                         }
                                     }
                                     Sleep(100);

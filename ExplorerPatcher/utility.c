@@ -163,7 +163,7 @@ LRESULT CALLBACK BalloonWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPara
     return 0;
 }
 
-__declspec(dllexport) CALLBACK ZZTestBalloon(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLine, int nCmdShow)
+__declspec(dllexport) int CALLBACK ZZTestBalloon(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLine, int nCmdShow)
 {
     TCHAR* lpwszCmdLine = calloc((strlen(lpszCmdLine) + 1), sizeof(TCHAR));
     if (!lpwszCmdLine) exit(0);
@@ -199,6 +199,8 @@ __declspec(dllexport) CALLBACK ZZTestBalloon(HWND hWnd, HINSTANCE hInstance, LPS
         TranslateMessage(&msg);
         DispatchMessage(&msg);
     }
+
+    return 0;
 }
 
 const wchar_t TestToastXML[] =
@@ -212,7 +214,7 @@ L"		</binding>\r\n"
 L"	</visual>\r\n"
 L"	<audio src=\"ms-winsoundevent:Notification.Default\" loop=\"false\" silent=\"false\"/>\r\n"
 L"</toast>\r\n";
-__declspec(dllexport) CALLBACK ZZTestToast(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLine, int nCmdShow)
+__declspec(dllexport) int CALLBACK ZZTestToast(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLine, int nCmdShow)
 {
     TCHAR* lpwszCmdLine = calloc((strlen(lpszCmdLine) + 1), sizeof(TCHAR));
     if (!lpwszCmdLine) exit(0);
@@ -252,9 +254,10 @@ __declspec(dllexport) CALLBACK ZZTestToast(HWND hWnd, HINSTANCE hInstance, LPSTR
         free(buffer);
     }
     free(lpwszCmdLine);
+    return 0;
 }
 
-__declspec(dllexport) CALLBACK ZZLaunchExplorer(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLine, int nCmdShow)
+__declspec(dllexport) int CALLBACK ZZLaunchExplorer(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLine, int nCmdShow)
 {
     Sleep(100);
     TCHAR wszExplorerPath[MAX_PATH + 1];
@@ -283,18 +286,21 @@ __declspec(dllexport) CALLBACK ZZLaunchExplorer(HWND hWnd, HINSTANCE hInstance, 
         ),
         0
     );
+    return 0;
 }
 
-__declspec(dllexport) CALLBACK ZZLaunchExplorerDelayed(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLine, int nCmdShow)
+__declspec(dllexport) int CALLBACK ZZLaunchExplorerDelayed(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLine, int nCmdShow)
 {
     Sleep(2000);
     ZZLaunchExplorer(hWnd, hInstance, lpszCmdLine, nCmdShow);
+    return 0;
 }
 
-__declspec(dllexport) CALLBACK ZZRestartExplorer(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLine, int nCmdShow)
+__declspec(dllexport) int CALLBACK ZZRestartExplorer(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLine, int nCmdShow)
 {
-    BeginExplorerRestart();
+    BeginExplorerRestart(NULL);
     FinishExplorerRestart();
+    return 0;
 }
 
 void* ReadFromFile(wchar_t* wszFileName, DWORD* dwSize)

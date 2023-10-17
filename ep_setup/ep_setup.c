@@ -673,7 +673,7 @@ int WINAPI wWinMain(
                 }
                 else
                 {
-                    BeginExplorerRestart();
+                    BeginExplorerRestart(NULL);
                 }
             }
         }

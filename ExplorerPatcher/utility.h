@@ -15,17 +15,24 @@
 #include <restartmanager.h>
 #pragma comment(lib, "Rstrtmgr.lib")
 #define _LIBVALINET_INCLUDE_UNIVERSAL
+#ifndef __cplusplus
 #include <valinet/universal/toast/toast.h>
+#endif
 #include "osutility.h"
 #include "queryversion.h"
 #pragma comment(lib, "Psapi.lib")
 #include <activscp.h>
 #include <netlistmgr.h>
+#include <Psapi.h>
 
 #include "def.h"
 
 #define WM_MSG_GUI_SECTION WM_USER + 1
 #define WM_MSG_GUI_SECTION_GET 1
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 DEFINE_GUID(CLSID_ImmersiveShell,
     0xc2f03a33,
@@ -245,15 +252,15 @@ void printf_guid(GUID guid);
 
 LRESULT CALLBACK BalloonWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
-__declspec(dllexport) CALLBACK ZZTestBalloon(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLine, int nCmdShow);
+__declspec(dllexport) int CALLBACK ZZTestBalloon(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLine, int nCmdShow);
 
-__declspec(dllexport) CALLBACK ZZTestToast(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLine, int nCmdShow);
+__declspec(dllexport) int CALLBACK ZZTestToast(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLine, int nCmdShow);
 
-__declspec(dllexport) CALLBACK ZZLaunchExplorer(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLine, int nCmdShow);
+__declspec(dllexport) int CALLBACK ZZLaunchExplorer(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLine, int nCmdShow);
 
-__declspec(dllexport) CALLBACK ZZLaunchExplorerDelayed(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLine, int nCmdShow);
+__declspec(dllexport) int CALLBACK ZZLaunchExplorerDelayed(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLine, int nCmdShow);
 
-__declspec(dllexport) CALLBACK ZZRestartExplorer(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLine, int nCmdShow);
+__declspec(dllexport) int CALLBACK ZZRestartExplorer(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLine, int nCmdShow);
 
 #define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
 #define MAX(X, Y) (((X) > (Y)) ? (X) : (Y))
@@ -297,7 +304,7 @@ inline LSTATUS SHRegGetValueFromHKCUHKLMWithOpt(
             pwszValue,
             0,
             NULL,
-            pvData,
+            (LPBYTE)pvData,
             pcbData
         );
         RegCloseKey(hKey);
@@ -324,7 +331,7 @@ inline LSTATUS SHRegGetValueFromHKCUHKLMWithOpt(
             pwszValue,
             0,
             NULL,
-            pvData,
+            (LPBYTE)pvData,
             pcbData
         );
         RegCloseKey(hKey);
@@ -517,7 +524,7 @@ static DWORD RmSession = -1;
 static wchar_t RmSessionKey[CCH_RM_SESSION_KEY + 1];
 
 // shuts down the explorer and is ready for explorer restart
-inline void BeginExplorerRestart()
+inline DWORD WINAPI BeginExplorerRestart(LPVOID lpUnused)
 {
     if (RmStartSession(&RmSession, 0, RmSessionKey) == ERROR_SUCCESS)
     {
@@ -535,6 +542,7 @@ inline void BeginExplorerRestart()
             RmShutdown(RmSession, RmForceShutdown, 0);
         }
     }
+    return 0;
 }
 // restarts the explorer
 inline void FinishExplorerRestart()
@@ -673,8 +681,9 @@ inline BOOL IncrementDLLReferenceCount(HINSTANCE hinst)
     HMODULE hMod;
     GetModuleHandleExW(
         GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
-        hinst,
+        (LPCWSTR)hinst,
         &hMod);
+    return TRUE;
 }
 
 inline BOOL WINAPI PatchContextMenuOfNewMicrosoftIME(BOOL* bFound)
@@ -786,7 +795,7 @@ BOOL ExtractMonitorByIndex(HMONITOR hMonitor, HDC hDC, LPRECT lpRect, MonitorOve
 
 inline BOOL MaskCompare(PVOID pBuffer, LPCSTR lpPattern, LPCSTR lpMask)
 {
-    for (PBYTE value = pBuffer; *lpMask; ++lpPattern, ++lpMask, ++value)
+    for (PBYTE value = (PBYTE)pBuffer; *lpMask; ++lpPattern, ++lpMask, ++value)
     {
         if (*lpMask == 'x' && *(LPCBYTE)lpPattern != *value)
             return FALSE;
@@ -808,5 +817,9 @@ inline PVOID FindPattern(PVOID pBase, SIZE_T dwSize, LPCSTR lpPattern, LPCSTR lp
     }
 
     return NULL;
+}
+#endif
+
+#ifdef __cplusplus
 }
 #endif

@@ -11001,16 +11001,16 @@ BOOL FixStartMenuAnimation(LPMODULEINFO mi)
     }
 
     DWORD dwOldProtect = 0;
-    if (VirtualProtect(match7a + 11, 3, PAGE_EXECUTE_READWRITE, &dwOldProtect))
+    if (VirtualProtect(match7a + 11, 1, PAGE_EXECUTE_READWRITE, &dwOldProtect))
     {
         match7a[0] = 0xEB;
-        VirtualProtect(match7a + 11, 3, dwOldProtect, &dwOldProtect);
+        VirtualProtect(match7a + 11, 1, dwOldProtect, &dwOldProtect);
 
         dwOldProtect = 0;
-        if (VirtualProtect(match7b + 11, 3, PAGE_EXECUTE_READWRITE, &dwOldProtect))
+        if (VirtualProtect(match7b + 11, 1, PAGE_EXECUTE_READWRITE, &dwOldProtect))
         {
             match7b[0] = 0xEB;
-            VirtualProtect(match7b + 11, 3, dwOldProtect, &dwOldProtect);
+            VirtualProtect(match7b + 11, 1, dwOldProtect, &dwOldProtect);
         }
     }
 
