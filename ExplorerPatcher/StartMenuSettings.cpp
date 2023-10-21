@@ -26,7 +26,7 @@ static std::vector<winrt::guid> GlobalStartData_GetPlacesFromRegistry()
     std::vector<winrt::guid> places;
 
     DWORD dwSize;
-    HRESULT hr = RegGetValueW(
+    LSTATUS lRes = RegGetValueW(
         HKEY_CURRENT_USER,
         L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Start",
         L"VisiblePlaces",
@@ -35,11 +35,11 @@ static std::vector<winrt::guid> GlobalStartData_GetPlacesFromRegistry()
         nullptr,
         &dwSize
     );
-    if (FAILED(hr) || dwSize == 0)
+    if (lRes != ERROR_SUCCESS || dwSize == 0)
         return places;
 
     places.resize(dwSize / sizeof(winrt::guid));
-    hr = RegGetValueW(
+    lRes = RegGetValueW(
         HKEY_CURRENT_USER,
         L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Start",
         L"VisiblePlaces",
@@ -48,7 +48,7 @@ static std::vector<winrt::guid> GlobalStartData_GetPlacesFromRegistry()
         places.data(),
         &dwSize
     );
-    if (FAILED(hr))
+    if (lRes != ERROR_SUCCESS)
         places.clear();
 
     return places;
