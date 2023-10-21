@@ -11386,8 +11386,9 @@ DWORD Inject(BOOL bIsExplorer)
         VnPatchIAT(hExplorer, "user32.dll", (LPCSTR)2005, explorer_SetChildWindowNoActivateHook);
         VnPatchDelayIAT(hExplorer, "ext-ms-win-rtcore-ntuser-window-ext-l1-1-0.dll", "SendMessageW", explorer_SendMessageW);
         // A certain configuration update in 23560.1000 broke this method, this didn't get called with
-        // "RoGetActivationFactory" anymore. We're now hooking RoGetActivationFactory directly.
-        // VnPatchIAT(hExplorer, "api-ms-win-core-libraryloader-l1-2-0.dll", "GetProcAddress", explorer_GetProcAddressHook);
+        // "RoGetActivationFactory" anymore. ~~We're now hooking RoGetActivationFactory directly.~~ Pulled back for now.
+        explorer_RoGetActivationFactoryFunc = RoGetActivationFactory;
+        VnPatchIAT(hExplorer, "api-ms-win-core-libraryloader-l1-2-0.dll", "GetProcAddress", explorer_GetProcAddressHook);
         VnPatchIAT(hExplorer, "shell32.dll", "ShellExecuteW", explorer_ShellExecuteW);
         VnPatchIAT(hExplorer, "shell32.dll", "ShellExecuteExW", explorer_ShellExecuteExW);
         VnPatchIAT(hExplorer, "API-MS-WIN-CORE-REGISTRY-L1-1-0.DLL", "RegGetValueW", explorer_RegGetValueW);
@@ -11718,7 +11719,7 @@ DWORD Inject(BOOL bIsExplorer)
     if (IsWindows11())
     {
         HANDLE hCombase = LoadLibraryW(L"combase.dll");
-        if (bOldTaskbar)
+        /*if (bOldTaskbar) // TODO Pulled back for now, crashes on 22621.2428
         {
             // Hook RoGetActivationFactory() for old taskbar
             explorer_RoGetActivationFactoryFunc = GetProcAddress(hCombase, "RoGetActivationFactory");
@@ -11734,7 +11735,7 @@ DWORD Inject(BOOL bIsExplorer)
             {
                 printf("Failed to hook RoGetActivationFactory(). rv = %d\n", rv);
             }
-        }
+        }*/
         if (IsWindows11Version22H2OrHigher())
         {
             // Fixed a bug that crashed Explorer when a folder window was opened after a first one was closed on OS builds 22621+

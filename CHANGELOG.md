@@ -10,6 +10,8 @@ Tested on OS builds 22000.2416, 22621.2428, 23555.1000, and 23560.1000.
 
 ##### 1
 
+Note: After updating to this version, the symbols will be re-downloaded even if they have been downloaded before.
+
 * Taskbar10: Fixed Control Center and Toast Center positioning on build 25951 (Canary). (dca0b3a)
 * Taskbar10: Fixed start menu position when the taskbar is at the left or right side on Moment 4 builds. (a57471f)
 * Taskbar10: Fixed the Windows 10 taskbar background patch to not crash anymore on build 25951 (Canary). (b52bd79)
