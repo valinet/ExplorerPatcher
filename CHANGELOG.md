@@ -2,6 +2,23 @@
 
 This document includes the same release notes as in the [Releases](https://github.com/valinet/ExplorerPatcher/releases) section on GitHub.
 
+## 22621.2428.59
+
+Tested on OS builds 22000.2416, 22621.2428, 23555.1000, and 23560.1000.
+
+#### Details
+
+##### 1
+
+* Taskbar10: Fixed Control Center and Toast Center positioning on build 25951 (Canary). (dca0b3a)
+* Taskbar10: Fixed start menu position when the taskbar is at the left or right side on Moment 4 builds. (a57471f)
+* Taskbar10: Fixed the Windows 10 taskbar background patch to not crash anymore on build 25951 (Canary). (b52bd79)
+* Taskbar10: Made taskbar fonts (when using classic theme mitigations) more accurate (thanks @aubymori). (8fc53a1)
+* Start10: Fixed a bug where certain texts in the Windows 10 Start menu stayed in English. (c6a7d3f, ed251e9)
+* Start10: Properly fixed start menu showing/hiding along with its original animations on builds 22000.65+. (7e2f768)
+* GUI: Fixed a bug where "Remember last used section" doesn't remember the current page after being enabled. (dcf72bb)
+* Symbols: Reworked how symbols are managed so that symbols don't need to be successfully downloaded in succession. (8412bd6)
+
 ## 22621.2361.58
 
 Tested on OS builds 22000.2416, 22621.1, 22621.2134, 22621.2361, 22631.2338, and 23545.1000.
