@@ -4296,6 +4296,7 @@ INT64 winrt_Windows_Internal_Shell_implementation_MeetAndChatManager_OnMessageHo
 
 #pragma region "Enable old taskbar"
 #ifdef _WIN64
+HRESULT(*explorer_RoGetActivationFactoryFunc)(HSTRING activatableClassId, GUID* iid, void** factory);
 HRESULT explorer_RoGetActivationFactoryHook(HSTRING activatableClassId, GUID* iid, void** factory)
 {
     PCWSTR StringRawBuffer = WindowsGetStringRawBuffer(activatableClassId, 0);
@@ -4312,7 +4313,7 @@ HRESULT explorer_RoGetActivationFactoryHook(HSTRING activatableClassId, GUID* ii
             return S_OK;
         }
     }
-    return RoGetActivationFactory(activatableClassId, iid, factory);
+    return explorer_RoGetActivationFactoryFunc(activatableClassId, iid, factory);
 }
 
 FARPROC explorer_GetProcAddressHook(HMODULE hModule, const CHAR* lpProcName)
@@ -11384,7 +11385,9 @@ DWORD Inject(BOOL bIsExplorer)
     {
         VnPatchIAT(hExplorer, "user32.dll", (LPCSTR)2005, explorer_SetChildWindowNoActivateHook);
         VnPatchDelayIAT(hExplorer, "ext-ms-win-rtcore-ntuser-window-ext-l1-1-0.dll", "SendMessageW", explorer_SendMessageW);
-        VnPatchIAT(hExplorer, "api-ms-win-core-libraryloader-l1-2-0.dll", "GetProcAddress", explorer_GetProcAddressHook);
+        // A certain configuration update in 23560.1000 broke this method, this didn't get called with
+        // "RoGetActivationFactory" anymore. We're now hooking RoGetActivationFactory directly.
+        // VnPatchIAT(hExplorer, "api-ms-win-core-libraryloader-l1-2-0.dll", "GetProcAddress", explorer_GetProcAddressHook);
         VnPatchIAT(hExplorer, "shell32.dll", "ShellExecuteW", explorer_ShellExecuteW);
         VnPatchIAT(hExplorer, "shell32.dll", "ShellExecuteExW", explorer_ShellExecuteExW);
         VnPatchIAT(hExplorer, "API-MS-WIN-CORE-REGISTRY-L1-1-0.DLL", "RegGetValueW", explorer_RegGetValueW);
@@ -11712,11 +11715,31 @@ DWORD Inject(BOOL bIsExplorer)
     printf("Setup twinui.pcshell functions done\n");
 
 
-    if (IsWindows11Version22H2OrHigher())
+    if (IsWindows11())
     {
         HANDLE hCombase = LoadLibraryW(L"combase.dll");
-        // Fixed a bug that crashed Explorer when a folder window was opened after a first one was closed on OS builds 22621+
-        VnPatchIAT(hCombase, "api-ms-win-core-libraryloader-l1-2-0.dll", "LoadLibraryExW", Windows11v22H2_combase_LoadLibraryExW);
+        if (bOldTaskbar)
+        {
+            // Hook RoGetActivationFactory() for old taskbar
+            explorer_RoGetActivationFactoryFunc = GetProcAddress(hCombase, "RoGetActivationFactory");
+            if (explorer_RoGetActivationFactoryFunc)
+            {
+                rv = funchook_prepare(
+                   funchook,
+                   (void**)&explorer_RoGetActivationFactoryFunc,
+                   explorer_RoGetActivationFactoryHook
+               );
+            }
+            if (rv != 0)
+            {
+                printf("Failed to hook RoGetActivationFactory(). rv = %d\n", rv);
+            }
+        }
+        if (IsWindows11Version22H2OrHigher())
+        {
+            // Fixed a bug that crashed Explorer when a folder window was opened after a first one was closed on OS builds 22621+
+            VnPatchIAT(hCombase, "api-ms-win-core-libraryloader-l1-2-0.dll", "LoadLibraryExW", Windows11v22H2_combase_LoadLibraryExW);
+        }
         printf("Setup combase functions done\n");
     }
 
