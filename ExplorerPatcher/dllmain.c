@@ -12557,6 +12557,96 @@ LSTATUS StartUI_RegGetValueW(HKEY hkey, LPCWSTR lpSubKey, LPCWSTR lpValue, DWORD
     return RegGetValueW(hkey, lpSubKey, lpValue, dwFlags, pdwType, pvData, pcbData);
 }
 
+typedef enum Parser_XamlBufferType
+{
+    XBT_Text,
+    XBT_Binary,
+    XBT_MemoryMappedResource
+} Parser_XamlBufferType;
+
+typedef struct Parser_XamlBuffer
+{
+    unsigned int m_count;
+    Parser_XamlBufferType m_bufferType;
+    const unsigned __int8* m_buffer;
+} Parser_XamlBuffer;
+
+static BOOL StartMenu_FillParserBuffer(Parser_XamlBuffer* pBuffer, int resourceId)
+{
+    HRSRC hRscr = FindResource(hModule, MAKEINTRESOURCE(resourceId), RT_RCDATA);
+    if (!hRscr)
+        return FALSE;
+
+    HGLOBAL hgRscr = LoadResource(hModule, hRscr);
+    if (!hgRscr)
+        return FALSE;
+
+    pBuffer->m_buffer = LockResource(hgRscr);
+    pBuffer->m_count = SizeofResource(hModule, hRscr);
+    pBuffer->m_bufferType = XBT_Binary;
+    return TRUE;
+}
+
+Parser_XamlBuffer g_EmptyRefreshedStylesXbfBuffer;
+
+HRESULT(*CCoreServices_TryLoadXamlResourceHelperFunc)(void* _this, void* pUri, bool* pfHasBinaryFile, void** ppMemory, Parser_XamlBuffer* pBuffer, void** ppPhysicalUri);
+HRESULT CCoreServices_TryLoadXamlResourceHelperHook(void* _this, void* pUri, bool* pfHasBinaryFile, void** ppMemory, Parser_XamlBuffer* pBuffer, void** ppPhysicalUri)
+{
+    HRESULT(*Clone)(void* _this, void** ppUri); // index 3
+    HRESULT(*GetPath)(void* _this, unsigned int* pBufferLength, wchar_t* pszBuffer); // index 12
+    void** vtable = *(void***)pUri;
+    Clone = vtable[3];
+    GetPath = vtable[12];
+    wchar_t thePath[MAX_PATH];
+    unsigned int len = MAX_PATH;
+    GetPath(pUri, &len, thePath);
+    // OutputDebugStringW(thePath); OutputDebugStringW(L"<<<<<\n");
+
+    if (!wcscmp(thePath, L"/JumpViewUI/RefreshedStyles.xaml"))
+    {
+        *pfHasBinaryFile = true;
+        *pBuffer = g_EmptyRefreshedStylesXbfBuffer;
+        if (ppPhysicalUri)
+            Clone(pUri, ppPhysicalUri);
+        return pBuffer->m_buffer ? S_OK : E_FAIL;
+    }
+
+    return CCoreServices_TryLoadXamlResourceHelperFunc(_this, pUri, pfHasBinaryFile, ppMemory, pBuffer, ppPhysicalUri);
+}
+
+static BOOL StartMenu_FixContextMenuXbfHijackMethod()
+{
+    LoadLibraryW(L"Windows.UI.Xaml.dll");
+    HANDLE hWindowsUIXaml = GetModuleHandleW(L"Windows.UI.Xaml.dll");
+    MODULEINFO mi;
+    GetModuleInformation(GetCurrentProcess(), hWindowsUIXaml, &mi, sizeof(mi));
+
+    if (!StartMenu_FillParserBuffer(&g_EmptyRefreshedStylesXbfBuffer, IDR_REFRESHEDSTYLES_XBF))
+        return FALSE;
+
+    // 49 89 43 C8 E8 ?? ?? ?? ?? 85 C0
+    //                ^^^^^^^^^^^
+    // Ref: CCoreServices::LoadXamlResource()
+    PBYTE match = FindPattern(
+        mi.lpBaseOfDll,
+        mi.SizeOfImage,
+        "\x49\x89\x43\xC8\xE8\x00\x00\x00\x00\x85\xC0",
+        "xxxxx????xx"
+    );
+    if (!match)
+        return FALSE;
+
+    match += 4;
+    match += 5 + *(int*)(match + 1);
+    CCoreServices_TryLoadXamlResourceHelperFunc = match;
+    funchook_prepare(
+        funchook,
+        (void**)&CCoreServices_TryLoadXamlResourceHelperFunc,
+        CCoreServices_TryLoadXamlResourceHelperHook
+    );
+    return TRUE;
+}
+
 LSTATUS StartUI_RegOpenKeyExW(HKEY hKey, LPCWSTR lpSubKey, DWORD ulOptions, REGSAM samDesired, PHKEY phkResult)
 {
     if (wcsstr(lpSubKey, L"$start.tilegrid$windows.data.curatedtilecollection.tilecollection\\Current"))
@@ -13189,13 +13279,17 @@ DWORD InjectStartMenu()
             PatchAppResolver();
             PatchStartTileData();
 
-            // Redirects to pri files from 22000.51 which work with the legacy menu
-            LoadLibraryW(L"MrmCoreR.dll");
-            HANDLE hMrmCoreR = GetModuleHandleW(L"MrmCoreR.dll");
-            VnPatchIAT(hMrmCoreR, "api-ms-win-core-file-l1-1-0.dll", "CreateFileW", StartUI_CreateFileW);
-            VnPatchIAT(hMrmCoreR, "api-ms-win-core-file-l1-1-0.dll", "GetFileAttributesExW", StartUI_GetFileAttributesExW);
-            VnPatchIAT(hMrmCoreR, "api-ms-win-core-file-l1-1-0.dll", "FindFirstFileW", StartUI_FindFirstFileW);
-            VnPatchIAT(hMrmCoreR, "api-ms-win-core-registry-l1-1-0.dll", "RegGetValueW", StartUI_RegGetValueW);
+            // Fixes context menu crashes
+            if (!StartMenu_FixContextMenuXbfHijackMethod()) {
+                // Fallback to the old method, but we'll have broken localization
+                // Redirects to pri files from 22000.51 which work with the legacy menu
+                LoadLibraryW(L"MrmCoreR.dll");
+                HANDLE hMrmCoreR = GetModuleHandleW(L"MrmCoreR.dll");
+                VnPatchIAT(hMrmCoreR, "api-ms-win-core-file-l1-1-0.dll", "CreateFileW", StartUI_CreateFileW);
+                VnPatchIAT(hMrmCoreR, "api-ms-win-core-file-l1-1-0.dll", "GetFileAttributesExW", StartUI_GetFileAttributesExW);
+                VnPatchIAT(hMrmCoreR, "api-ms-win-core-file-l1-1-0.dll", "FindFirstFileW", StartUI_FindFirstFileW);
+                VnPatchIAT(hMrmCoreR, "api-ms-win-core-registry-l1-1-0.dll", "RegGetValueW", StartUI_RegGetValueW);
+            }
 
             // Enables "Show more tiles" setting
             LoadLibraryW(L"Windows.CloudStore.dll");

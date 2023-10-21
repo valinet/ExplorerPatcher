@@ -16,6 +16,7 @@
 #define IDS_UNINSTALL_ERROR_TEXT        112
 #define IDS_OPERATION_NONE              113
 #define IDR_REGISTRY2                   114
+#define IDR_REFRESHEDSTYLES_XBF         115
 #define IDS_DRIVECATEGORY_HARDDISKDRIVES              40000
 #define IDS_DRIVECATEGORY_REMOVABLESTORAGE            40001
 #define IDS_DRIVECATEGORY_OTHER                       40002
