@@ -1,8 +1,8 @@
 #ifndef _H_DEF_H_
 #define _H_DEF_H_
 #define APPID L"Microsoft.Windows.Explorer"
-#define REGPATH "SOFTWARE\\ExplorerPatcher"
-#define REGPATH_OLD "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\ExplorerPatcher"
+#define REGPATH "Software\\ExplorerPatcher"
+#define REGPATH_OLD "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\ExplorerPatcher"
 #define REGPATH_STARTMENU REGPATH_OLD
 #define SPECIAL_FOLDER CSIDL_PROGRAM_FILES
 #define SPECIAL_FOLDER_LEGACY CSIDL_APPDATA
