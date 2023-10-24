@@ -1247,29 +1247,32 @@ DWORD ShowLauncherTipContextMenu(
         offset_in_class = 8;
     }
 
-    WNDCLASS wc = { 0 };
-    wc.style = CS_DBLCLKS;
-    wc.lpfnWndProc = CLauncherTipContextMenu_WndProc;
-    wc.hbrBackground = (HBRUSH)GetStockObject(WHITE_BRUSH);
-    wc.hInstance = GetModuleHandle(NULL);
-    wc.lpszClassName = LAUNCHERTIP_CLASS_NAME;
-    wc.hCursor = LoadCursorW(NULL, IDC_ARROW);
-    RegisterClass(&wc);
+    static ATOM windowRegistrationAtom = 0;
+    if (windowRegistrationAtom == 0)
+    {
+        WNDCLASS wc = {
+            .style = CS_DBLCLKS,
+            .lpfnWndProc = CLauncherTipContextMenu_WndProc,
+            .hbrBackground = (HBRUSH)GetStockObject(WHITE_BRUSH),
+            .hInstance = GetModuleHandleW(NULL),
+            .lpszClassName = LAUNCHERTIP_CLASS_NAME,
+            .hCursor = LoadCursorW(NULL, IDC_ARROW)
+        };
+        ATOM atom = RegisterClassW(&wc);
+        if (atom)
+            windowRegistrationAtom = atom;
+    }
 
     hWinXWnd = CreateWindowInBand(
         0,
-        LAUNCHERTIP_CLASS_NAME,
+        MAKEINTATOM(windowRegistrationAtom),
         0,
         WS_POPUP,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
+        0, 0, 0, 0,
+        NULL, NULL,
         GetModuleHandle(NULL),
         (char*)params->_this - 0x58,
-        7
+        7 // ZBID_IMMERSIVE_EDGY
     );
     // DO NOT USE ShowWindow here; it breaks the window order
     // and renders the desktop toggle unusable; but leave
@@ -10689,8 +10692,25 @@ static struct
     int startExperienceManager_bMaybeFullScreenMode;
 } g_SMAnimationPatchOffsets;
 
-enum EDGEUI_TRAYSTUCKPLACE {};
-enum DWMTRANSITION_TARGET {};
+// Names are custom
+enum EDGEUI_TRAYSTUCKPLACE
+{
+    TSP_LEFT,
+    TSP_TOP,
+    TSP_RIGHT,
+    TSP_BOTTOM,
+};
+
+// Names taken from Windows.UI.Xaml.pdb, only defining the used ones
+enum DWMTRANSITION_TARGET
+{
+    DWMTARGET_LAUNCHERFLYOUTTOLEFT = 0x4D,
+    DWMTARGET_LAUNCHERFLYOUTTORIGHT = 0x4E,
+    DWMTARGET_LAUNCHERFLYOUTTOTOP = 0x4F,
+    DWMTARGET_LAUNCHERFLYOUTTOBOTTOM = 0x50,
+    DWMTARGET_LAUNCHERFLYOUT = 0x51,
+    DWMTARGET_LAUNCHERFULLSCREEN = 0x52,
+};
 
 HRESULT(*CStartExperienceManager_GetMonitorInformationFunc)(void* _this, void* experience, RECT* a3, enum EDGEUI_TRAYSTUCKPLACE* pTsp, bool* a5, RECT* a6, HMONITOR* a7);
 HRESULT(*CExperienceManagerAnimationHelper_BeginFunc)(void* _this, void*, enum DWMTRANSITION_TARGET, const RECT*, const RECT*, const RECT*, const RECT*, const RECT*);
@@ -10713,17 +10733,17 @@ HRESULT OnViewCloakingHook(void* eventHandler, void* experience)
     if (FAILED(hr))
         return hr;
 
-    enum DWMTRANSITION_TARGET target = 0x51;
+    enum DWMTRANSITION_TARGET target = DWMTARGET_LAUNCHERFLYOUT;
     if (*(bool*)((PBYTE)experience + 0x34))
-        target = 0x52;
-    else if (tsp == 0)
-        target = 0x4D;
-    else if (tsp == 1)
-        target = 0x4F;
-    else if (tsp == 2)
-        target = 0x4E;
-    else if (tsp == 3)
-        target = 0x50;
+        target = DWMTARGET_LAUNCHERFULLSCREEN;
+    else if (tsp == TSP_LEFT)
+        target = DWMTARGET_LAUNCHERFLYOUTTOLEFT;
+    else if (tsp == TSP_TOP)
+        target = DWMTARGET_LAUNCHERFLYOUTTOTOP;
+    else if (tsp == TSP_RIGHT)
+        target = DWMTARGET_LAUNCHERFLYOUTTORIGHT;
+    else if (tsp == TSP_BOTTOM)
+        target = DWMTARGET_LAUNCHERFLYOUTTOBOTTOM;
 
     hr = CExperienceManagerAnimationHelper_BeginFunc(
         _this + g_SMAnimationPatchOffsets.startExperienceManager_closingAnimation,
@@ -10741,17 +10761,19 @@ HRESULT CStartExperienceManager_GetMonitorInformationHook(void* _this, void* exp
     if (SUCCEEDED(hr) && *(PBYTE)_ReturnAddress() == 0x85 && *((PBYTE)_ReturnAddress() + 1) == 0xC0 && *((PBYTE)_ReturnAddress() + 2) == 0x78)
     {
         experience = (PBYTE)_this + g_SMAnimationPatchOffsets.startExperienceManager_singleViewShellExperience;
-        enum DWMTRANSITION_TARGET target = 0x51;
+
+        enum DWMTRANSITION_TARGET target = DWMTARGET_LAUNCHERFLYOUT;
         if (*(bool*)((PBYTE)experience + 0x34))
-            target = 0x52;
-        else if (*pTsp == 0)
-            target = 0x4E;
-        else if (*pTsp == 1)
-            target = 0x50;
-        else if (*pTsp == 2)
-            target = 0x4D;
-        else if (*pTsp == 3)
-            target = 0x4F;
+            target = DWMTARGET_LAUNCHERFULLSCREEN;
+        else if (*pTsp == TSP_LEFT)
+            target = DWMTARGET_LAUNCHERFLYOUTTORIGHT;
+        else if (*pTsp == TSP_TOP)
+            target = DWMTARGET_LAUNCHERFLYOUTTOBOTTOM;
+        else if (*pTsp == TSP_RIGHT)
+            target = DWMTARGET_LAUNCHERFLYOUTTOLEFT;
+        else if (*pTsp == TSP_BOTTOM)
+            target = DWMTARGET_LAUNCHERFLYOUTTOTOP;
+
         CExperienceManagerAnimationHelper_BeginFunc(
             (PBYTE)_this + g_SMAnimationPatchOffsets.startExperienceManager_openingAnimation,
             *(void**)((PBYTE)experience + 0x18), // viewWrapper

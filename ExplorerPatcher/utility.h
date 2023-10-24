@@ -345,7 +345,7 @@ inline LSTATUS SHRegGetValueFromHKCUHKLMWithOpt(
 
 static HWND(WINAPI* CreateWindowInBand)(
     _In_ DWORD dwExStyle,
-    _In_opt_ ATOM atom,
+    _In_opt_ LPCWSTR lpClassName,
     _In_opt_ LPCWSTR lpWindowName,
     _In_ DWORD dwStyle,
     _In_ int X,
@@ -357,7 +357,7 @@ static HWND(WINAPI* CreateWindowInBand)(
     _In_opt_ HINSTANCE hInstance,
     _In_opt_ LPVOID lpParam,
     DWORD band
-    );
+);
 
 BOOL(WINAPI* GetWindowBand)(HWND hWnd, PDWORD pdwBand);
 
