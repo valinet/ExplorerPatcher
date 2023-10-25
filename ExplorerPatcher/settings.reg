@@ -1,4 +1,4 @@
-﻿Windows Registry Editor Version 5.00
+Windows Registry Editor Version 5.00
 
 
 ;M Settings
@@ -6,11 +6,11 @@
 
 ;T Taskbar
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
-;z 2 Taskbar style *
+;c 2 Taskbar style *
 ;x 0 Windows 11 (default)
 ;x 1 Windows 10
 "OldTaskbar"=dword:00000001
-;y More taskbar options in the Settings app 🡕                                                            
+;y More taskbar options in the Settings app 🡕
 ;ms-settings:taskbar
 ;y Customize notification area icons 🡕
 ;shell:::{05d7b0f4-2121-4eff-bf6b-ed3f69b894d9}
@@ -93,6 +93,8 @@
 ;e 
 ;e 
 ;g Taskbar_Windows10Section
+;y Detailed information on how to configuring the Taskbar on the ExplorerPatcher site 🡕 🡕
+;https://github.com/valinet/ExplorerPatcher/wiki/All-features
 
 
 ;T System tray
@@ -116,7 +118,8 @@
 "HideControlCenterButton"=dword:00000000
 ;s SystemTray_Section109 IsOldTaskbar
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
-;c 3 Show desktop button
+;e 
+;c 3 Show desktop button (Switcher)
 ;x 1 Enabled (default)
 ;x 0 Disabled
 ;x 2 Hidden
@@ -124,7 +127,8 @@
 ;g SystemTray_Section109
 ;s SystemTray_Section117 !IsOldTaskbar
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
-;b Show desktop button
+;e 
+;b Show desktop button (Switcher)
 "TaskbarSD"=dword:00000001
 ;g SystemTray_Section117
 ;s SystemTray_Windows10Section IsOldTaskbar
@@ -133,13 +137,14 @@
 ;b Apply Windows 11 style to system tray icons *
 "SkinIcons"=dword:00000001
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
-;a Choosing 'Open Network && Internet settings' when right clicking the
-;c 3 network icon should open:
+;a Choosing <<Open Network && Internet settings>> when right clicking
+;c 3 the network icon should open
 ;x 0 Network section in the Settings app (default)
 ;x 1 Network and Sharing Center in Control Panel
 ;x 2 Network Connections in Control Panel
 "ReplaceNetwork"=dword:00000000
 ;q
+;e 
 ;t When clicking a system icon in the system tray, open:
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Control Panel\Settings\Network]
 ;c 7 Network
@@ -191,14 +196,13 @@
 ;T File Explorer
 ;e For the settings marked with (**) to work in Open or Save file dialogs as well, register
 ;e this utility as shell extension using the option below.
-;y Learn more 🡕
-;https://github.com/valinet/ExplorerPatcher/wiki/Using-ExplorerPatcher-as-shell-extension
-[HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;q
+[HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;b Register as shell extension
 ;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_RegisterAsShellExtension"=dword:00000000
+;e 
 [-HKEY_CURRENT_USER\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32]
-;d Disable the Windows 11 context menu *
+;d Disable simplified Windows 11 context menu and come back to the full Windows 10 context menu *
 @=""
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;b Always use legacy file transfer dialog
@@ -212,6 +216,7 @@
 ;x 1 Windows 10 Ribbon
 ;x 2 Windows 7 Command Bar
 ;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_FileExplorerCommandUI"=dword:00000000
+;e 
 ;t The following settings take effect on newly created File Explorer windows:
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;i Use immersive menus when displaying Windows 10 context menus **
@@ -243,17 +248,20 @@
 ;x 2 Nowhere
 "MicaEffectOnTitlebar"=dword:00000000
 ;g Explorer_TitlebarSection
-
+;e 
+;y Learn more about Shell-extension 🡕 🡕
+;https://github.com/valinet/ExplorerPatcher/wiki/Using-ExplorerPatcher-as-shell-extension
 
 
 ;T Start menu
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
-;z 2 Start menu style *
+;c 2 Start menu style *
 ;x 0 Windows 11 (default)
 ;x 1 Windows 10
 "Start_ShowClassicMode"=dword:00000000
 ;y More Start menu options in the Settings app 🡕
 ;ms-settings:personalization-start
+;e 
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
 ;c 2 Position on screen
 ;x 0 At screen edge
@@ -285,8 +293,8 @@
 ;x 99999 Unlimited
 ;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_Start_MaximumFrequentApps"=dword:00000006
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\StartPage]
-;a When using multiple displays, open Start on this monitor when invoked using
-;c 10 the keyboard
+;a When using multiple displays, calling using the keyboard (Win_Key)
+;c 10 opens the Start menu on this monitor
 ;x 1 Primary monitor (default)
 ;x 0 Monitor on which the cursor is on
 ;x 2 Monitor #2
@@ -326,6 +334,7 @@
 ;x 3 Hide
 ;x 1 Disable 
 ;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_NoStartMenuMorePrograms"=dword:00000000
+;e 
 ;y IMPORTANT, MUST READ: Notice regarding this feature (online)
 ;https://github.com/valinet/ExplorerPatcher/discussions/1679
 ;g StartMenu_Windows10
@@ -334,12 +343,15 @@
 
 ;T Window switcher
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer]
-;z 4 Window switcher (Alt+Tab) style *
+;c 4 Window switcher (Alt+Tab) style *
 ;x 0 Windows 11 (default)
 ;x 3 Windows 10
 ;x 1 Windows NT
-;x 2 Simple Window Switcher
+;x 2 Simple Window Switcher (S_W_S)
 "AltTabSettings"=dword:00000000
+;s No_WindowSwitcher_SWS !IsSWSEnabled
+;t Some settings only apply to the Simple Window Switcher!
+;g No_WindowSwitcher_SWS
 ;s WindowSwitcher_SWS IsSWSEnabled
 [HKEY_CURRENT_USER\Software\ExplorerPatcher\sws]
 ;b Show the desktop as the last window in the interaction list
@@ -414,7 +426,7 @@
 ;x 150 150 pt
 ;x 140 140 pt
 "RowHeight"=dword:000000e6
-;c 10 Maximum width (percentage of screen width)
+;c 10 Maximum width of the Switcher (percentage of screen width)
 ;x 100 100 % (not recommended)
 ;x 95 95 %
 ;x 90 90 %
@@ -426,7 +438,7 @@
 ;x 60 60 %
 ;x 55 55 %
 "MaxWidth"=dword:00000050
-;c 10 Maximum height (percentage of screen height)
+;c 10 Maximum height of the Switcher (percentage of screen height)
 ;x 100 100 % (not recommended)
 ;x 95 95 %
 ;x 90 90 %
@@ -470,9 +482,10 @@
 ;x 2 Always
 "ScrollWheelBehavior"=dword:00000000
 ;q
-;y Learn more about Simple Window Switcher 🡕
-;https://github.com/valinet/ExplorerPatcher/wiki/Simple-Window-Switcher
 ;g WindowSwitcher_SWS
+;e 
+;y       Learn more about Simple Window Switcher (S_W_S) 🡕 🡕
+;https://github.com/valinet/ExplorerPatcher/wiki/Simple-Window-Switcher
 
 
 
@@ -481,6 +494,9 @@
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;b Show Weather on the taskbar
 ;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_PeopleBand"=dword:00000000
+;s No_Weather_Section !IsWeatherEnabled
+;t To see all the page options, activate the line (Show Weather on the taskbar)!
+;g No_Weather_Section
 ;s Weather_Section1 IsWeatherEnabled
 ;w Location
 ;Search City or Zip Code; the program looks up "weather in /* what you typed */" on Google. Leave blank for the default value (current location).
@@ -562,8 +578,6 @@
 "WeatherZoomFactor"=dword:00000000
 ;q
 ;g Weather_Section1
-;y Learn more about the Weather taskbar widget 🡕
-;https://github.com/valinet/ExplorerPatcher/wiki/Weather
 ;s Weather_Section2 IsWeatherEnabled
 ;t %WEATHERLASTUPDATETEXT%
 ;u Update weather now
@@ -572,6 +586,9 @@
 ;clear_data_weather
 ;g Weather_Section2
 ;g Weather_Windows10
+;e 
+;y Learn more about the Weather taskbar widget 🡕 🡕
+;https://github.com/valinet/ExplorerPatcher/wiki/Weather
 
 
 
@@ -624,14 +641,14 @@
 
 ;T Other
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
-;b Remember last used section in this window
+;b Open ExplorerPatcher on the tab of the last used section
 "LastSectionInProperties"=dword:00000000
 ;b Open clock flyout when pressing Win+C instead of Microsoft Teams *
 "ClockFlyoutOnWinC"=dword:00000000
 ;b Show separators between taskbar toolbars *
 "ToolbarSeparators"=dword:00000000
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
-;b Add shortcut to program settings in Win+X menu
+;b Add shortcut to ExplorerPatcher settings in Win+X menu
 "PropertiesInWinX"=dword:00000000
 ;b Remove shortcut key from program settings item in Win+X menu
 "NoMenuAccelerator"=dword:00000000
@@ -660,24 +677,25 @@
 ;x 2 Shut down (default)
 ;x 4 Restart
 "Start_PowerButtonAction"=dword:00000002
+;e 
 ;t Prevent the following Control Panel links from being redirected to the Settings app:
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
-;b System / About page
+;b <<System / About>> page
 "DoNotRedirectSystemToSettingsApp"=dword:00000000
-;b Programs and Features
+;b <<Programs && Features>> page
 "DoNotRedirectProgramsAndFeaturesToSettingsApp"=dword:00000000
-;b Adjust date/time
+;b Adjust <<Date && Time>>
 "DoNotRedirectDateAndTimeToSettingsApp"=dword:00000000
-;b Customize notification icons
+;b Customize <<Notification icons>>
 "DoNotRedirectNotificationIconsToSettingsApp"=dword:00000000
 
 
 
 ;T Updates
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
-;z 3 When File Explorer starts
-;x 1 Notify about available updates (default)
-;x 0 Prompt to install available updates
+;c 3 When File Explorer starts
+;x 1 Just Notify about available updates (default)
+;x 0 Prompt to install available updates or confirm that no updates are available
 ;x 2 Do not check for updates
 "UpdatePolicy"=dword:00000001
 ;b Receive pre-release versions, if available (not recommended)
@@ -693,29 +711,33 @@
 ;Type a URL that serves resources adhering to GitHub's pre-releases API. To learn how to configure your own update server, please consult the wiki.
 ;api.github.com/repos/valinet/ExplorerPatcher/releases?per_page=1
 "UpdateURLStaging"=""
+;e 
 ;y Check for updates
 ;;;EP_CHECK_FOR_UPDATES
 ;y Update program and restart File Explorer
 ;;;EP_INSTALL_UPDATES
-;y Read about changes in the latest releases 🡕
+;y Read about changes in the latest releases 🡕 🡕
 ;https://github.com/valinet/ExplorerPatcher/blob/master/CHANGELOG.md
-;y Learn more 🡕
+;e 
+;y Learn more about Configure-updates 🡕 🡕
 ;https://github.com/valinet/ExplorerPatcher/wiki/Configure-updates
 
 
 ;T Advanced
-;e Only change these settings after reading the documentation about them.
-;y Learn more 🡕
+;y Only change these settings after reading the documentation about them! 🡕 🡕
 ;https://github.com/valinet/ExplorerPatcher/wiki/About-advanced-settings
 ;q
+;e 
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;b Enable console
 "AllocConsole"=dword:00000000
 ;b Dump memory leaks
 "Memcheck"=dword:00000000
-;b Double click taskbar to toggle auto-hide (only works when the taskbar is locked) 
+;e This setting only works when the taskbar is locked,
+;b double click taskbar to toggle auto-hide
 "TaskbarAutohideOnDoubleClick"=dword:00000000
 [HKEY_CURRENT_USER\Control Panel\Desktop]
+;e 
 ;b Show Windows build info on the desktop *
 "PaintDesktopVersion"=dword:00000000
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
@@ -730,9 +752,11 @@
 ;b Enable symbols download *
 "EnableSymbolDownload"=dword:00000001
 ;s Advanced_Windows10 IsOldTaskbar
-;b Pinned items act as quick launch (don't group pinned items with active apps) *
+;e Pinned items act as quick launch,
+;b don't group pinned items with active apps *
 "PinnedItemsActAsQuickLaunch"=dword:00000000
-;b When the taskbar shows button labels, remove the extra gap around pinned items *
+;e When the taskbar shows button labels,
+;b remove the extra gap around pinned items *
 "RemoveExtraGapAroundPinnedItems"=dword:00000000
 ;g Advanced_Windows10
 ;c 12 Supplementary delay at logon *
@@ -749,33 +773,38 @@
 ;x 8000 8 seconds
 ;x 10000 10 seconds
 "ExplorerReadyDelay"=dword:00000000
+;e 
+;y Learn more about Advanced-settings 🡕 🡕
+;https://github.com/valinet/ExplorerPatcher/wiki/About-advanced-settings
 
 
 
 ;T About
 ;e ExplorerPatcher
 ;e Version %VERSIONINFORMATIONSTRING%
-;t © 2006-2023 VALINET Solutions SRL. All rights reserved.
+;e © 2006-2023 VALINET Solutions SRL. All rights reserved.
 ;e 
 ;e This project aims to enhance the working environment on Windows.
 ;e Proudly engineered by Valentin-Gabriel Radu.
-;t Running on Windows 11, OS Build %OSVERSIONSTRING%
-;y Visit project GitHub (https://github.com/valinet) 🡕
+;e Running on Windows 11, OS Build %OSVERSIONSTRING%
+;e 
+;y Visit project GitHub (https://github.com/valinet) 🡕 🡕
 ;https://github.com/valinet
 ;q
-;y Visit web site (https://www.valinet.ro) 🡕
+;y Visit web site (https://www.valinet.ro) 🡕 🡕
 ;https://www.valinet.ro
-;y E-mail author (valentingabrielradu@gmail.com) 🡕
+;y E-mail author (valentingabrielradu@gmail.com) 🡕 🡕
 ;mailto:valentingabrielradu@gmail.com
-;y Donate (using PayPal) 🡕
+;y Donate (using PayPal) 🡕 🡕
 ;https://www.paypal.com/donate?business=valentingabrielradu%40gmail.com&no_recurring=0&item_name=ExplorerPatcher&currency_code=EUR
-;y Frequently Asked Questions 🡕
+;y Frequently Asked Questions 🡕 🡕
 ;https://github.com/valinet/ExplorerPatcher/wiki/Frequently-asked-questions
-;y Learn more managing these settings 🡕
+;e 
+;y Learn more managing these following settings: 🡕 🡕
 ;https://github.com/valinet/ExplorerPatcher/wiki/Settings-management
-;u Import settings
+;u Import settings from a file (on this computer)
 ;import
-;u Export current settings
+;u Export current settings to a file (on this computer)
 ;export
 ;u Restore default settings
 ;reset
@@ -785,6 +814,7 @@
 ;f
 ;u Restart File Explorer (*)
 ;restart
+;t It is necessary to restart File Explorer for settings marked with a star (*) to take effect!
 ;;u Restore default settings
 ;;reset
 ;;u About ExplorerPatcher
