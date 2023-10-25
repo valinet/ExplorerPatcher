@@ -556,9 +556,8 @@ LoadSymbolsResult LoadSymbols(symbols_addr* symbols_PTRS)
     {
         szStoredHash[0] = 0;
         dwSize = sizeof(szStoredHash);
-        RegQueryValueExA(hKey, "Hash", 0, NULL, szStoredHash, &dwSize);
-
-        if (!_stricmp(szHash, szStoredHash))
+        if (RegQueryValueExA(hKey, "Hash", 0, NULL, szStoredHash, &dwSize) == ERROR_SUCCESS
+            && !_stricmp(szHash, szStoredHash))
         {
             dwSize = sizeof(DWORD);
             RegQueryValueExW(hKey, TEXT(TWINUI_PCSHELL_SB_0), 0, NULL, &symbols_PTRS->twinui_pcshell_PTRS[0], &dwSize);
@@ -613,9 +612,8 @@ LoadSymbolsResult LoadSymbols(symbols_addr* symbols_PTRS)
         {
             szStoredHash[0] = 0;
             dwSize = sizeof(szStoredHash);
-            RegQueryValueExA(hKey, "Hash", 0, NULL, szStoredHash, &dwSize);
-
-            if (!_stricmp(szHash, szStoredHash))
+            if (RegQueryValueExA(hKey, "Hash", 0, NULL, szStoredHash, &dwSize) == ERROR_SUCCESS
+                && !_stricmp(szHash, szStoredHash))
             {
                 dwSize = sizeof(DWORD);
                 RegQueryValueExW(hKey, TEXT(STARTDOCKED_SB_0), 0, NULL, &symbols_PTRS->startdocked_PTRS[0], &dwSize);
@@ -663,9 +661,8 @@ LoadSymbolsResult LoadSymbols(symbols_addr* symbols_PTRS)
         {
             szStoredHash[0] = 0;
             dwSize = sizeof(szStoredHash);
-            RegQueryValueExA(hKey, "Hash", 0, NULL, szStoredHash, &dwSize);
-
-            if (!_stricmp(szHash, szStoredHash))
+            if (RegQueryValueExA(hKey, "Hash", 0, NULL, szStoredHash, &dwSize) == ERROR_SUCCESS
+                && !_stricmp(szHash, szStoredHash))
             {
                 dwSize = sizeof(DWORD);
                 RegQueryValueExW(hKey, TEXT(STARTUI_SB_0), 0, NULL, &symbols_PTRS->startui_PTRS[0], &dwSize);

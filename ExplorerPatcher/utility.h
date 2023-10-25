@@ -343,7 +343,7 @@ inline LSTATUS SHRegGetValueFromHKCUHKLMWithOpt(
     return lRes;
 }
 
-static HWND(WINAPI* CreateWindowInBand)(
+HWND(WINAPI* CreateWindowInBand)(
     _In_ DWORD dwExStyle,
     _In_opt_ LPCWSTR lpClassName,
     _In_opt_ LPCWSTR lpWindowName,

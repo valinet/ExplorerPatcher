@@ -977,10 +977,20 @@ int WINAPI wWinMain(
         if (bOk && IsWindows11())
         {
             GetWindowsDirectoryW(wszPath, MAX_PATH);
-            wcscat_s(wszPath, MAX_PATH, L"\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\en-US\\StartTileDataLegacy.dll.mui");
+            wcscat_s(wszPath, MAX_PATH, L"\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\en-US");
             if (FileExistsW(wszPath))
             {
-                bOk = DeleteFileW(wszPath);
+                wcscat_s(wszPath, MAX_PATH, L"\\StartTileDataLegacy.dll.mui");
+                if (FileExistsW(wszPath))
+                {
+                    bOk = DeleteFileW(wszPath);
+                }
+                PathRemoveExtensionW(wszPath);
+                wcscat_s(wszPath, MAX_PATH, L".prev");
+                if (FileExistsW(wszPath))
+                {
+                    bOk = DeleteFileW(wszPath);
+                }
                 if (bOk)
                 {
                     GetWindowsDirectoryW(wszPath, MAX_PATH);
