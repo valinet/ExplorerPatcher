@@ -985,11 +985,14 @@ int WINAPI wWinMain(
                 {
                     bOk = DeleteFileW(wszPath);
                 }
-                PathRemoveExtensionW(wszPath);
-                wcscat_s(wszPath, MAX_PATH, L".prev");
-                if (FileExistsW(wszPath))
+                if (bOk)
                 {
-                    bOk = DeleteFileW(wszPath);
+                    PathRemoveExtensionW(wszPath);
+                    wcscat_s(wszPath, MAX_PATH, L".prev");
+                    if (FileExistsW(wszPath))
+                    {
+                        bOk = DeleteFileW(wszPath);
+                    }
                 }
                 if (bOk)
                 {
