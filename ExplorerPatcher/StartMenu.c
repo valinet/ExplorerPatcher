@@ -677,6 +677,7 @@ BOOL NeedsRo_PositionStartMenuForMonitor(
         //hr = (*(HRESULT(**)(INT64, INT64*))(*(INT64*)pTaskbarLayoutFactory + 48))(pTaskbarLayoutFactory, &v12);
         hr = pTaskbarLayoutFactory->lpVtbl->get_Current(pTaskbarLayoutFactory, &pTaskbarLayout);
     }
+    int interfaceVersion = 1;
     if (SUCCEEDED(hr))
     {
         /*hr = (**(HRESULT(***)(INT64, GUID*, INT64*))v12)(
@@ -689,6 +690,15 @@ BOOL NeedsRo_PositionStartMenuForMonitor(
             &IID_WindowsUdk_UI_Shell_ITaskbarLayoutManager,
             &pTaskbarLayoutManager
         );
+        if (hr == E_NOINTERFACE)
+        {
+            interfaceVersion = 2;
+            hr = pTaskbarLayout->lpVtbl->QueryInterface(
+                pTaskbarLayout,
+                &IID_WindowsUdk_UI_Shell_ITaskbarLayoutManager2,
+                &pTaskbarLayoutManager
+            );
+        }
     }
     if (SUCCEEDED(hr))
     {
@@ -714,12 +724,26 @@ BOOL NeedsRo_PositionStartMenuForMonitor(
 
         if (data->operation == STARTMENU_POSITIONING_OPERATION_ADD)
         {
-            hr = pTaskbarLayoutManager->lpVtbl->ReportMonitorAdded(
-                pTaskbarLayoutManager,
-                hMonitor,
-                &instanceof_WindowsUdk_UI_Shell_ITaskbarSettings,
-                NULL
-            );
+            if (interfaceVersion == 1)
+            {
+                hr = pTaskbarLayoutManager->lpVtbl->ReportMonitorAdded(
+                    pTaskbarLayoutManager,
+                    hMonitor,
+                    &instanceof_WindowsUdk_UI_Shell_ITaskbarSettings,
+                    NULL
+                );
+            }
+            else
+            {
+                unsigned __int64 result = 0;
+                hr = pTaskbarLayoutManager->lpVtbl->ReportMonitorAdded2(
+                    pTaskbarLayoutManager,
+                    hMonitor,
+                    &instanceof_WindowsUdk_UI_Shell_ITaskbarSettings,
+                    NULL,
+                    &result
+                );
+            }
             data->pMonitorList[InterlockedIncrement(data->pMonitorCount) - 1] = hMonitor;
             printf("[Positioning] Added settings for monitor %p : %d\n", hMonitor, data->location);
         }
@@ -729,7 +753,7 @@ BOOL NeedsRo_PositionStartMenuForMonitor(
                 pTaskbarLayoutManager,
                 hMonitor,
                 &instanceof_WindowsUdk_UI_Shell_ITaskbarSettings
-            );
+            ); // TODO Doesn't work when the 2nd interface is used. Needs further investigation
             printf("[Positioning] Changed settings for monitor: %p : %d\n", hMonitor, data->location);
         }
         else if (data->operation == STARTMENU_POSITIONING_OPERATION_REMOVE)

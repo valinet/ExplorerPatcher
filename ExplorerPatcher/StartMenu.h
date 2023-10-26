@@ -291,9 +291,16 @@ interface WindowsUdk_UI_Shell_TaskbarLayoutStatics // : IInspectable
 };
 
 DEFINE_GUID(IID_WindowsUdk_UI_Shell_ITaskbarLayoutManager,
-    0x4FB10D7C4,
+    0xFB10D7C4,
     0x4F7F, 0x5DE5, 0xA5, 0x28,
-    0x7e, 0xfe, 0xf4, 0x18, 0xaa, 0x48
+    0x7E, 0xFE, 0xF4, 0x18, 0xAA, 0x48
+);
+
+// Used in 23545+ (or maybe couple lower builds too). Still named ITaskbarLayoutManager but has different ReportMonitorAdded signature.
+DEFINE_GUID(IID_WindowsUdk_UI_Shell_ITaskbarLayoutManager2,
+    0x98F82ED2,
+    0x4791, 0x58A0, 0x8D, 0x2F,
+    0xDA, 0xBD, 0x7A, 0x2F, 0x18, 0x9F
 );
 
 typedef struct WindowsUdk_UI_Shell_TaskbarLayoutManagerVtbl // : IInspectableVtbl
@@ -325,11 +332,21 @@ typedef struct WindowsUdk_UI_Shell_TaskbarLayoutManagerVtbl // : IInspectableVtb
         __RPC__in WindowsUdk_UI_Shell_TaskbarLayoutManager* This,
         /* [out] */ __RPC__out TrustLevel* trustLevel);
 
-    HRESULT(STDMETHODCALLTYPE* ReportMonitorAdded)(
-        __RPC__in WindowsUdk_UI_Shell_TaskbarLayoutManager* This,
-        __RPC__in HMONITOR hMonitor,
-        __RPC__in void* _instance_of_winrt_WindowsUdk_UI_Shell_ITaskbarSettings,
-        __RPC__in LPRECT _unknown_lpGeometry);
+    union
+    {
+        HRESULT(STDMETHODCALLTYPE* ReportMonitorAdded)(
+            __RPC__in WindowsUdk_UI_Shell_TaskbarLayoutManager* This,
+            __RPC__in HMONITOR hMonitor,
+            __RPC__in void* _instance_of_winrt_WindowsUdk_UI_Shell_ITaskbarSettings,
+            __RPC__in void* _unknown_shellViewToRectMap);
+
+        HRESULT(STDMETHODCALLTYPE* ReportMonitorAdded2)(
+            __RPC__in WindowsUdk_UI_Shell_TaskbarLayoutManager* This,
+            __RPC__in HMONITOR hMonitor,
+            __RPC__in void* _instance_of_winrt_WindowsUdk_UI_Shell_ITaskbarSettings,
+            __RPC__in void* _unknown_shellViewToRectMap,
+            /* [out] */ __RPC__out unsigned __int64* result);
+    };
 
     HRESULT(STDMETHODCALLTYPE* ReportMonitorRemoved)(
         __RPC__in WindowsUdk_UI_Shell_TaskbarLayoutManager* This,

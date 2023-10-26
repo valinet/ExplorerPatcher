@@ -20,6 +20,7 @@ Note: After updating to this version, the symbols will be re-downloaded even if 
 * Start10: Properly fixed start menu showing/hiding along with its original animations on builds 22000.65+. (7e2f768)
 * GUI: Fixed a bug where "Remember last used section" doesn't remember the current page after being enabled. (11160c8)
 * Symbols: Reworked how symbols are managed so that symbols don't need to be successfully downloaded in succession. (8412bd6)
+* Setup: Fixed uninstallation of EP installations that have went through upgrades before the proper Pin to Start fix. (845d2b5, a7c87ce)
 
 ## 22621.2361.58
 
