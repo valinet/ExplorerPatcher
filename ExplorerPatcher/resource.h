@@ -3,12 +3,6 @@
 // Used by ExplorerPatcher.rc
 //
 #define IDS_PRODUCTNAME                 102
-#define IDS_COPYRIGHT                   103
-#define IDS_VERSION                     104
-#define IDS_PRODUCTTAG                  105
-#define IDS_VISITGITHUB                 106
-#define IDS_VISITWEBSITE                107
-#define IDS_LICENSEINFO                 108
 #define IDS_INSTALL_SUCCESS_TEXT        109
 #define IDS_INSTALL_ERROR_TEXT          110
 #define IDS_UNINSTALL_SUCCESS_TEXT      111

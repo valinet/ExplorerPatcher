@@ -877,6 +877,12 @@ int WINAPI wWinMain(
         if (bOk)
         {
             PathRemoveFileSpecW(wszPath);
+            wcscat_s(wszPath, MAX_PATH, L"\\ep_gui.dll");
+            bOk = InstallResource(bInstall, hInstance, IDR_EP_GUI, wszPath);
+        }
+        if (bOk)
+        {
+            PathRemoveFileSpecW(wszPath);
             wcscat_s(wszPath, MAX_PATH, L"\\ep_dwm.exe");
             bOk = InstallResource(bInstall, hInstance, IDR_EP_DWM, wszPath);
         }
@@ -1031,7 +1037,7 @@ int WINAPI wWinMain(
             dwLen = wcslen(wszPath);
             pArgs = wszPath + dwLen - 2;
             SHGetFolderPathW(NULL, SPECIAL_FOLDER, NULL, SHGFP_TYPE_CURRENT, wszPath + dwLen);
-            wcscat_s(wszPath, MAX_PATH, _T(APP_RELATIVE_PATH) L"\\" _T(PRODUCT_NAME) L".amd64.dll\",ZZGUI");
+            wcscat_s(wszPath, MAX_PATH, _T(APP_RELATIVE_PATH) L"\\ep_gui.dll\",ZZGUI");
             pArgs[0] = 0;
             bOk = SetupShortcut(bInstall, wszPath, pArgs + 1);
             ZeroMemory(wszPath, MAX_PATH);

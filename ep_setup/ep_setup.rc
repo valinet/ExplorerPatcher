@@ -104,6 +104,8 @@ IDR_MS_WEBVIEW2_LOADER  RCDATA             "..\\build\\Release\\WebView2Loader.d
 
 IDR_EP_STARTMENU        RCDATA             "..\\build\\Release\\ep_startmenu.dll"
 
+IDR_EP_GUI              RCDATA             "..\\build\\Release\\ep_gui.dll"
+
 #endif    // English (United States) resources
 /////////////////////////////////////////////////////////////////////////////
 

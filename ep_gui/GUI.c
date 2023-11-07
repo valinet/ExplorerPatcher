@@ -11,7 +11,7 @@ void* GUI_FileMapping = NULL;
 DWORD GUI_FileSize = 0;
 BOOL g_darkModeEnabled = FALSE;
 static void(*RefreshImmersiveColorPolicyState)() = NULL;
-static BOOL(*ShouldAppsUseDarkMode)() = NULL;
+// static BOOL(*ShouldAppsUseDarkMode)() = nullptr; // Already defined in utility.h
 DWORD dwTaskbarPosition = 3;
 BOOL gui_bOldTaskbar = TRUE;
 
@@ -838,61 +838,6 @@ LSTATUS GUI_RegQueryValueExW(
     return lRes;
 }
 
-
-static HRESULT GUI_AboutProc(
-    HWND hwnd,
-    UINT uNotification,
-    WPARAM wParam,
-    LPARAM lParam,
-    LONG_PTR lpRefData
-)
-{
-    switch (uNotification)
-    {
-    case TDN_BUTTON_CLICKED:
-    {
-        if (wParam == IDOK || wParam == IDCANCEL)
-        {
-            return S_OK;
-        }
-        else if (wParam == IDS_VISITGITHUB)
-        {
-            ShellExecuteA(
-                NULL,
-                "open",
-                "https://github.com/valinet/ExplorerPatcher",
-                NULL,
-                NULL,
-                SW_SHOWNORMAL
-            );
-        }
-        else if (wParam == IDS_VISITWEBSITE)
-        {
-            ShellExecuteA(
-                NULL,
-                "open",
-                "https://www.valinet.ro",
-                NULL,
-                NULL,
-                SW_SHOWNORMAL
-            );
-        }
-        else if (wParam == IDS_LICENSEINFO)
-        {
-            ShellExecuteA(
-                NULL,
-                "open",
-                "mailto:valentingabrielradu@gmail.com",
-                NULL,
-                NULL,
-                SW_SHOWNORMAL
-            );
-        }
-    }
-    }
-    return S_OK;
-}
-
 static void GUI_SetSection(GUI* _this, BOOL bCheckEnablement, int dwSection)
 {
     _this->section = dwSection;
@@ -947,6 +892,32 @@ static void GUI_SetSection(GUI* _this, BOOL bCheckEnablement, int dwSection)
     }
 
     RegCloseKey(hKey);
+}
+
+void GUI_SubstituteLocalizedString(wchar_t* str, size_t cch)
+{
+    // %R:1212%
+    //    ^^^^ The resource ID
+    wchar_t* begin = wcsstr(str, L"%R:");
+    if (!begin) return;
+
+    wchar_t* end = wcschr(begin + 3, L'%');
+    if (!end) return;
+    ++end; // Skip the %
+
+    int resId = _wtoi(begin + 3);
+
+    const wchar_t* localized = NULL;
+    int numChars = LoadStringW(hModule, resId, (LPWSTR)&localized, 0);
+    if (numChars == 0) return;
+
+    // Move the end to make space
+    SIZE_T endLen = wcslen(end);
+    memmove_s(begin + numChars, cch - (begin - str), end, (endLen + 1) * sizeof(wchar_t)); // Include the null terminator
+
+    // Copy the localized string
+    memcpy_s(begin, cch - (begin - str), localized, numChars * sizeof(wchar_t));
+    // TODO Check if the numbers are okay
 }
 
 static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
@@ -1031,7 +1002,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
     DttOpts.crText = g_darkModeEnabled ? GUI_TEXTCOLOR_DARK : GUI_TEXTCOLOR;
     DWORD dwTextFlags = DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS;
     RECT rcText;
-    DWORD dwMaxHeight = 0, dwMaxWidth = 0;
+    DWORD dwMaxHeight = 0, dwMaxWidth = (DWORD)(480 * (_this->dpi.x / 96.0));
     BOOL bTabOrderHit = FALSE;
     DWORD dwLeftPad = _this->padding.left + _this->sidebarWidth + _this->padding.right;
     DWORD dwInitialLeftPad = dwLeftPad;
@@ -1207,6 +1178,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                         text,
                         MAX_LINE_LENGTH
                     );
+                    GUI_SubstituteLocalizedString(text, MAX_LINE_LENGTH);
                     if (_this->sectionNames[currentSection + 1][0] == 0)
                     {
                         wcscpy_s(_this->sectionNames[currentSection + 1], 20, text);
@@ -1280,33 +1252,6 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
 
                 if (!strncmp(line, ";e ", 3) || !strncmp(line, ";a ", 3) || !strncmp(line, ";T ", 3) || !strncmp(line, ";t ", 3) || !strncmp(line, ";u ", 3) || !strncmp(line, ";M ", 3))
                 {
-                    if (!strncmp(line, ";t ", 3) || !strncmp(line, ";e ", 3) || !strncmp(line, ";a ", 3))
-                    {
-                        char* p = strstr(line, "%VERSIONINFORMATIONSTRING%");
-                        if (p)
-                        {
-                            DWORD dwLeftMost = 0;
-                            DWORD dwSecondLeft = 0;
-                            DWORD dwSecondRight = 0;
-                            DWORD dwRightMost = 0;
-
-                            QueryVersionInfo(hModule, VS_VERSION_INFO, &dwLeftMost, &dwSecondLeft, &dwSecondRight, &dwRightMost);
-
-                            sprintf_s(p, MAX_PATH, "%d.%d.%d.%d%s", dwLeftMost, dwSecondLeft, dwSecondRight, dwRightMost, 
-#if defined(DEBUG) | defined(_DEBUG)
-                                " (Debug)"
-#else
-                                ""
-#endif
-                                );
-                        }
-
-                        p = strstr(line, "%OSVERSIONSTRING%");
-                        if (p)
-                        {
-                            sprintf_s(p, MAX_PATH, "%d.%d.%d.%d.", global_rovi.dwMajorVersion, global_rovi.dwMinorVersion, global_rovi.dwBuildNumber, global_ubr);
-                        }
-                    }
                     ZeroMemory(text, (MAX_LINE_LENGTH + 3) * sizeof(wchar_t));
                     MultiByteToWideChar(
                         CP_UTF8,
@@ -1342,8 +1287,13 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                         ZeroMemory(wszTime, sizeof(WCHAR) * MAX_PATH);
                                         if (GetTimeFormatEx(wszWeatherLanguage[0] ? wszWeatherLanguage : wszLanguage, TIME_NOSECONDS, &stLastUpdate, NULL, wszTime, MAX_PATH))
                                         {
-                                            bOk = TRUE;
-                                            swprintf_s(text, MAX_LINE_LENGTH, L"Last updated on: %s, %s.", wszDate, wszTime);
+                                            wchar_t wszFormat[MAX_PATH];
+                                            int numChars = LoadStringW(hModule, IDS_WEATHER_LASTUPDATE, wszFormat, MAX_PATH);
+                                            if (numChars != 0)
+                                            {
+                                                bOk = TRUE;
+                                                swprintf_s(text, MAX_LINE_LENGTH, wszFormat, wszDate, wszTime);
+                                            }
                                         }
                                     }
                                 }
@@ -1397,6 +1347,46 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                     {
                         DWORD dwDataSize = MAX_LINE_LENGTH;
                         RegQueryValueW(HKEY_CURRENT_USER, L"Software\\Classes\\CLSID\\{2cc5ca98-6485-489a-920e-b3e88a6ccce3}\\shell\\SpotlightNext", text, &dwDataSize);
+                    }
+                    else if (!wcsncmp(text, L"%VERSIONINFORMATIONSTRING%", 26))
+                    {
+                        DWORD dwLeftMost = 0;
+                        DWORD dwSecondLeft = 0;
+                        DWORD dwSecondRight = 0;
+                        DWORD dwRightMost = 0;
+
+                        QueryVersionInfo(hModule, VS_VERSION_INFO, &dwLeftMost, &dwSecondLeft, &dwSecondRight, &dwRightMost);
+
+                        wchar_t wszFormat[MAX_PATH];
+                        int numChars = LoadStringW(hModule, IDS_ABOUT_VERSION, wszFormat, MAX_PATH);
+                        if (numChars != 0)
+                        {
+                            swprintf_s(text, MAX_LINE_LENGTH, wszFormat, dwLeftMost, dwSecondLeft, dwSecondRight, dwRightMost,
+#if defined(DEBUG) | defined(_DEBUG)
+                                L" (Debug)"
+#else
+                                L""
+#endif
+                            );
+                        }
+                    }
+                    else if (!wcsncmp(text, L"%OSVERSIONSTRING%", 17))
+                    {
+                        wchar_t wszFormat[MAX_PATH];
+                        int numChars = LoadStringW(hModule, IDS_ABOUT_OS, wszFormat, MAX_PATH);
+                        if (numChars != 0)
+                        {
+                            swprintf_s(
+                                text, MAX_LINE_LENGTH, wszFormat,
+                                IsWindows11() ? L"Windows 11" : L"Windows 10",
+                                global_rovi.dwBuildNumber,
+                                global_ubr
+                            );
+                        }
+                    }
+                    else
+                    {
+                        GUI_SubstituteLocalizedString(text, MAX_LINE_LENGTH);
                     }
                     if (bResetLastHeading)
                     {
@@ -1848,78 +1838,6 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                     }
                                 }
                             }
-                            else if (!strncmp(line + 1, "about", 5))
-                            {
-                                DWORD dwLeftMost = 0;
-                                DWORD dwSecondLeft = 0;
-                                DWORD dwSecondRight = 0;
-                                DWORD dwRightMost = 0;
-
-                                QueryVersionInfo(hModule, VS_VERSION_INFO, &dwLeftMost, &dwSecondLeft, &dwSecondRight, &dwRightMost);
-
-                                TCHAR wszIDS_VISITGITHUB[100];
-                                LoadString(hModule, IDS_VISITGITHUB, wszIDS_VISITGITHUB, 100);
-                                TCHAR wszIDS_VISITWEBSITE[100];
-                                LoadString(hModule, IDS_VISITWEBSITE, wszIDS_VISITWEBSITE, 100);
-                                TCHAR wszIDS_LICENSEINFO[100];
-                                LoadString(hModule, IDS_LICENSEINFO, wszIDS_LICENSEINFO, 100);
-                                TCHAR wszIDS_PRODUCTNAME[100];
-                                LoadString(hModule, IDS_PRODUCTNAME, wszIDS_PRODUCTNAME, 100);
-                                TCHAR wszIDS_VERSION[100];
-                                LoadString(hModule, IDS_VERSION, wszIDS_VERSION, 100);
-                                TCHAR wszIDS_PRODUCTTAG[406];
-                                wsprintf(wszIDS_PRODUCTTAG, wszIDS_VERSION, dwLeftMost, dwSecondLeft, dwSecondRight, dwRightMost);
-                                wcscat_s(
-                                    wszIDS_PRODUCTTAG,
-                                    406,
-                                    L"\r\n"
-                                );
-                                LoadString(hModule, IDS_COPYRIGHT, wszIDS_PRODUCTTAG + wcslen(wszIDS_PRODUCTTAG), 100);
-                                wcscat_s(
-                                    wszIDS_PRODUCTTAG,
-                                    406,
-                                    L"\r\n\r\n"
-                                );
-                                LoadString(hModule, IDS_PRODUCTTAG, wszIDS_PRODUCTTAG + wcslen(wszIDS_PRODUCTTAG), 200);
-
-                                TASKDIALOG_BUTTON buttons[3];
-                                buttons[0].nButtonID = IDS_VISITGITHUB;
-                                buttons[0].pszButtonText = wszIDS_VISITGITHUB;
-                                buttons[1].nButtonID = IDS_VISITWEBSITE;
-                                buttons[1].pszButtonText = wszIDS_VISITWEBSITE;
-                                buttons[2].nButtonID = IDS_LICENSEINFO;
-                                buttons[2].pszButtonText = wszIDS_LICENSEINFO;
-
-                                TASKDIALOGCONFIG td;
-                                ZeroMemory(&td, sizeof(TASKDIALOGCONFIG));
-                                td.cbSize = sizeof(TASKDIALOGCONFIG);
-                                td.hwndParent = hwnd;
-                                td.hInstance = hModule;
-                                td.dwFlags = TDF_ALLOW_DIALOG_CANCELLATION | TDF_SIZE_TO_CONTENT | TDF_USE_COMMAND_LINKS;
-                                td.dwCommonButtons = TDCBF_OK_BUTTON;
-                                td.pszWindowTitle = L" ";
-                                td.pszMainIcon = TD_INFORMATION_ICON;
-                                td.pszMainInstruction = wszIDS_PRODUCTNAME;
-                                td.pszContent = wszIDS_PRODUCTTAG;
-                                td.cButtons = sizeof(buttons) / sizeof(buttons[0]);
-                                td.pButtons = buttons;
-                                td.nDefaultButton = IDOK;
-                                td.cRadioButtons = 0;
-                                td.pRadioButtons = NULL;
-                                td.cxWidth = 0;
-                                td.pszFooter = L"";
-                                td.pfCallback = GUI_AboutProc;
-                                td.lpCallbackData = 0;
-                                int ret;
-
-                                // If used directly, StartMenuExperienceHost.exe crashes badly and is unable to start; guess how I know...
-                                (HRESULT(*)(const TASKDIALOGCONFIG*, int*, int*, BOOL*))(GetProcAddress(GetModuleHandleA("Comctl32.dll"), "TaskDialogIndirect"))(
-                                    &td,
-                                    &ret,
-                                    NULL,
-                                    NULL
-                                );
-                            }
                             else if (!strncmp(line + 1, "export", 6))
                             {
                                 WCHAR title[MAX_PATH];
@@ -2283,13 +2201,14 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                         !strncmp(line, ";c ", 3) || !strncmp(line, ";z ", 3) ? strchr(line + 3, ' ') + 1 : line + 3,
                         numChRd - 3,
                         text + 3,
-                        MAX_LINE_LENGTH
+                        MAX_LINE_LENGTH - 3
                     );
 
                     wchar_t* x = wcschr(text, L'\n');
                     if (x) *x = 0;
                     x = wcschr(text, L'\r');
                     if (x) *x = 0;
+                    GUI_SubstituteLocalizedString(text + 3, MAX_LINE_LENGTH - 3);
                     if (!strncmp(line, ";w ", 3) || !strncmp(line, ";c ", 3) || !strncmp(line, ";z ", 3) || !strncmp(line, ";b ", 3) || !strncmp(line, ";i ", 3) || !strncmp(line, ";d ", 3) || !strncmp(line, ";v ", 3))
                     {
                         WCHAR* wszTitle = NULL;
@@ -2329,15 +2248,16 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                 p = strchr(p + 1, '\n');
                                 if (p) *p = 0;
 
-                                wchar_t* miText = malloc((strlen(ln) + 1) * sizeof(wchar_t));
+                                wchar_t* miText = malloc(MAX_PATH * sizeof(wchar_t));
                                 MultiByteToWideChar(
                                     CP_UTF8,
                                     MB_PRECOMPOSED,
                                     ln,
-                                    strlen(ln) + 1,
+                                    MAX_PATH,
                                     miText,
-                                    strlen(ln) + 1
+                                    MAX_PATH
                                 );
+                                GUI_SubstituteLocalizedString(miText, MAX_PATH);
 
                                 MENUITEMINFOW menuInfo;
                                 ZeroMemory(&menuInfo, sizeof(MENUITEMINFOW));
@@ -2379,6 +2299,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                 wszPrompt,
                                 MAX_LINE_LENGTH
                             );
+                            GUI_SubstituteLocalizedString(wszPrompt, MAX_LINE_LENGTH);
                             numChRd = getline(&l, &bufsiz, f);
                             p = l;
                             p = strchr(p + 1, '\r');
@@ -2393,6 +2314,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                 wszFallbackDefault,
                                 MAX_LINE_LENGTH
                             );
+                            GUI_SubstituteLocalizedString(wszFallbackDefault, MAX_LINE_LENGTH);
                             free(l);
                         }
                         numChRd = getline(&line, &bufsiz, f);
@@ -2940,31 +2862,23 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                         HANDLE hEvent = CreateEventW(NULL, FALSE, FALSE, L"EP_Ev_CheckForUpdates_" _T(EP_CLSID));
                                         if (hEvent)
                                         {
-                                            if (GetLastError() != ERROR_ALREADY_EXISTS)
-                                            {
-                                                CloseHandle(hEvent);
-                                            }
-                                            else
+                                            if (GetLastError() == ERROR_ALREADY_EXISTS)
                                             {
                                                 SetEvent(hEvent);
-                                                CloseHandle(hEvent);
                                             }
+                                            CloseHandle(hEvent);
                                         }
                                     }
-                                    else if(!strcmp(line + 2, ";EP_INSTALL_UPDATES"))
+                                    else if (!strcmp(line + 2, ";EP_INSTALL_UPDATES"))
                                     {
                                         HANDLE hEvent = CreateEventW(NULL, FALSE, FALSE, L"EP_Ev_InstallUpdates_" _T(EP_CLSID));
                                         if (hEvent)
                                         {
-                                            if (GetLastError() != ERROR_ALREADY_EXISTS)
-                                            {
-                                                CloseHandle(hEvent);
-                                            }
-                                            else
+                                            if (GetLastError() == ERROR_ALREADY_EXISTS)
                                             {
                                                 SetEvent(hEvent);
-                                                CloseHandle(hEvent);
                                             }
+                                            CloseHandle(hEvent);
                                         }
                                     }
                                 }
@@ -3023,7 +2937,12 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                 1,
                                 0
                             );
-                            swprintf(text + 3, MAX_LINE_LENGTH, L"Disable the interaction list for individual apps ( Alt + %c )", key);
+                            wchar_t wszFormat[MAX_PATH];
+                            int numChars = LoadStringW(hModule, IDS_AT_SWS_NOPERAPP, wszFormat, MAX_PATH);
+                            if (numChars != 0)
+                            {
+                                swprintf(text + 3, MAX_LINE_LENGTH - 3, wszFormat, key);
+                            }
                         }
                         if (tabOrder == _this->tabOrder)
                         {

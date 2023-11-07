@@ -51,6 +51,7 @@ RTL_OSVERSIONINFOW global_rovi;
 DWORD32 global_ubr;
 #endif
 #include <featurestagingapi.h>
+#include "../ep_gui/resources/EPCrashMessageResources.h"
 
 #define WINX_ADJUST_X 5
 #define WINX_ADJUST_Y 5
@@ -2435,7 +2436,7 @@ LRESULT CALLBACK Shell_TrayWndMouseProc(
     return CallNextHookEx(Shell_TrayWndMouseHook, nCode, wParam, lParam);
 }
 
-PBYTE g_pTrayUIHost;
+struct ITrayUIHost* g_pTrayUIHost;
 
 INT64 Shell_TrayWndSubclassProc(
     _In_ HWND   hWnd,
@@ -2521,8 +2522,8 @@ INT64 Shell_TrayWndSubclassProc(
                 if (g_pTrayUIHost)
                 {
                     void** pTrayUIHostVtbl = *(void***)g_pTrayUIHost;
-                    BOOL (*ShouldDeleteContextMenuUndo)(PBYTE) = pTrayUIHostVtbl[13];
-                    UINT (*GetContextMenuUndoResourceId)(PBYTE) = pTrayUIHostVtbl[14];
+                    BOOL(*ShouldDeleteContextMenuUndo)(struct ITrayUIHost*) = pTrayUIHostVtbl[13];
+                    UINT(*GetContextMenuUndoResourceId)(struct ITrayUIHost*) = pTrayUIHostVtbl[14];
 
                     if (ShouldDeleteContextMenuUndo(g_pTrayUIHost))
                     {
@@ -11074,6 +11075,240 @@ BOOL FixStartMenuAnimation(LPMODULEINFO mi)
 #pragma endregion
 
 
+#pragma region "Crash counter system"
+#ifdef _WIN64
+typedef struct CrashCounterSettings
+{
+    BOOL bDisabled;
+    int counter;
+    int thresholdTime;
+    int threshold;
+} CrashCounterSettings;
+
+void GetCrashCounterSettings(CrashCounterSettings* out)
+{
+    out->bDisabled = FALSE;
+    out->counter = 0;
+    out->thresholdTime = 10000;
+    out->threshold = 3;
+
+    DWORD dwTCSize = sizeof(DWORD);
+    RegGetValueW(HKEY_CURRENT_USER, _T(REGPATH), L"CrashCounterDisabled", RRF_RT_DWORD, NULL, &out->bDisabled, &dwTCSize);
+    if (out->bDisabled != FALSE && out->bDisabled != TRUE) out->bDisabled = FALSE;
+
+    dwTCSize = sizeof(DWORD);
+    RegGetValueW(HKEY_CURRENT_USER, _T(REGPATH), L"CrashCounter", RRF_RT_DWORD, NULL, &out->counter, &dwTCSize);
+    if (out->counter < 0) out->counter = 0;
+
+    dwTCSize = sizeof(DWORD);
+    RegGetValueW(HKEY_CURRENT_USER, _T(REGPATH), L"CrashThresholdTime", RRF_RT_DWORD, NULL, &out->thresholdTime, &dwTCSize);
+    if (out->thresholdTime < 100 || out->thresholdTime > 60000) out->thresholdTime = 10000;
+
+    dwTCSize = sizeof(DWORD);
+    RegGetValueW(HKEY_CURRENT_USER, _T(REGPATH), L"CrashCounterThreshold", RRF_RT_DWORD, NULL, &out->threshold, &dwTCSize);
+    if (out->threshold <= 1 || out->threshold >= 10) out->threshold = 3;
+}
+
+HRESULT InformUserAboutCrashCallback(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam, LONG_PTR lpRefData)
+{
+    if (msg == TDN_HYPERLINK_CLICKED)
+    {
+        wchar_t* link = (wchar_t*)lParam;
+        if (wcschr(link, L'\''))
+        {
+            size_t len = wcslen(link);
+            for (size_t i = 0; i < len; ++i)
+            {
+                if (link[i] == L'\'')
+                    link[i] = L'"';
+            }
+            STARTUPINFO si;
+            PROCESS_INFORMATION pi;
+            ZeroMemory(&si, sizeof(si));
+            si.cb = sizeof(si);
+            ZeroMemory(&pi, sizeof(pi));
+            if (CreateProcessW(NULL, link, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi))
+            {
+                CloseHandle(pi.hProcess);
+                CloseHandle(pi.hThread);
+            }
+            for (size_t i = 0; i < len; ++i)
+            {
+                if (link[i] == L'"')
+                    link[i] = L'\'';
+            }
+        }
+        else if (!wcsncmp(link, L"eplink://update", 15))
+        {
+            if (!wcsncmp(link, L"eplink://update/stable", 22))
+            {
+                DWORD no = 0;
+                RegSetKeyValueW(HKEY_CURRENT_USER, _T(REGPATH), L"UpdatePreferStaging", REG_DWORD, &no, sizeof(DWORD));
+            }
+            else if (!wcsncmp(link, L"eplink://update/staging", 23))
+            {
+                DWORD yes = 1;
+                RegSetKeyValueW(HKEY_CURRENT_USER, _T(REGPATH), L"UpdatePreferStaging", REG_DWORD, &yes, sizeof(DWORD));
+            }
+            SetLastError(0);
+            HANDLE sigInstallUpdates = CreateEventW(NULL, FALSE, FALSE, L"EP_Ev_InstallUpdates_" _T(EP_CLSID));
+            if (sigInstallUpdates && GetLastError() == ERROR_ALREADY_EXISTS)
+            {
+                SetEvent(sigInstallUpdates);
+            }
+            else
+            {
+                CreateThread(NULL, 0, CheckForUpdatesThread, 0, 0, NULL);
+                Sleep(100);
+                SetLastError(0);
+                sigInstallUpdates = CreateEventW(NULL, FALSE, FALSE, L"EP_Ev_InstallUpdates_" _T(EP_CLSID));
+                if (sigInstallUpdates && GetLastError() == ERROR_ALREADY_EXISTS)
+                {
+                    SetEvent(sigInstallUpdates);
+                }
+            }
+        }
+        else
+        {
+            ShellExecuteW(NULL, L"open", link, L"", NULL, SW_SHOWNORMAL);
+        }
+        return S_FALSE;
+    }
+    return S_OK;
+
+}
+
+DWORD InformUserAboutCrash(LPVOID unused)
+{
+    CrashCounterSettings cfg;
+    GetCrashCounterSettings(&cfg);
+
+    wchar_t epGuiPath[MAX_PATH];
+    ZeroMemory(epGuiPath, sizeof(epGuiPath));
+    SHGetFolderPathW(NULL, SPECIAL_FOLDER, NULL, SHGFP_TYPE_CURRENT, epGuiPath);
+    wcscat_s(epGuiPath, MAX_PATH, _T(APP_RELATIVE_PATH) L"\\ep_gui.dll");
+    HMODULE hEPGui = LoadLibraryExW(epGuiPath, NULL, LOAD_LIBRARY_AS_DATAFILE);
+    if (!hEPGui)
+    {
+        return 0; // Can't load the strings, nothing to display
+    }
+
+    wchar_t title[100];
+    LoadStringW(hEPGui, IDS_CRASH_TITLE, title, ARRAYSIZE(title));
+
+    wchar_t times[32];
+    ZeroMemory(times, sizeof(times));
+    if (cfg.threshold == 1)
+    {
+        LoadStringW(hEPGui, IDS_CRASH_ONCE, times, ARRAYSIZE(times));
+    }
+    else
+    {
+        wchar_t format[32];
+        if (LoadStringW(hEPGui, IDS_CRASH_MULTIPLE, format, ARRAYSIZE(format)) != 0)
+        {
+            swprintf_s(times, ARRAYSIZE(times), format, cfg.threshold);
+        }
+    }
+
+    wchar_t uninstallLink[MAX_PATH];
+    ZeroMemory(uninstallLink, sizeof(uninstallLink));
+    uninstallLink[0] = L'\'';
+    SHGetFolderPathW(NULL, SPECIAL_FOLDER, NULL, SHGFP_TYPE_CURRENT, uninstallLink + 1);
+    wcscat_s(uninstallLink, MAX_PATH, _T(APP_RELATIVE_PATH) L"\\" _T(SETUP_UTILITY_NAME) L"' /uninstall");
+
+    wchar_t bodyFormat[10000];
+    if (LoadStringW(hEPGui, IDS_CRASH_BODY, bodyFormat, ARRAYSIZE(bodyFormat)) == 0)
+    {
+        FreeLibrary(hEPGui);
+        return 0;
+    }
+
+    wchar_t msg[10000];
+    _swprintf_p(msg, ARRAYSIZE(msg), bodyFormat,
+        times, cfg.thresholdTime / 1000,                                // 1 & 2: (once|X times) in less than Y seconds
+        L"eplink://update",                                             // 3: [update ExplorerPatcher and restart File Explorer]
+        L"https://github.com/valinet/ExplorerPatcher/releases",         // 4: [view releases]
+        L"https://github.com/valinet/ExplorerPatcher/discussions/1102", // 5: [check the current status]
+        L"https://github.com/valinet/ExplorerPatcher/discussions",      // 6: [discuss]
+        L"https://github.com/valinet/ExplorerPatcher/issues",           // 7: [review the latest issues]
+        uninstallLink                                                   // 8: [uninstall ExplorerPatcher]
+    );
+
+    wchar_t dismiss[32];
+    LoadStringW(hEPGui, IDS_CRASH_DISMISS, dismiss, ARRAYSIZE(dismiss));
+
+    TASKDIALOG_BUTTON buttons[1];
+    buttons[0].nButtonID = IDNO;
+    buttons[0].pszButtonText = dismiss;
+
+    TASKDIALOGCONFIG td;
+    ZeroMemory(&td, sizeof(td));
+    td.cbSize = sizeof(TASKDIALOGCONFIG);
+    td.hInstance = hModule;
+    td.hwndParent = NULL;
+    td.dwFlags = TDF_SIZE_TO_CONTENT | TDF_ENABLE_HYPERLINKS;
+    td.pszWindowTitle = L"ExplorerPatcher";
+    td.pszMainInstruction = title;
+    td.pszContent = msg;
+    td.cButtons = ARRAYSIZE(buttons);
+    td.pButtons = buttons;
+    td.cRadioButtons = 0;
+    td.pRadioButtons = NULL;
+    td.cxWidth = 0;
+    td.pfCallback = InformUserAboutCrashCallback;
+
+    HMODULE hComCtl32 = NULL;
+    HRESULT(*pfTaskDialogIndirect)(const TASKDIALOGCONFIG*, int*, int*, BOOL*) = NULL;
+    int res = td.nDefaultButton;
+    if (!(hComCtl32 = GetModuleHandleA("Comctl32.dll")) ||
+        !(pfTaskDialogIndirect = GetProcAddress(hComCtl32, "TaskDialogIndirect")) ||
+        FAILED(pfTaskDialogIndirect(&td, &res, NULL, NULL)))
+    {
+        wcscat_s(msg, 10000, L" Would you like to open the ExplorerPatcher status web page on GitHub in your default browser?");
+        res = MessageBoxW(NULL, msg, L"ExplorerPatcher", MB_ICONASTERISK | MB_YESNO);
+    }
+    if (res == IDYES)
+    {
+        ShellExecuteW(NULL, L"open", L"https://github.com/valinet/ExplorerPatcher/discussions/1102", L"", NULL, SW_SHOWNORMAL);
+    }
+    FreeLibrary(hEPGui);
+    return 0;
+}
+
+DWORD WINAPI ClearCrashCounter(INT64 timeout)
+{
+    Sleep(timeout);
+    DWORD zero = 0;
+    RegSetKeyValueW(HKEY_CURRENT_USER, _T(REGPATH), L"CrashCounter", REG_DWORD, &zero, sizeof(DWORD));
+    return 0;
+}
+
+BOOL CrashCounterHandleEntryPoint()
+{
+    CrashCounterSettings cfg;
+    GetCrashCounterSettings(&cfg);
+    if (!cfg.bDisabled)
+    {
+        // Ctrl + Shift + Alt
+        BOOL bKeyCombinationTriggered = GetAsyncKeyState(VK_CONTROL) & 0x8000 && GetAsyncKeyState(VK_SHIFT) & 0x8000 && GetAsyncKeyState(VK_MENU) & 0x8000;
+        if (cfg.counter >= cfg.threshold || bKeyCombinationTriggered)
+        {
+            cfg.counter = 0;
+            RegSetKeyValueW(HKEY_CURRENT_USER, _T(REGPATH), L"CrashCounter", REG_DWORD, &cfg.counter, sizeof(DWORD));
+            SHCreateThread(InformUserAboutCrash, NULL, 0, NULL);
+            return TRUE;
+        }
+        cfg.counter++;
+        RegSetKeyValueW(HKEY_CURRENT_USER, _T(REGPATH), L"CrashCounter", REG_DWORD, &cfg.counter, sizeof(DWORD));
+        SHCreateThread(ClearCrashCounter, cfg.thresholdTime, 0, NULL);
+    }
+    return FALSE;
+}
+#endif
+#pragma endregion
+
+
 DWORD Inject(BOOL bIsExplorer)
 {
 #if defined(DEBUG) | defined(_DEBUG)
@@ -11482,7 +11717,7 @@ DWORD Inject(BOOL bIsExplorer)
         // Find a pointer to ITrayUIHost needed to have a working Windows 10 taskbar context menu on Windows 11 taskbar
         // Ref: CTray::Init()
         // 4C 8D 05 ? ? ? ? 48 8D 0D ? ? ? ? E8 ? ? ? ? 48 8B
-        //                           ^^^^^^^
+        //                           ^^^^^^^    ^^^^^^^
         PBYTE match = FindPattern(
             hExplorer,
             miExplorer.SizeOfImage,
@@ -11491,9 +11726,12 @@ DWORD Inject(BOOL bIsExplorer)
         );
         if (match)
         {
-            match += 7;
+            match += 7; // Point to 48
             g_pTrayUIHost = match + 7 + *(int*)(match + 3);
-            printf("ITrayUIHost = %llX\n", g_pTrayUIHost - (PBYTE)hExplorer);
+            // match += 7; // Point to E8
+            // explorer_TrayUI_CreateInstanceFunc = match + 5 + *(int*)(match + 1);
+            printf("ITrayUIHost = %llX\n", (PBYTE)g_pTrayUIHost - (PBYTE)hExplorer);
+            // printf("explorer.exe!TrayUI_CreateInstance() = %llX\n", (PBYTE)explorer_TrayUI_CreateInstanceFunc - (PBYTE)hExplorer);
         }
         else
         {
@@ -11722,11 +11960,9 @@ DWORD Inject(BOOL bIsExplorer)
     {
         // Make sure crash counter is enabled. If one of the patches make Explorer crash while the start menu is open,
         // we don't want to softlock the user. The system reopens the start menu if Explorer terminates while it's open.
-        DWORD crashCounterDisabled = 0, dwTCSize = sizeof(DWORD);
-        RegGetValueW(HKEY_CURRENT_USER, _T(REGPATH), L"CrashCounterDisabled", RRF_RT_DWORD, NULL, &crashCounterDisabled, &dwTCSize); dwTCSize = sizeof(DWORD);
-        if (crashCounterDisabled != 0 && crashCounterDisabled != 1) crashCounterDisabled = 0;
-
-        if (!crashCounterDisabled)
+        CrashCounterSettings cfg;
+        GetCrashCounterSettings(&cfg);
+        if (!cfg.bDisabled)
         {
             FixStartMenuAnimation(&miTwinuiPcshell);
         }
@@ -13659,93 +13895,6 @@ void InjectShellExperienceHostFor22H2OrHigher() {
 #endif
 }
 
-#ifdef _WIN64
-HRESULT InformUserAboutCrashCallback(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam, LONG_PTR lpRefData) {
-    if (msg == TDN_HYPERLINK_CLICKED) {
-        if (wcschr(lParam, L'\'')) {
-            for (int i = 0; i < wcslen(lParam); ++i) if (*(((wchar_t*)lParam) + i) == L'\'') *(((wchar_t*)lParam) + i) = L'"';
-            STARTUPINFO si;
-            PROCESS_INFORMATION pi;
-            ZeroMemory(&si, sizeof(si));
-            si.cb = sizeof(si);
-            ZeroMemory(&pi, sizeof(pi));
-            if (CreateProcessW(NULL, lParam, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
-                CloseHandle(pi.hProcess);
-                CloseHandle(pi.hThread);
-            }            
-            for (int i = 0; i < wcslen(lParam); ++i) if (*(((wchar_t*)lParam) + i) == L'"') *(((wchar_t*)lParam) + i) = L'\'';
-        }
-        else if (!wcsncmp(lParam, L"eplink://update", 15)) {
-            if (!wcsncmp(lParam, L"eplink://update/stable", 22)) {
-                DWORD no = 0;
-                RegSetKeyValueW(HKEY_CURRENT_USER, _T(REGPATH), L"UpdatePreferStaging", REG_DWORD, &no, sizeof(DWORD));
-            } else if (!wcsncmp(lParam, L"eplink://update/staging", 23)) {
-                DWORD yes = 1;
-                RegSetKeyValueW(HKEY_CURRENT_USER, _T(REGPATH), L"UpdatePreferStaging", REG_DWORD, &yes, sizeof(DWORD));
-            }
-            SetLastError(0);
-            HANDLE sigInstallUpdates = CreateEventW(NULL, FALSE, FALSE, L"EP_Ev_InstallUpdates_" _T(EP_CLSID));
-            if (sigInstallUpdates && GetLastError() == ERROR_ALREADY_EXISTS) {
-                SetEvent(sigInstallUpdates);
-            }
-            else {
-                CreateThread(NULL, 0, CheckForUpdatesThread, 0, 0, NULL);
-                Sleep(100);
-                SetLastError(0);
-                sigInstallUpdates = CreateEventW(NULL, FALSE, FALSE, L"EP_Ev_InstallUpdates_" _T(EP_CLSID));
-                if (sigInstallUpdates && GetLastError() == ERROR_ALREADY_EXISTS) {
-                    SetEvent(sigInstallUpdates);
-                }
-            }
-        }
-        else ShellExecuteW(NULL, L"open", lParam, L"", NULL, SW_SHOWNORMAL);
-        return S_FALSE;
-    }
-    return S_OK;
-
-}
-
-DWORD InformUserAboutCrash(LPVOID msg) {
-    TASKDIALOG_BUTTON buttons[1];
-    buttons[0].nButtonID = IDNO;
-    buttons[0].pszButtonText = L"Dismiss";
-
-    TASKDIALOGCONFIG td;
-    ZeroMemory(&td, sizeof(TASKDIALOGCONFIG));
-    td.cbSize = sizeof(TASKDIALOGCONFIG);
-    td.hInstance = hModule;
-    td.hwndParent = NULL;
-    td.dwFlags = TDF_SIZE_TO_CONTENT | TDF_ENABLE_HYPERLINKS;
-    td.pszWindowTitle = L"ExplorerPatcher";
-    td.pszMainInstruction = L"Unfortunately, File Explorer is crashing :(";
-    td.pszContent = msg;
-    td.cButtons = sizeof buttons / sizeof buttons[0];
-    td.pButtons = buttons;
-    td.cRadioButtons = 0;
-    td.pRadioButtons = NULL;
-    td.cxWidth = 0;
-    td.pfCallback = InformUserAboutCrashCallback;
-
-    HMODULE hComCtl32 = NULL;
-    HRESULT(*pfTaskDialogIndirect)(const TASKDIALOGCONFIG*, int*, int*, BOOL*) = NULL;
-    int res = td.nDefaultButton;
-    if (!(hComCtl32 = GetModuleHandleA("Comctl32.dll")) || 
-        !(pfTaskDialogIndirect = GetProcAddress(hComCtl32, "TaskDialogIndirect")) ||
-        FAILED(pfTaskDialogIndirect(&td, &res, NULL, NULL))) {
-        wcscat_s(msg, 10000, L" Would you like to open the ExplorerPatcher status web page on GitHub in your default browser?");
-        res = MessageBoxW(NULL, msg, L"ExplorerPatcher", MB_ICONASTERISK | MB_YESNO);
-    }
-    if (res == IDYES) ShellExecuteW(NULL, L"open", L"https://github.com/valinet/ExplorerPatcher/discussions/1102", L"", NULL, SW_SHOWNORMAL);
-    free(msg);
-}
-
-DWORD WINAPI ClearCrashCounter(INT64 timeout) {
-    Sleep(timeout);
-    DWORD zero = 0;
-    RegSetKeyValueW(HKEY_CURRENT_USER, _T(REGPATH), L"CrashCounter", REG_DWORD, &zero, sizeof(DWORD));
-}
-#endif
-
 #define DLL_INJECTION_METHOD_DXGI 0
 #define DLL_INJECTION_METHOD_COM 1
 #define DLL_INJECTION_METHOD_START_INJECTION 2
@@ -13835,52 +13984,11 @@ HRESULT EntryPoint(DWORD dwMethod)
     {
         BOOL desktopExists = IsDesktopWindowAlreadyPresent();
 #ifdef _WIN64
-        if (!desktopExists) {
-            DWORD crashCounterDisabled = 0, crashCounter = 0, crashThresholdTime = 10000, crashCounterThreshold = 3, dwTCSize = sizeof(DWORD);
-            RegGetValueW(HKEY_CURRENT_USER, _T(REGPATH), L"CrashCounterDisabled", RRF_RT_DWORD, NULL, &crashCounterDisabled, &dwTCSize); dwTCSize = sizeof(DWORD);
-            if (crashCounterDisabled != 0 && crashCounterDisabled != 1) crashCounterDisabled = 0;
-            RegGetValueW(HKEY_CURRENT_USER, _T(REGPATH), L"CrashCounter", RRF_RT_DWORD, NULL, &crashCounter, &dwTCSize); dwTCSize = sizeof(DWORD);
-            if (crashCounter < 0) crashCounter = 0;
-            RegGetValueW(HKEY_CURRENT_USER, _T(REGPATH), L"CrashThresholdTime", RRF_RT_DWORD, NULL, &crashThresholdTime, &dwTCSize); dwTCSize = sizeof(DWORD);
-            if (crashThresholdTime < 100 || crashThresholdTime > 60000) crashThresholdTime = 10000;
-            RegGetValueW(HKEY_CURRENT_USER, _T(REGPATH), L"CrashCounterThreshold", RRF_RT_DWORD, NULL, &crashCounterThreshold, &dwTCSize); dwTCSize = sizeof(DWORD);
-            if (crashCounterThreshold <= 1 || crashCounterThreshold >= 10) crashCounterThreshold = 3;
-            if (!crashCounterDisabled) {
-                if (crashCounter >= crashCounterThreshold) {
-                    crashCounter = 0;
-                    RegSetKeyValueW(HKEY_CURRENT_USER, _T(REGPATH), L"CrashCounter", REG_DWORD, &crashCounter, sizeof(DWORD));
-                    wchar_t times[100];
-                    ZeroMemory(times, sizeof(wchar_t) * 100);
-                    swprintf_s(times, 100, crashCounterThreshold == 1 ? L"once" : L"%d times", crashCounterThreshold);
-                    wchar_t uninstallLink[MAX_PATH];
-                    ZeroMemory(uninstallLink, sizeof(wchar_t) * MAX_PATH);
-                    uninstallLink[0] = L'\'';
-                    SHGetFolderPathW(NULL, SPECIAL_FOLDER, NULL, SHGFP_TYPE_CURRENT, uninstallLink + 1);
-                    wcscat_s(uninstallLink, MAX_PATH, _T(APP_RELATIVE_PATH) L"\\" _T(SETUP_UTILITY_NAME) L"' /uninstall");
-                    wchar_t* msg = calloc(sizeof(wchar_t), 10000);
-                    swprintf_s(msg, 10000,
-                        L"It seems that File Explorer closed unexpectedly %s in less than %d seconds each time when starting up. "
-                        L"This might indicate a problem caused by ExplorerPatcher, which might be unaware of recent changes in Windows, for example "
-                        L"when running on a new OS build.\n"
-                        L"Here are a few recommendations:\n"
-                        L"\u2022 If an updated version is available, you can <A HREF=\"eplink://update\">update ExplorerPatcher and restart File Explorer</A>.\n"
-                        L"\u2022 On GitHub, you can <A HREF=\"https://github.com/valinet/ExplorerPatcher/releases\">view releases</A>, <A HREF=\"https://github.com/valinet/ExplorerPatcher/discussions/1102\">check the current status</A>, <A HREF=\"https://github.com/valinet/ExplorerPatcher/discussions\">discuss</A> or <A HREF=\"https://github.com/valinet/ExplorerPatcher/issues\">review the latest issues</A>.\n"
-                        L"\u2022 If you suspect this is not caused by ExplorerPatcher, please uninstall any recently installed shell extensions or similar utilities.\n"
-                        L"\u2022 If no fix is available for the time being, you can <A HREF=\"%s\">uninstall ExplorerPatcher</A>, and then later reinstall it when a fix is published on "
-                        L"GitHub. Rest assured, even if you uninstall, your program configuration will be preserved.\n"
-                        L"\n"
-                        L"I am sorry for the inconvenience this might cause; I am doing my best to try to keep this program updated and working.\n\n"
-                        L"ExplorerPatcher is disabled until the next File Explorer restart, in order to allow you to perform maintenance tasks and take the necessary actions.",
-                        times, crashThresholdTime / 1000, uninstallLink);
-                    SHCreateThread(InformUserAboutCrash, msg, 0, NULL);
-                    IncrementDLLReferenceCount(hModule);
-                    bInstanced = TRUE;
-                    return E_NOINTERFACE;
-                }
-                crashCounter++;
-                RegSetKeyValueW(HKEY_CURRENT_USER, _T(REGPATH), L"CrashCounter", REG_DWORD, &crashCounter, sizeof(DWORD));
-                SHCreateThread(ClearCrashCounter, crashThresholdTime, 0, NULL);
-            }
+        if (!desktopExists && CrashCounterHandleEntryPoint())
+        {
+            IncrementDLLReferenceCount(hModule);
+            bInstanced = TRUE;
+            return E_NOINTERFACE;
         }
 #endif
         Inject(!desktopExists);
@@ -13970,3 +14078,12 @@ BOOL WINAPI DllMain(
     }
     return TRUE;
 }
+
+#ifdef _WIN64
+__declspec(dllexport) int ZZGUI(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLine, int nCmdShow)
+{
+    // Forward to ep_gui.dll
+    LaunchPropertiesGUI(hModule);
+    return 0;
+}
+#endif

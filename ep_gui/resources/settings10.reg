@@ -4,198 +4,194 @@
 ;M Settings
 ;q
 
-;T Taskbar
+;T %R:1001%
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
-;y More taskbar options in the Settings app 🡕                                                       
+;y %R:1005% 🡕
 ;ms-settings:taskbar
-;y Customize notification area icons 🡕
+;y %R:1006% 🡕
 ;shell:::{05d7b0f4-2121-4eff-bf6b-ed3f69b894d9}
-;y Customize system icons in the notification area 🡕
+;y %R:1007% 🡕
 ;shell:::{05d7b0f4-2121-4eff-bf6b-ed3f69b894d9}\SystemIcons
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
-;c 4 Primary taskbar location on screen *
-;x 3 Bottom (default)
-;x 1 Top
-;x 0 Left
-;x 2 Right
+;c 4 %R:1008% *
+;x 3 %R:1009%
+;x 1 %R:1010%
+;x 0 %R:1011%
+;x 2 %R:1012%
 ;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_TaskbarPosition"=dword:00000003
-;c 4 Secondary taskbar(s) location on screen
-;x 3 Bottom (default)
-;x 1 Top
-;x 0 Left
-;x 2 Right
+;c 4 %R:1013%
+;x 3 %R:1009%
+;x 1 %R:1010%
+;x 0 %R:1011%
+;x 2 %R:1012%
 ;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_MMTaskbarPosition"=dword:00000003
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Search]
-;c 3 Search
-;x 0 Hidden
-;x 1 Show search icon
-;x 2 Show search box
+;c 3 %R:1019%
+;x 0 %R:1020%
+;x 1 %R:1021%
+;x 2 %R:1022%
 "SearchboxTaskbarMode"=dword:00000001
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
-;b Show Cortana button
+;b %R:1023%
 "ShowCortanaButton"=dword:00000000
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
-;b Show Task view button
+;b %R:1024%
 "ShowTaskViewButton"=dword:00000001
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
-;b Automatically hide the taskbar
+;b %R:1026%
 ;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_AutoHideTaskbar"=dword:00000000
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
-;c 2 Start button style *
-;x 0 Windows 10 (default)
-;x 1 Windows 11
+;c 2 %R:1027% *
+;x 0 %R:1028%
+;x 1 %R:1029%
 "OrbStyle"=dword:00000000
-;c 5 Primary taskbar alignment
-;x 0 At screen edge (default)
-;x 1 Centered
-;x 5 Centered, at screen edge when full
-;x 3 Centered with Start button
-;x 7 Centered with Start button, at screen edge when full
+;c 5 %R:1030%
+;x 0 %R:1031%
+;x 1 %R:1032%
+;x 5 %R:1033%
+;x 3 %R:1034%
+;x 7 %R:1035%
 "OldTaskbarAl"=dword:00000000
-;c 5 Secondary taskbar(s) alignment
-;x 0 At screen edge (default)
-;x 1 Centered
-;x 5 Centered, at screen edge when full
-;x 3 Centered with Start button
-;x 7 Centered with Start button, at screen edge when full
+;c 5 %R:1036%
+;x 0 %R:1031%
+;x 1 %R:1032%
+;x 5 %R:1033%
+;x 3 %R:1034%
+;x 7 %R:1035%
 "MMOldTaskbarAl"=dword:00000000
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
-;c 3 Combine taskbar icons on primary taskbar
-;x 0 Always combine (default)
-;x 1 Combine when taskbar is full
-;x 2 Never combine
+;c 3 %R:1037%
+;x 0 %R:1038%
+;x 1 %R:1040%
+;x 2 %R:1042%
 "TaskbarGlomLevel"=dword:00000000
-;c 3 Combine taskbar icons on secondary taskbar(s)
-;x 0 Always combine (default)
-;x 1 Combine when taskbar is full
-;x 2 Never combine
+;c 3 %R:1043%
+;x 0 %R:1038%
+;x 1 %R:1040%
+;x 2 %R:1042%
 "MMTaskbarGlomLevel"=dword:00000000
-;c 2 Taskbar icon size
-;x 1 Small
-;x 0 Large (default)
+;c 2 %R:1044%
+;x 1 %R:1045%
+;x 0 %R:1046%
 "TaskbarSmallIcons"=dword:00000000
-;e 
-;e 
-;e 
-;e 
 
-;T System tray
+;T %R:1101%
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
-;b Skin taskbar and tray pop-up menus
+;b %R:1102%
 "SkinMenus"=dword:00000001
-;b Center tray icon pop-up menus
+;b %R:1103%
 "CenterMenus"=dword:00000001
-;b Flyout behavior for tray icon pop-up menus
+;b %R:1104%
 "FlyoutMenus"=dword:00000001
 [HKEY_CURRENT_USER\Software\Microsoft\TabletTip\1.7]
-;b Show touch keyboard button *
+;b %R:1105% *
 "TipbandDesiredVisibility"=dword:00000000
-[HKEY_CURRENT_USER\Software\ExplorerPatcher]
-;p 2
-;b Apply Windows 11 style to system tray icons *
-"SkinIcons"=dword:00000001
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
-;b Show seconds in the clock
+;b %R:1106%
 "ShowSecondsInSystemClock"=dword:00000000
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
-;c 3 Show desktop button
-;x 1 Enabled (default)
-;x 0 Disabled
-;x 2 Hidden
+;c 3 %R:1108%
+;x 1 %R:1109%
+;x 0 %R:1110%
+;x 2 %R:1111%
 "TaskbarSD"=dword:00000001
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
-;a Choosing 'Open Network && Internet settings' when right clicking the
-;c 3 network icon should open:
-;x 0 Network section in the Settings app (default)
-;x 1 Network and Sharing Center in Control Panel
-;x 2 Network Connections in Control Panel
+;p 2
+;b %R:1112% *
+"SkinIcons"=dword:00000001
+[HKEY_CURRENT_USER\Software\ExplorerPatcher]
+;a %R:1113%
+;c 3 %R:1114%
+;x 0 %R:1115%
+;x 1 %R:1116%
+;x 2 %R:1117%
 "ReplaceNetwork"=dword:00000000
 ;q
-;t When clicking a system icon in the system tray, open:
+;t %R:1118%
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Control Panel\Settings\Network]
-;c 5 Network
-;x 0 Windows 10 flyout (default)
-;x 2 Windows 8 flyout
-;x 1 Network section in the Settings app
-;x 3 Network and Sharing Center in Control Panel
-;x 4 Network Connections in Control Panel
+;c 5 %R:1119%
+;x 0 %R:1122%
+;x 2 %R:1123%
+;x 1 %R:1124%
+;x 3 %R:1116%
+;x 4 %R:1117%
 "ReplaceVan"=dword:00000000
 [HKEY_CURRENT_USER\Software\Microsoft\Windows NT\CurrentVersion\MTCUVC]
-;c 2 Sound
-;x 1 Windows 10 flyout (default)
-;x 0 Windows 7 flyout
+;c 2 %R:1125%
+;x 1 %R:1126%
+;x 0 %R:1127%
 "EnableMtcUvc"=dword:00000001
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\ImmersiveShell]
-;c 3 Clock
-;x 0 Windows 10 flyout (default)
-;x 1 Windows 7
-;x 2 Action Center
+;c 3 %R:1128%
+;x 0 %R:1130%
+;x 1 %R:1131%
+;x 2 %R:1132%
 "UseWin32TrayClockExperience"=dword:00000000
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\ImmersiveShell]
-;c 2 Battery
-;x 0 Windows 10 flyout (default)
-;x 1 Windows 7
+;c 2 %R:1133%
+;x 0 %R:1134%
+;x 1 %R:1135%
 "UseWin32BatteryFlyout"=dword:00000000
 
 
-;T File Explorer
-;e For the settings marked with (**) to work in Open or Save file dialogs as well, register
-;e this utility as shell extension using the option below.
-;y Learn more 🡕
+;T %R:1201%
+;e %R:1202%
+;e %R:1203%
+;y %R:1204% 🡕
 ;https://github.com/valinet/ExplorerPatcher/wiki/Using-ExplorerPatcher-as-shell-extension
 ;q
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
-;b Register as shell extension
+;b %R:1205%
 ;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_RegisterAsShellExtension"=dword:00000000
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
-;b Always use legacy file transfer dialog
+;b %R:1207%
 "LegacyFileTransferDialog"=dword:00000000
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
-;b Use classic drive groupings in This PC
+;b %R:1208%
 "UseClassicDriveGrouping"=dword:00000000
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
-;c 2 Control Interface
-;x 0 Windows 10 Ribbon (default)
-;x 2 Windows 7 Command Bar
+;c 2 %R:1209%
+;x 0 %R:1211%
+;x 2 %R:1213%
 "FileExplorerCommandUI"=dword:00000000
-;t The following settings take effect on newly created File Explorer windows:
+;t %R:1214%
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
-;i Use immersive menus when displaying Windows 10 context menus **
+;i %R:1215% **
 "DisableImmersiveContextMenu"=dword:00000000
 [-HKEY_CURRENT_USER\Software\Classes\CLSID\{056440FD-8568-48e7-A632-72157243B55B}\InprocServer32]
-;d Disable navigation bar **
+;d %R:1216% **
 @=""
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
-;b Disable modern search bar
+;b %R:1217%
 ;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_DisableModernSearchBar"=dword:00000000
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
-;b Shrink address bar height **
+;b %R:1218% **
 "ShrinkExplorerAddressBar"=dword:00000000
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
-;b Hide search bar completely **
+;b %R:1219% **
 "HideExplorerSearchBar"=dword:00000000
 ;p 2
 ;b Mica effect on title bar
 "MicaEffectOnTitlebar"=dword:00000000
 
 
-;T Start menu
-;y More Start menu options in the Settings app 🡕
+;T %R:1301%
+;y %R:1305% 🡕
 ;ms-settings:personalization-start
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
-;z 2 Position on screen
-;x 0 At screen edge (default)
-;x 1 Center
+;z 2 %R:1306%
+;x 0 %R:1307%
+;x 1 %R:1308%
 "TaskbarAl"=dword:00000000
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
-;z 22 Maximum number of frequent apps to show
-;x 0 None
+;z 22 %R:1309%
+;x 0 %R:1310%
 ;x 1 1
 ;x 2 2
 ;x 3 3
 ;x 4 4
 ;x 5 5
-;x 6 6 (default)
+;x 6 %R:1311%
 ;x 7 7
 ;x 8 8
 ;x 9 9
@@ -210,71 +206,71 @@
 ;x 18 18
 ;x 19 19
 ;x 20 20
-;x 99999 Unlimited
+;x 99999 %R:1312%
 ;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_Start_MaximumFrequentApps"=dword:00000006
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\StartPage]
-;e When using multiple displays, open Start on this monitor when invoked using
-;z 10 the keyboard
-;x 1 Primary monitor (default)
-;x 0 Monitor on which the cursor is on
-;x 2 Monitor #2
-;x 3 Monitor #3
-;x 4 Monitor #4
-;x 5 Monitor #5
-;x 6 Monitor #6
-;x 7 Monitor #7
-;x 8 Monitor #8
-;x 9 Monitor #9
+;e %R:1313%
+;z 10 %R:1314%
+;x 1 %R:1315%
+;x 0 %R:1316%
+;x 2 %R:1317%
+;x 3 %R:1318%
+;x 4 %R:1319%
+;x 5 %R:1320%
+;x 6 %R:1321%
+;x 7 %R:1322%
+;x 8 %R:1323%
+;x 9 %R:1324%
 "MonitorOverride"=dword:00000001
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
-;z 3 Corner preference
-;x 1 Rounded corners, floating menu
-;x 2 Rounded corners, docked menu
-;x 0 Not rounded
+;z 3 %R:1328%
+;x 1 %R:1329%
+;x 2 %R:1330%
+;x 0 %R:1331%
 ;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_StartUI_EnableRoundedCorners"=dword:00000000
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
-;z 3 Display mode
-;x 0 Default
-;x 1 Start menu
-;x 2 Full screen Start
+;z 3 %R:1332%
+;x 0 %R:1333%
+;x 1 %R:1334%
+;x 2 %R:1335%
 ;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_ForceStartSize"=dword:00000000
-;z 3 App list
-;x 0 Display
-;x 3 Hide
-;x 1 Disable 
+;z 3 %R:1336%
+;x 0 %R:1337%
+;x 3 %R:1338%
+;x 1 %R:1339%
 ;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_NoStartMenuMorePrograms"=dword:00000000
-;t Some settings might not be available in older Windows 10 versions.
+;t %R:1341%
 
 
-;T Window switcher
+;T %R:1401%
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer]
-;z 3 Window switcher (Alt+Tab) style *
-;x 0 Windows 10 (default)
-;x 1 Windows NT
-;x 2 Simple Window Switcher
+;z 3 %R:1402% *
+;x 0 %R:1404%
+;x 1 %R:1406%
+;x 2 %R:1407%
 "AltTabSettings"=dword:00000000
-;t The following settings only apply to the Simple Window Switcher:
+;s WindowSwitcher_SWS IsSWSEnabled
 [HKEY_CURRENT_USER\Software\ExplorerPatcher\sws]
-;b Show the desktop as the last window in the interaction list
+;b %R:1408%
 "IncludeWallpaper"=dword:00000001
-;b Always display switcher on primary monitor
+;b %R:1409%
 "PrimaryOnly"=dword:00000000
-;b Display windows only from the monitor containing the cursor
+;b %R:1410%
 "PerMonitor"=dword:00000000
-;b Group windows of the same app
+;b %R:1411%
 "SwitcherIsPerApplication"=dword:00000000
 ;b %PLACEHOLDER_0001%
 "NoPerApplicationList"=dword:00000000
-;c 2 Theme
-;x 0 Default
-;x 1 Acrylic
+;c 2 %R:1413%
+;x 0 %R:1414%
+;x 1 %R:1415%
 "Theme"=dword:00000000
 [HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\MultitaskingView\AltTabViewHost]
-;c 19 Opacity
-;x 100 Opaque
+;c 19 %R:1417%
+;x 100 %R:1418%
 ;x 98 98 %
 ;x 96 96 %
-;x 95 95 % (default)
+;x 95 %R:1419%
 ;x 94 94 %
 ;x 92 92 %
 ;x 90 90 %
@@ -292,13 +288,13 @@
 ;x 30 30 %
 "Grid_backgroundPercent"=dword:0000005F
 [HKEY_CURRENT_USER\Software\ExplorerPatcher\sws]
-;c 3 Color scheme
-;x 0 Follow system setting (default)
-;x 1 Light
-;x 2 Dark
+;c 3 %R:1420%
+;x 0 %R:1421%
+;x 1 %R:1422%
+;x 2 %R:1423%
 "ColorScheme"=dword:00000000
 [HKEY_CURRENT_USER\Software\ExplorerPatcher\sws]
-;c 20 Row height
+;c 20 %R:1424%
 ;x 330 330 pt
 ;x 320 320 pt
 ;x 310 310 pt
@@ -309,7 +305,7 @@
 ;x 260 260 pt
 ;x 250 250 pt
 ;x 240 240 pt
-;x 230 230 pt (default)
+;x 230 %R:1429%
 ;x 220 220 pt
 ;x 210 210 pt
 ;x 200 200 pt
@@ -320,126 +316,127 @@
 ;x 150 150 pt
 ;x 140 140 pt
 "RowHeight"=dword:000000e6
-;c 10 Maximum width (percentage of screen width)
-;x 100 100 % (not recommended)
+;c 10 %R:1430%
+;x 100 %R:1431%
 ;x 95 95 %
 ;x 90 90 %
 ;x 85 85 %
-;x 80 80 % (default)
+;x 80 %R:1432%
 ;x 75 75 %
 ;x 70 70 %
 ;x 65 65 %
 ;x 60 60 %
 ;x 55 55 %
 "MaxWidth"=dword:00000050
-;c 10 Maximum height (percentage of screen height)
-;x 100 100 % (not recommended)
+;c 10 %R:1433%
+;x 100 %R:1434%
 ;x 95 95 %
 ;x 90 90 %
 ;x 85 85 %
-;x 80 80 % (default)
+;x 80 %R:1435%
 ;x 75 75 %
 ;x 70 70 %
 ;x 65 65 %
 ;x 60 60 %
 ;x 55 55 %
 "MaxHeight"=dword:00000050
-;c 11 Window padding
+;c 11 %R:1436%
 ;x 50 50 pt
 ;x 45 45 pt
-;x 40 40 pt (default)
+;x 40 40 pt
 ;x 35 30 pt
 ;x 30 30 pt
 ;x 25 25 pt
-;x 20 20 pt
+;x 20 %R:1437%
 ;x 15 15 pt
 ;x 10 10 pt
 ;x 5 5 pt
-;x 0 None
-"MasterPadding"=dword:00000028
-;c 11 Show delay
-;x 0 None
-;x 25 25 ms
-;x 50 50 ms
-;x 75 75 ms
-;x 100 100 ms (default)
-;x 125 125 ms
-;x 150 150 ms
-;x 200 200 ms
-;x 300 300 ms
-;x 400 400 ms
-;x 500 500 ms
+;x 0 %R:1438%
+"MasterPadding"=dword:00000014
+;c 11 %R:1439%
+;x 0 %R:1440%
+;x 25 %R:1441%
+;x 50 %R:1442%
+;x 75 %R:1443%
+;x 100 %R:1444%
+;x 125 %R:1445%
+;x 150 %R:1446%
+;x 200 %R:1447%
+;x 300 %R:1448%
+;x 400 %R:1449%
+;x 500 %R:1450%
 "ShowDelay"=dword:00000064
-;c 3 Use the scroll wheel to change selection
-;x 0 Never (default)
-;x 1 When cursor is over the switcher
-;x 2 Always
+;c 3 %R:1451%
+;x 0 %R:1452%
+;x 1 %R:1453%
+;x 2 %R:1454%
 "ScrollWheelBehavior"=dword:00000000
 ;q
-;y Learn more about Simple Window Switcher 🡕
+;y %R:1455% 🡕
 ;https://github.com/valinet/ExplorerPatcher/wiki/Simple-Window-Switcher
-;t Some settings might not be available in older Windows 10 versions.
+;g WindowSwitcher_SWS
 
 
-;T Weather
+;T %R:1501%
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
-;b Show Weather on the taskbar
+;b %R:1502%
 ;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_PeopleBand"=dword:00000000
-;c 5 Layout
-;x 0 Icon and description (default)
-;x 3 Icon and temperature
-;x 1 Icon only
-;x 4 Temperature only
-;x 5 Temperature and description
-"WeatherViewMode"=dword:00000000
-;c 3 Widget size
-;x 0 Automatic (fit contents) (default)
-;x 2 Automatic (fit contents) with threshold
-;x 1 Fixed
-"WeatherFixedSize"=dword:00000000
-;c 2 Widget position
-;x 0 Right / bottom (default)
-;x 1 Left / top
-"WeatherToLeft"=dword:00000000
-;c 7 Update frequency
-;x 60 Every minute
-;x 300 Every 5 minutes
-;x 900 Every 15 minutes
-;x 1200 Every 20 minutes (default)
-;x 1800 Every half an hour
-;x 3600 Every hour
-;x 7200 Every couple of hours
-"WeatherContentUpdateMode"=dword:000004B0
-;c 2 Temperature unit
-;x 0 Celsius (default)
-;x 1 Fahrenheit
-"WeatherTemperatureUnit"=dword:00000000
-;w Location
-;Search City or Zip Code; the program looks up "weather in /* what you typed */" on Google. Leave blank for the default value (current location).
-;Current location (default)
+;s Weather_Section1 IsWeatherEnabled
+;w %R:1503%
+;%R:1504%
+;%R:1505%
 "WeatherLocation"=""
+;c 5 %R:1506%
+;x 0 %R:1507%
+;x 3 %R:1508%
+;x 1 %R:1509%
+;x 4 %R:1510%
+;x 5 %R:1511%
+"WeatherViewMode"=dword:00000000
+;c 3 %R:1512%
+;x 0 %R:1513%
+;x 2 %R:1514%
+;x 1 %R:1515%
+"WeatherFixedSize"=dword:00000000
+;c 2 %R:1516%
+;x 0 %R:1517%
+;x 1 %R:1518%
+"WeatherToLeft"=dword:00000000
+;c 7 %R:1519%
+;x 60 %R:1520%
+;x 300 %R:1521%
+;x 900 %R:1522%
+;x 1200 %R:1523%
+;x 1800 %R:1524%
+;x 3600 %R:1525%
+;x 7200 %R:1526%
+"WeatherContentUpdateMode"=dword:000004B0
+;c 2 %R:1527%
+;x 0 %R:1528%
+;x 1 %R:1529%
+"WeatherTemperatureUnit"=dword:00000000
 ;;;c 2 Location accuracy
 ;;;x 0 Generic (based on the IP address) (default)
 ;;;x 1 Precise (geolocation)
 ;;"WeatherLocationType"=dword:00000000
-;w Language
-;Type the short code for the language you'd like the weather data to be displayed in. For example, try "en", "ro", "de", "fr" etc. Leave blank for the default value (language of the Windows OS).
-;System language (default)
+;w %R:1533%
+;%R:1534%
+;%R:1535%
 "WeatherLanguage"=""
-;c 3 Color scheme
-;x 0 Follow system setting (default)
-;x 1 Light
-;x 2 Dark
+;c 3 %R:1536%
+;x 0 %R:1537%
+;x 1 %R:1538%
+;x 2 %R:1539%
 "WeatherTheme"=dword:00000000
-;c 2 Icon pack
-;x 0 Microsoft (default)
-;x 1 Google
+;c 2 %R:1544%
+;x 0 %R:1545%
+;x 1 %R:1546%
 "WeatherIconPack"=dword:00000000
-;c 2 Display widget contents
-;x 0 On a single line (default)
-;x 1 On 2 lines, if possible
+;c 2 %R:1547%
+;x 0 %R:1548%
+;x 1 %R:1549%
 "WeatherContentsMode"=dword:00000000
-;c 17 Zoom
+;c 17 %R:1550%
 ;x 25 25 %
 ;x 33 33 %
 ;x 50 50 %
@@ -447,7 +444,7 @@
 ;x 75 75 %
 ;x 80 80 %
 ;x 90 90 %
-;x 0 100 % (default)
+;x 0 %R:1551%
 ;x 110 110 %
 ;x 125 125 %
 ;x 150 150 %
@@ -459,151 +456,148 @@
 ;x 500 500 %
 "WeatherZoomFactor"=dword:00000000
 ;q
-;y Learn more about the Weather taskbar widget 🡕
+;g Weather_Section1
+;y %R:1552% 🡕
 ;https://github.com/valinet/ExplorerPatcher/wiki/Weather
+;s Weather_Section2 IsWeatherEnabled
 ;t %WEATHERLASTUPDATETEXT%
-;u Update weather now
+;u %R:1554%
 ;update_weather
-;u Clear weather widget local data
+;u %R:1555%
 ;clear_data_weather
+;g Weather_Section2
 
 
 
-;T Other
+;T %R:1701%
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
-;b Remember last used section in this window
+;b %R:1702%
 "LastSectionInProperties"=dword:00000000
-;b Open clock flyout when pressing Win+C instead of Microsoft Teams *
+;b %R:1703% *
 "ClockFlyoutOnWinC"=dword:00000000
-;b Show separators between taskbar toolbars *
+;b %R:1704% *
 "ToolbarSeparators"=dword:00000000
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
-;b Show Command Prompt instead of PowerShell in Win+X menu *
+;b %R:1706% *
 "DontUsePowerShellOnWinX"=dword:00000000
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
-;b Remove shortcut key from program settings item in Win+X menu
+;b %R:1707%
 "NoMenuAccelerator"=dword:00000000
-;b Disable Office hotkeys (Ctrl+Alt+Shift+Windows key combinations) *
+;b %R:1708% *
 "DisableOfficeHotkeys"=dword:00000000
-;b Disable Win+F (Feedback Hub) hotkey *
+;b %R:1709% *
 "DisableWinFHotkey"=dword:00000000
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
-;c 6 Default action in the Alt+F4 dialog on the desktop
-;x 256 Switch user
-;x 1 Sign out
-;x 16 Sleep
-;x 64 Hibernate
-;x 2 Shut down (default)
-;x 4 Restart
+;c 6 %R:1715%
+;x 256 %R:1716%
+;x 1 %R:1717%
+;x 16 %R:1718%
+;x 64 %R:1719%
+;x 2 %R:1720%
+;x 4 %R:1721%
 "Start_PowerButtonAction"=dword:00000002
-;t Prevent the following Control Panel links from being redirected to the Settings app:
+;t %R:1722%
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
-;b System / About page
+;b %R:1723%
 "DoNotRedirectSystemToSettingsApp"=dword:00000000
-;b Programs and Features
+;b %R:1724%
 "DoNotRedirectProgramsAndFeaturesToSettingsApp"=dword:00000000
-;b Adjust date/time
+;b %R:1725%
 "DoNotRedirectDateAndTimeToSettingsApp"=dword:00000000
-;b Customize notification icons
+;b %R:1726%
 "DoNotRedirectNotificationIconsToSettingsApp"=dword:00000000
 
 
-;T Updates
+;T %R:1801%
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
-;z 3 When File Explorer starts
-;x 1 Notify about available updates (default)
-;x 0 Prompt to install available updates
-;x 2 Do not check for updates
+;z 3 %R:1802%
+;x 1 %R:1803%
+;x 0 %R:1804%
+;x 2 %R:1805%
 "UpdatePolicy"=dword:00000001
-;b Receive pre-release versions, if available (not recommended)
+;b %R:1806%
 "UpdatePreferStaging"=dword:00000000
-;b Suggest the latest version on the server, even if it's older (not recommended)
+;b %R:1807%
 "UpdateAllowDowngrades"=dword:00000000
-;t Update servers:
-;w Releases
-;Type a URL that serves resources adhering to GitHub's releases API. To learn how to configure your own update server, please consult the wiki.
+;t %R:1808%
+;w %R:1809%
+;%R:1810%
 ;github.com/valinet/ExplorerPatcher/releases/latest
 "UpdateURL"=""
-;w Pre-releases
-;Type a URL that serves resources adhering to GitHub's pre-releases API. To learn how to configure your own update server, please consult the wiki.
+;w %R:1811%
+;%R:1812%
 ;api.github.com/repos/valinet/ExplorerPatcher/releases?per_page=1
 "UpdateURLStaging"=""
-;y Check for updates
+;y %R:1813%
 ;;;EP_CHECK_FOR_UPDATES
-;y Update program and restart File Explorer
+;y %R:1814%
 ;;;EP_INSTALL_UPDATES
-;y Read about changes in the latest releases 🡕
+;y %R:1815% 🡕
 ;https://github.com/valinet/ExplorerPatcher/blob/master/CHANGELOG.md
-;y Learn more 🡕
+;y %R:1816% 🡕
 ;https://github.com/valinet/ExplorerPatcher/wiki/Configure-updates
 
 
-;T Advanced
-;e Only change these settings after reading the documentation about them.
-;y Learn more 🡕
+;T %R:1901%
+;e %R:1902%
+;y %R:1903% 🡕
 ;https://github.com/valinet/ExplorerPatcher/wiki/About-advanced-settings
 ;q
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
-;b Enable console
+;b %R:1904%
 "AllocConsole"=dword:00000000
-;b Dump memory leaks
+;b %R:1905%
 "Memcheck"=dword:00000000
-;b Double click taskbar to toggle auto-hide (only works when the taskbar is locked) 
+;b %R:1906%
 "TaskbarAutohideOnDoubleClick"=dword:00000000
 [HKEY_CURRENT_USER\Control Panel\Desktop]
-;b Show Windows build info on the desktop *
+;b %R:1907% *
 "PaintDesktopVersion"=dword:00000000
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
-;b Enable advanced mitigations for correct rendering using classic theme *
+;b %R:1908% *
 "ClassicThemeMitigations"=dword:00000000
 [-HKEY_CURRENT_USER\Software\Classes\CLSID\{1eeb5b5a-06fb-4732-96b3-975c0194eb39}\InprocServer32]
-;d Enable SysListView32 for Explorer views *
+;d %R:1909% *
 @=""
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
-;b Do not change the taskbar context menu (e.g. do not display the "Properties" item)
+;b %R:1910%
 "NoPropertiesInContextMenu"=dword:00000000
-;b Enable symbols download *
+;b %R:1911% *
 "EnableSymbolDownload"=dword:00000001
-;b Pinned items act as quick launch (don't group pinned items with active apps) *
+;b %R:1912% *
 "PinnedItemsActAsQuickLaunch"=dword:00000000
-;b When the taskbar shows button labels, remove the extra gap around pinned items *
+;b %R:1913% *
 "RemoveExtraGapAroundPinnedItems"=dword:00000000
 
 
-;T About
-;e ExplorerPatcher
-;e Version %VERSIONINFORMATIONSTRING%
+;T %R:2001%
+;e %R:201%
+;e %VERSIONINFORMATIONSTRING%
 ;t © 2006-2023 VALINET Solutions SRL. All rights reserved.
-;e 
-;e This project aims to enhance the working environment on Windows.
-;e Proudly engineered by Valentin-Gabriel Radu.
-;t Running on Windows 10, OS Build %OSVERSIONSTRING%
-;y Visit project GitHub (https://github.com/valinet) 🡕
+;e
+;e %R:2003%
+;e %R:2004%
+;t %OSVERSIONSTRING%
+;y %R:2006% (https://github.com/valinet) 🡕
 ;https://github.com/valinet
 ;q
-;y Visit web site (https://www.valinet.ro) 🡕
+;y %R:2007% (https://www.valinet.ro) 🡕
 ;https://www.valinet.ro
-;y E-mail author (valentingabrielradu@gmail.com) 🡕
-;mailto:valentingabrielradu@gmail.com
-;y Donate (using PayPal) 🡕
+;y %R:2009% 🡕
 ;https://www.paypal.com/donate?business=valentingabrielradu%40gmail.com&no_recurring=0&item_name=ExplorerPatcher&currency_code=EUR
-;y Frequently Asked Questions 🡕
+;y %R:2010% 🡕
 ;https://github.com/valinet/ExplorerPatcher/wiki/Frequently-asked-questions
-;y Learn more managing these settings 🡕
+;y %R:2011% 🡕
 ;https://github.com/valinet/ExplorerPatcher/wiki/Settings-management
-;u Import settings
+;u %R:2012%
 ;import
-;u Export current settings
+;u %R:2013%
 ;export
-;u Restore default settings
+;u %R:2014%
 ;reset
 
 
 
 ;f
-;u Restart File Explorer (*)
+;u %R:2101% (*)
 ;restart
-;;u Restore default settings
-;;reset
-;;u About ExplorerPatcher
-;;about

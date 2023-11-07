@@ -20,10 +20,10 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #pragma comment(lib, "UxTheme.lib")
 #include <dwmapi.h>
 #pragma comment(lib, "Dwmapi.lib")
-#include "resource.h"
-#include "getline.h"
-#include "fmemopen.h"
-#include "utility.h"
+#include "resources/resource.h"
+#include "../ExplorerPatcher/getline.h"
+#include "../ExplorerPatcher/fmemopen.h"
+#include "../ExplorerPatcher/utility.h"
 #include "../ep_weather_host/ep_weather.h"
 #include "../ep_weather_host/ep_weather_host_h.h"
 
@@ -88,14 +88,6 @@ typedef struct _GUI
 	int dwPageLocation;
 	DWORD last_section;
 } GUI;
-
-static HRESULT GUI_AboutProc(
-	HWND hwnd,
-	UINT uNotification,
-	WPARAM wParam,
-	LPARAM lParam,
-	LONG_PTR lpRefData
-);
 
 static BOOL GUI_Build(HDC hDC, HWND hWnd);
 
