@@ -60,9 +60,6 @@
     <ClInclude Include="utility.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="GUI.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="TaskbarCenter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -166,9 +163,6 @@
     <ClCompile Include="utility.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="GUI.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="TaskbarCenter.c">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -219,12 +213,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="settings.reg">
-      <Filter>Settings</Filter>
-    </None>
-    <None Include="settings10.reg">
-      <Filter>Settings</Filter>
-    </None>
     <None Include="packages.config" />
   </ItemGroup>
 </Project>

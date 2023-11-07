@@ -208,7 +208,6 @@ BOOL g_bIsDesktopRaised = FALSE;
 #include "ArchiveMenu.h"
 #include "StartupSound.h"
 #include "StartMenu.h"
-#include "GUI.h"
 #include "TaskbarCenter.h"
 #include "../libs/sws/SimpleWindowSwitcher/sws_WindowSwitcher.h"
 #endif

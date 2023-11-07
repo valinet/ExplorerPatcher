@@ -2,7 +2,6 @@
 // Microsoft Visual C++ generated include file.
 // Used by ExplorerPatcher.rc
 //
-#define IDR_REGISTRY1                   101
 #define IDS_PRODUCTNAME                 102
 #define IDS_COPYRIGHT                   103
 #define IDS_VERSION                     104
@@ -15,7 +14,6 @@
 #define IDS_UNINSTALL_SUCCESS_TEXT      111
 #define IDS_UNINSTALL_ERROR_TEXT        112
 #define IDS_OPERATION_NONE              113
-#define IDR_REGISTRY2                   114
 #define IDR_REFRESHEDSTYLES_XBF         115
 #define IDS_DRIVECATEGORY_HARDDISKDRIVES              40000
 #define IDS_DRIVECATEGORY_REMOVABLESTORAGE            40001

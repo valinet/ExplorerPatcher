@@ -254,10 +254,6 @@
     <ClCompile Include="dllmain.c" />
     <ClCompile Include="fmemopen.c" />
     <ClCompile Include="getline.c" />
-    <ClCompile Include="GUI.c">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-    </ClCompile>
     <ClCompile Include="HideExplorerSearchBar.c" />
     <ClCompile Include="ImmersiveFlyouts.c">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
@@ -322,7 +318,6 @@
     <ClInclude Include="dxgi_imp.h" />
     <ClInclude Include="fmemopen.h" />
     <ClInclude Include="getline.h" />
-    <ClInclude Include="GUI.h" />
     <ClInclude Include="HideExplorerSearchBar.h" />
     <ClInclude Include="hooking.h" />
     <ClInclude Include="ep_private.h" />
@@ -344,8 +339,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
-    <None Include="settings.reg" />
-    <None Include="settings10.reg" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
