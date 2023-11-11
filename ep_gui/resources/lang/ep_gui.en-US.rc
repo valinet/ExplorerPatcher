@@ -18,6 +18,7 @@ BEGIN
     IDS_UPDATES_DLFAILED_T      "Update failed"
     IDS_UPDATES_DLFAILED_B      "The request was declined or an error has occured when attempting to install this update."
     IDS_UPDATES_INSTALLEDVER    "Installed version: %d.%d.%d.%d"
+    IDS_UPDATES_PROMPT          "Would you like to install an update for ExplorerPatcher?\n\nDownloaded from:\n%s"
 
     IDS_SYM_DL_T                "Downloading symbols for OS build %s, please wait…"
     IDS_SYM_DL_B                "This may take several minutes. For now, ExplorerPatcher may have limited and/or broken functionality. Click here to learn more about symbols."
@@ -308,6 +309,10 @@ BEGIN
     IDS_WEATHER_LASTUPDATE      "Last updated on: %s, %s."
     IDS_WEATHER_UPDATE          "Update weather now"
     IDS_WEATHER_CLEAR           "Clear weather widget local data"
+    IDS_WEATHER_CLEAR_PROMPT    "Are you sure you want to permanently clear the weather widget's local data?\n\nThis will reset the internal components to their default state, but will preserve your preferences. This may fix the widget not loading the data properly, or having layout issues etc."
+    IDS_WEATHER_CLEAR_WAIT      "Please wait…"
+    IDS_WEATHER_CLEAR_SUCCESS   "Weather widget data cleared successfully."
+    IDS_WEATHER_CLEAR_FAILED    "An error has occured while clearing the data."
 
     IDS_SP                      "Spotlight"
 
@@ -422,6 +427,7 @@ BEGIN
     IDS_ABOUT_SETTINGS          "Learn more managing these settings"
     IDS_ABOUT_IMPORT            "Import settings"
     IDS_ABOUT_EXPORT            "Export current settings"
+    IDS_ABOUT_EXPORT_SUCCESS    "Settings have been exported successfully."
     IDS_ABOUT_RESET             "Restore default settings"
 
     IDS_FOOTER_RESTART          "Restart File Explorer"

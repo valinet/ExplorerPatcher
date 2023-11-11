@@ -1913,7 +1913,10 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                         GUI_Build(0, hwnd, pt);
                                         fclose(AuditFile);
                                         AuditFile = NULL;
-                                        MessageBoxW(hwnd, L"Settings have been exported successfully.", GUI_title, MB_ICONINFORMATION);
+                                        wchar_t mbText[128];
+                                        mbText[0] = 0;
+                                        LoadStringW(hModule, IDS_ABOUT_EXPORT_SUCCESS, mbText, ARRAYSIZE(mbText));
+                                        MessageBoxW(hwnd, mbText, GUI_title, MB_ICONINFORMATION);
                                     }
                                 }
                             }
@@ -2114,14 +2117,10 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                             }
                             else if (!strncmp(line + 1, "clear_data_weather", 18))
                             {
-                                if (MessageBoxW(
-                                    hwnd,
-                                    L"Are you sure you want to permanently clear the weather widget's local data?\n\n"
-                                    L"This will reset the internal components to their default state, but will preserve "
-                                    L"your preferences. This may fix the widget not loading the data properly, or "
-                                    L"having layout issues etc.",
-                                    _T(PRODUCT_NAME),
-                                    MB_ICONQUESTION | MB_YESNO) == IDYES)
+                                wchar_t mbText[512];
+                                mbText[0] = 0;
+                                LoadStringW(hModule, IDS_WEATHER_CLEAR_PROMPT, mbText, ARRAYSIZE(mbText));
+                                if (MessageBoxW(hwnd, mbText, _T(PRODUCT_NAME), MB_ICONQUESTION | MB_YESNO) == IDYES)
                                 {
                                     DWORD dwData = 0, dwVal = 0, dwSize = sizeof(DWORD);
                                     GUI_Internal_RegQueryValueExW(NULL, L"Virtualized_" _T(EP_CLSID) L"_PeopleBand", NULL, NULL, &dwData, &dwSize);
@@ -2133,7 +2132,9 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                         PleaseWaitCallbackData = &res;
                                         PleaseWaitCallbackFunc = GUI_Internal_DeleteWeatherFolder;
                                         PleaseWaitHook = SetWindowsHookExW(WH_CALLWNDPROC, PleaseWait_HookProc, NULL, GetCurrentThreadId());
-                                        MessageBoxW(hwnd, L"Please wait...", _T(PRODUCT_NAME), 0);
+                                        mbText[0] = 0;
+                                        LoadStringW(hModule, IDS_WEATHER_CLEAR_WAIT, mbText, ARRAYSIZE(mbText));
+                                        MessageBoxW(hwnd, mbText, _T(PRODUCT_NAME), 0);
                                     }
                                     else
                                     {
@@ -2141,13 +2142,17 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                     }
                                     if (res == IDOK)
                                     {
-                                        MessageBoxW(hwnd, L"Weather widget data cleared successfully.", _T(PRODUCT_NAME), MB_ICONINFORMATION);
+                                        mbText[0] = 0;
+                                        LoadStringW(hModule, IDS_WEATHER_CLEAR_SUCCESS, mbText, ARRAYSIZE(mbText));
+                                        MessageBoxW(hwnd, mbText, _T(PRODUCT_NAME), MB_ICONINFORMATION);
                                     }
                                     else
                                     {
                                         if (res == IDABORT)
                                         {
-                                            MessageBoxW(hwnd, L"An error has occured while clearing the data.", _T(PRODUCT_NAME), MB_ICONERROR);
+                                            mbText[0] = 0;
+                                            LoadStringW(hModule, IDS_WEATHER_CLEAR_FAILED, mbText, ARRAYSIZE(mbText));
+                                            MessageBoxW(hwnd, mbText, _T(PRODUCT_NAME), MB_ICONERROR);
                                         }
                                     }
                                     if (dwData)

@@ -520,7 +520,7 @@ BOOL IsUpdateAvailableHelper(
                                 }
                                 CloseHandle(hMyToken);
                             }
-                            int lnSID = (wszSID ? wcslen(wszSID) : 0);
+                            size_t lnSID = (wszSID ? wcslen(wszSID) : 0);
                             DWORD bIsBuiltInAdministratorInApprovalMode = FALSE;
                             BOOL bIsBuiltInAdministratorAccount =
                                 IsUserAnAdmin() &&
@@ -545,7 +545,16 @@ BOOL IsUpdateAvailableHelper(
                                 );
 
                                 WCHAR wszMsg[500];
-                                swprintf_s(wszMsg, 500, L"Would you like to install an update for " _T(PRODUCT_NAME) L"?\n\nDownloaded from:\n%s", wszURL2);
+                                wszMsg[0] = 0;
+
+                                WCHAR wszMsgFormat[500];
+                                HMODULE hEPGui = LoadGuiModule();
+                                if (LoadStringW(hEPGui, IDS_UPDATES_PROMPT, wszMsgFormat, ARRAYSIZE(wszMsgFormat)))
+                                {
+                                    swprintf_s(wszMsg, ARRAYSIZE(wszMsg), wszMsgFormat, wszURL2);
+                                }
+                                FreeLibrary(hEPGui);
+
                                 if (MessageBoxW(
                                     FindWindowW(L"ExplorerPatcher_GUI_" _T(EP_CLSID), NULL),
                                     wszMsg,
@@ -576,7 +585,7 @@ BOOL IsUpdateAvailableHelper(
                                 {
                                     bIsUpdateAvailable = TRUE;
 #ifdef UPDATES_VERBOSE_OUTPUT
-                                    printf("[Updates] Update successful, File Explorer will probably restart momentarly.\n");
+                                    printf("[Updates] Update successful, File Explorer will probably restart momentarily.\n");
 #endif
                                 }
                                 else
@@ -1073,8 +1082,8 @@ BOOL InstallUpdatesIfAvailable(
                     swprintf_s(buf, TOAST_BUFSIZ, text, _T(UPDATES_RELEASE_INFO_URL), L"short", title, body);
 
                     String2IXMLDocument(
-                        text,
-                        wcslen(text),
+                        buf,
+                        wcslen(buf),
                         &inputXml,
                         NULL
                     );
