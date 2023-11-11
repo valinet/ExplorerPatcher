@@ -22,44 +22,18 @@ const char* startui_SN[STARTUI_SB_CNT] = {
     STARTUI_SB_0
 };
 
-const wchar_t DownloadSymbolsXML[] =
-L"<toast scenario=\"reminder\" "
-L"activationType=\"protocol\" launch=\"https://github.com/valinet/ExplorerPatcher\" duration=\"short\">\r\n"
-L"	<visual>\r\n"
-L"		<binding template=\"ToastGeneric\">\r\n"
-L"			<text><![CDATA[Unable to find symbols for OS build %s]]></text>\r\n"
-L"			<text><![CDATA[Downloading and applying symbol information, please wait...]]></text>\r\n"
-L"			<text placement=\"attribution\"><![CDATA[ExplorerPatcher]]></text>\r\n"
-L"		</binding>\r\n"
-L"	</visual>\r\n"
-L"	<audio src=\"ms-winsoundevent:Notification.Default\" loop=\"false\" silent=\"false\"/>\r\n"
-L"</toast>\r\n";
-
-const wchar_t DownloadOKXML[] =
-L"<toast scenario=\"reminder\" "
-L"activationType=\"protocol\" launch=\"https://github.com/valinet/ExplorerPatcher\" duration=\"long\">\r\n"
-L"	<visual>\r\n"
-L"		<binding template=\"ToastGeneric\">\r\n"
-L"			<text><![CDATA[Successfully downloaded symbols for OS build %s]]></text>\r\n"
-L"			<text><![CDATA[Please restart File Explorer to apply the changes and enable additional functionality.]]></text>\r\n"
-L"			<text placement=\"attribution\"><![CDATA[ExplorerPatcher]]></text>\r\n"
-L"		</binding>\r\n"
-L"	</visual>\r\n"
-L"	<audio src=\"ms-winsoundevent:Notification.Default\" loop=\"false\" silent=\"false\"/>\r\n"
-L"</toast>\r\n";
-
-const wchar_t InstallOK[] =
-L"<toast scenario=\"reminder\" "
-L"activationType=\"protocol\" launch=\"https://github.com/valinet/ExplorerPatcher\" duration=\"long\">\r\n"
-L"	<visual>\r\n"
-L"		<binding template=\"ToastGeneric\">\r\n"
-L"			<text><![CDATA[Installation succeeded!]]></text>\r\n"
-L"			<text><![CDATA[This notification will not show again until the next OS build update.]]></text>\r\n"
-L"			<text placement=\"attribution\"><![CDATA[ExplorerPatcher]]></text>\r\n"
-L"		</binding>\r\n"
-L"	</visual>\r\n"
-L"	<audio src=\"ms-winsoundevent:Notification.Default\" loop=\"false\" silent=\"false\"/>\r\n"
-L"</toast>\r\n";
+const wchar_t DownloadNotificationXML[] =
+    L"<toast scenario=\"reminder\" "
+    L"activationType=\"protocol\" launch=\"%s\" duration=\"%s\">\r\n"
+    L"	<visual>\r\n"
+    L"		<binding template=\"ToastGeneric\">\r\n"
+    L"			<text><![CDATA[%s]]></text>\r\n"
+    L"			<text><![CDATA[%s]]></text>\r\n"
+    L"			<text placement=\"attribution\"><![CDATA[ExplorerPatcher]]></text>\r\n"
+    L"		</binding>\r\n"
+    L"	</visual>\r\n"
+    L"	<audio src=\"ms-winsoundevent:Notification.Default\" loop=\"false\" silent=\"false\"/>\r\n"
+    L"</toast>\r\n";
 
 extern INT VnDownloadSymbols(HMODULE hModule, char* dllName, char* szLibPath, UINT sizeLibPath);
 extern INT VnGetSymbols(const char* pdb_file, DWORD* addresses, char** symbols, DWORD numOfSymbols);
@@ -349,15 +323,14 @@ DWORD DownloadSymbols(DownloadSymbolsParams* params)
 
     printf("[Symbols] Started \"Download symbols\" thread.\n");
 
+    HMODULE hEPGui = LoadGuiModule();
+
     RTL_OSVERSIONINFOW rovi;
     DWORD32 ubr = VnGetOSVersionAndUBR(&rovi);
-    TCHAR szReportedVersion[MAX_PATH + 1];
-    ZeroMemory(
+    wchar_t szReportedVersion[32];
+    swprintf_s(
         szReportedVersion,
-        sizeof(szReportedVersion)
-    );
-    wsprintf(
-        szReportedVersion,
+        ARRAYSIZE(szReportedVersion),
         L"%d.%d.%d.%d",
         rovi.dwMajorVersion,
         rovi.dwMinorVersion,
@@ -365,18 +338,50 @@ DWORD DownloadSymbols(DownloadSymbolsParams* params)
         ubr
     );
 
-    TCHAR buffer[1000];
-    ZeroMemory(
-        buffer,
-        1000
+    wchar_t title[100];
+    wchar_t body[200];
+    wchar_t titleFormat[100];
+    wchar_t buffer[1000];
+    title[0] = 0; body[0] = 0; titleFormat[0] = 0; buffer[0] = 0;
+
+    // Don't annoy the user with "Downloading symbols" notification if the symbols aren't available in MS' servers
+    HKEY hKey = NULL;
+    DWORD dwDisposition;
+    RegCreateKeyExW(
+        HKEY_CURRENT_USER,
+        TEXT(REGPATH),
+        0,
+        NULL,
+        REG_OPTION_NON_VOLATILE,
+        KEY_READ,
+        NULL,
+        &hKey,
+        &dwDisposition
     );
-    wsprintf(
-        buffer,
-        DownloadSymbolsXML,
-        szReportedVersion
+    wchar_t szLastNotifiedBuild[32];
+    szLastNotifiedBuild[0] = 0;
+    DWORD dwSize = sizeof(szLastNotifiedBuild);
+    RegQueryValueExW(
+        hKey,
+        TEXT("SymbolsLastNotifiedOSBuild"),
+        0,
+        NULL,
+        szLastNotifiedBuild,
+        &dwSize
     );
-    if (params->bVerbose)
+
+    BOOL bNewBuild = wcscmp(szLastNotifiedBuild, szReportedVersion) != 0;
+    if (bNewBuild)
     {
+        if (LoadStringW(hEPGui, IDS_SYM_DL_T, titleFormat, ARRAYSIZE(titleFormat)))
+        {
+            swprintf_s(title, ARRAYSIZE(title), titleFormat, szReportedVersion);
+        }
+
+        LoadStringW(hEPGui, IDS_SYM_DL_B, body, ARRAYSIZE(body));
+
+        swprintf_s(buffer, ARRAYSIZE(buffer), DownloadNotificationXML, L"https://github.com/valinet/ExplorerPatcher/wiki/Symbols", L"short", title, body);
+
         HRESULT hr = S_OK;
         __x_ABI_CWindows_CData_CXml_CDom_CIXmlDocument* inputXml = NULL;
         hr = String2IXMLDocument(
@@ -392,14 +397,26 @@ DWORD DownloadSymbols(DownloadSymbolsParams* params)
         hr = ShowToastMessage(
             inputXml,
             APPID,
-            sizeof(APPID) / sizeof(TCHAR) - 1,
+            sizeof(APPID) / sizeof(wchar_t) - 1,
 #ifdef DEBUG
             stdout
 #else
             NULL
 #endif
         );
+
+        RegSetValueExW(
+            hKey,
+            TEXT("SymbolsLastNotifiedOSBuild"),
+            0,
+            REG_SZ,
+            szReportedVersion,
+            wcslen(szReportedVersion) * sizeof(wchar_t)
+        );
     }
+
+    RegCloseKey(hKey);
+
     wprintf(
         L"[Symbols] "
         L"Attempting to download symbols for OS version %s.\n",
@@ -433,80 +450,85 @@ DWORD DownloadSymbols(DownloadSymbolsParams* params)
 
     symbols_addr symbols_PTRS;
     ZeroMemory(&symbols_PTRS, sizeof(symbols_addr));
-    BOOL bDownloaded = FALSE;
+    BOOL bAnySuccess = FALSE, bAllSuccess = TRUE;
     if (params->loadResult.bNeedToDownloadTwinuiPcshellSymbols)
     {
-        bDownloaded |= ProcessTwinuiPcshellSymbols(szSettingsPath, symbols_PTRS.twinui_pcshell_PTRS);
+        BOOL bSuccess = ProcessTwinuiPcshellSymbols(szSettingsPath, symbols_PTRS.twinui_pcshell_PTRS);
+        bAnySuccess |= bSuccess;
+        bAllSuccess &= bSuccess;
     }
     if (params->loadResult.bNeedToDownloadStartDockedSymbols && IsWindows11())
     {
-        bDownloaded |= ProcessStartDockedSymbols(szSettingsPath, symbols_PTRS.startdocked_PTRS);
+        BOOL bSuccess = ProcessStartDockedSymbols(szSettingsPath, symbols_PTRS.startdocked_PTRS);
+        bAnySuccess |= bSuccess;
+        bAllSuccess &= bSuccess;
     }
     if (params->loadResult.bNeedToDownloadStartUISymbols && rovi.dwBuildNumber >= 18362)
     {
-        bDownloaded |= ProcessStartUISymbols(szSettingsPath, symbols_PTRS.startui_PTRS);
+        BOOL bSuccess = ProcessStartUISymbols(szSettingsPath, symbols_PTRS.startui_PTRS);
+        bAnySuccess |= bSuccess;
+        bAllSuccess &= bSuccess;
     }
 
     printf("[Symbols] Finished gathering symbol data.\n");
 
-    if (bDownloaded)
+    title[0] = 0; body[0] = 0;
+    BOOL bNotify = TRUE;
+    if (bAllSuccess)
     {
-        if (params->bVerbose)
+        if (LoadStringW(hEPGui, IDS_SYM_SUCCESS_T, titleFormat, ARRAYSIZE(titleFormat)))
         {
-            __x_ABI_CWindows_CData_CXml_CDom_CIXmlDocument* inputXml = NULL;
-            HRESULT hr = String2IXMLDocument(
-                InstallOK,
-                wcslen(InstallOK),
-                &inputXml,
-#ifdef DEBUG
-                stdout
-#else
-                NULL
-#endif
-            );
-            hr = ShowToastMessage(
-                inputXml,
-                APPID,
-                sizeof(APPID) / sizeof(TCHAR) - 1,
-#ifdef DEBUG
-                stdout
-#else
-                NULL
-#endif
-            );
-            Sleep(4000);
-            exit(0);
+            swprintf_s(title, ARRAYSIZE(title), titleFormat, szReportedVersion);
         }
-        else
-        {
-            wsprintf(
-                buffer,
-                DownloadOKXML,
-                szReportedVersion
-            );
-            __x_ABI_CWindows_CData_CXml_CDom_CIXmlDocument* inputXml2 = NULL;
-            HRESULT hr = String2IXMLDocument(
-                buffer,
-                wcslen(buffer),
-                &inputXml2,
-#ifdef DEBUG
-                stdout
-#else
-                NULL
-#endif
-            );
-            hr = ShowToastMessage(
-                inputXml2,
-                APPID,
-                sizeof(APPID) / sizeof(TCHAR) - 1,
-#ifdef DEBUG
-                stdout
-#else
-                NULL
-#endif
-            );
-        }
+        LoadStringW(hEPGui, IDS_SYM_SUCCESS_B, body, ARRAYSIZE(body));
+        swprintf_s(buffer, ARRAYSIZE(buffer), DownloadNotificationXML, L"https://github.com/valinet/ExplorerPatcher/wiki/Symbols", L"long", title, body);
     }
+    else if (bAnySuccess)
+    {
+        if (LoadStringW(hEPGui, IDS_SYM_FAILEDSOME_T, titleFormat, ARRAYSIZE(titleFormat)))
+        {
+            swprintf_s(title, ARRAYSIZE(title), titleFormat, szReportedVersion);
+        }
+        LoadStringW(hEPGui, IDS_SYM_FAILEDSOME_B, body, ARRAYSIZE(body));
+        swprintf_s(buffer, ARRAYSIZE(buffer), DownloadNotificationXML, L"https://github.com/valinet/ExplorerPatcher/wiki/Symbols", L"short", title, body);
+    }
+    else
+    {
+        if (LoadStringW(hEPGui, IDS_SYM_FAILEDALL_T, titleFormat, ARRAYSIZE(titleFormat)))
+        {
+            swprintf_s(title, ARRAYSIZE(title), titleFormat, szReportedVersion);
+        }
+        LoadStringW(hEPGui, IDS_SYM_FAILEDALL_B, body, ARRAYSIZE(body));
+        swprintf_s(buffer, ARRAYSIZE(buffer), DownloadNotificationXML, L"https://github.com/valinet/ExplorerPatcher/wiki/Symbols", L"short", title, body);
+        bNotify = bNewBuild;
+    }
+
+    if (bNotify)
+    {
+        __x_ABI_CWindows_CData_CXml_CDom_CIXmlDocument* inputXml2 = NULL;
+        HRESULT hr = String2IXMLDocument(
+            buffer,
+            wcslen(buffer),
+            &inputXml2,
+#ifdef DEBUG
+            stdout
+#else
+            NULL
+#endif
+        );
+        hr = ShowToastMessage(
+            inputXml2,
+            APPID,
+            sizeof(APPID) / sizeof(wchar_t) - 1,
+#ifdef DEBUG
+            stdout
+#else
+            NULL
+#endif
+        );
+    }
+
+    FreeLibrary(hEPGui);
 
     printf("[Symbols] Finished \"Download symbols\" thread.\n");
     return 0;
@@ -528,7 +550,7 @@ LoadSymbolsResult LoadSymbols(symbols_addr* symbols_PTRS)
     CHAR szStoredHash[33];
     ZeroMemory(szHash, sizeof(szHash));
     ZeroMemory(szStoredHash, sizeof(szStoredHash));
-    TCHAR wszPath[MAX_PATH];
+    wchar_t wszPath[MAX_PATH];
     BOOL bOffsetsValid;
 
     // Load twinui.pcshell.dll offsets

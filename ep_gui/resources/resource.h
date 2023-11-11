@@ -6,8 +6,8 @@
 #define IDR_REGISTRY2                   102
 #define IDS_PRODUCTNAME                 201
 
-// 401-500
-#include "EPCrashMessageResources.h"
+// 301-500
+#include "EPSharedResources.h"
 
 // 1001-2200
 #include "EPSettingsResources.h"

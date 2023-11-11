@@ -203,6 +203,7 @@ __declspec(dllexport) int CALLBACK ZZTestBalloon(HWND hWnd, HINSTANCE hInstance,
     return 0;
 }
 
+#ifdef _DEBUG
 const wchar_t TestToastXML[] =
 L"<toast scenario=\"reminder\" "
 L"activationType=\"protocol\" launch=\"https://github.com/valinet/ExplorerPatcher\" duration=\"%s\">\r\n"
@@ -256,6 +257,7 @@ __declspec(dllexport) int CALLBACK ZZTestToast(HWND hWnd, HINSTANCE hInstance, L
     free(lpwszCmdLine);
     return 0;
 }
+#endif
 
 __declspec(dllexport) int CALLBACK ZZLaunchExplorer(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLine, int nCmdShow)
 {

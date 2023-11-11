@@ -862,6 +862,8 @@ BOOL ShowUpdateSuccessNotification(
     __x_ABI_CWindows_CUI_CNotifications_CIToastNotification** toast
 )
 {
+    HMODULE hEPGui = LoadGuiModule();
+
     wchar_t buf[TOAST_BUFSIZ];
     DWORD dwLeftMost = 0;
     DWORD dwSecondLeft = 0;
@@ -869,20 +871,32 @@ BOOL ShowUpdateSuccessNotification(
     DWORD dwRightMost = 0;
     QueryVersionInfo(hModule, VS_VERSION_INFO, &dwLeftMost, &dwSecondLeft, &dwSecondRight, &dwRightMost);
 
-    __x_ABI_CWindows_CData_CXml_CDom_CIXmlDocument* inputXml = NULL;
     const wchar_t text[] =
-        L"<toast scenario=\"reminder\" "
-        L"activationType=\"protocol\" launch=\"" _T(UPDATES_RELEASE_INFO_URL) L"\" duration=\"short\">\r\n"
+        L"<toast scenario=\"reminder\" activationType=\"protocol\" launch=\"%s\" duration=\"%s\">\r\n"
         L"	<visual>\r\n"
         L"		<binding template=\"ToastGeneric\">\r\n"
-        L"			<text><![CDATA[Update successful]]></text>\r\n"
-        L"			<text><![CDATA[Installed version: %d.%d.%d.%d]]></text>\r\n"
+        L"			<text><![CDATA[%s]]></text>\r\n"
+        L"			<text><![CDATA[%s]]></text>\r\n"
         L"			<text placement=\"attribution\"><![CDATA[ExplorerPatcher]]></text>\r\n"
         L"		</binding>\r\n"
         L"	</visual>\r\n"
         L"	<audio src=\"ms-winsoundevent:Notification.Default\" loop=\"false\" silent=\"false\"/>\r\n"
         L"</toast>\r\n";
-    swprintf_s(buf, TOAST_BUFSIZ, text, dwLeftMost, dwSecondLeft, dwSecondRight, dwRightMost);
+    wchar_t title[100];
+    wchar_t body[200];
+    title[0] = 0; body[0] = 0;
+
+    LoadStringW(hEPGui, IDS_UPDATES_SUCCESS_T, title, ARRAYSIZE(title));
+
+    wchar_t bodyFormat[200];
+    ZeroMemory(bodyFormat, sizeof(bodyFormat));
+    if (LoadStringW(hEPGui, IDS_UPDATES_INSTALLEDVER, bodyFormat, ARRAYSIZE(bodyFormat)))
+    {
+        swprintf_s(body, ARRAYSIZE(body), bodyFormat, dwLeftMost, dwSecondLeft, dwSecondRight, dwRightMost);
+    }
+
+    swprintf_s(buf, TOAST_BUFSIZ, text, _T(UPDATES_RELEASE_INFO_URL), L"short", title, body);
+    __x_ABI_CWindows_CData_CXml_CDom_CIXmlDocument* inputXml = NULL;
     String2IXMLDocument(
         buf,
         wcslen(buf),
@@ -910,8 +924,13 @@ BOOL ShowUpdateSuccessNotification(
     {
         inputXml->lpVtbl->Release(inputXml);
     }
-
+    if (hEPGui)
+    {
+        FreeLibrary(hEPGui);
+    }
     SwitchToThread();
+
+    return TRUE;
 }
 
 BOOL InstallUpdatesIfAvailable(
@@ -924,6 +943,8 @@ BOOL InstallUpdatesIfAvailable(
     DWORD dwUpdatePolicy
 )
 {
+    HMODULE hEPGui = LoadGuiModule();
+
     wchar_t wszInfoURL[MAX_PATH];
     ZeroMemory(wszInfoURL, MAX_PATH * sizeof(wchar_t));
     wcscat_s(wszInfoURL, MAX_PATH, _T(UPDATES_RELEASE_INFO_URL_STABLE));
@@ -958,51 +979,46 @@ BOOL InstallUpdatesIfAvailable(
         }
     }
 
-    __x_ABI_CWindows_CData_CXml_CDom_CIXmlDocument* inputXml = NULL;
+    const wchar_t text[] =
+        L"<toast scenario=\"reminder\" activationType=\"protocol\" launch=\"%s\" duration=\"%s\">\r\n"
+        L"	<visual>\r\n"
+        L"		<binding template=\"ToastGeneric\">\r\n"
+        L"			<text><![CDATA[%s]]></text>\r\n"
+        L"			<text><![CDATA[%s]]></text>\r\n"
+        L"			<text placement=\"attribution\"><![CDATA[ExplorerPatcher]]></text>\r\n"
+        L"		</binding>\r\n"
+        L"	</visual>\r\n"
+        L"	<audio src=\"ms-winsoundevent:Notification.Default\" loop=\"false\" silent=\"false\"/>\r\n"
+        L"</toast>\r\n";
+    wchar_t title[100];
+    wchar_t body[200];
+    title[0] = 0; body[0] = 0;
+
     if (dwOperation == UPDATES_OP_INSTALL)
     {
-        const wchar_t text[] =
-            L"<toast scenario=\"reminder\" "
-            L"activationType=\"protocol\" launch=\"" _T(UPDATES_RELEASE_INFO_URL) L"\" duration=\"long\">\r\n"
-            L"	<visual>\r\n"
-            L"		<binding template=\"ToastGeneric\">\r\n"
-            L"			<text><![CDATA[Downloading and installing updates]]></text>\r\n"
-            L"			<text><![CDATA[Installed version: %d.%d.%d.%d]]></text>\r\n"
-            L"			<text placement=\"attribution\"><![CDATA[ExplorerPatcher]]></text>\r\n"
-            L"		</binding>\r\n"
-            L"	</visual>\r\n"
-            L"	<audio src=\"ms-winsoundevent:Notification.Default\" loop=\"false\" silent=\"false\"/>\r\n"
-            L"</toast>\r\n";
-        swprintf_s(buf, TOAST_BUFSIZ, text, dwLeftMost, dwSecondLeft, dwSecondRight, dwRightMost);
-        String2IXMLDocument(
-            buf,
-            wcslen(buf),
-            &inputXml,
-            NULL
-        );
+        LoadStringW(hEPGui, IDS_UPDATES_DOWNLOADING_T, title, ARRAYSIZE(title));
     }
     else if (dwOperation == UPDATES_OP_CHECK)
     {
-        const wchar_t text[] =
-            L"<toast scenario=\"reminder\" "
-            L"activationType=\"protocol\" launch=\"" _T(UPDATES_RELEASE_INFO_URL) L"\" duration=\"long\">\r\n"
-            L"	<visual>\r\n"
-            L"		<binding template=\"ToastGeneric\">\r\n"
-            L"			<text><![CDATA[Checking for updates]]></text>\r\n"
-            L"			<text><![CDATA[Installed version: %d.%d.%d.%d]]></text>\r\n"
-            L"			<text placement=\"attribution\"><![CDATA[ExplorerPatcher]]></text>\r\n"
-            L"		</binding>\r\n"
-            L"	</visual>\r\n"
-            L"	<audio src=\"ms-winsoundevent:Notification.Default\" loop=\"false\" silent=\"false\"/>\r\n"
-            L"</toast>\r\n";
-        swprintf_s(buf, TOAST_BUFSIZ, text, dwLeftMost, dwSecondLeft, dwSecondRight, dwRightMost);
-        String2IXMLDocument(
-            buf,
-            wcslen(buf),
-            &inputXml,
-            NULL
-        );
+        LoadStringW(hEPGui, IDS_UPDATES_CHECKING_T, title, ARRAYSIZE(title));
     }
+
+    wchar_t bodyFormat[200];
+    ZeroMemory(bodyFormat, sizeof(bodyFormat));
+    if (LoadStringW(hEPGui, IDS_UPDATES_INSTALLEDVER, bodyFormat, ARRAYSIZE(bodyFormat)))
+    {
+        swprintf_s(body, ARRAYSIZE(body), bodyFormat, dwLeftMost, dwSecondLeft, dwSecondRight, dwRightMost);
+    }
+
+    swprintf_s(buf, TOAST_BUFSIZ, text, _T(UPDATES_RELEASE_INFO_URL), L"long", title, body);
+
+    __x_ABI_CWindows_CData_CXml_CDom_CIXmlDocument* inputXml = NULL;
+    String2IXMLDocument(
+        buf,
+        wcslen(buf),
+        &inputXml,
+        NULL
+    );
 
     if (dwOperation == UPDATES_OP_CHECK || dwOperation == UPDATES_OP_INSTALL)
     {
@@ -1037,7 +1053,7 @@ BOOL InstallUpdatesIfAvailable(
     ZeroMemory(hash, 100 * sizeof(CHAR));
     ComputeFileHash2(hModule, dllName, hash, 100);
 
-    BOOL bFail = FALSE;
+    BOOL bFail = FALSE, bReturnValue = FALSE;
     dwLeftMost = 0; dwSecondLeft = 0; dwSecondRight = 0; dwRightMost = 0;
     if (IsUpdateAvailable(_T(REGPATH), hash, &bFail, wszInfoURL, MAX_PATH, hModule, &dwLeftMost, &dwSecondLeft, &dwSecondRight, &dwRightMost))
     {
@@ -1050,18 +1066,12 @@ BOOL InstallUpdatesIfAvailable(
             {
                 if (dwOperation == UPDATES_OP_INSTALL)
                 {
-                    const wchar_t text[] =
-                        L"<toast scenario=\"reminder\" "
-                        L"activationType=\"protocol\" launch=\"" _T(UPDATES_RELEASE_INFO_URL) L"\" duration=\"short\">\r\n"
-                        L"	<visual>\r\n"
-                        L"		<binding template=\"ToastGeneric\">\r\n"
-                        L"			<text><![CDATA[Update failed]]></text>\r\n"
-                        L"			<text><![CDATA[The request was declined or an error has occured when attempting to install this update.]]></text>\r\n"
-                        L"			<text placement=\"attribution\"><![CDATA[ExplorerPatcher]]></text>\r\n"
-                        L"		</binding>\r\n"
-                        L"	</visual>\r\n"
-                        L"	<audio src=\"ms-winsoundevent:Notification.Default\" loop=\"false\" silent=\"false\"/>\r\n"
-                        L"</toast>\r\n";
+                    title[0] = 0; body[0] = 0;
+                    LoadStringW(hEPGui, IDS_UPDATES_DLFAILED_T, title, ARRAYSIZE(title));
+                    LoadStringW(hEPGui, IDS_UPDATES_DLFAILED_B, body, ARRAYSIZE(body));
+
+                    swprintf_s(buf, TOAST_BUFSIZ, text, _T(UPDATES_RELEASE_INFO_URL), L"short", title, body);
+
                     String2IXMLDocument(
                         text,
                         wcslen(text),
@@ -1097,28 +1107,25 @@ BOOL InstallUpdatesIfAvailable(
         }
         else if ((dwOperation == UPDATES_OP_DEFAULT && dwUpdatePolicy == UPDATE_POLICY_NOTIFY) || (dwOperation == UPDATES_OP_CHECK))
         {
-            const wchar_t text[] =
-                L"<toast scenario=\"reminder\" "
-                L"activationType=\"protocol\" launch=\"%s\" duration=\"long\">\r\n"
-                L"	<visual>\r\n"
-                L"		<binding template=\"ToastGeneric\">\r\n"
-                L"			<text><![CDATA[%s available]]></text>\r\n"
-                L"			<text><![CDATA[You can update by right clicking the taskbar, choosing \"Properties\", then \"Updates\". Click here to learn more about this update.]]></text>\r\n"
-                L"			<text placement=\"attribution\"><![CDATA[ExplorerPatcher]]></text>\r\n"
-                L"		</binding>\r\n"
-                L"	</visual>\r\n"
-                L"	<audio src=\"ms-winsoundevent:Notification.Default\" loop=\"false\" silent=\"false\"/>\r\n"
-                L"</toast>\r\n";
+            title[0] = 0; body[0] = 0;
+
             if (!dwLeftMost)
             {
-                swprintf_s(buf, TOAST_BUFSIZ, text, wszInfoURL, L"New version");
+                LoadStringW(hEPGui, IDS_UPDATES_AVAILABLE_T_U, title, ARRAYSIZE(title));
             }
             else
             {
-                WCHAR wszVersionInfo[100];
-                swprintf_s(wszVersionInfo, 100, L"Version %d.%d.%d.%d is", dwLeftMost, dwSecondLeft, dwSecondRight, dwRightMost);
-                swprintf_s(buf, TOAST_BUFSIZ, text, wszInfoURL, wszVersionInfo);
+                WCHAR titleFormat[100];
+                if (LoadStringW(hEPGui, IDS_UPDATES_AVAILABLE_T, titleFormat, ARRAYSIZE(titleFormat)))
+                {
+                    swprintf_s(title, ARRAYSIZE(title), titleFormat, dwLeftMost, dwSecondLeft, dwSecondRight, dwRightMost);
+                }
             }
+
+            LoadStringW(hEPGui, IDS_UPDATES_AVAILABLE_B, body, ARRAYSIZE(body));
+
+            swprintf_s(buf, TOAST_BUFSIZ, text, wszInfoURL, L"long", title, body);
+
             __x_ABI_CWindows_CData_CXml_CDom_CIXmlDocument* inputXml = NULL;
             String2IXMLDocument(
                 buf,
@@ -1148,8 +1155,7 @@ BOOL InstallUpdatesIfAvailable(
                 inputXml->lpVtbl->Release(inputXml);
             }
         }
-
-        return TRUE;
+        bReturnValue = TRUE;
     }
     else
     {
@@ -1163,34 +1169,24 @@ BOOL InstallUpdatesIfAvailable(
         }
         if (dwOperation == UPDATES_OP_CHECK || dwOperation == UPDATES_OP_INSTALL)
         {
-            const wchar_t text[] =
-                L"<toast scenario=\"reminder\" "
-                L"activationType=\"protocol\" launch=\"" _T(UPDATES_RELEASE_INFO_URL) L"\" duration=\"short\">\r\n"
-                L"	<visual>\r\n"
-                L"		<binding template=\"ToastGeneric\">\r\n"
-                L"			<text><![CDATA[No updates are available]]></text>\r\n"
-                L"			<text><![CDATA[Please check back later.]]></text>\r\n"
-                L"			<text placement=\"attribution\"><![CDATA[ExplorerPatcher]]></text>\r\n"
-                L"		</binding>\r\n"
-                L"	</visual>\r\n"
-                L"	<audio src=\"ms-winsoundevent:Notification.Default\" loop=\"false\" silent=\"false\"/>\r\n"
-                L"</toast>\r\n";
-            const wchar_t text2[] =
-                L"<toast scenario=\"reminder\" "
-                L"activationType=\"protocol\" launch=\"" _T(UPDATES_RELEASE_INFO_URL) L"\" duration=\"short\">\r\n"
-                L"	<visual>\r\n"
-                L"		<binding template=\"ToastGeneric\">\r\n"
-                L"			<text><![CDATA[Unable to check for updates]]></text>\r\n"
-                L"			<text><![CDATA[Make sure that you are connected to the Internet and that the remote server is online.]]></text>\r\n"
-                L"			<text placement=\"attribution\"><![CDATA[ExplorerPatcher]]></text>\r\n"
-                L"		</binding>\r\n"
-                L"	</visual>\r\n"
-                L"	<audio src=\"ms-winsoundevent:Notification.Default\" loop=\"false\" silent=\"false\"/>\r\n"
-                L"</toast>\r\n";
+            title[0] = 0; body[0] = 0;
+            if (bFail)
+            {
+                LoadStringW(hEPGui, IDS_UPDATES_CHECKFAILED_T, title, ARRAYSIZE(title));
+                LoadStringW(hEPGui, IDS_UPDATES_CHECKFAILED_B, body, ARRAYSIZE(body));
+            }
+            else
+            {
+                LoadStringW(hEPGui, IDS_UPDATES_ISLATEST_T, title, ARRAYSIZE(title));
+                LoadStringW(hEPGui, IDS_UPDATES_ISLATEST_B, body, ARRAYSIZE(body));
+            }
+
+            swprintf_s(buf, TOAST_BUFSIZ, text, _T(UPDATES_RELEASE_INFO_URL), L"short", title, body);
+
             __x_ABI_CWindows_CData_CXml_CDom_CIXmlDocument* inputXml = NULL;
             String2IXMLDocument(
-                bFail ? text2 : text,
-                wcslen(bFail ? text2 : text),
+                buf,
+                wcslen(buf),
                 &inputXml,
                 NULL
             );
@@ -1216,6 +1212,13 @@ BOOL InstallUpdatesIfAvailable(
                 inputXml->lpVtbl->Release(inputXml);
             }
         }
-        return FALSE;
+        bReturnValue = FALSE;
     }
+
+    if (hEPGui)
+    {
+        FreeLibrary(hEPGui);
+    }
+
+    return bReturnValue;
 }

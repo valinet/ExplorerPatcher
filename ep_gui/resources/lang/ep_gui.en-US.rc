@@ -5,6 +5,29 @@ LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 
 STRINGTABLE
 BEGIN
+    IDS_UPDATES_CHECKING_T      "Checking for updates…"
+    IDS_UPDATES_AVAILABLE_T     "Version %d.%d.%d.%d is available"
+    IDS_UPDATES_AVAILABLE_T_U   "New version available"
+    IDS_UPDATES_AVAILABLE_B     "You can update by right clicking the taskbar, choosing ""Properties"", then ""Updates"". Click here to learn more about this update."
+    IDS_UPDATES_ISLATEST_T      "No updates are available"
+    IDS_UPDATES_ISLATEST_B      "Please check back later."
+    IDS_UPDATES_CHECKFAILED_T   "Unable to check for updates"
+    IDS_UPDATES_CHECKFAILED_B   "Make sure that you are connected to the Internet and that the remote server is online."
+    IDS_UPDATES_DOWNLOADING_T   "Downloading and installing updates…"
+    IDS_UPDATES_SUCCESS_T       "Update successful"
+    IDS_UPDATES_DLFAILED_T      "Update failed"
+    IDS_UPDATES_DLFAILED_B      "The request was declined or an error has occured when attempting to install this update."
+    IDS_UPDATES_INSTALLEDVER    "Installed version: %d.%d.%d.%d"
+
+    IDS_SYM_DL_T                "Downloading symbols for OS build %s, please wait…"
+    IDS_SYM_DL_B                "This may take several minutes. For now, ExplorerPatcher may have limited and/or broken functionality. Click here to learn more about symbols."
+    IDS_SYM_SUCCESS_T           "Successfully downloaded symbols for OS build %s"
+    IDS_SYM_SUCCESS_B           "Please restart File Explorer to restore proper functionality."
+    IDS_SYM_FAILEDSOME_T        "Downloaded some symbols for OS build %s"
+    IDS_SYM_FAILEDSOME_B        "Some other symbols could not be downloaded. This may be due to the current OS build being too recent or the Internet connection being unstable."
+    IDS_SYM_FAILEDALL_T         "Failed to download symbols for OS build %s"
+    IDS_SYM_FAILEDALL_B         "No symbols could be downloaded for this build. This may be due to the current OS build being too recent or the Internet connection being unavailable or unstable."
+
     IDS_CRASH_TITLE             "Unfortunately, File Explorer is crashing :("
     IDS_CRASH_BODY              "It seems that File Explorer closed unexpectedly %1$s in less than %2$d seconds each time when starting up. This might indicate a problem caused by ExplorerPatcher, which might be unaware of recent changes in Windows, for example when running on a new OS build.\nHere are a few recommendations:\n• If an updated version is available, you can <A HREF=""%3$s"">update ExplorerPatcher and restart File Explorer</A>.\n• On GitHub, you can <A HREF=""%4$s"">view releases</A>, <A HREF=""%5$s"">check the current status</A>, <A HREF=""%6$s"">discuss</A> or <A HREF=""%7$s"">review the latest issues</A>.\n• If you suspect this is not caused by ExplorerPatcher, please uninstall any recently installed shell extensions or similar utilities.\n• If no fix is available for the time being, you can <A HREF=""%8$s"">uninstall ExplorerPatcher</A>, and then later reinstall it when a fix is published on GitHub. Rest assured, even if you uninstall, your program configuration will be preserved.\n\nI am sorry for the inconvenience this might cause; I am doing my best to try to keep this program updated and working.\n\nExplorerPatcher is disabled until the next File Explorer restart, in order to allow you to perform maintenance tasks and take the necessary actions."
     IDS_CRASH_ONCE              "once"

@@ -95,13 +95,13 @@
     <ClInclude Include="GUI.h" />
     <!--<ClInclude Include="GUI2.h" />-->
     <ClInclude Include="pch.h" />
-    <ClInclude Include="resources\EPCrashMessageResources.h" />
     <ClInclude Include="resources\EPSettingsResources.h" />
+    <ClInclude Include="resources\EPSharedResources.h" />
     <ClInclude Include="resources\resource.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="resources\ep_gui.rc" />
-    <ResourceCompile Include="resources\lang\ep_gui.en-US.rc" />
+    <ResourceCompile Include="resources\lang\ep_gui.*.rc" />
     <ResourceCompile Include="..\ExplorerPatcher-L10N\resources\lang\ep_gui.*.rc" Condition="Exists('..\ExplorerPatcher-L10N\resources\lang')" />
   </ItemGroup>
   <ItemGroup>

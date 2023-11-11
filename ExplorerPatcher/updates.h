@@ -6,6 +6,7 @@
 #pragma comment(lib, "Wininet.lib")
 #include <shlobj_core.h>
 #include "utility.h"
+#include "../ep_gui/resources/EPSharedResources.h"
 
 extern HMODULE hModule;
 

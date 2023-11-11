@@ -6,6 +6,7 @@
 #include <valinet/utility/osversion.h>
 #include <roapi.h>
 #include "utility.h"
+#include "../ep_gui/resources/EPSharedResources.h"
 
 #define EXIT_CODE_EXPLORER 1
 

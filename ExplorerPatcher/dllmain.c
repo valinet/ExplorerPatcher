@@ -51,7 +51,6 @@ RTL_OSVERSIONINFOW global_rovi;
 DWORD32 global_ubr;
 #endif
 #include <featurestagingapi.h>
-#include "../ep_gui/resources/EPCrashMessageResources.h"
 
 #define WINX_ADJUST_X 5
 #define WINX_ADJUST_Y 5
@@ -200,6 +199,7 @@ BOOL g_bIsDesktopRaised = FALSE;
 
 #include "utility.h"
 #include "resource.h"
+#include "../ep_gui/resources/EPSharedResources.h"
 #ifdef USE_PRIVATE_INTERFACES
 #include "ep_private.h"
 #endif
@@ -11183,11 +11183,7 @@ DWORD InformUserAboutCrash(LPVOID unused)
     CrashCounterSettings cfg;
     GetCrashCounterSettings(&cfg);
 
-    wchar_t epGuiPath[MAX_PATH];
-    ZeroMemory(epGuiPath, sizeof(epGuiPath));
-    SHGetFolderPathW(NULL, SPECIAL_FOLDER, NULL, SHGFP_TYPE_CURRENT, epGuiPath);
-    wcscat_s(epGuiPath, MAX_PATH, _T(APP_RELATIVE_PATH) L"\\ep_gui.dll");
-    HMODULE hEPGui = LoadLibraryExW(epGuiPath, NULL, LOAD_LIBRARY_AS_DATAFILE);
+    HMODULE hEPGui = LoadGuiModule();
     if (!hEPGui)
     {
         return 0; // Can't load the strings, nothing to display
