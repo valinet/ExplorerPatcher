@@ -2,6 +2,34 @@
 
 This document includes the same release notes as in the [Releases](https://github.com/valinet/ExplorerPatcher/releases) section on GitHub.
 
+## 22621.2506.60
+
+Tested on OS builds 22000.2416, 22621.2361, 22621.2506, and 23585.1001.
+
+#### Details
+
+##### 1
+
+* Taskbar10: Partially fixed Windows 11 Start menu and Search positioning on builds 23545+ (Dev). (ac268b1)
+  * Changing the taskbar alignment requires restarting `explorer.exe` in order to take effect.
+* File Explorer: Added option to disable the modern navigation bar of Moment 4. (2dc1340)
+* File Explorer: Restored "Apply Mica" functionality on OS builds 22621+. (f62c532)
+* Localization: Officially added Japanese translations. (Thanks @creeper-0910, @reindex-ot, and @Rukoto!)
+* GUI: Decoupled the Properties window into `ep_gui.dll` from the main DLL in order to reduce the main DLL size and to allow scalable localization. (f6f6d89, 639d7aa)
+  * `rundll32 C:\Windows\dxgi.dll,ZZGUI` will continue to work as before.
+
+#### ⚠️ Important notice for translators ⚠️
+
+In this update, most if not all user-facing parts of ExplorerPatcher have been made localizable.
+
+* The English texts have been put together into [here](https://github.com/valinet/ExplorerPatcher/tree/master/ep_gui/resources/lang) and [here](https://github.com/valinet/ExplorerPatcher/tree/master/ep_setup/resources/lang).
+* Non-English texts have been designed to be put into [this separate repository](https://github.com/valinet/ExplorerPatcher-L10N). Feel free to make a PR there if you want to contribute to translations.
+* Some texts have been updated to be more concise and accurate, so for existing translation fork maintainers, please double check the translations before making a PR to the said repository.
+* Also for translation fork maintainers, a large number of conflicts will happen if you decide to continue merging changes from the main repository.
+* Please let us know through Issues if there are still user-facing parts of ExplorerPatcher that are not localizable.
+
+We apologize for the additional work that this change might cause. We hope that this one-time change will make it easier for translators to localize ExplorerPatcher and also easier for both translators and users to keep ExplorerPatcher up to date.
+
 ## 22621.2428.59
 
 Tested on OS builds 22000.2416, 22621.2428, 23555.1000, and 23560.1000.

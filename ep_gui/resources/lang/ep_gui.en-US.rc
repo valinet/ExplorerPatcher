@@ -421,7 +421,7 @@ BEGIN
     IDS_ABOUT_OS                "Running on %s, OS Build %d.%d."
     IDS_ABOUT_GITHUB            "Visit project GitHub"
     IDS_ABOUT_WEBSITE           "Visit web site"
-    IDS_ABOUT_DONATE            "Donate (using PayPal)"
+    IDS_ABOUT_DONATE            "Donate"
     IDS_ABOUT_FAQ               "Frequently Asked Questions"
     IDS_ABOUT_SETTINGS          "Learn more managing these settings"
     IDS_ABOUT_IMPORT            "Import settings"

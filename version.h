@@ -1,6 +1,6 @@
 #define VER_MAJOR 22621
-#define VER_MINOR 2428
-#define VER_BUILD_HI    59
+#define VER_MINOR 2506
+#define VER_BUILD_HI    60
 #define VER_BUILD_LO 1
 #define VER_FLAGS   VS_FF_PRERELEASE
 
