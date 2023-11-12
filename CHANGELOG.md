@@ -14,7 +14,9 @@ Tested on OS builds 22000.2416, 22621.2361, 22621.2506, and 23585.1001.
   * Changing the taskbar alignment requires restarting `explorer.exe` in order to take effect.
 * File Explorer: Added option to disable the modern navigation bar of Moment 4. (2dc1340)
 * File Explorer: Restored "Apply Mica" functionality on OS builds 22621+. (f62c532)
-* Localization: Officially added Japanese translations. (Thanks @creeper-0910, @reindex-ot, and @Rukoto!)
+* Localization: Officially added translations for the following languages:
+  * Chinese, Simplified (Thanks @zetaloop!)
+  * Japanese (Thanks @creeper-0910, @reindex-ot, and @Rukoto!)
 * GUI: Decoupled the Properties window into `ep_gui.dll` from the main DLL in order to reduce the main DLL size and to allow scalable localization. (f6f6d89, 639d7aa)
   * `rundll32 C:\Windows\dxgi.dll,ZZGUI` will continue to work as before.
 

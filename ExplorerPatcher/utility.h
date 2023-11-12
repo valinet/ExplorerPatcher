@@ -24,6 +24,7 @@
 #include <activscp.h>
 #include <netlistmgr.h>
 #include <Psapi.h>
+#include <stdbool.h>
 
 #include "def.h"
 
@@ -367,17 +368,15 @@ BOOL(WINAPI* SetWindowBand)(HWND hWnd, HWND hwndInsertAfter, DWORD dwBand);
 
 INT64(*SetWindowCompositionAttribute)(HWND, void*);
 
-static void(*SetPreferredAppMode)(INT64 bAllowDark);
+static void(*SetPreferredAppMode)(bool bAllowDark);
 
-static void(*AllowDarkModeForWindow)(HWND hWnd, INT64 bAllowDark);
+static void(*AllowDarkModeForWindow)(HWND hWnd, bool bAllowDark);
 
-static BOOL(*ShouldAppsUseDarkMode)();
+static bool(*ShouldAppsUseDarkMode)();
 
-static BOOL(*ShouldSystemUseDarkMode)();
+static bool(*ShouldSystemUseDarkMode)();
 
 static void(*GetThemeName)(void*, void*, void*);
-
-static BOOL AppsShouldUseDarkMode() { return TRUE; }
 
 void* ReadFromFile(wchar_t* wszFileName, DWORD* dwSize);
 

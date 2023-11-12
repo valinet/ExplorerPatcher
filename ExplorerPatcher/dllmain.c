@@ -3906,7 +3906,7 @@ HWND WINAPI explorerframe_SHCreateWorkerWindowHook(
         {
             SetWindowSubclass(hWndParent, HideExplorerSearchBarSubClass, HideExplorerSearchBarSubClass, 0);
         }
-        if (bIsExplorerProcess && dwFileExplorerCommandUI != 0 && IsWindows11Version22H2OrHigher())
+        if (bIsExplorerProcess && (dwFileExplorerCommandUI == 1 || dwFileExplorerCommandUI == 2 || dwFileExplorerCommandUI == 3) && IsWindows11Version22H2OrHigher())
         {
             // Fix initial title bar style after disabling TIFE
             // If we don't do this, it will only fix itself once the user changes the system color scheme or toggling transparency effects
@@ -3917,8 +3917,8 @@ HWND WINAPI explorerframe_SHCreateWorkerWindowHook(
             }
             if (ShouldAppsUseDarkMode)
             {
-                BOOL value = ShouldAppsUseDarkMode();
-                DwmSetWindowAttribute(hWndParent, DWMWA_USE_IMMERSIVE_DARK_MODE, &value, sizeof(BOOL));
+                BOOL bDarkMode = ShouldAppsUseDarkMode() && !IsHighContrast();
+                DwmSetWindowAttribute(hWndParent, DWMWA_USE_IMMERSIVE_DARK_MODE, &bDarkMode, sizeof(BOOL));
             }
         }
     }
