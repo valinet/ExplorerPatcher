@@ -11,6 +11,13 @@
 #define IDR_EP_STARTMENU                108
 #define IDR_EP_GUI                      109
 
+#define IDS_SETUP_UNINSTALL_PROMPT      301
+#define IDS_SETUP_INSTALL_LOGOFF        302
+#define IDS_SETUP_UNINSTALL_LOGOFF      303
+#define IDS_SETUP_UNINSTALL_RESTART     304
+#define IDS_SETUP_UNINSTALL_FINISH      305
+#define IDS_SETUP_FAILED                306
+
 
 // Next default values for new objects
 // 

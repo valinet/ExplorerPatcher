@@ -546,12 +546,10 @@ int WINAPI wWinMain(
     bIsUpdate = (argc >= 1 && !_wcsicmp(wargv[0], L"/update_silent"));
     if (!bInstall && (!_wcsicmp(wargv[0], L"/uninstall") || bForcePromptForUninstall))
     {
-        if (MessageBoxW(
-            NULL,
-            L"Are you sure you want to remove " _T(PRODUCT_NAME) L" from your computer?",
-            _T(PRODUCT_NAME),
-            MB_YESNO | MB_DEFBUTTON2 | MB_ICONQUESTION
-        ) == IDNO)
+        wchar_t mbText[256];
+        mbText[0] = 0;
+        LoadStringW(hInstance, IDS_SETUP_UNINSTALL_PROMPT, mbText, ARRAYSIZE(mbText));
+        if (MessageBoxW(NULL, mbText, _T(PRODUCT_NAME), MB_YESNO | MB_DEFBUTTON2 | MB_ICONQUESTION) == IDNO)
         {
             exit(0);
         }
@@ -581,13 +579,10 @@ int WINAPI wWinMain(
     RegGetValueW(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Shell\\Update\\Packages", L"UndockingDisabled", RRF_RT_DWORD, NULL, &bIsUndockingDisabled, &dwSize);
     if (bIsUndockingDisabled)
     {
-        if (MessageBoxW(
-            NULL,
-            bInstall ? L"In order to install, you will be automatically signed out of Windows. The software will be ready for use when you sign back in.\n\nDo you want to continue?"
-                     : L"To complete the uninstallation, you will be automatically signed out of Windows.\n\nDo you want to continue?",
-            _T(PRODUCT_NAME),
-            MB_YESNO | MB_DEFBUTTON1 | MB_ICONQUESTION
-        ) == IDYES)
+        wchar_t mbText[256];
+        mbText[0] = 0;
+        LoadStringW(hInstance, bInstall ? IDS_SETUP_INSTALL_LOGOFF : IDS_SETUP_UNINSTALL_LOGOFF, mbText, ARRAYSIZE(mbText));
+        if (MessageBoxW(NULL, mbText, _T(PRODUCT_NAME), MB_YESNO | MB_DEFBUTTON1 | MB_ICONQUESTION) == IDYES)
         {
             RegDeleteKeyValueW(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Shell\\Update\\Packages", L"UndockingDisabled");
         }
@@ -1179,26 +1174,20 @@ int WINAPI wWinMain(
         {
             if (!bInstall)
             {
+                wchar_t mbText[256];
+                mbText[0] = 0;
                 if (bWasShellExt)
                 {
-                    if (MessageBoxW(
-                        NULL,
-                        L"Please reboot the computer to complete the uninstall.\n\nDo you want to reboot now?",
-                        _T(PRODUCT_NAME),
-                        MB_YESNO | MB_DEFBUTTON1 | MB_ICONQUESTION
-                    ) == IDYES)
+                    LoadStringW(hInstance, IDS_SETUP_UNINSTALL_RESTART, mbText, ARRAYSIZE(mbText));
+                    if (MessageBoxW(NULL, mbText, _T(PRODUCT_NAME), MB_YESNO | MB_DEFBUTTON1 | MB_ICONQUESTION) == IDYES)
                     {
                         SystemShutdown(TRUE);
                     }
                 }
                 else
                 {
-                    MessageBoxW(
-                        NULL,
-                        L"Uninstall completed. Thank you for using " _T(PRODUCT_NAME) L".",
-                        _T(PRODUCT_NAME),
-                        MB_ICONASTERISK | MB_OK | MB_DEFBUTTON1
-                    );
+                    LoadStringW(hInstance, IDS_SETUP_UNINSTALL_FINISH, mbText, ARRAYSIZE(mbText));
+                    MessageBoxW(NULL, mbText, _T(PRODUCT_NAME), MB_ICONASTERISK | MB_OK | MB_DEFBUTTON1);
                 }
             }
             else
@@ -1242,19 +1231,10 @@ int WINAPI wWinMain(
         }
         if (!bOk) //  && !(argc >= 1 && !_wcsicmp(wargv[0], L"/update_silent"))
         {
-            MessageBoxW(
-                NULL,
-                L"An error has occurred while servicing this product.\n"
-                L"This is most likely caused by one or more of the backup files from a previous update still being in use. "
-                L"Unlocking the files should fix this issue.\n\n"
-                L"Troubleshooting steps:\n"
-                L"* Close and reopen the \"Properties\" dialog if it is currently open.\n"
-                L"* Kill and restart all \"explorer.exe\" processes.\n"
-                L"* If you have registered this application as a shell extension, then restarting the computer will probably fix this.\n"
-                L"* Lastly, reboot the computer and try again.",
-                _T(PRODUCT_NAME),
-                MB_ICONERROR | MB_OK | MB_DEFBUTTON1
-            );
+            wchar_t mbText[1024];
+            mbText[0] = 0;
+            LoadStringW(hInstance, IDS_SETUP_FAILED, mbText, ARRAYSIZE(mbText));
+            MessageBoxW(NULL, mbText, _T(PRODUCT_NAME), MB_ICONERROR | MB_OK | MB_DEFBUTTON1);
         }
         if (bOk && bIsUndockingDisabled)
         {

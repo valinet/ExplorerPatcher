@@ -1913,7 +1913,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                         GUI_Build(0, hwnd, pt);
                                         fclose(AuditFile);
                                         AuditFile = NULL;
-                                        wchar_t mbText[128];
+                                        wchar_t mbText[256];
                                         mbText[0] = 0;
                                         LoadStringW(hModule, IDS_ABOUT_EXPORT_SUCCESS, mbText, ARRAYSIZE(mbText));
                                         MessageBoxW(hwnd, mbText, GUI_title, MB_ICONINFORMATION);

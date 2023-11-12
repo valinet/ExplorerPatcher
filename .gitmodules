@@ -13,3 +13,6 @@
 [submodule "ep_dwm"]
 	path = ep_dwm
 	url = https://github.com/valinet/ep_dwm
+[submodule "ExplorerPatcher-L10N"]
+	path = ExplorerPatcher-L10N
+	url = https://github.com/valinet/ExplorerPatcher-L10N
