@@ -5,7 +5,7 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #include <stdio.h>
 #include <Shlwapi.h>
 #pragma comment(lib, "Shlwapi.lib")
-#include "resource.h"
+#include "resources/resource.h"
 #include "../ExplorerPatcher/utility.h"
 
 BOOL ShouldDownloadOrDelete(BOOL bInstall, HINSTANCE hInstance, LPCWSTR wszPath, LPCSTR chash)

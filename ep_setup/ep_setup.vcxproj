@@ -156,7 +156,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\ExplorerPatcher\utility.h" />
-    <ClInclude Include="resource.h" />
+    <ClInclude Include="resources\resource.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="resources\ep_setup.rc">
