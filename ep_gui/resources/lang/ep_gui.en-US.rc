@@ -153,10 +153,7 @@ BEGIN
     IDS_EXP_TITLEBAR_1          "Hide title, show icon"
     IDS_EXP_TITLEBAR_2          "Hide icon, show title"
     IDS_EXP_TITLEBAR_3          "Hide icon and title"
-    IDS_EXP_MICA                "Apply Mica effect on these areas"
-    IDS_EXP_MICA_0              "Let File Explorer decide (default)"
-    IDS_EXP_MICA_1              "Title bar, command bar and navigation bar"
-    IDS_EXP_MICA_2              "Nowhere"
+    IDS_EXP_MICA                "Apply Mica effect to the navigation bar of Windows 7 Explorer windows"
 
     IDS_START                   "Start menu"
 

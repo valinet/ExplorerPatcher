@@ -467,7 +467,8 @@ LSTATUS GUI_Internal_RegSetValueExW(
     }
     else if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_FileExplorerCommandUI"))
     {
-        if (!*(DWORD*)lpData)
+        DWORD dwValue = *(DWORD*)lpData;
+        if (dwValue == 0 || dwValue == 3 || dwValue == 4) // This no longer has any effect on 22H2
         {
             RegDeleteTreeW(HKEY_CURRENT_USER, L"SOFTWARE\\Classes\\CLSID\\{d93ed569-3b3e-4bff-8355-3c44f6a52bb5}");
         }
@@ -724,12 +725,12 @@ LSTATUS GUI_Internal_RegQueryValueExW(
     }
     else if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_FileExplorerCommandUI"))
     {
-        if (RegGetValueW(HKEY_CURRENT_USER, L"SOFTWARE\\Classes\\CLSID\\{d93ed569-3b3e-4bff-8355-3c44f6a52bb5}\\InProcServer32", L"", RRF_RT_REG_SZ, NULL, NULL, NULL) != ERROR_SUCCESS)
+        /*if (RegGetValueW(HKEY_CURRENT_USER, L"SOFTWARE\\Classes\\CLSID\\{d93ed569-3b3e-4bff-8355-3c44f6a52bb5}\\InProcServer32", L"", RRF_RT_REG_SZ, NULL, NULL, NULL) != ERROR_SUCCESS)
         {
             *lpcbData = sizeof(DWORD);
             *(DWORD*)lpData = 0;
             return ERROR_SUCCESS;
-        }
+        }*/
         return RegQueryValueExW(hKey, L"FileExplorerCommandUI", lpReserved, lpType, lpData, lpcbData);
     }
     else if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_RegisterAsShellExtension"))

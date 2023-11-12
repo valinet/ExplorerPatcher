@@ -3898,7 +3898,7 @@ HWND WINAPI explorerframe_SHCreateWorkerWindowHook(
         {
             SetWindowSubclass(hWndParent, HideIconAndTitleInExplorerSubClass, HideIconAndTitleInExplorerSubClass, 0);
         }
-        if (bMicaEffectOnTitlebar)
+        if ((!bIsExplorerProcess || dwFileExplorerCommandUI == 2) && bMicaEffectOnTitlebar)
         {
             SetWindowSubclass(result, ExplorerMicaTitlebarSubclassProc, ExplorerMicaTitlebarSubclassProc, bMicaEffectOnTitlebar);
         }
@@ -3906,12 +3906,20 @@ HWND WINAPI explorerframe_SHCreateWorkerWindowHook(
         {
             SetWindowSubclass(hWndParent, HideExplorerSearchBarSubClass, HideExplorerSearchBarSubClass, 0);
         }
-        if (IsWindows11Version22H2OrHigher())
+        if (bIsExplorerProcess && dwFileExplorerCommandUI != 0 && IsWindows11Version22H2OrHigher())
         {
             // Fix initial title bar style after disabling TIFE
             // If we don't do this, it will only fix itself once the user changes the system color scheme or toggling transparency effects
-            BOOL value = ShouldAppsUseDarkMode();
-            DwmSetWindowAttribute(hWndParent, DWMWA_USE_IMMERSIVE_DARK_MODE, &value, sizeof(BOOL));
+            if (!ShouldAppsUseDarkMode)
+            {
+                HANDLE hUxtheme = LoadLibraryW(L"uxtheme.dll");
+                ShouldAppsUseDarkMode = GetProcAddress(hUxtheme, (LPCSTR)0x84);
+            }
+            if (ShouldAppsUseDarkMode)
+            {
+                BOOL value = ShouldAppsUseDarkMode();
+                DwmSetWindowAttribute(hWndParent, DWMWA_USE_IMMERSIVE_DARK_MODE, &value, sizeof(BOOL));
+            }
         }
     }
     return result;

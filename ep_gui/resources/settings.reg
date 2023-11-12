@@ -207,41 +207,38 @@
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;c 4 %R:1209% *
 ;x 0 %R:1210%
-;x 4 %R:1230%
-;x 1 %R:1212%
-;x 2 %R:1213%
+;x 4 %R:1212%
+;x 1 %R:1214%
+;x 2 %R:1215%
 ;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_FileExplorerCommandUI"=dword:00000000
-;t %R:1214%
+;t %R:1216%
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
-;i %R:1215% **
+;i %R:1217% **
 "DisableImmersiveContextMenu"=dword:00000000
 [-HKEY_CURRENT_USER\Software\Classes\CLSID\{056440FD-8568-48e7-A632-72157243B55B}\InprocServer32]
-;d %R:1216% **
+;d %R:1218% **
 @=""
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
-;b %R:1217%
+;b %R:1219%
 ;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_DisableModernSearchBar"=dword:00000000
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
-;b %R:1218% **
+;b %R:1220% **
 "ShrinkExplorerAddressBar"=dword:00000000
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
-;b %R:1219% **
+;b %R:1221% **
 "HideExplorerSearchBar"=dword:00000000
 ;s Explorer_TitlebarSection !IsWindows11Version22H2OrHigher
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
-;c 4 %R:1220%
-;x 0 %R:1221%
-;x 1 %R:1222%
-;x 2 %R:1223%
-;x 3 %R:1224%
+;c 4 %R:1222%
+;x 0 %R:1223%
+;x 1 %R:1224%
+;x 2 %R:1225%
+;x 3 %R:1226%
 "HideIconAndTitleInExplorer"=dword:00000000
-[HKEY_CURRENT_USER\Software\ExplorerPatcher]
-;c 3 %R:1225%
-;x 0 %R:1226%
-;x 1 %R:1227%
-;x 2 %R:1228%
-"MicaEffectOnTitlebar"=dword:00000000
 ;g Explorer_TitlebarSection
+[HKEY_CURRENT_USER\Software\ExplorerPatcher]
+;b %R:1227% **
+"MicaEffectOnTitlebar"=dword:00000000
 
 
 

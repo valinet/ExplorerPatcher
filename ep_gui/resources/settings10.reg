@@ -151,24 +151,24 @@
 "UseClassicDriveGrouping"=dword:00000000
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;c 2 %R:1209%
-;x 0 %R:1211%
-;x 2 %R:1213%
+;x 0 %R:1213%
+;x 2 %R:1215%
 "FileExplorerCommandUI"=dword:00000000
-;t %R:1214%
+;t %R:1216%
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
-;i %R:1215% **
+;i %R:1217% **
 "DisableImmersiveContextMenu"=dword:00000000
 [-HKEY_CURRENT_USER\Software\Classes\CLSID\{056440FD-8568-48e7-A632-72157243B55B}\InprocServer32]
-;d %R:1216% **
+;d %R:1218% **
 @=""
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
-;b %R:1217%
+;b %R:1219%
 ;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_DisableModernSearchBar"=dword:00000000
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
-;b %R:1218% **
+;b %R:1220% **
 "ShrinkExplorerAddressBar"=dword:00000000
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
-;b %R:1219% **
+;b %R:1221% **
 "HideExplorerSearchBar"=dword:00000000
 ;p 2
 ;b Mica effect on title bar
