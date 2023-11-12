@@ -140,6 +140,8 @@ BEGIN
     IDS_EXP_CTRLINTF_0_W10      "Windows 10 Ribbon (default)"
     IDS_EXP_CTRLINTF_1_W11      "Windows 10 Ribbon"
     IDS_EXP_CTRLINTF_2          "Windows 7 Command Bar"
+    IDS_EXP_CTRLINTF_3          "Windows 11 Command Bar (no Tabs, classic Address Bar)"
+    IDS_EXP_CTRLINTF_4          "Windows 11 Command Bar (classic Address Bar)"
     IDS_EXP_NEWWINDOWS          "The following settings take effect on newly created File Explorer windows:"
     IDS_EXP_IMMERSIVEMENUS      "Use immersive menus when displaying Windows 10 context menus"
     IDS_EXP_DISABLENAVBAR       "Disable navigation bar"

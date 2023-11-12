@@ -3877,7 +3877,7 @@ HWND WINAPI explorerframe_SHCreateWorkerWindowHook(
         KEY_READ | KEY_WOW64_64KEY,
         NULL,
         (LPDWORD)(&dwSize)
-    ) == ERROR_SUCCESS && (dwSize < 4) && dwExStyle == 0x10000 && dwStyle == 1174405120)
+    ) == ERROR_SUCCESS && (dwSize < 4) && dwExStyle == 0x10000 && dwStyle == 0x46000000)
     {
         result = 0;
     }
@@ -3905,6 +3905,13 @@ HWND WINAPI explorerframe_SHCreateWorkerWindowHook(
         if (bHideExplorerSearchBar)
         {
             SetWindowSubclass(hWndParent, HideExplorerSearchBarSubClass, HideExplorerSearchBarSubClass, 0);
+        }
+        if (IsWindows11Version22H2OrHigher())
+        {
+            // Fix initial title bar style after disabling TIFE
+            // If we don't do this, it will only fix itself once the user changes the system color scheme or toggling transparency effects
+            BOOL value = ShouldAppsUseDarkMode();
+            DwmSetWindowAttribute(hWndParent, DWMWA_USE_IMMERSIVE_DARK_MODE, &value, sizeof(BOOL));
         }
     }
     return result;
@@ -8606,7 +8613,7 @@ DEFINE_GUID(IID_UIRibbonFramework,
 
 HRESULT ExplorerFrame_CoCreateInstanceHook(REFCLSID rclsid, LPUNKNOWN pUnkOuter, DWORD dwClsContext, REFIID riid, LPVOID* ppv)
 {
-    if (dwFileExplorerCommandUI != 0 && IsEqualCLSID(rclsid, &CLSID_XamlIslandViewAdapter))
+    if (dwFileExplorerCommandUI != 0 && dwFileExplorerCommandUI != 3 && dwFileExplorerCommandUI != 4 && IsEqualCLSID(rclsid, &CLSID_XamlIslandViewAdapter))
     {
         return REGDB_E_CLASSNOTREG;
     }
@@ -9653,10 +9660,22 @@ int RtlQueryFeatureConfigurationHook(UINT32 featureId, int sectionType, INT64* c
             break;
         }
 #endif
-#if 1
+        case 37634385: // TIFE "Tabs in File Explorer"
+        {
+            if (dwFileExplorerCommandUI == 1     // Windows 10 Ribbon     <-- fixes saving of window position and size
+                || dwFileExplorerCommandUI == 2  // Windows 7 Command Bar <-- fixes menu bar behavior
+                || dwFileExplorerCommandUI == 3) // Windows 11 Command Bar (no Tabs, classic Address Bar) <-- provides option to disable tabs in File Explorer
+            {
+                // Removed in 23575.1000+
+                buffer->enabledState = FEATURE_ENABLED_STATE_DISABLED;
+            }
+            break;
+        }
         case 40729001: // WASDKInFileExplorer
         {
-            if (dwFileExplorerCommandUI != 0)
+            if (dwFileExplorerCommandUI == 1     // Windows 10 Ribbon     <-- fixes crashing when navigating back to a WASDK view
+                || dwFileExplorerCommandUI == 2  // Windows 7 Command Bar <-- ditto
+                || dwFileExplorerCommandUI == 3) // Windows 11 Command Bar (no Tabs, classic Address Bar) <-- fixes crashing when opening an Explorer window
             {
                 // Disable the new Windows App SDK views (in Home and Gallery) when not using the Windows 11 command bar
                 //
@@ -9673,7 +9692,16 @@ int RtlQueryFeatureConfigurationHook(UINT32 featureId, int sectionType, INT64* c
             }
             break;
         }
-#endif
+        case 40950262: // FEMNB "File Explorer Modern Navigation Bar"
+        {
+            if (dwFileExplorerCommandUI == 3     // Windows 11 Command Bar (no Tabs, classic Address Bar)
+                || dwFileExplorerCommandUI == 4) // Windows 11 Command Bar (classic Address Bar)
+            {
+                // Option to disable the new navigation bar
+                buffer->enabledState = FEATURE_ENABLED_STATE_DISABLED;
+            }
+            break;
+        }
 #if 0
         case 42952021: // CategorySpecificXamlExtensions
         {

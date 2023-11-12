@@ -205,8 +205,9 @@
 ;b %R:1208%
 "UseClassicDriveGrouping"=dword:00000000
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
-;c 3 %R:1209% *
+;c 4 %R:1209% *
 ;x 0 %R:1210%
+;x 4 %R:1230%
 ;x 1 %R:1212%
 ;x 2 %R:1213%
 ;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_FileExplorerCommandUI"=dword:00000000
