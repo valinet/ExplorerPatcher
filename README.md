@@ -4,6 +4,10 @@
 
 This project aims to enhance the working environment on Windows.
 
-PayPal donations: [here](https://www.paypal.com/donate?business=valentingabrielradu%40gmail.com&no_recurring=0&item_name=ExplorerPatcher&currency_code=EUR) or using e-mail address valentingabrielradu@gmail.com
+## Donate
+
+If you find this project essential to your daily life, please consider donating to support the development through the
+[Sponsor](#sponsor-button) button at the top of this page, so that we can continue to keep supporting newer Windows
+builds.
 
 [Read more](https://github.com/valinet/ExplorerPatcher/wiki)
