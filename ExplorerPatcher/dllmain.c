@@ -1917,6 +1917,43 @@ DWORD FixTaskbarAutohide(DWORD unused)
 #pragma endregion
 
 
+#pragma region "Allow enabling XAML sounds"
+void ForceEnableXamlSounds(HMODULE hWindowsUIXaml)
+{
+    MODULEINFO mi;
+    if (!hWindowsUIXaml || !GetModuleInformation(GetCurrentProcess(), hWindowsUIXaml, &mi, sizeof(MODULEINFO)))
+        return;
+
+    // Patch DirectUI::ElementSoundPlayerService::ShouldPlaySound() to disregard XboxUtility::IsOnXbox() check
+    // 74 ?? 39 59 ?? 75 ?? E8 ?? ?? ?? ?? 84 C0 75
+    //                                           ^^ change jnz to jmp
+    PBYTE match = FindPattern(
+        mi.lpBaseOfDll,
+        mi.SizeOfImage,
+        "\x74\x00\x39\x59\x00\x75\x00\xE8\x00\x00\x00\x00\x84\xC0\x75",
+        "x?xx?x?x????xxx"
+    );
+    if (match)
+    {
+        PBYTE jnz = match + 14;
+        DWORD flOldProtect = 0;
+        if (VirtualProtect(jnz, 1, PAGE_EXECUTE_READWRITE, &flOldProtect))
+        {
+            *jnz = 0xEB;
+            VirtualProtect(jnz, 1, flOldProtect, &flOldProtect);
+        }
+    }
+}
+
+BOOL IsXamlSoundsEnabled()
+{
+    DWORD dwRes = 0, dwSize = sizeof(DWORD);
+    RegGetValueW(HKEY_CURRENT_USER, TEXT(REGPATH_OLD), L"XamlSounds", RRF_RT_DWORD, NULL, &dwRes, &dwSize);
+    return dwRes != 0;
+}
+#pragma endregion
+
+
 #pragma region "EnsureXAML on OS builds 22621+"
 #ifdef _WIN64
 DEFINE_GUID(uuidof_Windows_Internal_Shell_XamlExplorerHost_IXamlApplicationStatics,
@@ -2032,8 +2069,12 @@ HRESULT WINAPI ICoreWindow5_get_DispatcherQueueHook(void* _this, void** ppValue)
 HMODULE __fastcall Windows11v22H2_combase_LoadLibraryExW(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlags)
 {
     HMODULE hModule = LoadLibraryExW(lpLibFileName, hFile, dwFlags);
-    if (hModule && hModule == GetModuleHandleW(L"Windows.Ui.Xaml.dll"))
+    if (hModule && hModule == GetModuleHandleW(L"Windows.UI.Xaml.dll"))
     {
+        if (IsXamlSoundsEnabled())
+        {
+            ForceEnableXamlSounds(hModule);
+        }
         DWORD flOldProtect = 0;
         IActivationFactory* pWindowsXamlManagerFactory = NULL;
         HSTRING_HEADER hstringHeaderWindowsXamlManager;
@@ -2068,6 +2109,16 @@ HMODULE __fastcall Windows11v22H2_combase_LoadLibraryExW(LPCWSTR lpLibFileName, 
             pWindowsXamlManagerFactory->lpVtbl->Release(pWindowsXamlManagerFactory);
         }
         WindowsDeleteString(hstringWindowsXamlManager);
+    }
+    return hModule;
+}
+
+HMODULE __fastcall combase_LoadLibraryExW(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlags)
+{
+    HMODULE hModule = LoadLibraryExW(lpLibFileName, hFile, dwFlags);
+    if (hModule && hModule == GetModuleHandleW(L"Windows.UI.Xaml.dll"))
+    {
+        ForceEnableXamlSounds(hModule);
     }
     return hModule;
 }
@@ -9898,6 +9949,12 @@ DWORD InjectBasicFunctions(BOOL bIsExplorer, BOOL bInstall)
         {
             printf("Failed to hook RtlQueryFeatureConfiguration(). rv = %d\n", rv);
         }
+
+        if (!bIsExplorer && IsXamlSoundsEnabled())
+        {
+            HANDLE hCombase = LoadLibraryW(L"combase.dll");
+            VnPatchIAT(hCombase, "api-ms-win-core-libraryloader-l1-2-0.dll", "LoadLibraryExW", combase_LoadLibraryExW);
+        }
     }
 #endif
 
@@ -12005,9 +12062,9 @@ DWORD Inject(BOOL bIsExplorer)
     printf("Setup twinui.pcshell functions done\n");
 
 
+    HANDLE hCombase = LoadLibraryW(L"combase.dll");
     if (IsWindows11())
     {
-        HANDLE hCombase = LoadLibraryW(L"combase.dll");
         /*if (bOldTaskbar) // TODO Pulled back for now, crashes on 22621.2428
         {
             // Hook RoGetActivationFactory() for old taskbar
@@ -12030,8 +12087,12 @@ DWORD Inject(BOOL bIsExplorer)
             // Fixed a bug that crashed Explorer when a folder window was opened after a first one was closed on OS builds 22621+
             VnPatchIAT(hCombase, "api-ms-win-core-libraryloader-l1-2-0.dll", "LoadLibraryExW", Windows11v22H2_combase_LoadLibraryExW);
         }
-        printf("Setup combase functions done\n");
     }
+    if (!IsWindows11Version22H2OrHigher() && IsXamlSoundsEnabled())
+    {
+        VnPatchIAT(hCombase, "api-ms-win-core-libraryloader-l1-2-0.dll", "LoadLibraryExW", combase_LoadLibraryExW);
+    }
+    printf("Setup combase functions done\n");
 
 
     HANDLE hTwinui = LoadLibraryW(L"twinui.dll");
@@ -14030,6 +14091,13 @@ HRESULT EntryPoint(DWORD dwMethod)
     else if (bIsThisStartMEH)
     {
         InjectStartMenu();
+#ifdef _WIN64
+        if (IsXamlSoundsEnabled())
+        {
+            HMODULE hWindowsUIXaml = LoadLibraryW(L"Windows.UI.Xaml.dll");
+            ForceEnableXamlSounds(hWindowsUIXaml);
+        }
+#endif
         IncrementDLLReferenceCount(hModule);
         bInstanced = TRUE;
     }
@@ -14043,6 +14111,13 @@ HRESULT EntryPoint(DWORD dwMethod)
         {
             InjectShellExperienceHost();
         }
+#ifdef _WIN64
+        if (IsXamlSoundsEnabled())
+        {
+            HMODULE hWindowsUIXaml = LoadLibraryW(L"Windows.UI.Xaml.dll");
+            ForceEnableXamlSounds(hWindowsUIXaml);
+        }
+#endif
         IncrementDLLReferenceCount(hModule);
         bInstanced = TRUE;
     }

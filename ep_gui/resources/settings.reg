@@ -744,6 +744,9 @@
 ;x 8000 %R:1925%
 ;x 10000 %R:1926%
 "ExplorerReadyDelay"=dword:00000000
+[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
+;b %R:1927% *
+"XamlSounds"=dword:00000000
 
 
 

@@ -412,6 +412,7 @@ BEGIN
     IDS_ADV_DELAY_6000          "6 seconds"
     IDS_ADV_DELAY_8000          "8 seconds"
     IDS_ADV_DELAY_10000         "10 seconds"
+    IDS_ADV_XAMLSOUNDS          "Enable UI sounds in Explorer's XAML views"
 
     IDS_ABOUT                   "About"
 
