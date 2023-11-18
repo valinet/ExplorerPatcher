@@ -368,9 +368,9 @@ BOOL(WINAPI* SetWindowBand)(HWND hWnd, HWND hwndInsertAfter, DWORD dwBand);
 
 INT64(*SetWindowCompositionAttribute)(HWND, void*);
 
-static void(*SetPreferredAppMode)(bool bAllowDark);
+static void(*SetPreferredAppMode)(BOOL bAllowDark);
 
-static void(*AllowDarkModeForWindow)(HWND hWnd, bool bAllowDark);
+static void(*AllowDarkModeForWindow)(HWND hWnd, BOOL bAllowDark);
 
 static bool(*ShouldAppsUseDarkMode)();
 

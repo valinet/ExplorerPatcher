@@ -1002,7 +1002,9 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
     DttOpts.crText = g_darkModeEnabled ? GUI_TEXTCOLOR_DARK : GUI_TEXTCOLOR;
     DWORD dwTextFlags = DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS;
     RECT rcText;
-    DWORD dwMaxHeight = 0, dwMaxWidth = (DWORD)(480 * (_this->dpi.x / 96.0));
+    DWORD dwMinWidthDp = 480;
+    if (!wcscmp(wszLanguage, L"nl-NL")) dwMinWidthDp = 600;
+    DWORD dwMaxHeight = 0, dwMaxWidth = (DWORD)(dwMinWidthDp * (_this->dpi.x / 96.0));
     BOOL bTabOrderHit = FALSE;
     DWORD dwLeftPad = _this->padding.left + _this->sidebarWidth + _this->padding.right;
     DWORD dwInitialLeftPad = dwLeftPad;
@@ -3841,11 +3843,11 @@ __declspec(dllexport) int ZZGUI(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLin
     ULONG ulNumLanguages = 0;
     LPCWSTR wszLanguagesBuffer = NULL;
     ULONG cchLanguagesBuffer = 0;
-    if (GetUserPreferredUILanguages(MUI_LANGUAGE_NAME, &ulNumLanguages, NULL, &cchLanguagesBuffer))
+    if (GetThreadPreferredUILanguages(MUI_LANGUAGE_NAME, &ulNumLanguages, NULL, &cchLanguagesBuffer))
     {
         if (wszLanguagesBuffer = malloc(cchLanguagesBuffer * sizeof(WCHAR)))
         {
-            if (GetUserPreferredUILanguages(MUI_LANGUAGE_NAME, &ulNumLanguages, wszLanguagesBuffer, &cchLanguagesBuffer))
+            if (GetThreadPreferredUILanguages(MUI_LANGUAGE_NAME, &ulNumLanguages, wszLanguagesBuffer, &cchLanguagesBuffer))
             {
                 wcscpy_s(wszLanguage, MAX_PATH, wszLanguagesBuffer);
                 bOk = TRUE;

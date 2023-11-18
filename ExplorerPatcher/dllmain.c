@@ -1079,6 +1079,13 @@ HRESULT WINAPI windowsudkshellcommon_SLGetWindowsInformationDWORDHook(PCWSTR pws
     return hr;
 }
 
+static BOOL(*windowsudkshellcommon_TaskbarMultiMonIsEnabledFunc)(void* _this) = NULL;
+
+bool windowsudkshellcommon_TaskbarMultiMonIsEnabledHook(void* _this)
+{
+    return bOldTaskbar ? false : windowsudkshellcommon_TaskbarMultiMonIsEnabledFunc(_this);
+}
+
 #pragma endregion
 
 
@@ -12264,14 +12271,42 @@ DWORD Inject(BOOL bIsExplorer)
         }
 
         HANDLE hWindowsudkShellcommon = LoadLibraryW(L"windowsudk.shellcommon.dll");
-        HANDLE hSLC = LoadLibraryW(L"slc.dll");
-        if (hWindowsudkShellcommon && hSLC)
+        if (hWindowsudkShellcommon)
         {
-            SLGetWindowsInformationDWORDFunc = GetProcAddress(hSLC, "SLGetWindowsInformationDWORD");
-
-            if (SLGetWindowsInformationDWORDFunc)
+            HANDLE hSLC = LoadLibraryW(L"slc.dll");
+            if (hSLC)
             {
-                VnPatchDelayIAT(hWindowsudkShellcommon, "ext-ms-win-security-slc-l1-1-0.dll", "SLGetWindowsInformationDWORD", windowsudkshellcommon_SLGetWindowsInformationDWORDHook);
+                SLGetWindowsInformationDWORDFunc = GetProcAddress(hSLC, "SLGetWindowsInformationDWORD");
+
+                if (SLGetWindowsInformationDWORDFunc)
+                {
+                    VnPatchDelayIAT(hWindowsudkShellcommon, "ext-ms-win-security-slc-l1-1-0.dll", "SLGetWindowsInformationDWORD", windowsudkshellcommon_SLGetWindowsInformationDWORDHook);
+                }
+            }
+
+            MODULEINFO mi;
+            GetModuleInformation(GetCurrentProcess(), hWindowsudkShellcommon, &mi, sizeof(MODULEINFO));
+
+            // Fix ReportMonitorRemoved in UpdateStartMenuPositioning crashing, *for now*
+            // We can't use our RtlQueryFeatureConfiguration() hook because our function didn't get called with the feature ID
+            // TODO Need to check again later after this feature flag has been removed
+            // E8 ?? ?? ?? ?? 48 8B 7D FF 84 C0 74 1F 48 8D 4F 08
+            PBYTE match = FindPattern(
+                hWindowsudkShellcommon,
+                mi.SizeOfImage,
+                "\xE8\x00\x00\x00\x00\x48\x8B\x7D\xFF\x84\xC0\x74\x1F\x48\x8D\x4F\x08",
+                "x????xxxxxxxxxxxx"
+            );
+            if (match)
+            {
+                match += 5 + *(int*)(match + 1);
+                windowsudkshellcommon_TaskbarMultiMonIsEnabledFunc = match;
+                printf("wil::details::FeatureImpl<__WilFeatureTraits_Feature_Servicing_TaskbarMultiMon_38545217>::__private_IsEnabled() = %llX\n", match - (PBYTE)hWindowsudkShellcommon);
+                rv = funchook_prepare(
+                    funchook,
+                    (void**)&windowsudkshellcommon_TaskbarMultiMonIsEnabledFunc,
+                    windowsudkshellcommon_TaskbarMultiMonIsEnabledHook
+                );
             }
 
             printf("Setup windowsudk.shellcommon functions done\n");
