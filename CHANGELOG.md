@@ -4,19 +4,17 @@ This document includes the same release notes as in the [Releases](https://githu
 
 ## 22621.2506.60
 
-Tested on OS builds 22000.2416, 22621.2361, 22621.2506, and 23585.1001.
+Tested on OS builds 22000.2416, 22000.2538, 22621.2361, 22621.2506, 22621.2715, 22631.2787, 23585.1001, and 23590.1000.
 
 #### Details
 
 ##### 1
 
-* Taskbar10: Partially fixed Windows 11 Start menu and Search positioning on builds 23545+ (Dev). (ac268b1)
-  * Changing the taskbar alignment requires restarting `explorer.exe` in order to take effect.
+* Taskbar10: Fixed Windows 11 Start menu and Search positioning on builds 22621.2787+ and 23545+ (Dev). (ac268b1, 7d0cdde)
 * File Explorer: Added option to disable the modern navigation bar of Moment 4. (2dc1340)
 * File Explorer: Restored "Apply Mica" functionality on OS builds 22621+. (f62c532)
-* Localization: Officially added translations for the following languages:
-  * Chinese, Simplified (Thanks @zetaloop!)
-  * Japanese (Thanks @creeper-0910, @reindex-ot, and @Rukoto!)
+* Localization: Officially added translations for the following languages: Chinese (Simplified), Chinese (Traditional), Dutch, Indonesian, Japanese
+  * Thanks to [everyone involved](https://github.com/valinet/ExplorerPatcher-L10N#acknowledgements)!
 * GUI: Decoupled the Properties window into `ep_gui.dll` from the main DLL in order to reduce the main DLL size and to allow scalable localization. (f6f6d89, 639d7aa)
   * `rundll32 C:\Windows\dxgi.dll,ZZGUI` will continue to work as before.
 
