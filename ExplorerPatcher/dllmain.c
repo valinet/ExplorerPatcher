@@ -10482,6 +10482,25 @@ BOOL explorer_IsOS(DWORD dwOS)
 
 #pragma region "Find offsets of needed functions when symbols are not available"
 #ifdef _WIN64
+inline BOOL FollowJnz(PBYTE pJnz, PBYTE* pTarget, DWORD* pJnzSize)
+{
+    // Check big jnz
+    if (pJnz[0] == 0x0F && pJnz[1] == 0x85)
+    {
+        *pTarget = pJnz + 6 + *(int*)(pJnz + 2);
+        *pJnzSize = 6;
+        return TRUE;
+    }
+    // Check small jnz
+    if (pJnz[0] == 0x75)
+    {
+        *pTarget = pJnz + 2 + *(char*)(pJnz + 1);
+        *pJnzSize = 2;
+        return TRUE;
+    }
+    return FALSE;
+}
+
 void TryToFindTwinuiPCShellOffsets(DWORD* pOffsets)
 {
     // We read from the file instead of from memory because other tweak software might've modified the functions we're looking for
@@ -10504,11 +10523,12 @@ void TryToFindTwinuiPCShellOffsets(DWORD* pOffsets)
         goto cleanup;
     }
 
-    if (IsWindows11Version22H2OrHigher())
+    if (IsWindows11())
     {
         // All patterns here have been tested to work on:
         // - 22621.1, 22621.1992, 22621.2134, 22621.2283, 22621.2359 (RP)
         // - 23545.1000
+        // - 25951.1000
 
         if (!pOffsets[0] || pOffsets[0] == 0xFFFFFFFF)
         {
@@ -10543,64 +10563,79 @@ void TryToFindTwinuiPCShellOffsets(DWORD* pOffsets)
         }
         if (!pOffsets[2] || pOffsets[2] == 0xFFFFFFFF)
         {
-            // Ref: SwitchItemThumbnailElement::ShowContextMenu()
-            // E8 ? ? ? ? E8 ? ? ? ? 0F B7 C8 E8 ? ? ? ? F7 D8
-            //    ^^^^^^^
+            // Don't worry if this is too long, this works on 17763 and 25951
+            // 40 55 53 56 57 41 54 41 55 41 56 41 57 48 8D AC 24 ? ? ? ? 48 81 EC ? ? ? ? 48 8B 05 ? ? ? ? 48 33 C4 48 89 85 ? ? ? ? 4C 8B B5 ? ? ? ? 41 8B C1
             PBYTE match = FindPattern(
                 pFile, dwSize,
-                "\xE8\x00\x00\x00\x00\xE8\x00\x00\x00\x00\x0F\xB7\xC8\xE8\x00\x00\x00\x00\xF7\xD8",
-                "x????x????xxxx????xx"
+                "\x40\x55\x53\x56\x57\x41\x54\x41\x55\x41\x56\x41\x57\x48\x8D\xAC\x24\x00\x00\x00\x00\x48\x81\xEC\x00\x00\x00\x00\x48\x8B\x05\x00\x00\x00\x00\x48\x33\xC4\x48\x89\x85\x00\x00\x00\x00\x4C\x8B\xB5\x00\x00\x00\x00\x41\x8B\xC1",
+                "xxxxxxxxxxxxxxxxx????xxx????xxx????xxxxxx????xxx????xxx"
             );
             if (match)
             {
-                pOffsets[2] = match + 5 + *(int*)(match + 1) - pFile;
+                pOffsets[2] = match - pFile;
                 printf("ImmersiveContextMenuHelper::ApplyOwnerDrawToMenu() = %lX\n", pOffsets[2]);
             }
         }
         if (!pOffsets[3] || pOffsets[3] == 0xFFFFFFFF)
         {
-            // Ref: SwitchItemThumbnailElement::ShowContextMenu()
-            // E8 ? ? ? ? 85 DB 74 29
-            //    ^^^^^^^
+            // 48 89 5C 24 ? 48 89 7C 24 ? 55 48 8B EC 48 83 EC 60 48 8B FA 48 8B D9 E8
             PBYTE match = FindPattern(
                 pFile, dwSize,
-                "\xE8\x00\x00\x00\x00\x85\xDB\x74\x29",
-                "x????xxxx"
+                "\x48\x89\x5C\x24\x00\x48\x89\x7C\x24\x00\x55\x48\x8B\xEC\x48\x83\xEC\x60\x48\x8B\xFA\x48\x8B\xD9\xE8",
+                "xxxx?xxxx?xxxxxxxxxxxxxxx"
             );
             if (match)
             {
-                pOffsets[3] = match + 5 + *(int*)(match + 1) - pFile;
+                pOffsets[3] = match - pFile;
                 printf("ImmersiveContextMenuHelper::RemoveOwnerDrawFromMenu() = %lX\n", pOffsets[3]);
             }
         }
         if (!pOffsets[4] || pOffsets[4] == 0xFFFFFFFF)
         {
-            // E8 ? ? ? ? 90 49 8D 56 38 49 8B CE
-            //    ^^^^^^^
+            // 48 8B ? E8 ? ? ? ? 4C 8B ? 48 8B ? 48 8B CE E8 ? ? ? ? 90
+            //                                                ^^^^^^^
             PBYTE match = FindPattern(
                 pFile, dwSize,
-                "\xE8\x00\x00\x00\x00\x90\x49\x8D\x56\x38\x49\x8B\xCE",
-                "x????xxxxxxxx"
+                "\x48\x8B\x00\xE8\x00\x00\x00\x00\x4C\x8B\x00\x48\x8B\x00\x48\x8B\xCE\xE8\x00\x00\x00\x00\x90",
+                "xx?x????xx?xx?xxxx????x"
             );
             if (match)
             {
+                match += 17;
                 pOffsets[4] = match + 5 + *(int*)(match + 1) - pFile;
-                printf("CLauncherTipContextMenu::ExecuteShutdownCommand() = %lX\n", pOffsets[4]);
+                printf("CLauncherTipContextMenu::_ExecuteShutdownCommand() = %lX\n", pOffsets[4]);
             }
         }
         if (!pOffsets[5] || pOffsets[5] == 0xFFFFFFFF)
         {
-            // E8 ? ? ? ? 90 48 8D 56 38 48 8B CE
-            //    ^^^^^^^
+            // 48 8B ? E8 ? ? ? ? 48 8B D3 48 8B CF E8 ? ? ? ? 90 48 8D 56 ? 48 8B CE
+            //                                         ^^^^^^^    ------------------- Non-inlined ~::final_suspend()
             PBYTE match = FindPattern(
                 pFile, dwSize,
-                "\xE8\x00\x00\x00\x00\x90\x48\x8D\x56\x38\x48\x8B\xCE",
-                "x????xxxxxxxx"
+                "\x48\x8B\x00\xE8\x00\x00\x00\x00\x48\x8B\xD3\x48\x8B\xCF\xE8\x00\x00\x00\x00\x90\x48\x8D\x56\x00\x48\x8B\xCE",
+                "xx?x????xxxxxxx????xxxx?xxx"
             );
             if (match)
             {
+                match += 14;
                 pOffsets[5] = match + 5 + *(int*)(match + 1) - pFile;
-                printf("CLauncherTipContextMenu::ExecuteCommand() = %lX\n", pOffsets[5]);
+                printf("CLauncherTipContextMenu::_ExecuteCommand() = %lX\n", pOffsets[5]);
+            }
+            else
+            {
+                // 48 8B ? E8 ? ? ? ? 48 8B D3 48 8B CF E8 ? ? ? ? 90 48 8B 05 ? ? ? ? 48
+                //                                         ^^^^^^^    ------------------- Inlined ~::final_suspend()
+                match = FindPattern(
+                    pFile, dwSize,
+                    "\x48\x8B\x00\xE8\x00\x00\x00\x00\x48\x8B\xD3\x48\x8B\xCF\xE8\x00\x00\x00\x00\x90\x48\x8B\x05\x00\x00\x00\x00\x48",
+                    "xx?x????xxxxxxx????xxxx????x"
+                );
+                if (match)
+                {
+                    match += 14;
+                    pOffsets[5] = match + 5 + *(int*)(match + 1) - pFile;
+                    printf("CLauncherTipContextMenu::_ExecuteCommand() = %lX\n", pOffsets[5]);
+                }
             }
         }
         if (!pOffsets[6] || pOffsets[6] == 0xFFFFFFFF)
@@ -10617,9 +10652,10 @@ void TryToFindTwinuiPCShellOffsets(DWORD* pOffsets)
                 printf("CLauncherTipContextMenu::ShowLauncherTipContextMenu() = %lX\n", pOffsets[6]);
             }
         }
-        if (!pOffsets[7] || pOffsets[7] == 0xFFFFFFFF)
+        if (IsWindows11Version22H2OrHigher() && (!pOffsets[7] || pOffsets[7] == 0xFFFFFFFF)) // TODO If we get rid of IsUndockedAssetAvailable, we can use this on 21H2 too
         {
             // Ref: CMultitaskingViewManager::_CreateMTVHost()
+            // Inlined GetMTVHostKind()
             // 4C 89 74 24 ? ? 8B ? ? 8B ? 8B D7 48 8B CE E8 ? ? ? ? 8B
             //                                               ^^^^^^^
             PBYTE match = FindPattern(
@@ -10631,12 +10667,37 @@ void TryToFindTwinuiPCShellOffsets(DWORD* pOffsets)
             {
                 match += 16;
                 pOffsets[7] = match + 5 + *(int*)(match + 1) - pFile;
-                printf("CMultitaskingViewManager::CreateXamlMTVHost() = %lX\n", pOffsets[7]);
+                printf("CMultitaskingViewManager::_CreateXamlMTVHost() = %lX\n", pOffsets[7]);
+            }
+            else
+            {
+                // Non-inlined GetMTVHostKind()
+                // 8B CF E8 ? ? ? ? ? 89 ? 24 ? 4D 8B CE ? 8B C5 8B D7 48 8B CE 83 F8 01 <jnz>
+                match = FindPattern(
+                    pFile, dwSize,
+                    "\x8B\xCF\xE8\x00\x00\x00\x00\x00\x89\x00\x24\x00\x4D\x8B\xCE\x00\x8B\xC5\x8B\xD7\x48\x8B\xCE\x83\xF8\x01",
+                    "xxx?????x?x?xxx?xxxxxxxxxx"
+                );
+                if (match)
+                {
+                    PBYTE target = NULL;
+                    DWORD jnzSize = 0;
+                    if (FollowJnz(match + 26, &target, &jnzSize))
+                    {
+                        match += 26 + jnzSize;
+                        if (match[0] == 0xE8)
+                        {
+                            pOffsets[7] = match + 5 + *(int*)(match + 1) - pFile;
+                            printf("CMultitaskingViewManager::_CreateXamlMTVHost() = %lX\n", pOffsets[7]);
+                        }
+                    }
+                }
             }
         }
-        if (!pOffsets[8] || pOffsets[8] == 0xFFFFFFFF)
+        if (IsWindows11Version22H2OrHigher() && (!pOffsets[8] || pOffsets[8] == 0xFFFFFFFF))
         {
             // Ref: CMultitaskingViewManager::_CreateMTVHost()
+            // Inlined GetMTVHostKind()
             // 4C 89 74 24 ? ? 8B ? ? 8B ? 8B D7 48 8B CE E8 ? ? ? ? 90
             //                                               ^^^^^^^
             PBYTE match = FindPattern(
@@ -10648,7 +10709,27 @@ void TryToFindTwinuiPCShellOffsets(DWORD* pOffsets)
             {
                 match += 16;
                 pOffsets[8] = match + 5 + *(int*)(match + 1) - pFile;
-                printf("CMultitaskingViewManager::CreateDCompMTVHost() = %lX\n", pOffsets[8]);
+                printf("CMultitaskingViewManager::_CreateDCompMTVHost() = %lX\n", pOffsets[8]);
+            }
+            else
+            {
+                // Non-inlined GetMTVHostKind()
+                // 8B CF E8 ? ? ? ? ? 89 ? 24 ? 4D 8B CE ? 8B C5 8B D7 48 8B CE 83 F8 01 <jnz>
+                match = FindPattern(
+                    pFile, dwSize,
+                    "\x8B\xCF\xE8\x00\x00\x00\x00\x00\x89\x00\x24\x00\x4D\x8B\xCE\x00\x8B\xC5\x8B\xD7\x48\x8B\xCE\x83\xF8\x01",
+                    "xxx?????x?x?xxx?xxxxxxxxxx"
+                );
+                if (match)
+                {
+                    PBYTE target = NULL;
+                    DWORD jnzSize = 0;
+                    if (FollowJnz(match + 26, &target, &jnzSize) && target[0] == 0xE8)
+                    {
+                        pOffsets[8] = target + 5 + *(int*)(target + 1) - pFile;
+                        printf("CMultitaskingViewManager::_CreateDCompMTVHost() = %lX\n", pOffsets[8]);
+                    }
+                }
             }
         }
     }
@@ -11915,9 +11996,9 @@ DWORD Inject(BOOL bIsExplorer)
     if (rv != 0)
     {
         if (IsWindows11Version22H2OrHigher())
-            printf("Failed to hook twinui_pcshell_CMultitaskingViewManager__CreateXamlMTVHost(). rv = %d\n", rv);
+            printf("Failed to hook CMultitaskingViewManager::_CreateXamlMTVHost(). rv = %d\n", rv);
         else if (IsWindows11())
-            printf("Failed to hook twinui_pcshell_IsUndockedAssetAvailable(). rv = %d\n", rv);
+            printf("Failed to hook IsUndockedAssetAvailable(). rv = %d\n", rv);
     }
 
     /*rv = -1;
