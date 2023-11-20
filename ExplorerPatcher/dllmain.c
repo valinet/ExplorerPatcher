@@ -1109,18 +1109,10 @@ static void(*CLauncherTipContextMenu_ExecuteShutdownCommandFunc)(
     void* _this,
     void* a2
     ) = NULL;
-static INT64(*ImmersiveContextMenuHelper_ApplyOwnerDrawToMenuFunc)(
-    HMENU h1,
-    HMENU h2,
-    HWND a3,
-    unsigned int a4,
-    void* data
-    ) = NULL;
-static void(*ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc)(
-    HMENU _this,
-    HMENU hWnd,
-    HWND a3
-    ) = NULL;
+typedef HRESULT(*ImmersiveContextMenuHelper_ApplyOwnerDrawToMenu_t)(HMENU hMenu, HWND hWnd, POINT* pPt, unsigned int options, void* data);
+static ImmersiveContextMenuHelper_ApplyOwnerDrawToMenu_t ImmersiveContextMenuHelper_ApplyOwnerDrawToMenuFunc;
+typedef void(*ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenu_t)(HMENU hMenu, HWND hWnd);
+static ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenu_t ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc;
 static INT64(*CLauncherTipContextMenu_GetMenuItemsAsyncFunc)(
     void* _this,
     void* rect,
@@ -1372,8 +1364,7 @@ DWORD ShowLauncherTipContextMenu(
         {
             ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc(
                 *((HMENU*)((char*)params->_this + 0xe8 + offset_in_class)),
-                hWinXWnd,
-                &(params->point)
+                hWinXWnd
             );
         }
         free(unknown_array);
@@ -2695,8 +2686,7 @@ INT64 Shell_TrayWndSubclassProc(
                     {
                         ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc(
                             hSubMenu,
-                            hWnd,
-                            &pt
+                            hWnd
                         );
                     }
                     free(unknown_array);
@@ -2984,8 +2974,7 @@ BOOL TrackPopupMenuHookEx(
                 pt.y = y;
                 ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc(
                     hMenu,
-                    hWnd,
-                    &(pt)
+                    hWnd
                 );
 #endif
             }
@@ -3073,8 +3062,7 @@ BOOL TrackPopupMenuHook(
                 pt.y = y;
                 ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc(
                     hMenu,
-                    hWnd,
-                    &(pt)
+                    hWnd
                 );
 #endif
             }
@@ -3266,8 +3254,7 @@ BOOL explorer_TrackPopupMenuExHook(
                     pt.y = y;
                     ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc(
                         hMenu,
-                        hWnd,
-                        &(pt)
+                        hWnd
                     );
                 }
                 else
@@ -3329,8 +3316,7 @@ BOOL pnidui_TrackPopupMenuHook(
                     pt.y = y;
                     ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc(
                         hMenu,
-                        hWnd,
-                        &(pt)
+                        hWnd
                     );
                 }
                 else
@@ -3389,8 +3375,7 @@ BOOL sndvolsso_TrackPopupMenuExHook(
                     pt.y = y;
                     ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc(
                         hMenu,
-                        hWnd,
-                        &(pt)
+                        hWnd
                     );
                 }
                 else
@@ -3515,8 +3500,7 @@ BOOL stobject_TrackPopupMenuExHook(
             {
                 ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc(
                     hMenu,
-                    hWnd,
-                    &(pt)
+                    hWnd
                 );
             }
             free(unknown_array);
@@ -3579,8 +3563,7 @@ BOOL stobject_TrackPopupMenuHook(
             {
                 ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc(
                     hMenu,
-                    hWnd,
-                    &(pt)
+                    hWnd
                 );
             }
             free(unknown_array);
@@ -3641,8 +3624,7 @@ BOOL bthprops_TrackPopupMenuExHook(
             {
                 ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc(
                     hMenu,
-                    hWnd,
-                    &(pt)
+                    hWnd
                 );
             }
             free(unknown_array);
@@ -3681,8 +3663,7 @@ BOOL inputswitch_TrackPopupMenuExHook(
                     pt.y = y;
                     ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc(
                         hMenu,
-                        hWnd,
-                        &(pt)
+                        hWnd
                     );
                 }
                 else
@@ -3736,8 +3717,7 @@ BOOL twinui_TrackPopupMenuHook(
                     pt.y = y;
                     ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc(
                         hMenu,
-                        hWnd,
-                        &(pt)
+                        hWnd
                     );
                 }
                 else
@@ -10422,7 +10402,7 @@ BOOL Moment2PatchHardwareConfirmator(LPMODULEINFO mi)
     //                                    ^ HCH  ^ bIsInLockScreen
     //
     // 22621.2134: 1D55D
-    PBYTE match1 = FindPattern(mi->lpBaseOfDll, mi->SizeOfImage, "\x48\x8B\x83\x00\x00\x00\x00\x8A\x80\x00\x00\x00\x00", "xxx????xx????");
+    PBYTE match1 = FindPattern(mi->lpBaseOfDll, mi->SizeOfImage, "\x48\x8B\x83\x00\x00\x00\x00\x8A\x80", "xxx????xx");
     printf("[HC] match1 = %llX\n", match1 - (PBYTE)mi->lpBaseOfDll);
     if (!match1) return FALSE;
     g_Moment2PatchOffsets.coroInstance_pHardwareConfirmatorHost = *(int*)(match1 + 3);
@@ -11909,13 +11889,13 @@ DWORD Inject(BOOL bIsExplorer)
 
     if (symbols_PTRS.twinui_pcshell_PTRS[2] && symbols_PTRS.twinui_pcshell_PTRS[2] != 0xFFFFFFFF)
     {
-        ImmersiveContextMenuHelper_ApplyOwnerDrawToMenuFunc = (INT64(*)(HMENU, HMENU, HWND, unsigned int, void*))
+        ImmersiveContextMenuHelper_ApplyOwnerDrawToMenuFunc = (ImmersiveContextMenuHelper_ApplyOwnerDrawToMenu_t)
             ((uintptr_t)hTwinuiPcshell + symbols_PTRS.twinui_pcshell_PTRS[2]);
     }
 
     if (symbols_PTRS.twinui_pcshell_PTRS[3] && symbols_PTRS.twinui_pcshell_PTRS[3] != 0xFFFFFFFF)
     {
-        ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc = (void(*)(HMENU, HMENU, HWND))
+        ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc = (ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenu_t)
             ((uintptr_t)hTwinuiPcshell + symbols_PTRS.twinui_pcshell_PTRS[3]);
     }
 
@@ -12290,12 +12270,12 @@ DWORD Inject(BOOL bIsExplorer)
             // Fix ReportMonitorRemoved in UpdateStartMenuPositioning crashing, *for now*
             // We can't use our RtlQueryFeatureConfiguration() hook because our function didn't get called with the feature ID
             // TODO Need to check again later after this feature flag has been removed
-            // E8 ?? ?? ?? ?? 48 8B 7D FF 84 C0 74 1F 48 8D 4F 08
+            // E8 ?? ?? ?? ?? 48 8B 7D ?? 84 C0 74 ?? 48 8D 4F 08
             PBYTE match = FindPattern(
                 hWindowsudkShellcommon,
                 mi.SizeOfImage,
-                "\xE8\x00\x00\x00\x00\x48\x8B\x7D\xFF\x84\xC0\x74\x1F\x48\x8D\x4F\x08",
-                "x????xxxxxxxxxxxx"
+                "\xE8\x00\x00\x00\x00\x48\x8B\x7D\x00\x84\xC0\x74\x00\x48\x8D\x4F\x08",
+                "x????xxx?xxx?xxxx"
             );
             if (match)
             {

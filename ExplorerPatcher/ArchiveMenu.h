@@ -47,18 +47,8 @@ LRESULT CALLBACK ArchiveMenuWndProc(
     _In_ UINT   uMsg,
     _In_ WPARAM wParam,
     _In_ LPARAM lParam,
-    INT64(*ImmersiveContextMenuHelper_ApplyOwnerDrawToMenuFunc)(
-        HMENU h1,
-        HMENU h2,
-        HWND a3,
-        unsigned int a4,
-        void* data
-        ),
-    void(*ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc)(
-        HMENU _this,
-        HMENU hWnd,
-        HWND a3
-        )
+    HRESULT(*ImmersiveContextMenuHelper_ApplyOwnerDrawToMenuFunc)(HMENU hMenu, HWND hWnd, POINT* pPt, unsigned int options, void* data),
+    void(*ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc)(HMENU hMenu, HWND hWnd)
 );
 
 #endif
