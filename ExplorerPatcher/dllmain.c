@@ -1916,6 +1916,7 @@ DWORD FixTaskbarAutohide(DWORD unused)
 
 
 #pragma region "Allow enabling XAML sounds"
+#ifdef _WIN64
 void ForceEnableXamlSounds(HMODULE hWindowsUIXaml)
 {
     MODULEINFO mi;
@@ -1949,6 +1950,7 @@ BOOL IsXamlSoundsEnabled()
     RegGetValueW(HKEY_CURRENT_USER, TEXT(REGPATH_OLD), L"XamlSounds", RRF_RT_DWORD, NULL, &dwRes, &dwSize);
     return dwRes != 0;
 }
+#endif
 #pragma endregion
 
 

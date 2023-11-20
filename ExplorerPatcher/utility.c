@@ -1655,3 +1655,31 @@ BOOL ExtractMonitorByIndex(HMONITOR hMonitor, HDC hDC, LPRECT lpRect, MonitorOve
     mod->cbIndex++;
     return TRUE;
 }
+
+#ifdef _WIN64
+inline BOOL MaskCompare(PVOID pBuffer, LPCSTR lpPattern, LPCSTR lpMask)
+{
+    for (PBYTE value = (PBYTE)pBuffer; *lpMask; ++lpPattern, ++lpMask, ++value)
+    {
+        if (*lpMask == 'x' && *(LPCBYTE)lpPattern != *value)
+            return FALSE;
+    }
+
+    return TRUE;
+}
+
+PVOID FindPattern(PVOID pBase, SIZE_T dwSize, LPCSTR lpPattern, LPCSTR lpMask)
+{
+    dwSize -= strlen(lpMask);
+
+    for (SIZE_T index = 0; index < dwSize; ++index)
+    {
+        PBYTE pAddress = (PBYTE)pBase + index;
+
+        if (MaskCompare(pAddress, lpPattern, lpMask))
+            return pAddress;
+    }
+
+    return NULL;
+}
+#endif
