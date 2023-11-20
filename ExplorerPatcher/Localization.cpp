@@ -48,10 +48,14 @@ BOOL EP_L10N_ApplyPreferredLanguageForCurrentThread()
             (LPBYTE)&dwPreferredLanguage,
             &dwSize
         );
-        if (lres == ERROR_SUCCESS && dwSize > 0)
+        if (lres == ERROR_SUCCESS && dwPreferredLanguage != 0)
         {
-            EP_L10N_Language language = LangIDToEPLanguage(dwPreferredLanguage);
+            EP_L10N_Language language = LangIDToEPLanguage((LANGID)dwPreferredLanguage);
             rv = SetThreadPreferredUILanguages(MUI_LANGUAGE_NAME, language.wszId, nullptr);
+        }
+        else
+        {
+            rv = SetThreadPreferredUILanguages(MUI_LANGUAGE_NAME, nullptr, nullptr);
         }
         RegCloseKey(hKey);
     }
