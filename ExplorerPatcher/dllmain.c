@@ -2936,6 +2936,80 @@ BOOL CheckIfMenuContainsOwnPropertiesItem(HMENU hMenu)
 #endif
     return FALSE;
 }
+
+#ifdef _WIN64
+#define DEFINE_IMMERSIVE_MENU_HOOK(name) \
+    static ImmersiveContextMenuHelper_ApplyOwnerDrawToMenu_t name##_ApplyOwnerDrawToMenuFunc = NULL; \
+    static HRESULT name##_ApplyOwnerDrawToMenuHook(HMENU hMenu, HWND hWnd, POINT* pPt, unsigned int options, void* data) \
+    { \
+        wchar_t wszClassName[200]; \
+        ZeroMemory(wszClassName, 200); \
+        GetClassNameW(hWnd, wszClassName, 200); \
+        \
+        BOOL bDisableSkinning = (!wcscmp(wszClassName, L"Shell_TrayWnd") || !wcscmp(wszClassName, L"Shell_SecondaryTrayWnd")) ? !bSkinMenus : bDisableImmersiveContextMenu; \
+        if (bDisableSkinning) \
+        { \
+            return S_OK; \
+        } \
+        return name##_ApplyOwnerDrawToMenuFunc(hMenu, hWnd, pPt, options, data); \
+    }
+
+#define DEFINE_IMMERSIVE_MENU_HOOK_TB(name) \
+    static ImmersiveContextMenuHelper_ApplyOwnerDrawToMenu_t name##_ApplyOwnerDrawToMenuFunc = NULL; \
+    static HRESULT name##_ApplyOwnerDrawToMenuHook(HMENU hMenu, HWND hWnd, POINT* pPt, unsigned int options, void* data) \
+    { \
+        BOOL bDisableSkinning = !bSkinMenus; \
+        if (bDisableSkinning) \
+        { \
+            return S_OK; \
+        } \
+        return name##_ApplyOwnerDrawToMenuFunc(hMenu, hWnd, pPt, options, data); \
+    }
+
+DEFINE_IMMERSIVE_MENU_HOOK_TB(Sndvolsso);
+DEFINE_IMMERSIVE_MENU_HOOK(Shell32);
+DEFINE_IMMERSIVE_MENU_HOOK(ExplorerFrame);
+DEFINE_IMMERSIVE_MENU_HOOK(Explorer);
+DEFINE_IMMERSIVE_MENU_HOOK_TB(Pnidui);
+DEFINE_IMMERSIVE_MENU_HOOK_TB(InputSwitch);
+
+static void HookImmersiveMenuFunctions(
+    funchook_t* funchook,
+    HMODULE module,
+    ImmersiveContextMenuHelper_ApplyOwnerDrawToMenu_t* applyFunc,
+    ImmersiveContextMenuHelper_ApplyOwnerDrawToMenu_t applyHook)
+{
+    MODULEINFO mi;
+    GetModuleInformation(GetCurrentProcess(), module, &mi, sizeof(MODULEINFO));
+
+    // 40 55 53 56 57 41 54 41 55 41 56 41 57 48 8D AC 24 ? ? ? ? 48 81 EC ? ? ? ? 48 8B 05 ? ? ? ? 48 33 C4 48 89 85 ? ? ? ? 4C 8B B5 ? ? ? ? 41 8B C1
+    PBYTE match = FindPattern(
+        mi.lpBaseOfDll, mi.SizeOfImage,
+        "\x40\x55\x53\x56\x57\x41\x54\x41\x55\x41\x56\x41\x57\x48\x8D\xAC\x24\x00\x00\x00\x00\x48\x81\xEC\x00\x00\x00\x00\x48\x8B\x05\x00\x00\x00\x00\x48\x33\xC4\x48\x89\x85\x00\x00\x00\x00\x4C\x8B\xB5\x00\x00\x00\x00\x41\x8B\xC1",
+        "xxxxxxxxxxxxxxxxx????xxx????xxx????xxxxxx????xxx????xxx"
+    );
+    if (match)
+    {
+        *applyFunc = match;
+        funchook_prepare(
+            funchook,
+            (void**)applyFunc,
+            applyHook
+        );
+    }
+}
+
+#define HOOK_IMMERSIVE_MENUS(name) \
+    HookImmersiveMenuFunctions( \
+        funchook, \
+        h##name, \
+        &name##_ApplyOwnerDrawToMenuFunc, \
+        name##_ApplyOwnerDrawToMenuHook \
+    )
+#else
+#define HOOK_IMMERSIVE_MENUS(name)
+#endif
+
 BOOL TrackPopupMenuHookEx(
     HMENU       hMenu,
     UINT        uFlags,
@@ -3441,6 +3515,12 @@ void PatchSndvolsso()
 {
     HANDLE hSndvolsso = LoadLibraryW(L"sndvolsso.dll");
     VnPatchIAT(hSndvolsso, "user32.dll", "TrackPopupMenuEx", sndvolsso_TrackPopupMenuExHook);
+
+    // Create a local funchook because we can get called after the global one is installed
+    funchook_t* funchook = funchook_create();
+    HOOK_IMMERSIVE_MENUS(Sndvolsso);
+    funchook_install(funchook, 0);
+
     VnPatchIAT(hSndvolsso, "api-ms-win-core-registry-l1-1-0.dll", "RegGetValueW", sndvolsso_RegGetValueW);
 #ifdef USE_PRIVATE_INTERFACES
     if (bSkinIcons)
@@ -9767,6 +9847,10 @@ DWORD InjectBasicFunctions(BOOL bIsExplorer, BOOL bInstall)
 #ifdef _WIN64
             }
 #endif
+            if (bIsExplorerProcess)
+            {
+                HOOK_IMMERSIVE_MENUS(Shell32);
+            }
             VnPatchIAT(hShell32, "user32.dll", "SystemParametersInfoW", DisableImmersiveMenus_SystemParametersInfoW);
             if (!bIsExplorer)
             {
@@ -9810,6 +9894,10 @@ DWORD InjectBasicFunctions(BOOL bIsExplorer, BOOL bInstall)
         if (bInstall)
         {
             VnPatchIAT(hExplorerFrame, "user32.dll", "TrackPopupMenu", TrackPopupMenuHook);
+            if (bIsExplorerProcess)
+            {
+                HOOK_IMMERSIVE_MENUS(ExplorerFrame);
+            }
             VnPatchIAT(hExplorerFrame, "user32.dll", "SystemParametersInfoW", DisableImmersiveMenus_SystemParametersInfoW);
             VnPatchIAT(hExplorerFrame, "shcore.dll", (LPCSTR)188, explorerframe_SHCreateWorkerWindowHook);  // <<<SAB>>>
             if (!bIsExplorer)
@@ -11777,6 +11865,7 @@ DWORD Inject(BOOL bIsExplorer)
     VnPatchIAT(hExplorer, "API-MS-WIN-CORE-REGISTRY-L1-1-0.DLL", "RegOpenKeyExW", explorer_RegOpenKeyExW);
     VnPatchIAT(hExplorer, "shell32.dll", (LPCSTR)85, explorer_OpenRegStream);
     VnPatchIAT(hExplorer, "user32.dll", "TrackPopupMenuEx", explorer_TrackPopupMenuExHook);
+    HOOK_IMMERSIVE_MENUS(Explorer);
     VnPatchIAT(hExplorer, "uxtheme.dll", "OpenThemeDataForDpi", explorer_OpenThemeDataForDpi);
     VnPatchIAT(hExplorer, "uxtheme.dll", "DrawThemeBackground", explorer_DrawThemeBackground);
     VnPatchIAT(hExplorer, "uxtheme.dll", "CloseThemeData", explorer_CloseThemeData);
@@ -12172,6 +12261,7 @@ DWORD Inject(BOOL bIsExplorer)
     HANDLE hPnidui = LoadLibraryW(L"pnidui.dll");
     VnPatchIAT(hPnidui, "api-ms-win-core-com-l1-1-0.dll", "CoCreateInstance", pnidui_CoCreateInstanceHook);
     VnPatchIAT(hPnidui, "user32.dll", "TrackPopupMenu", pnidui_TrackPopupMenuHook);
+    HOOK_IMMERSIVE_MENUS(Pnidui);
 #ifdef USE_PRIVATE_INTERFACES
     if (bSkinIcons)
     {
@@ -12287,6 +12377,7 @@ DWORD Inject(BOOL bIsExplorer)
         if (hInputSwitch)
         {
             VnPatchIAT(hInputSwitch, "user32.dll", "TrackPopupMenuEx", inputswitch_TrackPopupMenuExHook);
+            HOOK_IMMERSIVE_MENUS(InputSwitch);
             printf("Setup inputswitch functions done\n");
         }
 
