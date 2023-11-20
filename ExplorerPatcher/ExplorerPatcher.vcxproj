@@ -259,6 +259,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="Localization.cpp" />
     <ClCompile Include="lvt.c">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
@@ -322,6 +323,7 @@
     <ClInclude Include="hooking.h" />
     <ClInclude Include="ep_private.h" />
     <ClInclude Include="ImmersiveFlyouts.h" />
+    <ClInclude Include="Localization.h" />
     <ClInclude Include="lvt.h" />
     <ClInclude Include="osutility.h" />
     <ClInclude Include="queryversion.h" />

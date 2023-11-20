@@ -25,6 +25,7 @@
 #include <netlistmgr.h>
 #include <Psapi.h>
 #include <stdbool.h>
+#include "Localization.h"
 
 #include "def.h"
 

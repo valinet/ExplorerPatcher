@@ -88,6 +88,7 @@
   <ItemGroup>
     <ClCompile Include="..\ExplorerPatcher\fmemopen.c" />
     <ClCompile Include="..\ExplorerPatcher\getline.c" />
+    <ClCompile Include="..\ExplorerPatcher\Localization.cpp" />
     <ClCompile Include="..\ExplorerPatcher\utility.c" />
     <ClCompile Include="..\ep_weather_host_stub\ep_weather_host_i.c" />
   </ItemGroup>

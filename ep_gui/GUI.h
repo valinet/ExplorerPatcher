@@ -23,6 +23,7 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #include "resources/resource.h"
 #include "../ExplorerPatcher/getline.h"
 #include "../ExplorerPatcher/fmemopen.h"
+#include "../ExplorerPatcher/Localization.h"
 #include "../ExplorerPatcher/utility.h"
 #include "../ep_weather_host/ep_weather.h"
 #include "../ep_weather_host/ep_weather_host_h.h"

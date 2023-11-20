@@ -548,6 +548,7 @@ BOOL IsUpdateAvailableHelper(
                                 wszMsg[0] = 0;
 
                                 WCHAR wszMsgFormat[500];
+                                EP_L10N_ApplyPreferredLanguageForCurrentThread();
                                 HMODULE hEPGui = LoadGuiModule();
                                 if (LoadStringW(hEPGui, IDS_UPDATES_PROMPT, wszMsgFormat, ARRAYSIZE(wszMsgFormat)))
                                 {
@@ -871,6 +872,7 @@ BOOL ShowUpdateSuccessNotification(
     __x_ABI_CWindows_CUI_CNotifications_CIToastNotification** toast
 )
 {
+    EP_L10N_ApplyPreferredLanguageForCurrentThread();
     HMODULE hEPGui = LoadGuiModule();
 
     wchar_t buf[TOAST_BUFSIZ];
@@ -952,6 +954,7 @@ BOOL InstallUpdatesIfAvailable(
     DWORD dwUpdatePolicy
 )
 {
+    EP_L10N_ApplyPreferredLanguageForCurrentThread();
     HMODULE hEPGui = LoadGuiModule();
 
     wchar_t wszInfoURL[MAX_PATH];

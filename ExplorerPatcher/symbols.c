@@ -323,6 +323,7 @@ DWORD DownloadSymbols(DownloadSymbolsParams* params)
 
     printf("[Symbols] Started \"Download symbols\" thread.\n");
 
+    EP_L10N_ApplyPreferredLanguageForCurrentThread();
     HMODULE hEPGui = LoadGuiModule();
 
     RTL_OSVERSIONINFOW rovi;

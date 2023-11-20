@@ -198,6 +198,7 @@ DWORD S_Icon_Dark_Widgets = 0;
 BOOL g_bIsDesktopRaised = FALSE;
 
 #include "utility.h"
+#include "Localization.h"
 #include "resource.h"
 #include "../ep_gui/resources/EPSharedResources.h"
 #ifdef USE_PRIVATE_INTERFACES
@@ -6843,54 +6844,9 @@ void WINAPI LoadSettings(LPARAM lParam)
             NULL,
             wszWeatherLanguage,
             &dwSize
-        ))
+        ) != ERROR_SUCCESS || wszWeatherLanguage[0] == 0)
         {
-            BOOL bOk = FALSE;
-            ULONG ulNumLanguages = 0;
-            LPCWSTR wszLanguagesBuffer = NULL;
-            ULONG cchLanguagesBuffer = 0;
-            if (GetUserPreferredUILanguages(MUI_LANGUAGE_NAME, &ulNumLanguages, NULL, &cchLanguagesBuffer))
-            {
-                if (wszLanguagesBuffer = malloc(cchLanguagesBuffer * sizeof(WCHAR)))
-                {
-                    if (GetUserPreferredUILanguages(MUI_LANGUAGE_NAME, &ulNumLanguages, wszLanguagesBuffer, &cchLanguagesBuffer))
-                    {
-                        wcscpy_s(wszWeatherLanguage, MAX_PATH, wszLanguagesBuffer);
-                        bOk = TRUE;
-                    }
-                    free(wszLanguagesBuffer);
-                }
-            }
-            if (!bOk)
-            {
-                wcscpy_s(wszWeatherLanguage, MAX_PATH, L"en-US");
-            }
-        }
-        else
-        {
-            if (wszWeatherLanguage[0] == 0)
-            {
-                BOOL bOk = FALSE;
-                ULONG ulNumLanguages = 0;
-                LPCWSTR wszLanguagesBuffer = NULL;
-                ULONG cchLanguagesBuffer = 0;
-                if (GetUserPreferredUILanguages(MUI_LANGUAGE_NAME, &ulNumLanguages, NULL, &cchLanguagesBuffer))
-                {
-                    if (wszLanguagesBuffer = malloc(cchLanguagesBuffer * sizeof(WCHAR)))
-                    {
-                        if (GetUserPreferredUILanguages(MUI_LANGUAGE_NAME, &ulNumLanguages, wszLanguagesBuffer, &cchLanguagesBuffer))
-                        {
-                            wcscpy_s(wszWeatherLanguage, MAX_PATH, wszLanguagesBuffer);
-                            bOk = TRUE;
-                        }
-                        free(wszLanguagesBuffer);
-                    }
-                }
-                if (!bOk)
-                {
-                    wcscpy_s(wszWeatherLanguage, MAX_PATH, L"en-US");
-                }
-            }
+            EP_L10N_GetCurrentUserLanguage(wszWeatherLanguage, MAX_PATH);
         }
         if (epw)
         {
@@ -11265,6 +11221,7 @@ DWORD InformUserAboutCrash(LPVOID unused)
     CrashCounterSettings cfg;
     GetCrashCounterSettings(&cfg);
 
+    EP_L10N_ApplyPreferredLanguageForCurrentThread();
     HMODULE hEPGui = LoadGuiModule();
     if (!hEPGui)
     {

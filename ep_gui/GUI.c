@@ -5,8 +5,8 @@ DEFINE_GUID(LiveSetting_Property_GUID, 0xc12bcd8e, 0x2a8e, 0x4950, 0x8a, 0xe7, 0
 
 TCHAR GUI_title[260];
 FILE* AuditFile = NULL;
-LANGID locale;
-WCHAR wszLanguage[MAX_PATH];
+WCHAR wszLanguage[LOCALE_NAME_MAX_LENGTH];
+WCHAR wszThreadLanguage[LOCALE_NAME_MAX_LENGTH];
 void* GUI_FileMapping = NULL;
 DWORD GUI_FileSize = 0;
 BOOL g_darkModeEnabled = FALSE;
@@ -894,7 +894,7 @@ static void GUI_SetSection(GUI* _this, BOOL bCheckEnablement, int dwSection)
     RegCloseKey(hKey);
 }
 
-void GUI_SubstituteLocalizedString(wchar_t* str, size_t cch)
+static void GUI_SubstituteLocalizedString(wchar_t* str, size_t cch)
 {
     // %R:1212%
     //    ^^^^ The resource ID
@@ -918,6 +918,58 @@ void GUI_SubstituteLocalizedString(wchar_t* str, size_t cch)
     // Copy the localized string
     memcpy_s(begin, cch - (begin - str), localized, numChars * sizeof(wchar_t));
     // TODO Check if the numbers are okay
+}
+
+static void GUI_EnumerateLanguagesCallback(const EP_L10N_Language* language, void* data)
+{
+    HMENU hMenu = data;
+
+    MENUITEMINFOW menuInfo;
+    ZeroMemory(&menuInfo, sizeof(MENUITEMINFOW));
+    menuInfo.cbSize = sizeof(MENUITEMINFOW);
+    menuInfo.fMask = MIIM_ID | MIIM_STRING | MIIM_DATA | MIIM_STATE;
+    menuInfo.wID = language->id + 1;
+    menuInfo.dwItemData = NULL;
+    menuInfo.fType = MFT_STRING;
+    menuInfo.dwTypeData = (LPWSTR)language->wszDisplayName; // Copied by the system
+    menuInfo.cch = (UINT)wcslen(language->wszDisplayName);
+    InsertMenuItemW(hMenu, 2, FALSE, &menuInfo);
+}
+
+static void GUI_PopulateLanguageSelectorMenu(HMENU hMenu)
+{
+    // Follow system setting (default)
+    wchar_t wszItemTitle[128];
+    wszItemTitle[0] = 0;
+    LoadStringW(hModule, IDS_AT_SWS_COLORSCHEME_0, wszItemTitle, ARRAYSIZE(wszItemTitle));
+
+    MENUITEMINFOW menuInfo;
+    ZeroMemory(&menuInfo, sizeof(MENUITEMINFOW));
+    menuInfo.cbSize = sizeof(MENUITEMINFOW);
+    menuInfo.fMask = MIIM_ID | MIIM_STRING | MIIM_DATA | MIIM_STATE;
+    menuInfo.wID = 0 + 1;
+    menuInfo.dwItemData = NULL;
+    menuInfo.fType = MFT_STRING;
+    menuInfo.dwTypeData = wszItemTitle;
+    menuInfo.cch = (UINT)wcslen(wszItemTitle);
+
+    InsertMenuItemW(hMenu, 0, FALSE, &menuInfo);
+
+    // --------------------
+    menuInfo.fMask = MIIM_TYPE;
+    menuInfo.fType = MFT_SEPARATOR;
+    InsertMenuItemW(hMenu, 0, FALSE, &menuInfo);
+
+    // English
+    // <All other languages sorted in ascending order>
+    EP_L10N_EnumerateLanguages(hModule, RT_STRING, MAKEINTRESOURCEW(IDS_TB / 16 + 1), GUI_EnumerateLanguagesCallback, hMenu);
+}
+
+static void GUI_UpdateLanguages()
+{
+    EP_L10N_ApplyPreferredLanguageForCurrentThread();
+    EP_L10N_GetCurrentUserLanguage(wszLanguage, ARRAYSIZE(wszLanguage));
+    EP_L10N_GetCurrentThreadLanguage(wszThreadLanguage, ARRAYSIZE(wszThreadLanguage));
 }
 
 static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
@@ -1003,7 +1055,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
     DWORD dwTextFlags = DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS;
     RECT rcText;
     DWORD dwMinWidthDp = 480;
-    if (!wcscmp(wszLanguage, L"nl-NL")) dwMinWidthDp = 600;
+    if (!wcscmp(wszThreadLanguage, L"nl-NL")) dwMinWidthDp = 600;
     DWORD dwMaxHeight = 0, dwMaxWidth = (DWORD)(dwMinWidthDp * (_this->dpi.x / 96.0));
     BOOL bTabOrderHit = FALSE;
     DWORD dwLeftPad = _this->padding.left + _this->sidebarWidth + _this->padding.right;
@@ -2237,52 +2289,59 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                             if (p) *p = 0;
                             numChoices = atoi(line + 3);
                             hMenu = CreatePopupMenu();
-                            for (unsigned int i = 0; i < numChoices; ++i)
+                            if (numChoices == 10001)
                             {
-                                char* l = malloc(MAX_LINE_LENGTH * sizeof(char));
-                                numChRd = getline(&l, &bufsiz, f);
-                                if (strncmp(l, ";x ", 3))
+                                GUI_PopulateLanguageSelectorMenu(hMenu);
+                            }
+                            else
+                            {
+                                for (unsigned int i = 0; i < numChoices; ++i)
                                 {
-                                    free(l);
-                                    i--;
-                                    continue;
+                                    char* l = malloc(MAX_LINE_LENGTH * sizeof(char));
+                                    numChRd = getline(&l, &bufsiz, f);
+                                    if (strncmp(l, ";x ", 3))
+                                    {
+                                        free(l);
+                                        i--;
+                                        continue;
+                                    }
+                                    char* p = strchr(l + 3, ' ');
+                                    if (p) *p = 0;
+                                    char* ln = p + 1;
+                                    p = strchr(p + 1, '\r');
+                                    if (p) *p = 0;
+                                    p = strchr(p + 1, '\n');
+                                    if (p) *p = 0;
+
+                                    wchar_t* miText = malloc(MAX_PATH * sizeof(wchar_t));
+                                    MultiByteToWideChar(
+                                        CP_UTF8,
+                                        MB_PRECOMPOSED,
+                                        ln,
+                                        MAX_PATH,
+                                        miText,
+                                        MAX_PATH
+                                    );
+                                    GUI_SubstituteLocalizedString(miText, MAX_PATH);
+
+                                    MENUITEMINFOW menuInfo;
+                                    ZeroMemory(&menuInfo, sizeof(MENUITEMINFOW));
+                                    menuInfo.cbSize = sizeof(MENUITEMINFOW);
+                                    menuInfo.fMask = MIIM_ID | MIIM_STRING | MIIM_DATA | MIIM_STATE;
+                                    menuInfo.wID = atoi(l + 3) + 1;
+                                    menuInfo.dwItemData = l;
+                                    menuInfo.fType = MFT_STRING;
+                                    menuInfo.dwTypeData = miText;
+                                    menuInfo.cch = strlen(ln);
+                                    InsertMenuItemW(
+                                        hMenu,
+                                        i,
+                                        TRUE,
+                                        &menuInfo
+                                    );
+
+                                    free(miText);
                                 }
-                                char* p = strchr(l + 3, ' ');
-                                if (p) *p = 0;
-                                char* ln = p + 1;
-                                p = strchr(p + 1, '\r');
-                                if (p) *p = 0;
-                                p = strchr(p + 1, '\n');
-                                if (p) *p = 0;
-
-                                wchar_t* miText = malloc(MAX_PATH * sizeof(wchar_t));
-                                MultiByteToWideChar(
-                                    CP_UTF8,
-                                    MB_PRECOMPOSED,
-                                    ln,
-                                    MAX_PATH,
-                                    miText,
-                                    MAX_PATH
-                                );
-                                GUI_SubstituteLocalizedString(miText, MAX_PATH);
-
-                                MENUITEMINFOW menuInfo;
-                                ZeroMemory(&menuInfo, sizeof(MENUITEMINFOW));
-                                menuInfo.cbSize = sizeof(MENUITEMINFOW);
-                                menuInfo.fMask = MIIM_ID | MIIM_STRING | MIIM_DATA | MIIM_STATE;
-                                menuInfo.wID = atoi(l + 3) + 1;
-                                menuInfo.dwItemData = l;
-                                menuInfo.fType = MFT_STRING;
-                                menuInfo.dwTypeData = miText;
-                                menuInfo.cch = strlen(ln);
-                                InsertMenuItemW(
-                                    hMenu,
-                                    i,
-                                    TRUE,
-                                    &menuInfo
-                                );
-
-                                free(miText);
                             }
                         }
                         else if (bInput)
@@ -2564,7 +2623,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                             menuInfo.cbSize = sizeof(MENUITEMINFOW);
                             menuInfo.fMask = MIIM_STATE;
                             menuInfo.fState = MFS_CHECKED;
-                            SetMenuItemInfo(hMenu, vvv, FALSE, &menuInfo);
+                            SetMenuItemInfoW(hMenu, vvv, FALSE, &menuInfo);
                         }
                         if (hDC && !bInvert && !bBool && !bJustCheck)
                         {
@@ -2782,6 +2841,15 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                         &value,
                                         sizeof(DWORD)
                                     );
+                                    if (!wcscmp(name, L"Language"))
+                                    {
+                                        GUI_UpdateLanguages();
+                                        POINT pt;
+                                        pt.x = 0;
+                                        pt.y = 0;
+                                        _this->bCalcExtent = TRUE;
+                                        GUI_Build(0, hwnd, pt);
+                                    }
                                 }
                             }
                             InvalidateRect(hwnd, NULL, FALSE);
@@ -2792,13 +2860,16 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                         }
                         if (bChoice || bChoiceLefted)
                         {
-                            for (unsigned int i = 0; i < numChoices; ++i)
+                            for (unsigned int i = 0; ; ++i)
                             {
-                                MENUITEMINFOA menuInfo;
-                                ZeroMemory(&menuInfo, sizeof(MENUITEMINFOA));
-                                menuInfo.cbSize = sizeof(MENUITEMINFOA);
+                                MENUITEMINFOW menuInfo;
+                                ZeroMemory(&menuInfo, sizeof(MENUITEMINFOW));
+                                menuInfo.cbSize = sizeof(MENUITEMINFOW);
                                 menuInfo.fMask = MIIM_DATA;
-                                GetMenuItemInfoA(hMenu, i, TRUE, &menuInfo);
+                                if (!GetMenuItemInfoW(hMenu, i, TRUE, &menuInfo))
+                                {
+                                    break;
+                                }
                                 if (menuInfo.dwItemData)
                                 {
                                     free(menuInfo.dwItemData);
@@ -3826,39 +3897,7 @@ __declspec(dllexport) int ZZGUI(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLin
 
     wprintf(L"Running on Windows %d, OS Build %d.%d.%d.%d.\n", IsWindows11() ? 11 : 10, global_rovi.dwMajorVersion, global_rovi.dwMinorVersion, global_rovi.dwBuildNumber, global_ubr);
 
-    locale = GetUserDefaultUILanguage();
-    dwSize = LOCALE_NAME_MAX_LENGTH;
-    if (hKey)
-    {
-        RegQueryValueExW(
-            hKey,
-            TEXT("Language"),
-            0,
-            NULL,
-            &locale,
-            &dwSize
-        );
-    }
-    BOOL bOk = FALSE;
-    ULONG ulNumLanguages = 0;
-    LPCWSTR wszLanguagesBuffer = NULL;
-    ULONG cchLanguagesBuffer = 0;
-    if (GetThreadPreferredUILanguages(MUI_LANGUAGE_NAME, &ulNumLanguages, NULL, &cchLanguagesBuffer))
-    {
-        if (wszLanguagesBuffer = malloc(cchLanguagesBuffer * sizeof(WCHAR)))
-        {
-            if (GetThreadPreferredUILanguages(MUI_LANGUAGE_NAME, &ulNumLanguages, wszLanguagesBuffer, &cchLanguagesBuffer))
-            {
-                wcscpy_s(wszLanguage, MAX_PATH, wszLanguagesBuffer);
-                bOk = TRUE;
-            }
-            free(wszLanguagesBuffer);
-        }
-    }
-    if (!bOk)
-    {
-        wcscpy_s(wszLanguage, MAX_PATH, L"en-US");
-    }
+    GUI_UpdateLanguages();
 
     wchar_t wszPath[MAX_PATH];
     ZeroMemory(
