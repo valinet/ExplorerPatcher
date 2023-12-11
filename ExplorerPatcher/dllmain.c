@@ -2488,7 +2488,7 @@ LRESULT CALLBACK Shell_TrayWndMouseProc(
     return CallNextHookEx(Shell_TrayWndMouseHook, nCode, wParam, lParam);
 }
 
-struct ITrayUIHost* g_pTrayUIHost;
+ITrayUIHost* g_pTrayUIHost;
 
 INT64 Shell_TrayWndSubclassProc(
     _In_ HWND   hWnd,
@@ -2574,8 +2574,8 @@ INT64 Shell_TrayWndSubclassProc(
                 if (g_pTrayUIHost)
                 {
                     void** pTrayUIHostVtbl = *(void***)g_pTrayUIHost;
-                    BOOL(*ShouldDeleteContextMenuUndo)(struct ITrayUIHost*) = pTrayUIHostVtbl[13];
-                    UINT(*GetContextMenuUndoResourceId)(struct ITrayUIHost*) = pTrayUIHostVtbl[14];
+                    BOOL(*ShouldDeleteContextMenuUndo)(ITrayUIHost*) = pTrayUIHostVtbl[13];
+                    UINT(*GetContextMenuUndoResourceId)(ITrayUIHost*) = pTrayUIHostVtbl[14];
 
                     if (ShouldDeleteContextMenuUndo(g_pTrayUIHost))
                     {
@@ -4428,39 +4428,6 @@ INT64 winrt_Windows_Internal_Shell_implementation_MeetAndChatManager_OnMessageHo
         InvokeClockFlyout();
     }
     return 0;
-}
-#endif
-#pragma endregion
-
-
-#pragma region "Enable old taskbar"
-#ifdef _WIN64
-HRESULT(*explorer_RoGetActivationFactoryFunc)(HSTRING activatableClassId, GUID* iid, void** factory);
-HRESULT explorer_RoGetActivationFactoryHook(HSTRING activatableClassId, GUID* iid, void** factory)
-{
-    PCWSTR StringRawBuffer = WindowsGetStringRawBuffer(activatableClassId, 0);
-    if (!wcscmp(StringRawBuffer, L"WindowsUdk.ApplicationModel.AppExtensions.XamlExtensions"))
-    {
-        if (IsEqualGUID(iid, &IID_WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensionsStatics))
-        {
-            *factory = &instanceof_WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensionsStatics;
-            return S_OK;
-        }
-        if (IsEqualGUID(iid, &IID_WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensionsStatics2))
-        {
-            *factory = &instanceof_WindowsUdk_ApplicationModel_AppExtensions_IXamlExtensionsStatics2;
-            return S_OK;
-        }
-    }
-    return explorer_RoGetActivationFactoryFunc(activatableClassId, iid, factory);
-}
-
-FARPROC explorer_GetProcAddressHook(HMODULE hModule, const CHAR* lpProcName)
-{
-    if ((*((WORD*)&(lpProcName)+1)) && !strncmp(lpProcName, "RoGetActivationFactory", 22))
-        return (FARPROC)explorer_RoGetActivationFactoryHook;
-    else
-        return GetProcAddress(hModule, lpProcName);
 }
 #endif
 #pragma endregion
@@ -8689,7 +8656,7 @@ DEFINE_GUID(CLSID_UIRibbonFramework,
     0xC3, 0x3E, 0x65, 0xF2, 0xB9, 0x57
 );
 
-DEFINE_GUID(IID_UIRibbonFramework,
+DEFINE_GUID(IID_IUIRibbonFramework,
     0xF4F0385D,
     0x6872, 0x43A8, 0xAD, 0x09,
     0x4C, 0x33, 0x9C, 0xB3, 0xF5, 0xC5
@@ -8697,20 +8664,22 @@ DEFINE_GUID(IID_UIRibbonFramework,
 
 HRESULT ExplorerFrame_CoCreateInstanceHook(REFCLSID rclsid, LPUNKNOWN pUnkOuter, DWORD dwClsContext, REFIID riid, LPVOID* ppv)
 {
-    if (dwFileExplorerCommandUI != 0 && dwFileExplorerCommandUI != 3 && dwFileExplorerCommandUI != 4 && IsEqualCLSID(rclsid, &CLSID_XamlIslandViewAdapter))
+    if (IsEqualCLSID(rclsid, &CLSID_XamlIslandViewAdapter))
     {
-        return REGDB_E_CLASSNOTREG;
+        if (dwFileExplorerCommandUI != 0 && dwFileExplorerCommandUI != 3 && dwFileExplorerCommandUI != 4)
+            return REGDB_E_CLASSNOTREG;
     }
-    if (dwFileExplorerCommandUI == 2 && IsEqualCLSID(rclsid, &CLSID_UIRibbonFramework) && IsEqualIID(riid, &IID_UIRibbonFramework))
+    else if (IsEqualCLSID(rclsid, &CLSID_UIRibbonFramework) && IsEqualIID(riid, &IID_IUIRibbonFramework))
     {
-        return REGDB_E_CLASSNOTREG;
+        if (dwFileExplorerCommandUI == 2)
+            return REGDB_E_CLASSNOTREG;
     }
     return CoCreateInstance(rclsid, pUnkOuter, dwClsContext, riid, ppv);
 }
 #pragma endregion
 
 
-#pragma region "Change language UI style"
+#pragma region "Change language UI style + Enable old taskbar"
 #ifdef _WIN64
 DEFINE_GUID(CLSID_InputSwitchControl,
     0xB9BC2A50,
@@ -8718,7 +8687,7 @@ DEFINE_GUID(CLSID_InputSwitchControl,
     0x5D, 0xB1, 0x4e, 0x18, 0x4b, 0xae
 );
 
-DEFINE_GUID(IID_InputSwitchControl,
+DEFINE_GUID(IID_IInputSwitchControl,
     0xB9BC2A50,
     0x43C3, 0x41AA, 0xa0, 0x82,
     0x5D, 0xB1, 0x4e, 0x18, 0x4b, 0xae
@@ -8857,6 +8826,12 @@ HRESULT CInputSwitchControl_ShowInputSwitchHook(IInputSwitchControl* _this, RECT
     return CInputSwitchControl_ShowInputSwitchFunc(_this, lpRect);
 }
 
+DEFINE_GUID(CLSID_TrayUIComponent,
+    0x88FC85D3,
+    0x7090, 0x4F53, 0x8F, 0x7A,
+    0xEB, 0x02, 0x68, 0x16, 0x27, 0x88
+);
+
 HRESULT explorer_CoCreateInstanceHook(
     REFCLSID   rclsid,
     LPUNKNOWN  pUnkOuter,
@@ -8865,10 +8840,10 @@ HRESULT explorer_CoCreateInstanceHook(
     IUnknown** ppv
 )
 {
-    if (IsEqualCLSID(rclsid, &CLSID_InputSwitchControl) && IsEqualIID(riid, &IID_InputSwitchControl))
+    if (IsEqualCLSID(rclsid, &CLSID_InputSwitchControl) && IsEqualIID(riid, &IID_IInputSwitchControl))
     {
         HRESULT hr = CoCreateInstance(rclsid, pUnkOuter, dwClsContext, riid, ppv);
-        if (SUCCEEDED(hr))
+        if (SUCCEEDED(hr) && bOldTaskbar && dwIMEStyle)
         {
             // The commented method below is no longer required as I have now came to patching
             // the interface's vtable.
@@ -8938,6 +8913,14 @@ HRESULT explorer_CoCreateInstanceHook(
             */
         }
         return hr;
+    }
+    else if (IsEqualCLSID(rclsid, &CLSID_TrayUIComponent) && IsEqualIID(riid, &IID_ITrayUIComponent))
+    {
+        if (bOldTaskbar && explorer_TrayUI_CreateInstanceFunc)
+        {
+            *ppv = &instanceof_ITrayUIComponent;
+            return S_OK;
+        }
     }
     return CoCreateInstance(rclsid, pUnkOuter, dwClsContext, riid, ppv);
 }
@@ -11845,10 +11828,6 @@ DWORD Inject(BOOL bIsExplorer)
     {
         VnPatchIAT(hExplorer, "user32.dll", (LPCSTR)2005, explorer_SetChildWindowNoActivateHook);
         VnPatchDelayIAT(hExplorer, "ext-ms-win-rtcore-ntuser-window-ext-l1-1-0.dll", "SendMessageW", explorer_SendMessageW);
-        // A certain configuration update in 23560.1000 broke this method, this didn't get called with
-        // "RoGetActivationFactory" anymore. ~~We're now hooking RoGetActivationFactory directly.~~ Pulled back for now.
-        explorer_RoGetActivationFactoryFunc = RoGetActivationFactory;
-        VnPatchIAT(hExplorer, "api-ms-win-core-libraryloader-l1-2-0.dll", "GetProcAddress", explorer_GetProcAddressHook);
         VnPatchIAT(hExplorer, "shell32.dll", "ShellExecuteW", explorer_ShellExecuteW);
         VnPatchIAT(hExplorer, "shell32.dll", "ShellExecuteExW", explorer_ShellExecuteExW);
         VnPatchIAT(hExplorer, "API-MS-WIN-CORE-REGISTRY-L1-1-0.DLL", "RegGetValueW", explorer_RegGetValueW);
@@ -11900,26 +11879,20 @@ DWORD Inject(BOOL bIsExplorer)
         VnPatchIAT(hExplorer, "user32.dll", "SetWindowCompositionAttribute", explorer_SetWindowCompositionAttribute);
     }
     //VnPatchDelayIAT(hExplorer, "ext-ms-win-rtcore-ntuser-window-ext-l1-1-0.dll", "CreateWindowExW", explorer_CreateWindowExW);
-    if (bOldTaskbar && dwIMEStyle)
+    if (bOldTaskbar)
     {
         VnPatchIAT(hExplorer, "api-ms-win-core-com-l1-1-0.dll", "CoCreateInstance", explorer_CoCreateInstanceHook);
-    }
-    if (bOldTaskbar)
-    {
         VnPatchIAT(hExplorer, "API-MS-WIN-NTUSER-RECTANGLE-L1-1-0.DLL", "SetRect", explorer_SetRect);
-    }
-    if (bOldTaskbar)
-    {
         VnPatchIAT(hExplorer, "USER32.DLL", "DeleteMenu", explorer_DeleteMenu);
-    }
-    if (bOldTaskbar && global_rovi.dwBuildNumber >= 22572)
-    {
-        VnPatchIAT(hExplorer, "dwmapi.dll", "DwmUpdateThumbnailProperties", explorer_DwmUpdateThumbnailPropertiesHook);
-        PatchExplorer_UpdateWindowAccentProperties();
+        if (global_rovi.dwBuildNumber >= 22572)
+        {
+            VnPatchIAT(hExplorer, "dwmapi.dll", "DwmUpdateThumbnailProperties", explorer_DwmUpdateThumbnailPropertiesHook);
+            PatchExplorer_UpdateWindowAccentProperties();
+        }
     }
     if (IsWindows11())
     {
-        // Find a pointer to ITrayUIHost needed to have a working Windows 10 taskbar context menu on Windows 11 taskbar
+        // Find pointers to various stuff needed to have a working Windows 10 taskbar and Windows 10 taskbar context menu on Windows 11 taskbar
         // Ref: CTray::Init()
         // 4C 8D 05 ? ? ? ? 48 8D 0D ? ? ? ? E8 ? ? ? ? 48 8B
         //                           ^^^^^^^    ^^^^^^^
@@ -11933,14 +11906,14 @@ DWORD Inject(BOOL bIsExplorer)
         {
             match += 7; // Point to 48
             g_pTrayUIHost = match + 7 + *(int*)(match + 3);
-            // match += 7; // Point to E8
-            // explorer_TrayUI_CreateInstanceFunc = match + 5 + *(int*)(match + 1);
+            match += 7; // Point to E8
+            explorer_TrayUI_CreateInstanceFunc = match + 5 + *(int*)(match + 1);
             printf("ITrayUIHost = %llX\n", (PBYTE)g_pTrayUIHost - (PBYTE)hExplorer);
-            // printf("explorer.exe!TrayUI_CreateInstance() = %llX\n", (PBYTE)explorer_TrayUI_CreateInstanceFunc - (PBYTE)hExplorer);
+            printf("explorer.exe!TrayUI_CreateInstance() = %llX\n", (PBYTE)explorer_TrayUI_CreateInstanceFunc - (PBYTE)hExplorer);
         }
         else
         {
-            printf("Failed to find ITrayUIHost, the custom Windows 11 taskbar context menu will not have the undo function\n");
+            printf("Failed to find ITrayUIHost\n");
         }
     }
 
@@ -12181,23 +12154,6 @@ DWORD Inject(BOOL bIsExplorer)
     HANDLE hCombase = LoadLibraryW(L"combase.dll");
     if (IsWindows11())
     {
-        /*if (bOldTaskbar) // TODO Pulled back for now, crashes on 22621.2428
-        {
-            // Hook RoGetActivationFactory() for old taskbar
-            explorer_RoGetActivationFactoryFunc = GetProcAddress(hCombase, "RoGetActivationFactory");
-            if (explorer_RoGetActivationFactoryFunc)
-            {
-                rv = funchook_prepare(
-                   funchook,
-                   (void**)&explorer_RoGetActivationFactoryFunc,
-                   explorer_RoGetActivationFactoryHook
-               );
-            }
-            if (rv != 0)
-            {
-                printf("Failed to hook RoGetActivationFactory(). rv = %d\n", rv);
-            }
-        }*/
         if (IsWindows11Version22H2OrHigher())
         {
             // Fixed a bug that crashed Explorer when a folder window was opened after a first one was closed on OS builds 22621+
@@ -12259,16 +12215,19 @@ DWORD Inject(BOOL bIsExplorer)
 
 
     HANDLE hPnidui = LoadLibraryW(L"pnidui.dll");
-    VnPatchIAT(hPnidui, "api-ms-win-core-com-l1-1-0.dll", "CoCreateInstance", pnidui_CoCreateInstanceHook);
-    VnPatchIAT(hPnidui, "user32.dll", "TrackPopupMenu", pnidui_TrackPopupMenuHook);
-    HOOK_IMMERSIVE_MENUS(Pnidui);
-#ifdef USE_PRIVATE_INTERFACES
-    if (bSkinIcons)
+    if (hPnidui)
     {
-        VnPatchIAT(hPnidui, "user32.dll", "LoadImageW", SystemTray_LoadImageWHook);
-    }
+        VnPatchIAT(hPnidui, "api-ms-win-core-com-l1-1-0.dll", "CoCreateInstance", pnidui_CoCreateInstanceHook);
+        VnPatchIAT(hPnidui, "user32.dll", "TrackPopupMenu", pnidui_TrackPopupMenuHook);
+        HOOK_IMMERSIVE_MENUS(Pnidui);
+#ifdef USE_PRIVATE_INTERFACES
+        if (bSkinIcons)
+        {
+            VnPatchIAT(hPnidui, "user32.dll", "LoadImageW", SystemTray_LoadImageWHook);
+        }
 #endif
-    printf("Setup pnidui functions done\n");
+        printf("Setup pnidui functions done\n");
+    }
 
 
 #ifdef _WIN64
@@ -12395,32 +12354,35 @@ DWORD Inject(BOOL bIsExplorer)
                 }
             }
 
-            MODULEINFO mi;
-            GetModuleInformation(GetCurrentProcess(), hWindowsudkShellcommon, &mi, sizeof(MODULEINFO));
-
-            // Fix ReportMonitorRemoved in UpdateStartMenuPositioning crashing, *for now*
-            // We can't use our RtlQueryFeatureConfiguration() hook because our function didn't get called with the feature ID
-            // TODO Need to check again later after this feature flag has been removed
-            // E8 ?? ?? ?? ?? 48 8B 7D ?? 84 C0 74 ?? 48 8D 4F 08
-            PBYTE match = FindPattern(
-                hWindowsudkShellcommon,
-                mi.SizeOfImage,
-                "\xE8\x00\x00\x00\x00\x48\x8B\x7D\x00\x84\xC0\x74\x00\x48\x8D\x4F\x08",
-                "x????xxx?xxx?xxxx"
-            );
-            if (match)
+            if (bOldTaskbar)
             {
-                match += 5 + *(int*)(match + 1);
-                windowsudkshellcommon_TaskbarMultiMonIsEnabledFunc = match;
-                printf("wil::details::FeatureImpl<__WilFeatureTraits_Feature_Servicing_TaskbarMultiMon_38545217>::__private_IsEnabled() = %llX\n", match - (PBYTE)hWindowsudkShellcommon);
-                rv = funchook_prepare(
-                    funchook,
-                    (void**)&windowsudkshellcommon_TaskbarMultiMonIsEnabledFunc,
-                    windowsudkshellcommon_TaskbarMultiMonIsEnabledHook
-                );
-            }
+                MODULEINFO mi;
+                GetModuleInformation(GetCurrentProcess(), hWindowsudkShellcommon, &mi, sizeof(MODULEINFO));
 
-            printf("Setup windowsudk.shellcommon functions done\n");
+                // Fix ReportMonitorRemoved in UpdateStartMenuPositioning crashing, *for now*
+                // We can't use our RtlQueryFeatureConfiguration() hook because our function didn't get called with the feature ID
+                // TODO Need to check again later after this feature flag has been removed
+                // E8 ?? ?? ?? ?? 48 8B 7D ?? 84 C0 74 ?? 48 8D 4F 08
+                PBYTE match = FindPattern(
+                    hWindowsudkShellcommon,
+                    mi.SizeOfImage,
+                    "\xE8\x00\x00\x00\x00\x48\x8B\x7D\x00\x84\xC0\x74\x00\x48\x8D\x4F\x08",
+                    "x????xxx?xxx?xxxx"
+                );
+                if (match)
+                {
+                    match += 5 + *(int*)(match + 1);
+                    windowsudkshellcommon_TaskbarMultiMonIsEnabledFunc = match;
+                    printf("wil::details::FeatureImpl<__WilFeatureTraits_Feature_Servicing_TaskbarMultiMon_38545217>::__private_IsEnabled() = %llX\n", match - (PBYTE)hWindowsudkShellcommon);
+                    rv = funchook_prepare(
+                        funchook,
+                        (void**)&windowsudkshellcommon_TaskbarMultiMonIsEnabledFunc,
+                        windowsudkshellcommon_TaskbarMultiMonIsEnabledHook
+                    );
+                }
+
+                printf("Setup windowsudk.shellcommon functions done\n");
+            }
         }
     }
 
