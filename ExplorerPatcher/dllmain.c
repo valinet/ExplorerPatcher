@@ -9734,11 +9734,15 @@ int RtlQueryFeatureConfigurationHook(UINT32 featureId, int sectionType, INT64* c
                 || dwFileExplorerCommandUI == 3) // Windows 11 Command Bar (no Tabs, classic Address Bar) <-- provides option to disable tabs in File Explorer
             {
                 // Removed in 23575.1000+
+                // Crashing on 22635.2915
+                if ((global_rovi.dwBuildNumber >= 22621 && global_rovi.dwBuildNumber <= 22635) && global_ubr >= 2915)
+                    break;
                 buffer->enabledState = FEATURE_ENABLED_STATE_DISABLED;
             }
             break;
         }
-        case 40729001: // WASDKInFileExplorer
+        case 40729001: // WASDKInFileExplorer - Removed in 22635.2915+
+        case 42295138: // XAMLFolderViewSupport - Depends on WASDKInFileExplorer
         {
             if (dwFileExplorerCommandUI == 1     // Windows 10 Ribbon     <-- fixes crashing when navigating back to a WASDK view
                 || dwFileExplorerCommandUI == 2  // Windows 7 Command Bar <-- ditto
@@ -9765,6 +9769,9 @@ int RtlQueryFeatureConfigurationHook(UINT32 featureId, int sectionType, INT64* c
                 || dwFileExplorerCommandUI == 4) // Windows 11 Command Bar (classic Address Bar)
             {
                 // Option to disable the new navigation bar
+                // Crashing on 22635.2915
+                if ((global_rovi.dwBuildNumber >= 22621 && global_rovi.dwBuildNumber <= 22635) && global_ubr >= 2915)
+                    break;
                 buffer->enabledState = FEATURE_ENABLED_STATE_DISABLED;
             }
             break;
@@ -9778,17 +9785,6 @@ int RtlQueryFeatureConfigurationHook(UINT32 featureId, int sectionType, INT64* c
             }
             break;
         }
-#if 0
-        case 42952021: // CategorySpecificXamlExtensions
-        {
-            if (bOldTaskbar)
-            {
-                // Make CTray::Init() use IXamlExtensionsStatics (first version, that we can modify)
-                buffer->enabledState = FEATURE_ENABLED_STATE_DISABLED;
-            }
-            break;
-        }
-#endif
         case 44656322: // ID44656322
         {
             if (bOldTaskbar)
