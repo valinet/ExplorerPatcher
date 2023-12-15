@@ -2,6 +2,24 @@
 
 This document includes the same release notes as in the [Releases](https://github.com/valinet/ExplorerPatcher/releases) section on GitHub.
 
+## 22621.2861.62
+
+Tested on OS builds 22621.2715, 22621.2861, 22631.2787, 22631.2861, 22635.2915, and 23590.1000.
+
+##### 1
+
+* Taskbar10: Various *important* fixes: (ec68783)
+  * Revised the method for enabling the old taskbar due to a very rare issue where the old taskbar couldn't be enabled with the previous method. (#2499)
+  * Fixed crash on 25921+ due to the removal of pnidui.dll. (#2558)
+  * Fixed potential stability issues when using the new taskbar on 22621.2787+.
+* Taskbar10: Fixed white boxes on submenus when context menu skinning is disabled. (72f1458)
+* File Explorer: Fixed crashes when using Windows 7/10 control interface on OS builds 22635.2915+. (3a1b8b8)
+* Localization: Added translations for French, German, Hungarian, Korean, Romanian, and Ukrainian.
+  * The properties window has been made slightly wider to accomodate the newly added languages. (#2574)
+* Localization: Added a language switcher to the About section of Properties window. (7c3be29, a7a3d27)
+
+**Note:** Due to the breakages as well as frequent changes happening in Canary builds, we strongly do not recommend using ExplorerPatcher on Canary builds for now.
+
 ## 22621.2506.60
 
 Tested on OS builds 22000.2416, 22000.2538, 22621.2361, 22621.2506, 22621.2715, 22631.2787, 23585.1001, and 23590.1000.
