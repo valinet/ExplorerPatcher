@@ -9769,6 +9769,15 @@ int RtlQueryFeatureConfigurationHook(UINT32 featureId, int sectionType, INT64* c
             }
             break;
         }
+        case 42537950: // DisableWin10Taskbar
+        {
+            if (bOldTaskbar)
+            {
+                // Sorry Microsoft, but we need more time. Peace ✌️
+                buffer->enabledState = FEATURE_ENABLED_STATE_DISABLED;
+            }
+            break;
+        }
 #if 0
         case 42952021: // CategorySpecificXamlExtensions
         {
