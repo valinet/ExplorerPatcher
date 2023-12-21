@@ -339,9 +339,9 @@ DWORD DownloadSymbols(DownloadSymbolsParams* params)
         ubr
     );
 
-    wchar_t title[100];
+    wchar_t title[160];
     wchar_t body[200];
-    wchar_t titleFormat[100];
+    wchar_t titleFormat[160];
     wchar_t buffer[1000];
     title[0] = 0; body[0] = 0; titleFormat[0] = 0; buffer[0] = 0;
 
