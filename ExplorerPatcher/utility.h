@@ -583,64 +583,41 @@ inline BOOL IncrementDLLReferenceCount(HINSTANCE hinst)
     return TRUE;
 }
 
+#ifdef _WIN64
+PVOID FindPattern(PVOID pBase, SIZE_T dwSize, LPCSTR lpPattern, LPCSTR lpMask);
+
 inline BOOL WINAPI PatchContextMenuOfNewMicrosoftIME(BOOL* bFound)
 {
     // huge thanks to @Simplestas: https://github.com/valinet/ExplorerPatcher/issues/598
-    if (bFound) *bFound = FALSE;
-    DWORD patch_from, patch_to;
-    if (IsWindows11Version22H2OrHigher())
-    {
-        // cmp byte ptr [rbp+40h+arg_0], r13b
-        patch_from = 0x506D3844;
-        patch_to = 0x546D3844;
-    }
-    else
-    {
-        // cmp byte ptr [rbp+50h], r12b
-        patch_from = 0x50653844;
-        patch_to = 0x54653844;
-    }
     HMODULE hInputSwitch = NULL;
     if (!GetModuleHandleExW(0, L"InputSwitch.dll", &hInputSwitch))
-    {
         return FALSE;
-    }
-    PIMAGE_DOS_HEADER dosHeader = (PIMAGE_DOS_HEADER)hInputSwitch;
-    PIMAGE_NT_HEADERS pNTHeader = (PIMAGE_NT_HEADERS)((DWORD_PTR)dosHeader + dosHeader->e_lfanew);
-    PIMAGE_SECTION_HEADER pSectionHeader = (PIMAGE_SECTION_HEADER)(pNTHeader + 1);
-    char* mod = 0;
-    int i;
-    for (i = 0; i < pNTHeader->FileHeader.NumberOfSections; i++)
-    {
-        //if (strcmp((char*)pSectionHeader[i].Name, ".text") == 0)
-        if ((pSectionHeader[i].Characteristics & IMAGE_SCN_CNT_CODE) && pSectionHeader[i].SizeOfRawData)
-        {
-            mod = (char*)dosHeader + pSectionHeader[i].VirtualAddress;
-            break;
-        }
-    }
-    if (!mod)
-    {
+
+    MODULEINFO mi;
+    GetModuleInformation(GetCurrentProcess(), hInputSwitch, &mi, sizeof(mi));
+
+    // 44 38 ?? ?? 74 ?? 48 8B CE E8 ?? ?? ?? ?? 85 C0
+    //             ^^ Change jz into jmp
+    PBYTE match = (PBYTE)FindPattern(
+        hInputSwitch,
+        mi.SizeOfImage,
+        "\x44\x38\x00\x00\x74\x00\x48\x8B\xCE\xE8\x00\x00\x00\x00\x85\xC0",
+        "xx??x?xxxx????xx"
+    );
+    if (!match)
         return FALSE;
-    }
-    for (size_t off = 0; off < pSectionHeader[i].Misc.VirtualSize - sizeof(DWORD); ++off)
-    {
-        DWORD* ptr = (DWORD*)(mod + off);
-        if (*ptr == patch_from)
-        {
-            if (bFound) *bFound = TRUE;
-            DWORD prot;
-            if (VirtualProtect(ptr, sizeof(DWORD), PAGE_EXECUTE_READWRITE, &prot))
-            {
-                *ptr = patch_to;
-                VirtualProtect(ptr, sizeof(DWORD), prot, &prot);
-                return TRUE;
-            }
-            break;
-        }
-    }
-    return FALSE;
+
+    DWORD dwOldProtect;
+    if (!VirtualProtect(match + 4, 1, PAGE_EXECUTE_READWRITE, &dwOldProtect))
+        return FALSE;
+
+    match[6] = 0xEB;
+
+    VirtualProtect(match + 4, 1, dwOldProtect, &dwOldProtect);
+
+    return TRUE;
 }
+#endif
 
 extern UINT PleaseWaitTimeout;
 extern HHOOK PleaseWaitHook;
