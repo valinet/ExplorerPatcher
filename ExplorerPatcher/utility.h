@@ -611,7 +611,7 @@ inline BOOL WINAPI PatchContextMenuOfNewMicrosoftIME(BOOL* bFound)
     if (!VirtualProtect(match + 4, 1, PAGE_EXECUTE_READWRITE, &dwOldProtect))
         return FALSE;
 
-    match[6] = 0xEB;
+    match[4] = 0xEB;
 
     VirtualProtect(match + 4, 1, dwOldProtect, &dwOldProtect);
 
