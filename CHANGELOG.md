@@ -18,6 +18,10 @@ Tested on OS builds 22621.2715, 22621.2861, 22631.2787, 22631.2861, 22635.2915, 
   * The properties window has been made slightly wider to accomodate the newly added languages. (#2574)
 * Localization: Added a language switcher to the About section of Properties window. (7c3be29, a7a3d27)
 
+##### 2
+
+* Symbols: Fixed languages with longer strings such as French crashing Explorer when attempting to download symbols. (ce9f973)
+
 **Note:** Due to the breakages as well as frequent changes happening in Canary builds, we strongly do not recommend using ExplorerPatcher on Canary builds for now.
 
 ## 22621.2506.60
