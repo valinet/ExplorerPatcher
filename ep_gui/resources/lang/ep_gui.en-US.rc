@@ -363,7 +363,7 @@ BEGIN
     IDS_OTHER_PWRBTNACTION_4    "Restart"
     IDS_OTHER_NOREDIRECT        "Prevent the following Control Panel links from being redirected to the Settings app:"
     IDS_OTHER_NOREDIRECT_SYSTEM "System / About page"
-    IDS_OTHER_NOREDIRECT_PROGRAMS "Programs && Features"
+    IDS_OTHER_NOREDIRECT_PROGRAMS "Programs and Features"
     IDS_OTHER_NOREDIRECT_DATETIME "Adjust Date and Time"
     IDS_OTHER_NOREDIRECT_TRAYICONS "Customize Notification icons"
 
