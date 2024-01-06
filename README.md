@@ -4,6 +4,10 @@
 
 This project aims to enhance the working environment on Windows.
 
+## Download
+
+[![Github Release](https://img.shields.io/badge/Github%20Release-171515?style=for-the-badge&logoColor=white&logo=Github)](https://github.com/valinet/ExplorerPatcher/releases/latest)
+
 ## Donate
 
 If you find this project essential to your daily life, please consider donating to support the development through the
