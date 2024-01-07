@@ -371,7 +371,7 @@ BEGIN
 
     IDS_UPDATES_POLICY          "When File Explorer starts"
     IDS_UPDATES_POLICY_1        "Only notify when updates are available (default)"
-    IDS_UPDATES_POLICY_0        "Notify in all cases, presence or absence of updates"
+    IDS_UPDATES_POLICY_0        "Notify in all cases for updates checking, whether the result is positive or not"
     IDS_UPDATES_POLICY_2        "Do not check for updates"
     IDS_UPDATES_PREFER_STAGING  "Receive pre-release versions, if available (not recommended)"
     IDS_UPDATES_DOWNGRADES      "Suggest the latest version on the server, even if it's older (not recommended)"
