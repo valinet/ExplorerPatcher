@@ -8929,74 +8929,70 @@ HRESULT explorer_CoCreateInstanceHook(
 
 
 #pragma region "Explorer Registry Hooks"
-LSTATUS explorer_RegCreateKeyExW(HKEY a1, const WCHAR* a2,  DWORD a3, WCHAR* a4, DWORD a5, REGSAM a6, struct _SECURITY_ATTRIBUTES* a7, HKEY* a8, DWORD* a9)
+LSTATUS explorer_RegCreateKeyExW(
+    HKEY hKey,
+    LPCWSTR lpSubKey,
+    DWORD Reserved,
+    LPWSTR lpClass,
+    DWORD dwOptions,
+    REGSAM samDesired,
+    const LPSECURITY_ATTRIBUTES lpSecurityAttributes,
+    PHKEY phkResult,
+    LPDWORD lpdwDisposition
+)
 {
-    const wchar_t* v13; // rdx
-    int v14; // eax
-
-    if (lstrcmpW(a2, L"MMStuckRects3"))
+    if (!lstrcmpW(lpSubKey, L"MMStuckRects3"))
     {
-        v14 = lstrcmpW(a2, L"StuckRects3");
-        v13 = L"StuckRectsLegacy";
-        if (v14)
-        {
-            v13 = a2;
-        }
+        lpSubKey = L"MMStuckRectsLegacy";
     }
-    else
+    else if (!lstrcmpW(lpSubKey, L"StuckRects3"))
     {
-        v13 = L"MMStuckRectsLegacy";
+        lpSubKey = L"StuckRectsLegacy";
     }
 
-    return RegCreateKeyExW(a1, v13, a3, a4, a5, a6, a7, a8, a9);
+    return RegCreateKeyExW(hKey, lpSubKey, Reserved, lpClass, dwOptions, samDesired, lpSecurityAttributes, phkResult, lpdwDisposition);
 }
 
-LSTATUS explorer_SHGetValueW(HKEY a1, const WCHAR* a2, const WCHAR* a3, DWORD* a4, void* a5, DWORD* a6)
+LSTATUS explorer_SHGetValueW(HKEY hkey, LPCWSTR pszSubKey, LPCWSTR pszValue, DWORD* pdwType, void* pvData, DWORD* pcbData)
 {
-    const WCHAR* v10; // rdx
-    int v11; // eax
-
-    if (lstrcmpW(a2, L"MMStuckRects3"))
+    if (!lstrcmpW(pszSubKey, L"MMStuckRects3"))
     {
-        v11 = lstrcmpW(a2, L"StuckRects3");
-        v10 = L"StuckRectsLegacy";
-        if (v11)
-            v10 = a2;
+        pszSubKey = L"MMStuckRectsLegacy";
     }
-    else
+    else if (!lstrcmpW(pszSubKey, L"StuckRects3"))
     {
-        v10 = L"MMStuckRectsLegacy";
+        pszSubKey = L"StuckRectsLegacy";
     }
 
-    return SHGetValueW(a1, v10, a3, a4, a5, a6);
+    return SHGetValueW(hkey, pszSubKey, pszValue, pdwType, pvData, pcbData);
 }
 
-LSTATUS explorer_OpenRegStream(HKEY hkey, PCWSTR pszSubkey, PCWSTR pszValue, DWORD grfMode)
+IStream* explorer_OpenRegStream(HKEY hkey, PCWSTR pszSubkey, PCWSTR pszValue, DWORD grfMode)
 {
-    DWORD flOldProtect[6];
+    DWORD flOldProtect;
 
     if (!lstrcmpiW(pszValue, L"TaskbarWinXP")
-        && VirtualProtect(pszValue, 0xC8ui64, 0x40u, flOldProtect))
+        && VirtualProtect(pszValue, 0xC8, PAGE_EXECUTE_READWRITE, &flOldProtect))
     {
         lstrcpyW(pszValue, L"TaskbarWinEP");
-        VirtualProtect(pszValue, 0xC8ui64, flOldProtect[0], flOldProtect);
+        VirtualProtect(pszValue, 0xC8, flOldProtect, &flOldProtect);
     }
 
     return OpenRegStream(hkey, pszSubkey, pszValue, grfMode);
 }
 
-LSTATUS explorer_RegOpenKeyExW(HKEY a1, WCHAR* a2, DWORD a3, REGSAM a4, HKEY* a5)
+LSTATUS explorer_RegOpenKeyExW(HKEY hKey, LPCWSTR lpSubKey, DWORD ulOptions, REGSAM samDesired, HKEY* phkResult)
 {
-    DWORD flOldProtect[6];
+    DWORD flOldProtect;
 
-    if (!lstrcmpiW(a2, L"Software\\Classes\\Local Settings\\Software\\Microsoft\\Windows\\CurrentVersion\\TrayNotify")
-        && VirtualProtect(a2, 0xC8ui64, 0x40u, flOldProtect))
+    if (!lstrcmpiW(lpSubKey, L"Software\\Classes\\Local Settings\\Software\\Microsoft\\Windows\\CurrentVersion\\TrayNotify")
+        && VirtualProtect(lpSubKey, 0xC8ui64, 0x40u, &flOldProtect))
     {
-        lstrcpyW(a2, L"Software\\Classes\\Local Settings\\Software\\Microsoft\\Windows\\CurrentVersion\\TrayNotSIB");
-        VirtualProtect(a2, 0xC8ui64, flOldProtect[0], flOldProtect);
+        lstrcpyW(lpSubKey, L"Software\\Classes\\Local Settings\\Software\\Microsoft\\Windows\\CurrentVersion\\TrayNotSIB");
+        VirtualProtect(lpSubKey, 0xC8ui64, flOldProtect, &flOldProtect);
     }
 
-    return RegOpenKeyExW(a1, a2, a3, a4, a5);
+    return RegOpenKeyExW(hKey, lpSubKey, ulOptions, samDesired, phkResult);
 }
 
 LSTATUS explorer_RegSetValueExW(
@@ -10085,23 +10081,16 @@ BOOL Moment2PatchActionCenter(LPMODULEINFO mi)
     }
 
     // Step 2:
-    // Scan within the function for the 8 bytes long `*a2 = mi.rcWork`.
-    // ```0F 10 45 ?? F3 0F 7F ?? 48 // movups - movdqu - test```
-    // 22621.2283: 1414B
-    PBYTE rcWorkAssignment = FindPattern(rcMonitorAssignment + 1, 200, "\x0F\x10\x45\x00\xF3\x0F\x7F\x00\x48", "xxx?xxx?x");
-    if (!rcWorkAssignment) return FALSE;
-    printf("[AC] rcWorkAssignment = %llX\n", rcWorkAssignment - (PBYTE)mi->lpBaseOfDll);
-
-    // Step 3:
-    // Copy `*a2 = mi.rcWork` into right after the first jz starting from step 1.
+    // Copy `*a2 = mi.rcMonitor` into right after the first jz starting from step 1.
     // Find within couple bytes from step 1:
     // ```48 8D // lea```
+    // Then offset the first ?? so that it points to mi.rcWork which is 16 bytes after mi.rcMonitor.
     // 22621.2283: 140E6
     PBYTE blockBegin = FindPattern(rcMonitorAssignment + 1, 32, "\x48\x8D", "xx");
     if (!blockBegin) return FALSE;
     printf("[AC] blockBegin = %llX\n", blockBegin - (PBYTE)mi->lpBaseOfDll);
 
-    // Step 4:
+    // Step 3:
     // Exit the block by writing a long jmp into the address referenced by the jz right before step 3, into right after
     // the 8 bytes `rcMonitor = mi.rcWork` we've written.
     PBYTE blockEnd = GetTargetOfJzBeforeMe(blockBegin);
@@ -10113,7 +10102,8 @@ BOOL Moment2PatchActionCenter(LPMODULEINFO mi)
     if (!VirtualProtect(blockBegin, 8 /**a2 = mi.rcWork*/ + 5 /*jmp*/, PAGE_EXECUTE_READWRITE, &dwOldProtect)) return FALSE;
 
     // Step 2
-    memcpy(blockBegin, rcWorkAssignment, 8);
+    memcpy(blockBegin, rcMonitorAssignment, 8);
+    blockBegin[3] += offsetof(MONITORINFO, rcWork) - offsetof(MONITORINFO, rcMonitor);
 
     // Step 3
     PBYTE jmpToEnd = blockBegin + 8;
@@ -10200,37 +10190,48 @@ BOOL Moment2PatchToastCenter(LPMODULEINFO mi)
     // Will have a match if CToastCenterExperienceManager::ShouldShowWithinWorkArea() is inlined.
     // ```0F 10 45 ?? ?? 0F 7F 44 24 ?? 44 // movups - movdqu - cmp```
     // 25951.1000: 36B2C4
+    //
+    // Pattern 3:
+    // Same as pattern 1, but different length of the movdqu instruction.
+    // ```0F 10 45 ?? ?? 0F 7F 45 ?? 48 8B CF // movups - movdqu - mov```
+    // 22621.3066: 3DC340
+    //
+    // Pattern 4:
+    // Same as pattern 2, but different length of the movdqu instruction.
+    // ```0F 10 45 ?? ?? 0F 7F 45 ?? 44 // movups - movdqu - cmp```
+    // No matches yet, just in case.
+    int assignmentSize = 10;
     PBYTE rcMonitorAssignment = FindPattern(mi->lpBaseOfDll, mi->SizeOfImage, "\x0F\x10\x45\x00\x00\x0F\x7F\x44\x24\x00\x48\x8B\xCF", "xxx??xxxx?xxx");
     if (!rcMonitorAssignment)
     {
         rcMonitorAssignment = FindPattern(mi->lpBaseOfDll, mi->SizeOfImage, "\x0F\x10\x45\x00\x00\x0F\x7F\x44\x24\x00\x44", "xxx??xxxx?x");
-        if (!rcMonitorAssignment) return FALSE;
+        if (!rcMonitorAssignment)
+        {
+            assignmentSize = 9;
+            rcMonitorAssignment = FindPattern(mi->lpBaseOfDll, mi->SizeOfImage, "\x0F\x10\x45\x00\x00\x0F\x7F\x45\x00\x48\x8B\xCF", "xxx??xxx?xxx");
+            if (!rcMonitorAssignment)
+            {
+                rcMonitorAssignment = FindPattern(mi->lpBaseOfDll, mi->SizeOfImage, "\x0F\x10\x45\x00\x00\x0F\x7F\x45\x00\x44", "xxx??xxx?x");
+                if (!rcMonitorAssignment) return FALSE;
+            }
+        }
     }
     printf("[TC] rcMonitorAssignment = %llX\n", rcMonitorAssignment - (PBYTE)mi->lpBaseOfDll);
 
     // Step 2:
-    // Scan within the function for the 10 bytes long `rcMonitor = mi.rcWork`.
-    // This pattern applies to both ControlCenter and ToastCenter.
-    // ```0F 10 45 ?? F3 0F 7F 44 24 ?? 48 // movups - movdqu - test```
-    // 22621.1992: 40D8B
-    // 22621.2283: 5025D
-    PBYTE rcWorkAssignment = FindPattern(rcMonitorAssignment + 1, 200, "\x0F\x10\x45\x00\xF3\x0F\x7F\x44\x24\x00\x48", "xxx?xxxxx?x");
-    if (!rcWorkAssignment) return FALSE;
-    printf("[TC] rcWorkAssignment = %llX\n", rcWorkAssignment - (PBYTE)mi->lpBaseOfDll);
-
-    // Step 3:
-    // Copy the `rcMonitor = mi.rcWork` into right after the first jz starting from step 1.
+    // Copy the `rcMonitor = mi.rcMonitor` into right after the first jz starting from step 1.
     // Find within couple bytes from step 1:
     // ```48 8D // lea```
+    // Then offset the first ?? so that it points to mi.rcWork which is 16 bytes after mi.rcMonitor.
     // 22621.1992: 40D02
     // 22621.2283: 501F5
     PBYTE blockBegin = FindPattern(rcMonitorAssignment + 1, 32, "\x48\x8D", "xx");
     if (!blockBegin) return FALSE;
     printf("[TC] blockBegin = %llX\n", blockBegin - (PBYTE)mi->lpBaseOfDll);
 
-    // Step 4:
+    // Step 3:
     // Exit the block by writing a long jmp into the address referenced by the jz right before step 3, into right after
-    // the 10 bytes `rcMonitor = mi.rcWork` we've written.
+    // the <assignmentSize> bytes `rcMonitor = mi.rcWork` we've written.
     //
     // Note: We are skipping EdgeUI calls here.
     PBYTE blockEnd = GetTargetOfJzBeforeMe(blockBegin);
@@ -10239,17 +10240,18 @@ BOOL Moment2PatchToastCenter(LPMODULEINFO mi)
 
     // Execution
     DWORD dwOldProtect = 0;
-    if (!VirtualProtect(blockBegin, 10 /*rcMonitor = mi.rcWork*/ + 5 /*jmp*/, PAGE_EXECUTE_READWRITE, &dwOldProtect)) return FALSE;
+    if (!VirtualProtect(blockBegin, assignmentSize /*rcMonitor = mi.rcWork*/ + 5 /*jmp*/, PAGE_EXECUTE_READWRITE, &dwOldProtect)) return FALSE;
 
     // Step 2
-    memcpy(blockBegin, rcWorkAssignment, 10);
+    memcpy(blockBegin, rcMonitorAssignment, assignmentSize);
+    blockBegin[3] += offsetof(MONITORINFO, rcWork) - offsetof(MONITORINFO, rcMonitor);
 
     // Step 3
-    PBYTE jmpToEnd = blockBegin + 10;
+    PBYTE jmpToEnd = blockBegin + assignmentSize;
     jmpToEnd[0] = 0xE9;
     *(DWORD*)(jmpToEnd + 1) = (DWORD)(blockEnd - jmpToEnd - 5);
 
-    VirtualProtect(blockBegin, 10 + 5, dwOldProtect, &dwOldProtect);
+    VirtualProtect(blockBegin, assignmentSize + 5, dwOldProtect, &dwOldProtect);
 
     printf("[TC] Patched!\n");
     return TRUE;
@@ -10397,8 +10399,8 @@ void WINAPI HardwareConfirmatorShellcode(PBYTE pCoroInstance)
                 else
                 {
                     // Desktop
-                    HRESULT(*pTheFunc)(IUnknown*, PRECT) = ((void**)pEdgeUiManager->lpVtbl)[19];
-                    hr = pTheFunc(pEdgeUiManager, &rc);
+                    HRESULT(*GetAutohideImmuneWorkArea)(IUnknown*, PRECT) = ((void**)pEdgeUiManager->lpVtbl)[19];
+                    hr = GetAutohideImmuneWorkArea(pEdgeUiManager, &rc);
                 }
 
                 __x_ABI_CWindows_CFoundation_CRect* out = pCoroInstance + g_Moment2PatchOffsets.coroInstance_rcOut;
