@@ -72,23 +72,23 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <OutDir>$(SolutionDir)\build\$(Configuration)</OutDir>
+    <OutDir>$(SolutionDir)\build\$(Configuration)\</OutDir>
     <TargetName>ExplorerPatcher.amd64</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <OutDir>$(SolutionDir)\build\$(Configuration)</OutDir>
+    <OutDir>$(SolutionDir)\build\$(Configuration)\</OutDir>
     <TargetName>ExplorerPatcher.IA-32</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
     <TargetName>ExplorerPatcher.amd64</TargetName>
-    <OutDir>$(SolutionDir)\build\$(Configuration)</OutDir>
+    <OutDir>$(SolutionDir)\build\$(Configuration)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
     <TargetName>ExplorerPatcher.IA-32</TargetName>
-    <OutDir>$(SolutionDir)\build\$(Configuration)</OutDir>
+    <OutDir>$(SolutionDir)\build\$(Configuration)\</OutDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -102,6 +102,7 @@
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <CallingConvention>Cdecl</CallingConvention>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <UseFullPaths>false</UseFullPaths>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
