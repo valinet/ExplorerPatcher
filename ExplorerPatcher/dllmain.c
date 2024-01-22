@@ -10052,10 +10052,10 @@ BOOL Moment2PatchActionCenter(LPMODULEINFO mi)
 {
     // Step 1:
     // Scan within the DLL for `*a2 = mi.rcMonitor`.
-    // ```0F 10 45 ?? F3 0F 7F ?? 80 ?? C8 // movups - movdqu - cmp```
+    // ```0F 10 45 ?? F3 0F 7F ?? 80 ?? ?? ?? 00 00 00 // movups - movdqu - cmp```
     // 22621.1992: 7E2F0
     // 22621.2283: 140D5
-    PBYTE rcMonitorAssignment = FindPattern(mi->lpBaseOfDll, mi->SizeOfImage, "\x0F\x10\x45\x00\xF3\x0F\x7F\x00\x80\x00\xC8", "xxx?xxx?x?x");
+    PBYTE rcMonitorAssignment = FindPattern(mi->lpBaseOfDll, mi->SizeOfImage, "\x0F\x10\x45\x00\xF3\x0F\x7F\x00\x80\x00\x00\x00\x00\x00\x00", "xxx?xxx?x???xxx");
     if (!rcMonitorAssignment) return FALSE;
     printf("[AC] rcMonitorAssignment = %llX\n", rcMonitorAssignment - (PBYTE)mi->lpBaseOfDll);
 
