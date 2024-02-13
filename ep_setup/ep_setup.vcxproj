@@ -150,6 +150,21 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
   </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="Exists('..\build\$(Configuration)\ep_taskbar.2.dll')">
+    <ResourceCompile>
+      <PreprocessorDefinitions>EP_TASKBAR_2_EXISTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ResourceCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="Exists('..\build\$(Configuration)\ep_taskbar.3.dll')">
+    <ResourceCompile>
+      <PreprocessorDefinitions>EP_TASKBAR_3_EXISTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ResourceCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="Exists('..\build\$(Configuration)\ep_taskbar.4.dll')">
+    <ResourceCompile>
+      <PreprocessorDefinitions>EP_TASKBAR_4_EXISTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ResourceCompile>
+  </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\ExplorerPatcher\utility.c" />
     <ClCompile Include="ep_setup.c" />

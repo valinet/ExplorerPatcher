@@ -10,6 +10,9 @@
 #define IDR_MS_WEBVIEW2_LOADER          201
 #define IDR_EP_STARTMENU                108
 #define IDR_EP_GUI                      109
+#define IDR_EP_TASKBAR_2                110
+#define IDR_EP_TASKBAR_3                111
+#define IDR_EP_TASKBAR_4                112
 
 #define IDS_SETUP_UNINSTALL_PROMPT      301
 #define IDS_SETUP_INSTALL_LOGOFF        302
