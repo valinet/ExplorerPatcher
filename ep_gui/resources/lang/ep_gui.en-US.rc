@@ -83,6 +83,7 @@ BEGIN
     IDS_TB_ICONSIZE             "Taskbar icon size"
     IDS_TB_ICONSIZE_1           "Small"
     IDS_TB_ICONSIZE_0           "Large (default)"
+    IDS_TB_ALTIMPL_NOTICE       "Important notice regarding ExplorerPatcher's taskbar implementation (online)"
 
     IDS_TRAY                    "System tray"
 
