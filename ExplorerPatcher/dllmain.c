@@ -12355,7 +12355,10 @@ DWORD Inject(BOOL bIsExplorer)
     // - 23545.1000
     BOOL bPerformMoment2Patches = IsWindows11Version22H2Build2134OrHigher();
 #endif
-    bPerformMoment2Patches &= bOldTaskbar;
+    if (!bOldTaskbar)
+    {
+        bPerformMoment2Patches = FALSE;
+    }
     if (bPerformMoment2Patches)
     {
         // Fix flyout placement: Our goal with these patches is to get `mi.rcWork` assigned
@@ -13221,88 +13224,6 @@ INT64 StartDocked_StartSizingFrame_StartSizingFrameHook(void* _this)
     return rv;
 }
 
-HANDLE StartUI_CreateFileW(LPCWSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode, LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition, DWORD dwFlagsAndAttributes, HANDLE hTemplateFile)
-{
-    WCHAR path[MAX_PATH];
-    GetWindowsDirectoryW(path, MAX_PATH);
-    wcscat_s(path, MAX_PATH, L"\\SystemResources\\Windows.UI.ShellCommon\\Windows.UI.ShellCommon.pri");
-    if (!_wcsicmp(path, lpFileName))
-    {
-        GetWindowsDirectoryW(path, MAX_PATH);
-        wcscat_s(path, MAX_PATH, L"\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\Windows.UI.ShellCommon.pri");
-        return CreateFileW(path, dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
-    }
-    GetWindowsDirectoryW(path, MAX_PATH);
-    wcscat_s(path, MAX_PATH, L"\\SystemResources\\Windows.UI.ShellCommon\\pris");
-    int len = wcslen(path);
-    if (!_wcsnicmp(path, lpFileName, len))
-    {
-        GetWindowsDirectoryW(path, MAX_PATH);
-        wcscat_s(path, MAX_PATH, L"\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\pris2");
-        wcscat_s(path, MAX_PATH, lpFileName + len);
-        return CreateFileW(path, dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
-    }
-    return CreateFileW(lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
-}
-
-BOOL StartUI_GetFileAttributesExW(LPCWSTR lpFileName, GET_FILEEX_INFO_LEVELS fInfoLevelId, LPVOID lpFileInformation)
-{
-    WCHAR path[MAX_PATH];
-    GetWindowsDirectoryW(path, MAX_PATH);
-    wcscat_s(path, MAX_PATH, L"\\SystemResources\\Windows.UI.ShellCommon\\Windows.UI.ShellCommon.pri");
-    if (!_wcsicmp(path, lpFileName))
-    {
-        GetWindowsDirectoryW(path, MAX_PATH);
-        wcscat_s(path, MAX_PATH, L"\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\Windows.UI.ShellCommon.pri");
-        return GetFileAttributesExW(path, fInfoLevelId, lpFileInformation);
-    }
-    GetWindowsDirectoryW(path, MAX_PATH);
-    wcscat_s(path, MAX_PATH, L"\\SystemResources\\Windows.UI.ShellCommon\\pris");
-    int len = wcslen(path);
-    if (!_wcsnicmp(path, lpFileName, len))
-    {
-        GetWindowsDirectoryW(path, MAX_PATH);
-        wcscat_s(path, MAX_PATH, L"\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\pris2");
-        wcscat_s(path, MAX_PATH, lpFileName + len);
-        return GetFileAttributesExW(path, fInfoLevelId, lpFileInformation);
-    }
-    return GetFileAttributesExW(lpFileName, fInfoLevelId, lpFileInformation);
-}
-
-HANDLE StartUI_FindFirstFileW(LPCWSTR lpFileName, LPWIN32_FIND_DATAW lpFindFileData)
-{
-    WCHAR path[MAX_PATH];
-    GetWindowsDirectoryW(path, MAX_PATH);
-    wcscat_s(path, MAX_PATH, L"\\SystemResources\\Windows.UI.ShellCommon\\Windows.UI.ShellCommon.pri");
-    if (!_wcsicmp(path, lpFileName))
-    {
-        GetWindowsDirectoryW(path, MAX_PATH);
-        wcscat_s(path, MAX_PATH, L"\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\Windows.UI.ShellCommon.pri");
-        return FindFirstFileW(path, lpFindFileData);
-    }
-    GetWindowsDirectoryW(path, MAX_PATH);
-    wcscat_s(path, MAX_PATH, L"\\SystemResources\\Windows.UI.ShellCommon\\pris");
-    int len = wcslen(path);
-    if (!_wcsnicmp(path, lpFileName, len))
-    {
-        GetWindowsDirectoryW(path, MAX_PATH);
-        wcscat_s(path, MAX_PATH, L"\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\pris2");
-        wcscat_s(path, MAX_PATH, lpFileName + len);
-        return FindFirstFileW(path, lpFindFileData);
-    }
-    return FindFirstFileW(lpFileName, lpFindFileData);
-}
-
-LSTATUS StartUI_RegGetValueW(HKEY hkey, LPCWSTR lpSubKey, LPCWSTR lpValue, DWORD dwFlags, LPDWORD pdwType, PVOID pvData, LPDWORD pcbData)
-{
-    if (hkey == HKEY_LOCAL_MACHINE && !_wcsicmp(lpSubKey, L"Software\\Microsoft\\Windows\\CurrentVersion\\Mrt\\_Merged") && !_wcsicmp(lpValue, L"ShouldMergeInProc"))
-    {
-        *(DWORD*)pvData = 1;
-        return ERROR_SUCCESS;
-    }
-    return RegGetValueW(hkey, lpSubKey, lpValue, dwFlags, pdwType, pvData, pcbData);
-}
-
 typedef enum Parser_XamlBufferType
 {
     XBT_Text,
@@ -13339,16 +13260,16 @@ HRESULT(*CCoreServices_TryLoadXamlResourceHelperFunc)(void* _this, void* pUri, b
 HRESULT CCoreServices_TryLoadXamlResourceHelperHook(void* _this, void* pUri, bool* pfHasBinaryFile, void** ppMemory, Parser_XamlBuffer* pBuffer, void** ppPhysicalUri)
 {
     HRESULT(*Clone)(void* _this, void** ppUri); // index 3
-    HRESULT(*GetPath)(void* _this, unsigned int* pBufferLength, wchar_t* pszBuffer); // index 12
+    HRESULT(*GetCanonical)(void* _this, unsigned int* pBufferLength, wchar_t* pszBuffer); // index 7
     void** vtable = *(void***)pUri;
     Clone = vtable[3];
-    GetPath = vtable[12];
-    wchar_t thePath[MAX_PATH];
+    GetCanonical = vtable[7];
+    wchar_t szCanonical[MAX_PATH];
     unsigned int len = MAX_PATH;
-    GetPath(pUri, &len, thePath);
-    // OutputDebugStringW(thePath); OutputDebugStringW(L"<<<<<\n");
+    GetCanonical(pUri, &len, szCanonical);
+    // OutputDebugStringW(szCanonical); OutputDebugStringW(L"<<<<<\n");
 
-    if (!wcscmp(thePath, L"/JumpViewUI/RefreshedStyles.xaml"))
+    if (!wcscmp(szCanonical, L"ms-appx://Windows.UI.ShellCommon/JumpViewUI/RefreshedStyles.xaml"))
     {
         *pfHasBinaryFile = true;
         *pBuffer = g_EmptyRefreshedStylesXbfBuffer;
@@ -13362,8 +13283,10 @@ HRESULT CCoreServices_TryLoadXamlResourceHelperHook(void* _this, void* pUri, boo
 
 static BOOL StartMenu_FixContextMenuXbfHijackMethod()
 {
-    LoadLibraryW(L"Windows.UI.Xaml.dll");
-    HANDLE hWindowsUIXaml = GetModuleHandleW(L"Windows.UI.Xaml.dll");
+    HANDLE hWindowsUIXaml = LoadLibraryW(L"Windows.UI.Xaml.dll");
+    if (!hWindowsUIXaml)
+        return FALSE;
+
     MODULEINFO mi;
     GetModuleInformation(GetCurrentProcess(), hWindowsUIXaml, &mi, sizeof(mi));
 
@@ -14026,16 +13949,7 @@ DWORD InjectStartMenu()
             PatchStartTileData();
 
             // Fixes context menu crashes
-            if (!StartMenu_FixContextMenuXbfHijackMethod()) {
-                // Fallback to the old method, but we'll have broken localization
-                // Redirects to pri files from 22000.51 which work with the legacy menu
-                LoadLibraryW(L"MrmCoreR.dll");
-                HANDLE hMrmCoreR = GetModuleHandleW(L"MrmCoreR.dll");
-                VnPatchIAT(hMrmCoreR, "api-ms-win-core-file-l1-1-0.dll", "CreateFileW", StartUI_CreateFileW);
-                VnPatchIAT(hMrmCoreR, "api-ms-win-core-file-l1-1-0.dll", "GetFileAttributesExW", StartUI_GetFileAttributesExW);
-                VnPatchIAT(hMrmCoreR, "api-ms-win-core-file-l1-1-0.dll", "FindFirstFileW", StartUI_FindFirstFileW);
-                VnPatchIAT(hMrmCoreR, "api-ms-win-core-registry-l1-1-0.dll", "RegGetValueW", StartUI_RegGetValueW);
-            }
+            StartMenu_FixContextMenuXbfHijackMethod();
 
             // Enables "Show more tiles" setting
             LoadLibraryW(L"Windows.CloudStore.dll");
