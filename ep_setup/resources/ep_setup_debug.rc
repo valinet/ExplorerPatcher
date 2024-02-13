@@ -72,7 +72,7 @@ BEGIN
             VALUE "FileDescription", "ExplorerPatcher Setup Program (Debug Build)"
             VER_FILE_STRING
             VALUE "InternalName", "ep_setup.exe"
-            VALUE "LegalCopyright", "Copyright (C) 2006-2023 VALINET Solutions SRL. All rights reserved."
+            VALUE "LegalCopyright", "Copyright (C) 2006-2024 VALINET Solutions SRL. All rights reserved."
             VALUE "OriginalFilename", "ep_setup.exe"
             VALUE "ProductName", "ExplorerPatcher"
             VER_PRODUCT_STRING
