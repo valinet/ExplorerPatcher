@@ -2165,6 +2165,22 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                     }
                                 }
                             }
+                            else if (!strncmp(line + 1, "uninstall", 6))
+                            {
+                                wchar_t uninstallLink[MAX_PATH];
+                                ZeroMemory(uninstallLink, sizeof(uninstallLink));
+                                SHGetFolderPathW(NULL, SPECIAL_FOLDER, NULL, SHGFP_TYPE_CURRENT, uninstallLink);
+                                wcscat_s(uninstallLink, MAX_PATH, _T(APP_RELATIVE_PATH) L"\\" _T(SETUP_UTILITY_NAME));
+
+                                SHELLEXECUTEINFOW sei;
+                                ZeroMemory(&sei, sizeof(SHELLEXECUTEINFOW));
+                                sei.cbSize = sizeof(sei);
+                                sei.hwnd = hwnd;
+                                sei.lpFile = uninstallLink;
+                                sei.nShow = SW_NORMAL;
+                                sei.lpParameters = L"/uninstall";
+                                ShellExecuteExW(&sei);
+                            }
                             else if (!strncmp(line + 1, "update_weather", 14))
                             {
                                 PostMessageW(FindWindowW(_T(EPW_WEATHER_CLASSNAME), NULL), EP_WEATHER_WM_FETCH_DATA, 0, 0);

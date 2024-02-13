@@ -783,7 +783,12 @@
 ;reset
 
 
+;T %R:2101%
+;u %R:2102%
+;uninstall
+
+
 
 ;f
-;u %R:2101% (*)
+;u %R:2201% (*)
 ;restart

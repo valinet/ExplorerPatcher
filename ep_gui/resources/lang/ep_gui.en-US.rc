@@ -430,5 +430,8 @@ BEGIN
     IDS_ABOUT_EXPORT_SUCCESS    "Settings have been exported successfully."
     IDS_ABOUT_RESET             "Restore default settings"
 
+    IDS_UNINSTALL               "Uninstall"
+    IDS_UNINSTALL_UNINSTALL     "Uninstall ExplorerPatcher"
+
     IDS_FOOTER_RESTART          "Restart File Explorer"
 END
