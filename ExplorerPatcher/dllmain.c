@@ -9640,9 +9640,258 @@ HWND Windows11v22H2_explorer_CreateWindowExW(DWORD dwExStyle, LPCWSTR lpClassNam
 #pragma region "Shrink File Explorer address bar height"
 int explorerframe_GetSystemMetricsForDpi(int nIndex, UINT dpi)
 {
-    if (bShrinkExplorerAddressBar && nIndex == SM_CYFIXEDFRAME) return 0;
+    if (bShrinkExplorerAddressBar && nIndex == SM_CYFIXEDFRAME) return IsWindows11() ? -3 : -1;
     return GetSystemMetricsForDpi(nIndex, dpi);
 }
+
+#ifdef _WIN64
+static void PatchAddressBarSizing(const MODULEINFO* mi)
+{
+    // <- means inlined
+
+    PBYTE match;
+    DWORD dwOldProtect;
+
+    // Patch address bar positioning
+    if (IsWindows11())
+    {
+        // CAddressBand::_PositionChildWindows()
+        // 83 45 ?? ?? 83 6D ?? ?? 48
+        //          xx To 03    xx To 01
+        match = FindPattern(
+            mi->lpBaseOfDll,
+            mi->SizeOfImage,
+            "\x83\x45\x00\x00\x83\x6D\x00\x00\x48",
+            "xx??xx??x"
+        );
+        if (match && VirtualProtect(match, 9, PAGE_EXECUTE_READWRITE, &dwOldProtect))
+        {
+            match[3] = 3;
+            match[7] = 1;
+            VirtualProtect(match, 9, dwOldProtect, &dwOldProtect);
+        }
+
+        // CAddressBand::_AddressBandWndProc()
+        // 83 45 ?? ?? 83 6D ?? ?? 0F
+        //          xx To 03    xx To 01
+        match = FindPattern(
+            mi->lpBaseOfDll,
+            mi->SizeOfImage,
+            "\x83\x45\x00\x00\x83\x6D\x00\x00\x0F",
+            "xx??xx??x"
+        );
+        if (match && VirtualProtect(match, 9, PAGE_EXECUTE_READWRITE, &dwOldProtect))
+        {
+            match[3] = 3;
+            match[7] = 1;
+            VirtualProtect(match, 9, dwOldProtect, &dwOldProtect);
+        }
+    }
+    else
+    {
+        // Contaminated with some remnants of the ReportUsage of "SearchSuggestions" feature
+        // CAddressBand::_PositionChildWindows()
+        // 83 45 ?? ?? 48 8D 0D ?? ?? ?? ?? 45 33 C0 B2 01 E8 ?? ?? ?? ?? 83 6D ?? ?? 48
+        //          xx To 03                                                       xx To 01
+        match = FindPattern(
+            mi->lpBaseOfDll,
+            mi->SizeOfImage,
+            "\x83\x45\x00\x00\x48\x8D\x0D\x00\x00\x00\x00\x45\x33\xC0\xB2\x01\xE8\x00\x00\x00\x00\x83\x6D\x00\x00\x48",
+            "xx??xxx????xxxxxx????xx??x"
+        );
+        if (match && VirtualProtect(match, 25, PAGE_EXECUTE_READWRITE, &dwOldProtect))
+        {
+            match[3] = 3;
+            match[24] = 1;
+            VirtualProtect(match, 25, dwOldProtect, &dwOldProtect);
+        }
+
+        // 83 45 ?? ?? 45 33 C0 B2 01 48 8D 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 83 6D ?? ?? 0F
+        //          xx To 03                                                       xx To 01
+        match = FindPattern(
+            mi->lpBaseOfDll,
+            mi->SizeOfImage,
+            "\x83\x45\x00\x00\x45\x33\xC0\xB2\x01\x48\x8D\x0D\x00\x00\x00\x00\xE8\x00\x00\x00\x00\x83\x6D\x00\x00\x0F",
+            "xx??xxxxxxxx????x????xx??x"
+        );
+        if (match && VirtualProtect(match, 25, PAGE_EXECUTE_READWRITE, &dwOldProtect))
+        {
+            match[3] = 3;
+            match[24] = 1;
+            VirtualProtect(match, 25, dwOldProtect, &dwOldProtect);
+        }
+    }
+
+    // Patch address bar height
+    // CAddressBand::GetBandInfo() <- CAddressBand::CalculateBandHeight() <- BandSizing::BandSizingHelper::GetCalculatedBandHeight()
+    // 41 8D 48 AA 48 FF 15 ?? ?? ?? ?? 0F 1F 44 00 ?? 03 F8 // 22621.2506/2715
+    //          xx To 9E
+    /*match = FindPattern(
+        mi->lpBaseOfDll,
+        mi->SizeOfImage,
+        "\x41\x8D\x48\xAA\x48\xFF\x15\x00\x00\x00\x00\x0F\x1F\x44\x00\x00\x03\xF8",
+        "xxxxxxx????xxxx?xx"
+    );
+    if (match && VirtualProtect(match, 7, PAGE_EXECUTE_READWRITE, &dwOldProtect))
+    {
+        match[3] = IsWindows11() ? 0x9E : 0xA0; // -98 : -96 -- -2 on Windows 11, 0 on Windows 10
+        VirtualProtect(match, 7, dwOldProtect, &dwOldProtect);
+    }
+    else
+    {
+        // CAddressBand::GetBandInfo() <- CAddressBand::CalculateBandHeight() <- BandSizing::BandSizingHelper::GetCalculatedBandHeight()
+    }
+
+    // CAddressBand::CalculateBandHeight() <- BandSizing::BandSizingHelper::GetCalculatedBandHeight()
+    // 41 8D 48 AA 48 FF 15 ?? ?? ?? ?? 0F 1F 44 00 ?? 48 8B // 22621.2506/2715
+    //          xx To 9E
+    match = FindPattern(
+        mi->lpBaseOfDll,
+        mi->SizeOfImage,
+        "\x41\x8D\x48\xAA\x48\xFF\x15\x00\x00\x00\x00\x0F\x1F\x44\x00\x00\x03\xF8",
+        "xxxxxxx????xxxx?xx"
+    );
+    if (match && VirtualProtect(match, 7, PAGE_EXECUTE_READWRITE, &dwOldProtect))
+    {
+        match[3] = IsWindows11() ? 0x9E : 0xA0; // -98 : -96 -- -2 on Windows 11, 0 on Windows 10
+        VirtualProtect(match, 7, dwOldProtect, &dwOldProtect);
+    }*/
+
+    // Patch address band height
+    // CAddressBand::GetBandInfo() <- CAddressBand::GetBandHeight()
+    // 83 C7 10 45 85 ED 4C 8B 6C 24 // 22621.2506/2715
+    // 83 C7 07 45 85 E4 4C 8B A4 24 // 19045.3393
+    // 83 C7 ?? 45 85 ?? 4C 8B ?? 24
+    //       xx To 04
+    match = FindPattern(
+        mi->lpBaseOfDll,
+        mi->SizeOfImage,
+        "\x83\xC7\x00\x45\x85\x00\x4C\x8B\x00\x24",
+        "xx?xx?xx?x"
+    );
+    if (!match)
+    {
+        // CAddressBand::GetBandInfo() <- CAddressBand::GetBandHeight()
+        // 83 C7 ?? 83 7C 24 ?? ?? 74 // 22621.1992
+        //       xx To 04          ^^ short jnz
+        match = FindPattern(
+            mi->lpBaseOfDll,
+            mi->SizeOfImage,
+            "\x83\xC7\x00\x83\x7C\x24\x00\x00\x74",
+            "xx?xxx??x"
+        );
+        if (!match)
+        {
+            // CAddressBand::GetBandInfo() <- CAddressBand::GetBandHeight()
+            // 83 C7 ?? 83 7C 24 ?? ?? 0F 85 // 23560.1000
+            //       xx To 04          ^^^^^ long jnz
+            match = FindPattern(
+                mi->lpBaseOfDll,
+                mi->SizeOfImage,
+                "\x83\xC7\x00\x83\x7C\x24\x00\x00\x0F\x85",
+                "xx?xxx??xx"
+            );
+            if (!match)
+            {
+                // CAddressBand::GetBandHeight()
+                // 8D 43 ?? 48 8B 4C 24 ?? 48 33 CC E8 // 25951
+                //       xx To 04
+                match = FindPattern(
+                    mi->lpBaseOfDll,
+                    mi->SizeOfImage,
+                    "\x8D\x43\x00\x48\x8B\x4C\x24\x00\x48\x33\xCC\xE8",
+                    "xx?xxxx?xxxx"
+                );
+            }
+        }
+    }
+    if (match)
+    {
+        if (VirtualProtect(match, 3, PAGE_EXECUTE_READWRITE, &dwOldProtect))
+        {
+            match[2] = 4;
+            VirtualProtect(match, 3, dwOldProtect, &dwOldProtect);
+        }
+    }
+
+    /*// Patch search box height
+    // BandSizing::BandSizingHelper::GetCalculatedBandHeight()
+    // 8D 4D AA 44 8B C5 48 FF 15
+    //       xx To 9E
+    match = FindPattern(
+        mi->lpBaseOfDll,
+        mi->SizeOfImage,
+        "\x8D\x4D\xAA\x44\x8B\xC5\x48\xFF\x15",
+        "xxxxxxxxx"
+    );
+    if (match)
+    {
+        if (VirtualProtect(match, 9, PAGE_EXECUTE_READWRITE, &dwOldProtect))
+        {
+            match[2] = IsWindows11() ? 0x9E : 0xA0; // -98 : -96 -- -2 on Windows 11, 0 on Windows 10
+            VirtualProtect(match, 9, dwOldProtect, &dwOldProtect);
+        }
+    }
+    else
+    {
+        // B9 0A 00 00 00 48 FF 15 // Windows 10 and Windows 11 25951
+        //    xxxxxxxxxxx To 0
+        match = FindPattern(
+            mi->lpBaseOfDll,
+            mi->SizeOfImage,
+            "\xB9\x0A\x00\x00\x00\x48\xFF\x15",
+            "xxxxxxxx"
+        );
+        if (match && VirtualProtect(match, 8, PAGE_EXECUTE_READWRITE, &dwOldProtect))
+        {
+            *(int*)(match + 1) = IsWindows11() ? -2 : 0;
+            VirtualProtect(match, 8, dwOldProtect, &dwOldProtect);
+        }
+    }*/
+
+    if (IsWindows11())
+    {
+        // Windows 11 - Patch Up button size
+        // CUpBand::ScaleAndSetPadding()
+        // Inlined SHLogicalToPhysicalDPI()
+        // 41 B8 60 00 00 00 41 8D 58 B1
+        //                            xx To A8
+        match = FindPattern(
+            mi->lpBaseOfDll,
+            mi->SizeOfImage,
+            "\x41\xB8\x60\x00\x00\x00\x41\x8D\x58\xB1",
+            "xxxxxxxxxx"
+        );
+        if (match)
+        {
+            if (VirtualProtect(match, 10, PAGE_EXECUTE_READWRITE, &dwOldProtect))
+            {
+                match[9] = 0xA8; // -88: 96 - 88 = 8
+                VirtualProtect(match, 10, dwOldProtect, &dwOldProtect);
+            }
+        }
+        else
+        {
+            // Non-inlined SHLogicalToPhysicalDPI()
+            // 48 8B F1 48 8B 49 70 ?? ?? ?? ?? B8 ?? ?? ?? ?? // 23590, 25951
+            //                                     xxxxxxxxxxx To 8
+            match = FindPattern(
+                mi->lpBaseOfDll,
+                mi->SizeOfImage,
+                "\x48\x8B\xF1\x48\x8B\x49\x70\x00\x00\x00\x00\xB8",
+                "xxxxxxx????x"
+            );
+            if (match && VirtualProtect(match, 16, PAGE_EXECUTE_READWRITE, &dwOldProtect))
+            {
+                *(int*)(match + 12) = 8;
+                VirtualProtect(match, 16, dwOldProtect, &dwOldProtect);
+            }
+        }
+    }
+}
+#else
+static void PatchAddressBarSizing(MODULEINFO* mi) {}
+#endif
 #pragma endregion
 
 
@@ -9893,6 +10142,14 @@ DWORD InjectBasicFunctions(BOOL bIsExplorer, BOOL bInstall)
             }
             VnPatchIAT(hExplorerFrame, "API-MS-WIN-CORE-STRING-L1-1-0.DLL", "CompareStringOrdinal", ExplorerFrame_CompareStringOrdinal);
             VnPatchIAT(hExplorerFrame, "user32.dll", "GetSystemMetricsForDpi", explorerframe_GetSystemMetricsForDpi);
+#ifdef _WIN64
+            MODULEINFO mi;
+            GetModuleInformation(GetCurrentProcess(), hExplorerFrame, &mi, sizeof(MODULEINFO));
+            if (global_rovi.dwBuildNumber >= 19041 && bShrinkExplorerAddressBar)
+            {
+                PatchAddressBarSizing(&mi);
+            }
+#endif
             VnPatchIAT(hExplorerFrame, "api-ms-win-core-com-l1-1-0.dll", "CoCreateInstance", ExplorerFrame_CoCreateInstanceHook);
         }
         else
