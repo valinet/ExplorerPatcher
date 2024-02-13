@@ -682,6 +682,54 @@ inline HMODULE LoadGuiModule()
     return LoadLibraryExW(epGuiPath, NULL, LOAD_LIBRARY_AS_DATAFILE);
 }
 
+inline BOOL DoesWindows10StartMenuExist()
+{
+    if (!IsWindows11())
+        return TRUE;
+
+    wchar_t szPath[MAX_PATH];
+    GetWindowsDirectoryW(szPath, MAX_PATH);
+    wcscat_s(szPath, MAX_PATH, L"\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\StartUI.dll");
+    return FileExistsW(szPath);
+}
+
+inline const WCHAR* PickTaskbarDll()
+{
+    DWORD b = global_rovi.dwBuildNumber;
+
+    if ((b >= 22621 && b <= 22635)  // 22H2-23H2 Release, Release Preview, and Beta channels
+     || (b >= 23403 && b <= 25197)) // Early pre-reboot Dev channel until post-reboot Dev channel
+    {
+        return L"ep_taskbar.2.dll";
+    }
+
+    if (b >= 25201 && b <= 25915) // Pre-reboot Dev channel until early Canary channel
+    {
+        return L"ep_taskbar.3.dll";
+    }
+
+    if (b >= 25921) // Canary channel with nuked classic system tray
+    {
+        return L"ep_taskbar.4.dll";
+    }
+
+    return NULL;
+}
+
+inline BOOL DoesTaskbarDllExist()
+{
+    const wchar_t* pszTaskbarDll = PickTaskbarDll();
+    if (!pszTaskbarDll)
+        return FALSE;
+
+    wchar_t szPath[MAX_PATH];
+    ZeroMemory(szPath, sizeof(szPath));
+    SHGetFolderPathW(NULL, SPECIAL_FOLDER, NULL, SHGFP_TYPE_CURRENT, szPath);
+    wcscat_s(szPath, MAX_PATH, _T(APP_RELATIVE_PATH) L"\\");
+    wcscat_s(szPath, MAX_PATH, pszTaskbarDll);
+    return FileExistsW(szPath);
+}
+
 #ifdef __cplusplus
 }
 #endif

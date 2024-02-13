@@ -4076,6 +4076,11 @@ LSTATUS stobject_RegGetValueW(
     return RegGetValueW(hkey, lpSubKey, lpValue, dwFlags, pdwType, pvData, pcbData);
 }
 
+DEFINE_GUID(CLSID_NetworkTraySSO, 0xC2796011, 0x81BA, 0x4148, 0x8F, 0xCA, 0xC6, 0x64, 0x32, 0x45, 0x11, 0x3F);
+DEFINE_GUID(CLSID_WindowsToGoSSO, 0x4DC9C264, 0x730E, 0x4CF6, 0x83, 0x74, 0x70, 0xF0, 0x79, 0xE4, 0xF8, 0x2B);
+
+typedef HRESULT(WINAPI* DllGetClassObject_t)(REFCLSID rclsid, REFIID riid, LPVOID* ppv);
+
 HRESULT stobject_CoCreateInstanceHook(
     REFCLSID  rclsid,
     LPUNKNOWN pUnkOuter,
@@ -4084,6 +4089,28 @@ HRESULT stobject_CoCreateInstanceHook(
     LPVOID* ppv
 )
 {
+    if (global_rovi.dwBuildNumber >= 25000 && IsEqualGUID(rclsid, &CLSID_NetworkTraySSO))
+    {
+        wchar_t szPath[MAX_PATH];
+        ZeroMemory(szPath, sizeof(szPath));
+        SHGetFolderPathW(NULL, SPECIAL_FOLDER, NULL, SHGFP_TYPE_CURRENT, szPath);
+        wcscat_s(szPath, MAX_PATH, _T(APP_RELATIVE_PATH) L"\\pnidui.dll");
+        HMODULE hPnidui = LoadLibraryW(szPath);
+        DllGetClassObject_t pfnDllGetClassObject = hPnidui ? (DllGetClassObject_t)GetProcAddress(hPnidui, "DllGetClassObject") : NULL;
+        if (!pfnDllGetClassObject)
+        {
+            return REGDB_E_CLASSNOTREG;
+        }
+        IClassFactory* pClassFactory = NULL;
+        HRESULT hr = pfnDllGetClassObject(rclsid, &IID_IClassFactory, (LPVOID*)&pClassFactory);
+        if (SUCCEEDED(hr))
+        {
+            hr = pClassFactory->lpVtbl->CreateInstance(pClassFactory, pUnkOuter, riid, ppv);
+            pClassFactory->lpVtbl->Release(pClassFactory);
+        }
+        return hr;
+    }
+
     DWORD dwVal = 0, dwSize = sizeof(DWORD);
     if (IsEqualGUID(rclsid, &CLSID_ImmersiveShell) &&
         IsEqualGUID(riid, &IID_IServiceProvider) &&
@@ -10240,6 +10267,10 @@ DWORD InjectBasicFunctions(BOOL bIsExplorer, BOOL bInstall)
     {
         DWORD dwSize = sizeof(DWORD);
         RegGetValueW(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", L"Start_ShowClassicMode", RRF_RT_DWORD, NULL, &dwStartShowClassicMode, &dwSize);
+        if (!DoesWindows10StartMenuExist())
+        {
+            dwStartShowClassicMode = 0;
+        }
     }
 
 #ifdef _WIN64
@@ -11797,6 +11828,179 @@ BOOL CrashCounterHandleEntryPoint()
 #pragma endregion
 
 
+#pragma region "Loader for alternate taskbar implementation"
+#ifdef _WIN64
+void PrepareAlternateTaskbarImplementation(symbols_addr* symbols_PTRS)
+{
+    if (!IsWindows11Version22H2OrHigher())
+        return; // Definitely unsupported
+
+    if (bOldTaskbar <= 1)
+        return; // Not enabled
+
+    const WCHAR* pszTaskbarDll = PickTaskbarDll();
+    if (!pszTaskbarDll)
+    {
+        wprintf(L"[TB] Unsupported build\n");
+        return;
+    }
+
+    bool bAllValid = true;
+    for (SIZE_T j = 0; j < ARRAYSIZE(symbols_PTRS->explorer_PTRS); ++j)
+    {
+        DWORD i = symbols_PTRS->explorer_PTRS[j];
+        bAllValid &= i && i != 0xFFFFFFFF;
+        if (!bAllValid)
+            break;
+    }
+
+    if (!bAllValid)
+    {
+        wprintf(L"[TB] Missing offsets\n");
+        return;
+    }
+
+    wchar_t szPath[MAX_PATH];
+    ZeroMemory(szPath, sizeof(szPath));
+    SHGetFolderPathW(NULL, SPECIAL_FOLDER, NULL, SHGFP_TYPE_CURRENT, szPath);
+    wcscat_s(szPath, MAX_PATH, _T(APP_RELATIVE_PATH) L"\\");
+    wcscat_s(szPath, MAX_PATH, pszTaskbarDll);
+    HMODULE hMyTaskbar = LoadLibraryW(szPath);
+    if (!hMyTaskbar)
+    {
+        wprintf(L"[TB] '%s' not found\n", pszTaskbarDll);
+        return;
+    }
+
+    explorer_TrayUI_CreateInstanceFunc = GetProcAddress(hMyTaskbar, "EP_TrayUI_CreateInstance");
+
+    typedef DWORD (*GetVersion_t)();
+    GetVersion_t GetVersion = (GetVersion_t)GetProcAddress(hMyTaskbar, "GetVersion");
+    if (GetVersion)
+    {
+        DWORD version = GetVersion();
+        if (version != 1)
+        {
+            wprintf(L"[TB] Version mismatch: %d\n", version);
+            return;
+        }
+    }
+
+    typedef void (*CopyExplorerSymbols_t)(symbols_addr* symbols);
+    CopyExplorerSymbols_t CopyExplorerSymbols = (CopyExplorerSymbols_t)GetProcAddress(hMyTaskbar, "CopyExplorerSymbols");
+    if (CopyExplorerSymbols)
+    {
+        CopyExplorerSymbols(symbols_PTRS);
+    }
+
+    typedef void (*SetImmersiveMenuFunctions_t)(void* a, void* b, void* c);
+    SetImmersiveMenuFunctions_t SetImmersiveMenuFunctions = (SetImmersiveMenuFunctions_t)GetProcAddress(hMyTaskbar, "SetImmersiveMenuFunctions");
+    if (SetImmersiveMenuFunctions)
+    {
+        SetImmersiveMenuFunctions(
+            CImmersiveContextMenuOwnerDrawHelper_s_ContextMenuWndProcFunc,
+            ImmersiveContextMenuHelper_ApplyOwnerDrawToMenuFunc,
+            ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc
+        );
+    }
+
+    wprintf(L"[TB] Using '%s'\n", pszTaskbarDll);
+}
+#endif
+#pragma endregion
+
+
+#pragma region "Restore network icon on builds without pnidui.dll shipped"
+#ifdef _WIN64
+typedef struct SSOEntry
+{
+    GUID* pguid;
+    int sharedThread;
+    DWORD dwFlags;
+    bool (*pfnCheckEnabled)();
+} SSOEntry;
+
+void PatchStobject(HANDLE hStobject)
+{
+    PBYTE beginRData = NULL;
+    DWORD sizeRData = 0;
+
+    // Our target is in .rdata
+    PIMAGE_DOS_HEADER dosHeader = hStobject;
+    if (dosHeader->e_magic == IMAGE_DOS_SIGNATURE)
+    {
+        PIMAGE_NT_HEADERS64 ntHeader = (PIMAGE_NT_HEADERS64)((u_char*)dosHeader + dosHeader->e_lfanew);
+        if (ntHeader->Signature == IMAGE_NT_SIGNATURE)
+        {
+            for (unsigned int i = 0; i < ntHeader->FileHeader.NumberOfSections; ++i)
+            {
+                PIMAGE_SECTION_HEADER section = IMAGE_FIRST_SECTION(ntHeader) + i;
+                if (!strncmp(section->Name, ".rdata", 6))
+                {
+                    beginRData = (PBYTE)dosHeader + section->VirtualAddress;
+                    sizeRData = section->SizeOfRawData;
+                    break;
+                }
+            }
+        }
+    }
+    if (!beginRData || !sizeRData)
+    {
+        return;
+    }
+
+    // We'll sacrifice the Windows To Go SSO for this
+    GUID* pguidTarget = memmem(beginRData, sizeRData, &CLSID_WindowsToGoSSO, sizeof(GUID));
+    if (!pguidTarget)
+    {
+        return;
+    }
+    printf("[SSO] pguidTarget = %llX\n", (PBYTE)pguidTarget - (PBYTE)hStobject);
+
+    // Find where it's used
+    SSOEntry* pssoEntryTarget = NULL;
+    SIZE_T searchSize = (SIZE_T)sizeRData - sizeof(SSOEntry);
+    for (SIZE_T i = 0; i < searchSize; i += 8) // We know the struct is aligned, save some iterations
+    {
+        SSOEntry* current = (SSOEntry*)(beginRData + i);
+        if (current->pguid == pguidTarget && current->sharedThread == 0 && current->dwFlags == 0 && current->pfnCheckEnabled)
+        {
+            pssoEntryTarget = current;
+            break;
+        }
+    }
+    if (!pssoEntryTarget)
+    {
+        return;
+    }
+    printf("[SSO] pssoEntryTarget = %llX\n", (PBYTE)pssoEntryTarget - (PBYTE)hStobject);
+
+    // Make sure it's really not used
+    if (pssoEntryTarget->pfnCheckEnabled && pssoEntryTarget->pfnCheckEnabled())
+    {
+        return;
+    }
+
+    // Modify the GUID
+    DWORD dwOldProtect = 0;
+    if (VirtualProtect(pguidTarget, sizeof(GUID), PAGE_EXECUTE_READWRITE, &dwOldProtect))
+    {
+        *pguidTarget = CLSID_NetworkTraySSO;
+        VirtualProtect(pguidTarget, sizeof(GUID), dwOldProtect, &dwOldProtect);
+    }
+
+    // Modify the SSOEntry
+    if (VirtualProtect(pssoEntryTarget, sizeof(SSOEntry), PAGE_EXECUTE_READWRITE, &dwOldProtect))
+    {
+        pssoEntryTarget->sharedThread = 1;
+        pssoEntryTarget->dwFlags = 0;
+        pssoEntryTarget->pfnCheckEnabled = NULL;
+        VirtualProtect(pssoEntryTarget, sizeof(SSOEntry), dwOldProtect, &dwOldProtect);
+    }
+}
+#endif
+#pragma endregion
+
 DWORD Inject(BOOL bIsExplorer)
 {
 #if defined(DEBUG) | defined(_DEBUG)
@@ -12346,7 +12550,7 @@ DWORD Inject(BOOL bIsExplorer)
         if (symbols_PTRS.twinui_pcshell_PTRS[7] && symbols_PTRS.twinui_pcshell_PTRS[7] != 0xFFFFFFFF)
         {
             twinui_pcshell_CMultitaskingViewManager__CreateDCompMTVHostFunc = (INT64(*)(void*, POINT*))
-                ((uintptr_t)hTwinuiPcshell + symbols_PTRS.twinui_pcshell_PTRS[TWINUI_PCSHELL_SB_CNT - 1]);
+                ((uintptr_t)hTwinuiPcshell + symbols_PTRS.twinui_pcshell_PTRS[8]);
             twinui_pcshell_CMultitaskingViewManager__CreateXamlMTVHostFunc = (INT64(*)(void*, POINT*))
                 ((uintptr_t)hTwinuiPcshell + symbols_PTRS.twinui_pcshell_PTRS[7]);
             rv = funchook_prepare(
@@ -12449,6 +12653,7 @@ DWORD Inject(BOOL bIsExplorer)
 #endif
 
     VnPatchIAT(hTwinuiPcshell, "API-MS-WIN-CORE-REGISTRY-L1-1-0.DLL", "RegGetValueW", twinuipcshell_RegGetValueW);
+    PrepareAlternateTaskbarImplementation(&symbols_PTRS);
     printf("Setup twinui.pcshell functions done\n");
 
 
@@ -12492,6 +12697,10 @@ DWORD Inject(BOOL bIsExplorer)
     {
         VnPatchIAT(hStobject, "user32.dll", "TrackPopupMenu", stobject_TrackPopupMenuHook);
         VnPatchIAT(hStobject, "user32.dll", "TrackPopupMenuEx", stobject_TrackPopupMenuExHook);
+    }
+    if (global_rovi.dwBuildNumber >= 25000)
+    {
+        PatchStobject(hStobject);
     }
 #ifdef USE_PRIVATE_INTERFACES
     if (bSkinIcons)
@@ -12576,11 +12785,11 @@ DWORD Inject(BOOL bIsExplorer)
         }
 
         // Allow clasic drive groupings in This PC
-        HRESULT(*SHELL32_DllGetClassObject)(REFCLSID rclsid, REFIID riid, LPVOID* ppv) = GetProcAddress(hShell32, "DllGetClassObject");
+        DllGetClassObject_t SHELL32_DllGetClassObject = (DllGetClassObject_t)GetProcAddress(hShell32, "DllGetClassObject");
         if (SHELL32_DllGetClassObject)
         {
             IClassFactory* pClassFactory = NULL;
-            SHELL32_DllGetClassObject(&CLSID_DriveTypeCategorizer, &IID_IClassFactory, &pClassFactory);
+            SHELL32_DllGetClassObject(&CLSID_DriveTypeCategorizer, &IID_IClassFactory, (LPVOID*)&pClassFactory);
 
             if (pClassFactory)
             {
@@ -13094,6 +13303,10 @@ void StartMenu_LoadSettings(BOOL bRestartIfChanged)
             &dwVal,
             &dwSize
         );
+        if (!DoesWindows10StartMenuExist())
+        {
+            dwVal = 0;
+        }
         if (bRestartIfChanged && dwVal != dwStartShowClassicMode)
         {
             exit(0);
