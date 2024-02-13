@@ -10987,7 +10987,7 @@ void TryToFindTwinuiPCShellOffsets(DWORD* pOffsets)
                 printf("CLauncherTipContextMenu::ShowLauncherTipContextMenu() = %lX\n", pOffsets[6]);
             }
         }
-        if (IsWindows11Version22H2OrHigher() && (!pOffsets[7] || pOffsets[7] == 0xFFFFFFFF)) // TODO If we get rid of IsUndockedAssetAvailable, we can use this on 21H2 too
+        if (!pOffsets[7] || pOffsets[7] == 0xFFFFFFFF)
         {
             // Ref: CMultitaskingViewManager::_CreateMTVHost()
             // Inlined GetMTVHostKind()
@@ -11029,7 +11029,7 @@ void TryToFindTwinuiPCShellOffsets(DWORD* pOffsets)
                 }
             }
         }
-        if (IsWindows11Version22H2OrHigher() && (!pOffsets[8] || pOffsets[8] == 0xFFFFFFFF))
+        if (!pOffsets[8] || pOffsets[8] == 0xFFFFFFFF)
         {
             // Ref: CMultitaskingViewManager::_CreateMTVHost()
             // Inlined GetMTVHostKind()
@@ -12293,10 +12293,10 @@ DWORD Inject(BOOL bIsExplorer)
         printf("Failed to hook CLauncherTipContextMenu::ShowLauncherTipContextMenu(). rv = %d\n", rv);
     }
 
-    rv = -1;
-    if (symbols_PTRS.twinui_pcshell_PTRS[7] && symbols_PTRS.twinui_pcshell_PTRS[7] != 0xFFFFFFFF)
+    if (IsWindows11())
     {
-        if (IsWindows11Version22H2OrHigher())
+        rv = -1;
+        if (symbols_PTRS.twinui_pcshell_PTRS[7] && symbols_PTRS.twinui_pcshell_PTRS[7] != 0xFFFFFFFF)
         {
             twinui_pcshell_CMultitaskingViewManager__CreateDCompMTVHostFunc = (INT64(*)(void*, POINT*))
                 ((uintptr_t)hTwinuiPcshell + symbols_PTRS.twinui_pcshell_PTRS[TWINUI_PCSHELL_SB_CNT - 1]);
@@ -12308,23 +12308,10 @@ DWORD Inject(BOOL bIsExplorer)
                 twinui_pcshell_CMultitaskingViewManager__CreateXamlMTVHostHook
             );
         }
-        else if (IsWindows11())
+        if (rv != 0)
         {
-            twinui_pcshell_IsUndockedAssetAvailableFunc = (INT64(*)(void*, POINT*))
-                ((uintptr_t)hTwinuiPcshell + symbols_PTRS.twinui_pcshell_PTRS[7]);
-            rv = funchook_prepare(
-                funchook,
-                (void**)&twinui_pcshell_IsUndockedAssetAvailableFunc,
-                twinui_pcshell_IsUndockedAssetAvailableHook
-            );
-        }
-    }
-    if (rv != 0)
-    {
-        if (IsWindows11Version22H2OrHigher())
             printf("Failed to hook CMultitaskingViewManager::_CreateXamlMTVHost(). rv = %d\n", rv);
-        else if (IsWindows11())
-            printf("Failed to hook IsUndockedAssetAvailable(). rv = %d\n", rv);
+        }
     }
 
     /*rv = -1;
