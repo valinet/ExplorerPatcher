@@ -3837,7 +3837,6 @@ BOOL WINAPI DisableImmersiveMenus_SystemParametersInfoW(
 {
     if (bDisableImmersiveContextMenu && uiAction == SPI_GETSCREENREADER)
     {
-        printf("SystemParametersInfoW\n");
         *(BOOL*)pvParam = TRUE;
         return TRUE;
     }
@@ -7399,6 +7398,43 @@ void Explorer_RefreshClock(int unused)
     } while (hWnd);
 }
 
+void* TrayUI__UpdatePearlSizeFunc;
+
+void UpdateSearchBox()
+{
+#ifdef _WIN64
+    if (!IsWindows11Version22H2OrHigher())
+        return;
+
+    if (!TrayUI__UpdatePearlSizeFunc)
+        return;
+
+    PBYTE searchBegin = TrayUI__UpdatePearlSizeFunc;
+    // 0F 84 ?? ?? ?? ?? 48 8B 81 ?? ?? ?? ?? 48 85 C0 74 04
+    PBYTE match = FindPattern(
+        searchBegin,
+        256,
+        "\x0F\x84\x00\x00\x00\x00\x48\x8B\x81\x00\x00\x00\x00\x48\x85\xC0\x74\x04",
+        "xx????xxx????xxxxx"
+    );
+    if (match)
+    {
+        PBYTE overwriteBegin = match + 18;
+        DWORD dwOldProtect;
+        if (VirtualProtect(overwriteBegin, 4, PAGE_EXECUTE_READWRITE, &dwOldProtect))
+        {
+            // Overwrite right after the pattern with
+            // mov byte ptr [rax+58h], 0 // C6 40 58 00
+            overwriteBegin[0] = 0xC6;
+            overwriteBegin[1] = 0x40;
+            overwriteBegin[2] = 0x58; // Offset to m_bEnabled
+            overwriteBegin[3] = dwSearchboxTaskbarMode == 2 && !dwTaskbarSmallIcons; // Enable the search box?
+            VirtualProtect(overwriteBegin, 4, dwOldProtect, &dwOldProtect);
+        }
+    }
+#endif
+}
+
 int numTBButtons = 0;
 void WINAPI Explorer_RefreshUI(int src)
 {
@@ -7499,6 +7535,7 @@ void WINAPI Explorer_RefreshUI(int src)
             {
                 dwSearchboxTaskbarMode = dwTemp;
                 dwRefreshMask |= REFRESHUI_CENTER;
+                UpdateSearchBox();
             }
         }
     }
@@ -9058,7 +9095,7 @@ LSTATUS explorer_RegGetValueW(
         lRes = RegGetValueW(hkey, lpSubKey, lpValue, dwFlags, pdwType, pvData, pcbData);
     }
 
-    if (IsWindows11() && !lstrcmpW(lpValue, L"SearchboxTaskbarMode"))
+    /*if (IsWindows11() && !lstrcmpW(lpValue, L"SearchboxTaskbarMode"))
     {
         if (*(DWORD*)pvData)
         {
@@ -9066,7 +9103,7 @@ LSTATUS explorer_RegGetValueW(
         }
 
         lRes = ERROR_SUCCESS;
-    }
+    }*/
 
     return lRes;
 }
@@ -12181,6 +12218,16 @@ DWORD Inject(BOOL bIsExplorer)
         }
     }
 
+    // Enable Windows 10 taskbar search box on 22621+
+    if (IsWindows11Version22H2OrHigher())
+    {
+        if (symbols_PTRS.explorer_PTRS[8] && symbols_PTRS.explorer_PTRS[8] != 0xFFFFFFFF)
+        {
+            TrayUI__UpdatePearlSizeFunc = (PBYTE)hExplorer + symbols_PTRS.explorer_PTRS[8];
+        }
+        UpdateSearchBox();
+    }
+
     HANDLE hShcore = LoadLibraryW(L"shcore.dll");
     SHWindowsPolicy = GetProcAddress(hShcore, (LPCSTR)190);
 #ifdef USE_PRIVATE_INTERFACES
@@ -12695,7 +12742,7 @@ DWORD Inject(BOOL bIsExplorer)
         }
     }
 
-    if (IsWindows11Version22H2OrHigher() && bOldTaskbar)
+    /*if (IsWindows11Version22H2OrHigher() && bOldTaskbar)
     {
         DWORD dwRes = 1;
         DWORD dwSize = sizeof(DWORD);
@@ -12703,7 +12750,7 @@ DWORD Inject(BOOL bIsExplorer)
         {
             RegSetKeyValueW(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Search", L"SearchboxTaskbarMode", REG_DWORD, &dwRes, sizeof(DWORD));
         }
-    }
+    }*/
 
 
     /*

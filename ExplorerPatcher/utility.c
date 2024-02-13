@@ -1,6 +1,7 @@
 #include "utility.h"
 #include <Wininet.h>
 #pragma comment(lib, "Wininet.lib")
+#include <TlHelp32.h>
 
 RTL_OSVERSIONINFOW global_rovi;
 DWORD32 global_ubr;
@@ -1533,6 +1534,42 @@ BOOL ExtractMonitorByIndex(HMONITOR hMonitor, HDC hDC, LPRECT lpRect, MonitorOve
     }
     mod->cbIndex++;
     return TRUE;
+}
+
+DWORD GetProcessIdByExeName(LPCWSTR wszProcessName)
+{
+    HANDLE hSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    if (hSnap != INVALID_HANDLE_VALUE)
+    {
+        PROCESSENTRY32W pe;
+        pe.dwSize = sizeof(pe);
+        BOOL bRet = Process32FirstW(hSnap, &pe);
+        while (bRet)
+        {
+            if (!_wcsicmp(pe.szExeFile, wszProcessName))
+            {
+                CloseHandle(hSnap);
+                return pe.th32ProcessID;
+            }
+            bRet = Process32NextW(hSnap, &pe);
+        }
+        CloseHandle(hSnap);
+    }
+    return 0;
+}
+
+void KillProcess(LPCWSTR wszProcessName)
+{
+    DWORD dwProcessId = GetProcessIdByExeName(wszProcessName);
+    if (!dwProcessId)
+        return;
+
+    HANDLE hProcess = OpenProcess(PROCESS_TERMINATE, FALSE, dwProcessId);
+    if (hProcess)
+    {
+        TerminateProcess(hProcess, 1);
+        CloseHandle(hProcess);
+    }
 }
 
 #ifdef _WIN64
