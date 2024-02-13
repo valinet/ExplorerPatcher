@@ -4098,7 +4098,7 @@ HRESULT stobject_CoCreateInstanceHook(
             &dwVal,
             (LPDWORD)(&dwSize)
         );
-        if (!dwVal)
+        if (!dwVal && IsWindows11() && !IsWindows11Version22H2Build2134OrHigher())
         {
             if (hCheckForegroundThread)
             {
@@ -4202,7 +4202,7 @@ HRESULT pnidui_CoCreateInstanceHook(
             }
             return E_NOINTERFACE;
         }
-        else
+        else if (IsWindows11() && !IsWindows11Version22H2Build1413OrHigher())
         {
             if (hCheckForegroundThread)
             {
