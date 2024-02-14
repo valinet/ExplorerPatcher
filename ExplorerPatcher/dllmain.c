@@ -4089,7 +4089,7 @@ HRESULT stobject_CoCreateInstanceHook(
     LPVOID* ppv
 )
 {
-    if (global_rovi.dwBuildNumber >= 25000 && IsEqualGUID(rclsid, &CLSID_NetworkTraySSO))
+    if (global_rovi.dwBuildNumber >= 25000 && IsEqualGUID(rclsid, &CLSID_NetworkTraySSO) && bOldTaskbar)
     {
         wchar_t szPath[MAX_PATH];
         ZeroMemory(szPath, sizeof(szPath));
@@ -10209,9 +10209,12 @@ DWORD InjectBasicFunctions(BOOL bIsExplorer, BOOL bInstall)
 #ifdef _WIN64
             MODULEINFO mi;
             GetModuleInformation(GetCurrentProcess(), hExplorerFrame, &mi, sizeof(MODULEINFO));
-            if (global_rovi.dwBuildNumber >= 19041 && bShrinkExplorerAddressBar)
+            if (bShrinkExplorerAddressBar)
             {
-                PatchAddressBarSizing(&mi);
+                if ((global_rovi.dwBuildNumber >= 19041 && global_rovi.dwBuildNumber <= 19045 && global_ubr < 3754) || IsWindows11())
+                {
+                    PatchAddressBarSizing(&mi);
+                }
             }
 #endif
             VnPatchIAT(hExplorerFrame, "api-ms-win-core-com-l1-1-0.dll", "CoCreateInstance", ExplorerFrame_CoCreateInstanceHook);
@@ -11872,19 +11875,16 @@ void PrepareAlternateTaskbarImplementation(symbols_addr* symbols_PTRS)
         return;
     }
 
-    explorer_TrayUI_CreateInstanceFunc = GetProcAddress(hMyTaskbar, "EP_TrayUI_CreateInstance");
-
     typedef DWORD (*GetVersion_t)();
     GetVersion_t GetVersion = (GetVersion_t)GetProcAddress(hMyTaskbar, "GetVersion");
-    if (GetVersion)
+    DWORD version = GetVersion ? GetVersion() : 0;
+    if (version != 1)
     {
-        DWORD version = GetVersion();
-        if (version != 1)
-        {
-            wprintf(L"[TB] Version mismatch: %d\n", version);
-            return;
-        }
+        wprintf(L"[TB] '%s' with version %d is not compatible\n", pszTaskbarDll, version);
+        return;
     }
+
+    explorer_TrayUI_CreateInstanceFunc = GetProcAddress(hMyTaskbar, "EP_TrayUI_CreateInstance");
 
     typedef void (*CopyExplorerSymbols_t)(symbols_addr* symbols);
     CopyExplorerSymbols_t CopyExplorerSymbols = (CopyExplorerSymbols_t)GetProcAddress(hMyTaskbar, "CopyExplorerSymbols");
@@ -12698,7 +12698,7 @@ DWORD Inject(BOOL bIsExplorer)
         VnPatchIAT(hStobject, "user32.dll", "TrackPopupMenu", stobject_TrackPopupMenuHook);
         VnPatchIAT(hStobject, "user32.dll", "TrackPopupMenuEx", stobject_TrackPopupMenuExHook);
     }
-    if (global_rovi.dwBuildNumber >= 25000)
+    if (global_rovi.dwBuildNumber >= 25000 && bOldTaskbar)
     {
         PatchStobject(hStobject);
     }
@@ -14511,14 +14511,89 @@ BOOL SEH_GetProductInfo(DWORD dwOSMajorVersion, DWORD dwOSMinorVersion, DWORD dw
 
 void InjectShellExperienceHostFor22H2OrHigher() {
 #ifdef _WIN64
-    HKEY hKey;
-    if (RegOpenKeyW(HKEY_CURRENT_USER, _T(SEH_REGPATH), &hKey) != ERROR_SUCCESS) return;
-    RegCloseKey(hKey);
-    HMODULE hQA = LoadLibraryW(L"Windows.UI.QuickActions.dll");
-    //if (hQA) VnPatchIAT(hQA, "api-ms-win-core-sysinfo-l1-2-0.dll", "GetProductInfo", SEH_GetProductInfo);
-    //if (hQA) VnPatchIAT(hQA, "ntdll.dll", "RtlGetDeviceFamilyInfoEnum", SEH_RtlGetDeviceFamilyInfoEnum);
-    //if (hQA) VnPatchIAT(hQA, "api-ms-win-core-registry-l1-1-0.dll", "RegGetValueW", SEH_RegGetValueW);
+    if (!IsWindows11Version22H2Build1413OrHigher())
+    {
+        HKEY hKey;
+        if (RegOpenKeyW(HKEY_CURRENT_USER, _T(SEH_REGPATH), &hKey) == ERROR_SUCCESS)
+        {
+            RegCloseKey(hKey);
+            HMODULE hQA = LoadLibraryW(L"Windows.UI.QuickActions.dll");
+            if (hQA) VnPatchIAT(hQA, "api-ms-win-core-sysinfo-l1-2-0.dll", "GetProductInfo", SEH_GetProductInfo);
+            // if (hQA) VnPatchIAT(hQA, "ntdll.dll", "RtlGetDeviceFamilyInfoEnum", SEH_RtlGetDeviceFamilyInfoEnum);
+            // if (hQA) VnPatchIAT(hQA, "api-ms-win-core-registry-l1-1-0.dll", "RegGetValueW", SEH_RegGetValueW);
+        }
+    }
 #endif
+}
+
+HRESULT SHRegGetBOOLWithREGSAM(HKEY key, LPCWSTR subKey, LPCWSTR value, REGSAM regSam, BOOL* data)
+{
+    DWORD dwType = REG_NONE;
+    DWORD dwData;
+    DWORD cbData = 4;
+    LSTATUS lRes = RegGetValueW(
+        key,
+        subKey,
+        value,
+        ((regSam & 0x100) << 8) | RRF_RT_REG_DWORD | RRF_RT_REG_SZ | RRF_NOEXPAND,
+        &dwType,
+        &dwData,
+        &cbData
+    );
+    if (lRes != ERROR_SUCCESS)
+    {
+        if (lRes == ERROR_MORE_DATA)
+            return HRESULT_FROM_WIN32(ERROR_INVALID_DATA);
+        if (lRes > 0)
+            return HRESULT_FROM_WIN32(lRes);
+        return lRes;
+    }
+
+    if (dwType == REG_DWORD)
+    {
+        if (dwData > 1)
+            return HRESULT_FROM_WIN32(ERROR_INVALID_DATA);
+        *data = dwData == 1;
+    }
+    else
+    {
+        if (cbData != 4 || (WCHAR)dwData != L'0' && (WCHAR)dwData != L'1')
+            return HRESULT_FROM_WIN32(ERROR_INVALID_DATA);
+        *data = (WCHAR)dwData == L'1';
+    }
+
+    return S_OK;
+}
+
+bool IsUserOOBE()
+{
+    BOOL b = FALSE;
+    SHRegGetBOOLWithREGSAM(
+        HKEY_LOCAL_MACHINE,
+        L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\OOBE",
+        L"LaunchUserOOBE",
+        0,
+        &b
+    );
+    return b;
+}
+
+bool IsCredentialReset()
+{
+    BOOL b = FALSE;
+    SHRegGetBOOLWithREGSAM(
+        HKEY_LOCAL_MACHINE,
+        L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Authentication\\CFL\\ExperienceManagerData",
+        L"LaunchCflScenario",
+        0,
+        &b
+    );
+    return b;
+}
+
+bool IsUserOOBEOrCredentialReset()
+{
+    return IsUserOOBE() || IsCredentialReset();
 }
 
 #define DLL_INJECTION_METHOD_DXGI 0
@@ -14608,6 +14683,12 @@ HRESULT EntryPoint(DWORD dwMethod)
     bIsExplorerProcess = bIsThisExplorer;
     if (bIsThisExplorer)
     {
+        if (IsUserOOBEOrCredentialReset())
+        {
+            IncrementDLLReferenceCount(hModule);
+            bInstanced = TRUE;
+            return E_NOINTERFACE;
+        }
         BOOL desktopExists = IsDesktopWindowAlreadyPresent();
 #ifdef _WIN64
         if (!desktopExists && CrashCounterHandleEntryPoint())

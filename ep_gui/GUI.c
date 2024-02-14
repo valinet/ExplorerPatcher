@@ -974,7 +974,7 @@ static void GUI_UpdateLanguages()
 
 DWORD GUI_GetTaskbarStyle()
 {
-    DWORD dwRes = IsWindows11() ? 0 : 1;
+    DWORD dwRes = 1;
     DWORD dwSize = sizeof(DWORD);
     RegGetValueW(HKEY_CURRENT_USER, _T(REGPATH), L"OldTaskbar", RRF_RT_DWORD, NULL, &dwRes, &dwSize);
     if (dwRes >= 2 && !DoesTaskbarDllExist())

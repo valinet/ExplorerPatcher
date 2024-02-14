@@ -14,6 +14,7 @@ That's it. It's that simple.
 
 ## Uninstalling
 
+* Right click the taskbar then click "Properties" or search for "ExplorerPatcher", and go to "Uninstall" section or
 * Use "Programs and Features" in Control Panel, or "Apps and features" in the Settings app or
 * Run `ep_setup.exe /uninstall` or
 * Rename `ep_setup.exe` to `ep_uninstall.exe` and run that.
@@ -25,6 +26,6 @@ That's it. It's that simple.
 
 ## Donate
 
-If you find this project essential to your daily life, please consider donating to support the development through the [Sponsor](#sponsor-button) button at the top of this page, so that we can continue to keep supporting newer Windows builds.
+If you find this project essential to your daily life, please consider donating to support the development through the [Sponsor](?sponsor) button at the top of this page, so that we can continue to keep supporting newer Windows builds.
 
 [Read more](https://github.com/valinet/ExplorerPatcher/wiki)
