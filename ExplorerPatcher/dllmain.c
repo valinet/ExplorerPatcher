@@ -8098,9 +8098,9 @@ HRESULT explorer_GetThemeMargins(
     }
     else if (hTheme == 0xDeadBeef && iPropId == TMT_SIZINGMARGINS && iPartId == 5 && iStateId == 1)
     {
-        pMargins->cxLeftWidth = 10;
+        pMargins->cxLeftWidth = 0;
         pMargins->cyTopHeight = 10;
-        pMargins->cxRightWidth = 10;
+        pMargins->cxRightWidth = 0;
         pMargins->cyBottomHeight = 10;
     }
     else if (hTheme = 0xABadBabe && iPropId == TMT_CONTENTMARGINS && iPartId == 3 && iStateId == 0)
