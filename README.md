@@ -26,6 +26,6 @@ That's it. It's that simple.
 
 ## Donate
 
-If you find this project essential to your daily life, please consider donating to support the development through the [Sponsor](?sponsor) button at the top of this page, so that we can continue to keep supporting newer Windows builds.
+If you find this project essential to your daily life, please consider donating to support the development through the [Sponsor](https://github.com/valinet/ExplorerPatcher?sponsor) button at the top of this page, so that we can continue to keep supporting newer Windows builds.
 
 [Read more](https://github.com/valinet/ExplorerPatcher/wiki)
