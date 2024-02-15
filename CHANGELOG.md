@@ -24,6 +24,7 @@ Tested on OS builds 22000.2538, 22621.1992, 22621.3007, 22621.3085, and 22621.31
 ##### 2
 
 * Taskbar10: Improved animation performance when centering and/or EP Weather is not enabled, also fixed search box positioning on small taskbar without centering. (22d9e3c)
+* Setup: Fixed a bug that placed `wincorlib.dll` on Windows 10 when it is not supposed to, causing the start menu to crash. (610ba7f)
 
 ## 22621.2861.62
 
