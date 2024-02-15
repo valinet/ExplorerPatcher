@@ -777,7 +777,33 @@ HWND hWndServiceWindow = NULL;
 
 void FixUpCenteredTaskbar()
 {
-    PostMessageW(FindWindowW(L"Shell_TrayWnd", NULL), 798, 0, 0); // uMsg = 0x31E in explorer!TrayUI::WndProc
+    HWND hwndPrimaryTray = FindWindowW(L"Shell_TrayWnd", NULL);
+    PostMessageW(hwndPrimaryTray, WM_DWMCOMPOSITIONCHANGED, 0, 0); // uMsg = 0x31E in explorer!TrayUI::WndProc
+    if (!TaskbarCenter_ShouldStartBeCentered(dwOldTaskbarAl) && hwndPrimaryTray)
+    {
+        HWND hwndStart = FindWindowExW(hwndPrimaryTray, NULL, L"Start", NULL);
+        SetWindowPos(hwndStart, NULL, 0, 0, 0, 0, SWP_NOSIZE | SWP_FRAMECHANGED | SWP_ASYNCWINDOWPOS);
+        InvalidateRect(hwndStart, NULL, TRUE);
+    }
+    if (!TaskbarCenter_ShouldStartBeCentered(dwMMOldTaskbarAl))
+    {
+        HWND hWnd = NULL;
+        do
+        {
+            hWnd = FindWindowEx(
+                NULL,
+                hWnd,
+                L"Shell_SecondaryTrayWnd",
+                NULL
+            );
+            if (hWnd)
+            {
+                HWND hwndStart = FindWindowExW(hWnd, NULL, L"Start", NULL);
+                SetWindowPos(hwndStart, NULL, 0, 0, 0, 0, SWP_NOSIZE | SWP_FRAMECHANGED | SWP_ASYNCWINDOWPOS);
+                InvalidateRect(hwndStart, NULL, TRUE);
+            }
+        } while (hWnd);
+    }
 }
 
 #define EP_SERVICE_WINDOW_CLASS_NAME L"EP_Service_Window_" _T(EP_CLSID)
@@ -7486,15 +7512,21 @@ void WINAPI Explorer_RefreshUI(int src)
         }
         if (hKey)
         {
+            dwTemp = 0;
             dwSize = sizeof(DWORD);
             RegQueryValueExW(
                 hKey,
                 TEXT("TaskbarSmallIcons"),
                 0,
                 NULL,
-                &dwTaskbarSmallIcons,
+                &dwTemp,
                 &dwSize
             );
+            if (dwTemp != dwTaskbarSmallIcons)
+            {
+                dwTaskbarSmallIcons = dwTemp;
+                UpdateSearchBox();
+            }
             dwTemp = 0;
             dwSize = sizeof(DWORD);
             RegQueryValueExW(
