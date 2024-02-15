@@ -12,6 +12,7 @@ Tested on OS builds 22000.2538, 22621.1992, 22621.3007, 22621.3085, and 22621.31
   * ExplorerPatcher now no longer loads if it detects that the system is in OOBE or in credential reset.
 * Taskbar10: The Network and Battery flyouts on later 22621 builds onwards and Windows 10 now open instantly without issues. (97fd483)
 * Taskbar10: Allowed the use of search box (without highlights) on Windows 11. (0157ecc)
+  * **The behavior when the Start or Search menu is open is currently not the same as Windows 10, and we have no plans to fix this yet. Please do not make new Issues regarding this.**
 * Start10: Added proper handling when the Windows 10 start menu is not available (e.g. 24H2/Canary builds). (3c8809e)
 * Start10: Removed the original method for fixing Jump List (right click) views. (79b0f68)
 * File Explorer: The address bar shrinking is now more accurate with pixel-perfect height compared to Windows 7, 8.1, and 10 (without the modern search). (e0b97e2)
