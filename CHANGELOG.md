@@ -8,6 +8,8 @@ Tested on OS builds 22000.2538, 22621.1992, 22621.3007, 22621.3085, and 22621.31
 
 ##### 1
 
+* **Fixed a bug where `explorer.exe` would crash repeatedly when the system is in OOBE.** (36ebe5a)
+  * ExplorerPatcher now no longer loads if it detects that the system is in OOBE or in credential reset.
 * Taskbar10: The Network and Battery flyouts on later 22621 builds onwards and Windows 10 now open instantly without issues. (97fd483)
 * Taskbar10: Allowed the use of search box (without highlights) on Windows 11. (0157ecc)
 * Start10: Added proper handling when the Windows 10 start menu is not available (e.g. 24H2/Canary builds). (3c8809e)
@@ -16,6 +18,7 @@ Tested on OS builds 22000.2538, 22621.1992, 22621.3007, 22621.3085, and 22621.31
 * GUI: Added "Uninstall" section containing a button to launch the uninstaller. (0c5021b)
 * Setup: There should now be fewer .prev files, and uninstallation should be cleaner as well. (296c6a0)
 * Symbols: Added `explorer.exe` symbols for 22621+ and unified the method for Windows 10 Alt+Tab on 22000. (1f2e2c4)
+* Localization: Added translations for Lithuanian, Polish, Russian, and Turkish.
 
 ## 22621.2861.62
 
