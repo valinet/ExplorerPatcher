@@ -21,6 +21,10 @@ Tested on OS builds 22000.2538, 22621.1992, 22621.3007, 22621.3085, and 22621.31
 * Symbols: Added `explorer.exe` symbols for 22621+ and unified the method for Windows 10 Alt+Tab on 22000. (1f2e2c4)
 * Localization: Added translations for Lithuanian, Polish, Russian, and Turkish.
 
+##### 2
+
+* Taskbar10: Improved animation performance when centering and/or EP Weather is not enabled, also fixed search box positioning on small taskbar without centering. (22d9e3c)
+
 ## 22621.2861.62
 
 Tested on OS builds 22621.2715, 22621.2861, 22631.2787, 22631.2861, 22635.2915, and 23590.1000.
