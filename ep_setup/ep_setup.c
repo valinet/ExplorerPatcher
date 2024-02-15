@@ -854,7 +854,7 @@ int WINAPI wWinMain(
         if (bOk) GetWindowsDirectoryW(wszPath, MAX_PATH);
         if (bOk) wcscat_s(wszPath, MAX_PATH, L"\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy");
         if (bOk) bOk = InstallResource(bInstall, hInstance, IDR_EP_AMD64, wszPath, L"dxgi.dll");
-        if (bOk) bOk = InstallResource(bInstall, hInstance, IDR_EP_STARTMENU, wszPath, L"wincorlib.dll");
+        if (bOk) bOk = InstallResource(bInstall && IsWindows11(), hInstance, IDR_EP_STARTMENU, wszPath, L"wincorlib.dll");
         if (bOk) bOk = DeleteResource(wszPath, L"wincorlib_orig.dll");
         if (bOk && IsWindows11() && bInstall)
         {
