@@ -440,11 +440,6 @@ BOOL DownloadResource(BOOL bInstall, LPCWSTR pwszURL, DWORD dwSize, LPCSTR chash
     return bOk;
 }
 
-LRESULT CALLBACK OwnerWindowWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
-{
-    return DefWindowProcW(hWnd, message, wParam, lParam);
-}
-
 int WINAPI wWinMain(
     _In_ HINSTANCE hInstance,
     _In_opt_ HINSTANCE hPrevInstance,
