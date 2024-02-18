@@ -165,6 +165,11 @@
       <PreprocessorDefinitions>EP_TASKBAR_4_EXISTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ResourceCompile>
   </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="Exists('..\build\$(Configuration)\ep_taskbar.5.dll')">
+    <ResourceCompile>
+      <PreprocessorDefinitions>EP_TASKBAR_5_EXISTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ResourceCompile>
+  </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\ExplorerPatcher\utility.c" />
     <ClCompile Include="ep_setup.c" />

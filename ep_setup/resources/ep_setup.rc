@@ -118,6 +118,10 @@ IDR_EP_TASKBAR_3        RCDATA             "..\\build\\Release\\ep_taskbar.3.dll
 IDR_EP_TASKBAR_4        RCDATA             "..\\build\\Release\\ep_taskbar.4.dll"
 #endif
 
+#if EP_TASKBAR_5_EXISTS
+IDR_EP_TASKBAR_5        RCDATA             "..\\build\\Release\\ep_taskbar.5.dll"
+#endif
+
 #endif    // English (United States) resources
 /////////////////////////////////////////////////////////////////////////////
 

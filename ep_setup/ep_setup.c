@@ -440,6 +440,17 @@ BOOL DownloadResource(BOOL bInstall, LPCWSTR pwszURL, DWORD dwSize, LPCSTR chash
     return bOk;
 }
 
+BOOL ProcessTaskbarDlls(BOOL bInstall, HINSTANCE hInstance, WCHAR wszPath[260], BOOL bExtractMode)
+{
+    BOOL bOk = TRUE;
+    LPCWSTR pwszTaskbarDllName = bExtractMode ? NULL : PickTaskbarDll();
+    if (bOk) bOk = InstallResource(bInstall && (bExtractMode || pwszTaskbarDllName && !wcscmp(pwszTaskbarDllName, L"ep_taskbar.2.dll")), hInstance, IDR_EP_TASKBAR_2, wszPath, L"ep_taskbar.2.dll");
+    if (bOk) bOk = InstallResource(bInstall && (bExtractMode || pwszTaskbarDllName && !wcscmp(pwszTaskbarDllName, L"ep_taskbar.3.dll")), hInstance, IDR_EP_TASKBAR_3, wszPath, L"ep_taskbar.3.dll");
+    if (bOk) bOk = InstallResource(bInstall && (bExtractMode || pwszTaskbarDllName && !wcscmp(pwszTaskbarDllName, L"ep_taskbar.4.dll")), hInstance, IDR_EP_TASKBAR_4, wszPath, L"ep_taskbar.4.dll");
+    if (bOk) bOk = InstallResource(bInstall && (bExtractMode || pwszTaskbarDllName && !wcscmp(pwszTaskbarDllName, L"ep_taskbar.5.dll")), hInstance, IDR_EP_TASKBAR_5, wszPath, L"ep_taskbar.5.dll");
+    return bOk;
+}
+
 int WINAPI wWinMain(
     _In_ HINSTANCE hInstance,
     _In_opt_ HINSTANCE hPrevInstance,
@@ -481,10 +492,8 @@ int WINAPI wWinMain(
         if (bOk) bOk = InstallResource(bInstall, hInstance, IDR_MS_WEBVIEW2_LOADER, wszPath, L"WebView2Loader.dll");
         if (bOk) bOk = InstallResource(bInstall, hInstance, IDR_EP_STARTMENU, wszPath, L"wincorlib.dll");
         if (bOk) bOk = InstallResource(bInstall, hInstance, IDR_EP_GUI, wszPath, L"ep_gui.dll");
-        if (bOk) bOk = InstallResource(bInstall, hInstance, IDR_EP_TASKBAR_2, wszPath, L"ep_taskbar.2.dll");
-        if (bOk) bOk = InstallResource(bInstall, hInstance, IDR_EP_TASKBAR_3, wszPath, L"ep_taskbar.3.dll");
-        if (bOk) bOk = InstallResource(bInstall, hInstance, IDR_EP_TASKBAR_4, wszPath, L"ep_taskbar.4.dll");
-        return 0;
+        if (bOk) bOk = ProcessTaskbarDlls(bInstall, hInstance, wszPath, TRUE);
+        return !bOk;
     }
 
     WCHAR wszOwnPath[MAX_PATH];
@@ -823,10 +832,7 @@ int WINAPI wWinMain(
             if (bOk) bOk = InstallResource(bInstall, hInstance, IDR_EP_WEATHER_STUB, wszPath, L"ep_weather_host_stub.dll");
             if (bOk) bOk = InstallResource(bInstall, hInstance, IDR_MS_WEBVIEW2_LOADER, wszPath, L"WebView2Loader.dll");
         }
-        LPCWSTR pwszTaskbarDllName = PickTaskbarDll();
-        if (bOk) bOk = InstallResource(bInstall && pwszTaskbarDllName && !wcscmp(pwszTaskbarDllName, L"ep_taskbar.2.dll"), hInstance, IDR_EP_TASKBAR_2, wszPath, L"ep_taskbar.2.dll");
-        if (bOk) bOk = InstallResource(bInstall && pwszTaskbarDllName && !wcscmp(pwszTaskbarDllName, L"ep_taskbar.3.dll"), hInstance, IDR_EP_TASKBAR_3, wszPath, L"ep_taskbar.3.dll");
-        if (bOk) bOk = InstallResource(bInstall && pwszTaskbarDllName && !wcscmp(pwszTaskbarDllName, L"ep_taskbar.4.dll"), hInstance, IDR_EP_TASKBAR_4, wszPath, L"ep_taskbar.4.dll");
+        if (bOk) bOk = ProcessTaskbarDlls(bInstall, hInstance, wszPath, FALSE);
 
         // --------------------------------------------------------------------------------
 

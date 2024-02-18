@@ -2525,61 +2525,97 @@ INT64 Shell_TrayWndSubclassProc(
     DWORD_PTR   bIsPrimaryTaskbar
 )
 {
-    if (uMsg == WM_NCDESTROY)
+    switch (uMsg)
     {
-        if (bIsPrimaryTaskbar)
+        case WM_NCDESTROY:
         {
-            UnhookWindowsHookEx(Shell_TrayWndMouseHook);
+            if (bIsPrimaryTaskbar)
+            {
+                UnhookWindowsHookEx(Shell_TrayWndMouseHook);
+            }
+            RemoveWindowSubclass(hWnd, Shell_TrayWndSubclassProc, Shell_TrayWndSubclassProc);
+            break;
         }
-        RemoveWindowSubclass(hWnd, Shell_TrayWndSubclassProc, Shell_TrayWndSubclassProc);
-    }
-    else if (bOldTaskbar && !bIsPrimaryTaskbar && TaskbarCenter_ShouldCenter(dwMMOldTaskbarAl) && TaskbarCenter_ShouldStartBeCentered(dwMMOldTaskbarAl) && (uMsg == WM_NCLBUTTONDOWN || uMsg == WM_NCRBUTTONUP) && HandleTaskbarCornerInteraction(hWnd, uMsg, wParam, lParam))
-    {
-        return 0;
-    }
-    else if (!bIsPrimaryTaskbar && uMsg == WM_CONTEXTMENU)
-    {
-        // Received some times when right clicking a secondary taskbar button, and it would
-        // show the classic taskbar context menu but containing only "Show desktop" instead
-        // of ours or a button's jump list, so we cancel it and that seems to properly invoke
-        // the right menu
-        return 0;
-    }
-    else if (!bOldTaskbar && !bIsPrimaryTaskbar && uMsg == WM_SETCURSOR)
-    {
-        // Received when mouse is over taskbar edge and autohide is on
-        PostMessageW(hWnd, WM_ACTIVATE, WA_ACTIVE, NULL);
-    }
-    else if (bOldTaskbar && uMsg == WM_LBUTTONDBLCLK && bTaskbarAutohideOnDoubleClick)
-    {
-        ToggleTaskbarAutohide();
-        return 0;
-    }
-    else if (uMsg == WM_HOTKEY && wParam == 500 && lParam == MAKELPARAM(MOD_WIN, 0x41) && IsWindows11())
-    {
-        InvokeActionCenter();
-        return 0;
-        /*if (lpShouldDisplayCCButton)
+        case WM_NCLBUTTONDOWN:
+        case WM_NCRBUTTONUP:
         {
-            *lpShouldDisplayCCButton = 1;
+            if (bOldTaskbar && !bIsPrimaryTaskbar && TaskbarCenter_ShouldCenter(dwMMOldTaskbarAl) && TaskbarCenter_ShouldStartBeCentered(dwMMOldTaskbarAl) && HandleTaskbarCornerInteraction(hWnd, uMsg, wParam, lParam))
+                return 0;
+            break;
         }
-        LRESULT lRes = DefSubclassProc(hWnd, uMsg, wParam, lParam);
-        if (lpShouldDisplayCCButton)
+        case WM_CONTEXTMENU:
         {
-            *lpShouldDisplayCCButton = bHideControlCenterButton;
+            if (!bIsPrimaryTaskbar)
+            {
+                // Received some times when right clicking a secondary taskbar button, and it would
+                // show the classic taskbar context menu but containing only "Show desktop" instead
+                // of ours or a button's jump list, so we cancel it and that seems to properly invoke
+                // the right menu
+                return 0;
+            }
+            break;
         }
-        return lRes;*/
+        case WM_SETCURSOR:
+        {
+            if (!bOldTaskbar && !bIsPrimaryTaskbar)
+            {
+                // Received when mouse is over taskbar edge and autohide is on
+                PostMessageW(hWnd, WM_ACTIVATE, WA_ACTIVE, NULL);
+            }
+            break;
+        }
+        case WM_LBUTTONDBLCLK:
+        {
+            if (bOldTaskbar && bTaskbarAutohideOnDoubleClick)
+            {
+                ToggleTaskbarAutohide();
+                return 0;
+            }
+            break;
+        }
+        case WM_HOTKEY:
+        {
+            if (wParam == 500 && lParam == MAKELPARAM(MOD_WIN, 'A') && global_rovi.dwBuildNumber >= 25921 && bOldTaskbar == 1)
+            {
+                InvokeActionCenter();
+                return 0;
+            }
+            break;
+        }
+        case WM_DISPLAYCHANGE:
+        {
+            if (bIsPrimaryTaskbar)
+            {
+                UpdateStartMenuPositioning(MAKELPARAM(TRUE, FALSE));
+            }
+            break;
+        }
+        /*case WM_PARENTNOTIFY:
+        {
+            if (!bOldTaskbar && wParam == WM_RBUTTONDOWN && !Shell_TrayWndMouseHook) // && !IsUndockingDisabled
+            {
+                DWORD dwThreadId = GetCurrentThreadId();
+                Shell_TrayWndMouseHook = SetWindowsHookExW(WH_MOUSE, Shell_TrayWndMouseProc, NULL, dwThreadId);
+            }
+            break;
+        }*/
+        case WM_SETTINGCHANGE:
+        {
+            if (IsWindows11Version22H2OrHigher() && (*((WORD*)&(lParam)+1)) && !wcscmp(lParam, L"EnsureXAML"))
+            {
+                EnsureXAML();
+                return 0;
+            }
+            break;
+        }
+        case 0x558:
+        {
+            g_bIsDesktopRaised = (lParam & 1) == 0;
+            break;
+        }
     }
-    else if (bIsPrimaryTaskbar && uMsg == WM_DISPLAYCHANGE)
-    {
-        UpdateStartMenuPositioning(MAKELPARAM(TRUE, FALSE));
-    }
-    //else if (!bOldTaskbar && uMsg == WM_PARENTNOTIFY && wParam == WM_RBUTTONDOWN && !Shell_TrayWndMouseHook) // && !IsUndockingDisabled
-    //{
-    //    DWORD dwThreadId = GetCurrentThreadId();
-    //    Shell_TrayWndMouseHook = SetWindowsHookExW(WH_MOUSE, Shell_TrayWndMouseProc, NULL, dwThreadId);
-    //}
-    else if (uMsg == RegisterWindowMessageW(L"Windows11ContextMenu_" _T(EP_CLSID)))
+
+    if (uMsg >= 0xC000 && uMsg <= 0xFFFF && uMsg == RegisterWindowMessageW(L"Windows11ContextMenu_" _T(EP_CLSID)))
     {
         POINT pt;
         pt.x = GET_X_LPARAM(lParam);
@@ -2726,15 +2762,7 @@ INT64 Shell_TrayWndSubclassProc(
             DestroyMenu(hMenu);
         }
     }
-    else if (uMsg == 1368)
-    {
-        g_bIsDesktopRaised = (lParam & 1) == 0;
-    }
-    else if (uMsg == WM_SETTINGCHANGE && IsWindows11Version22H2OrHigher() && (*((WORD*)&(lParam)+1)) && !wcscmp(lParam, L"EnsureXAML"))
-    {
-        EnsureXAML();
-        return 0;
-    }
+
     return DefSubclassProc(hWnd, uMsg, wParam, lParam);
 }
 #endif
@@ -10130,7 +10158,9 @@ int RtlQueryFeatureConfigurationHook(UINT32 featureId, int sectionType, INT64* c
         {
             if (bOldTaskbar)
             {
-                // Fixes start menu positioning when the taskbar is at the left or right side
+                // This feature flag when enabled makes the flyouts disregard the left and right offsets, so that they
+                // appear over the Copilot sidebar instead of beside it. Disabling this fixes start menu positioning
+                // when the taskbar is at the left or right side, but it produce that aforementioned behavior.
                 buffer->enabledState = FEATURE_ENABLED_STATE_DISABLED;
             }
             break;
@@ -10548,7 +10578,7 @@ BOOL Moment2PatchToastCenter(LPMODULEINFO mi)
     //
     // Pattern 2:
     // Will have a match if CToastCenterExperienceManager::ShouldShowWithinWorkArea() is inlined.
-    // ```0F 10 45 ?? ?? 0F 7F 44 24 ?? 44 // movups - movdqu - cmp```
+    // ```0F 10 45 ?? ?? 0F 7F 44 24 ?? 44 38 // movups - movdqu - cmp```
     // 25951.1000: 36B2C4
     //
     // Pattern 3:
@@ -10558,20 +10588,20 @@ BOOL Moment2PatchToastCenter(LPMODULEINFO mi)
     //
     // Pattern 4:
     // Same as pattern 2, but different length of the movdqu instruction.
-    // ```0F 10 45 ?? ?? 0F 7F 45 ?? 44 // movups - movdqu - cmp```
+    // ```0F 10 45 ?? ?? 0F 7F 45 ?? 44 38 // movups - movdqu - cmp```
     // No matches yet, just in case.
     int assignmentSize = 10;
     PBYTE rcMonitorAssignment = FindPattern(mi->lpBaseOfDll, mi->SizeOfImage, "\x0F\x10\x45\x00\x00\x0F\x7F\x44\x24\x00\x48\x8B\xCF", "xxx??xxxx?xxx");
     if (!rcMonitorAssignment)
     {
-        rcMonitorAssignment = FindPattern(mi->lpBaseOfDll, mi->SizeOfImage, "\x0F\x10\x45\x00\x00\x0F\x7F\x44\x24\x00\x44", "xxx??xxxx?x");
+        rcMonitorAssignment = FindPattern(mi->lpBaseOfDll, mi->SizeOfImage, "\x0F\x10\x45\x00\x00\x0F\x7F\x44\x24\x00\x44\x38", "xxx??xxxx?xx");
         if (!rcMonitorAssignment)
         {
             assignmentSize = 9;
             rcMonitorAssignment = FindPattern(mi->lpBaseOfDll, mi->SizeOfImage, "\x0F\x10\x45\x00\x00\x0F\x7F\x45\x00\x48\x8B\xCF", "xxx??xxx?xxx");
             if (!rcMonitorAssignment)
             {
-                rcMonitorAssignment = FindPattern(mi->lpBaseOfDll, mi->SizeOfImage, "\x0F\x10\x45\x00\x00\x0F\x7F\x45\x00\x44", "xxx??xxx?x");
+                rcMonitorAssignment = FindPattern(mi->lpBaseOfDll, mi->SizeOfImage, "\x0F\x10\x45\x00\x00\x0F\x7F\x45\x00\x44\x38", "xxx??xxx?xx");
                 if (!rcMonitorAssignment) return FALSE;
             }
         }
@@ -11865,22 +11895,9 @@ BOOL CrashCounterHandleEntryPoint()
 
 #pragma region "Loader for alternate taskbar implementation"
 #ifdef _WIN64
-void PrepareAlternateTaskbarImplementation(symbols_addr* symbols_PTRS)
+BOOL CheckExplorerSymbols(symbols_addr* symbols_PTRS)
 {
-    if (!IsWindows11Version22H2OrHigher())
-        return; // Definitely unsupported
-
-    if (bOldTaskbar <= 1)
-        return; // Not enabled
-
-    const WCHAR* pszTaskbarDll = PickTaskbarDll();
-    if (!pszTaskbarDll)
-    {
-        wprintf(L"[TB] Unsupported build\n");
-        return;
-    }
-
-    bool bAllValid = true;
+    BOOL bAllValid = TRUE;
     for (SIZE_T j = 0; j < ARRAYSIZE(symbols_PTRS->explorer_PTRS); ++j)
     {
         DWORD i = symbols_PTRS->explorer_PTRS[j];
@@ -11888,10 +11905,33 @@ void PrepareAlternateTaskbarImplementation(symbols_addr* symbols_PTRS)
         if (!bAllValid)
             break;
     }
+    return bAllValid;
+}
 
-    if (!bAllValid)
+const WCHAR* GetTaskbarDllChecked(symbols_addr* symbols_PTRS)
+{
+    if (bOldTaskbar < 2 || !IsWindows11Version22H2OrHigher())
+    {
+        return NULL;
+    }
+    const WCHAR* pszTaskbarDll = PickTaskbarDll();
+    if (!pszTaskbarDll)
+    {
+        wprintf(L"[TB] Unsupported build\n");
+        return NULL;
+    }
+    if (!CheckExplorerSymbols(symbols_PTRS))
     {
         wprintf(L"[TB] Missing offsets\n");
+        return NULL;
+    }
+    return pszTaskbarDll;
+}
+
+void PrepareAlternateTaskbarImplementation(symbols_addr* symbols_PTRS, const WCHAR* pszTaskbarDll)
+{
+    if (!symbols_PTRS || !pszTaskbarDll)
+    {
         return;
     }
 
@@ -12345,6 +12385,12 @@ DWORD Inject(BOOL bIsExplorer)
         }
     }
 
+    const WCHAR* pszTaskbarDll = GetTaskbarDllChecked(&symbols_PTRS);
+    if (bOldTaskbar >= 2 && !pszTaskbarDll)
+    {
+        bOldTaskbar = 1;
+    }
+
 
     HANDLE hUser32 = LoadLibraryW(L"user32.dll");
     CreateWindowInBand = GetProcAddress(hUser32, "CreateWindowInBand");
@@ -12685,7 +12731,7 @@ DWORD Inject(BOOL bIsExplorer)
 #endif
 
     VnPatchIAT(hTwinuiPcshell, "API-MS-WIN-CORE-REGISTRY-L1-1-0.DLL", "RegGetValueW", twinuipcshell_RegGetValueW);
-    PrepareAlternateTaskbarImplementation(&symbols_PTRS);
+    PrepareAlternateTaskbarImplementation(&symbols_PTRS, pszTaskbarDll);
     printf("Setup twinui.pcshell functions done\n");
 
 

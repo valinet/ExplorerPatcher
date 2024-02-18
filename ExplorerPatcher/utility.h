@@ -703,14 +703,19 @@ inline const WCHAR* PickTaskbarDll()
         return L"ep_taskbar.2.dll";
     }
 
-    if (b >= 25201 && b <= 25915) // Pre-reboot Dev channel until early Canary channel
+    if (b >= 25201 && b <= 25915) // Pre-reboot Dev channel until early Canary channel, nuked ITrayComponentHost methods related to classic search box
     {
         return L"ep_taskbar.3.dll";
     }
 
-    if (b >= 25921) // Canary channel with nuked classic system tray
+    if (b >= 25921 && b <= 26040) // Canary channel with nuked classic system tray
     {
         return L"ep_taskbar.4.dll";
+    }
+
+    if (b >= 26052) // Same as 4 but with 2 new methods in ITrayComponentHost between GetTrayUI and ProgrammableTaskbarReportClick
+    {
+        return L"ep_taskbar.5.dll";
     }
 
     return NULL;

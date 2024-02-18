@@ -13,6 +13,7 @@
 #define IDR_EP_TASKBAR_2                110
 #define IDR_EP_TASKBAR_3                111
 #define IDR_EP_TASKBAR_4                112
+#define IDR_EP_TASKBAR_5                113
 
 #define IDS_SETUP_UNINSTALL_PROMPT      301
 #define IDS_SETUP_INSTALL_LOGOFF        302
