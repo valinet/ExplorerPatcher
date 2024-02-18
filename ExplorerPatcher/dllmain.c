@@ -10160,7 +10160,7 @@ int RtlQueryFeatureConfigurationHook(UINT32 featureId, int sectionType, INT64* c
             {
                 // This feature flag when enabled makes the flyouts disregard the left and right offsets, so that they
                 // appear over the Copilot sidebar instead of beside it. Disabling this fixes start menu positioning
-                // when the taskbar is at the left or right side, but it produce that aforementioned behavior.
+                // when the taskbar is at the left or right side, but it will make that behavior occur again.
                 buffer->enabledState = FEATURE_ENABLED_STATE_DISABLED;
             }
             break;
