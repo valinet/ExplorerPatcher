@@ -17,6 +17,7 @@
     <ProjectGuid>{2351a0df-782c-4d74-85b7-0847d245d6b4}</ProjectGuid>
     <RootNamespace>epgui</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <WithAltTaskbarImpl>0</WithAltTaskbarImpl>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
@@ -66,6 +67,11 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(SolutionDir)libs\funchook\build\Release\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(WithAltTaskbarImpl)'=='1'">
+    <ClCompile>
+      <PreprocessorDefinitions>WITH_ALT_TASKBAR_IMPL=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
