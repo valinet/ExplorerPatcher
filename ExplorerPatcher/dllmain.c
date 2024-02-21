@@ -11895,6 +11895,7 @@ BOOL CrashCounterHandleEntryPoint()
 
 #pragma region "Loader for alternate taskbar implementation"
 #ifdef _WIN64
+#if WITH_ALT_TASKBAR_IMPL
 BOOL CheckExplorerSymbols(symbols_addr* symbols_PTRS)
 {
     BOOL bAllValid = TRUE;
@@ -11978,6 +11979,7 @@ void PrepareAlternateTaskbarImplementation(symbols_addr* symbols_PTRS, const WCH
 
     wprintf(L"[TB] Using '%s'\n", pszTaskbarDll);
 }
+#endif
 #endif
 #pragma endregion
 
@@ -12385,7 +12387,11 @@ DWORD Inject(BOOL bIsExplorer)
         }
     }
 
+#if WITH_ALT_TASKBAR_IMPL
     const WCHAR* pszTaskbarDll = GetTaskbarDllChecked(&symbols_PTRS);
+#else
+    const WCHAR* pszTaskbarDll = NULL;
+#endif
     if (bOldTaskbar >= 2 && !pszTaskbarDll)
     {
         bOldTaskbar = 1;
@@ -12731,7 +12737,9 @@ DWORD Inject(BOOL bIsExplorer)
 #endif
 
     VnPatchIAT(hTwinuiPcshell, "API-MS-WIN-CORE-REGISTRY-L1-1-0.DLL", "RegGetValueW", twinuipcshell_RegGetValueW);
+#if WITH_ALT_TASKBAR_IMPL
     PrepareAlternateTaskbarImplementation(&symbols_PTRS, pszTaskbarDll);
+#endif
     printf("Setup twinui.pcshell functions done\n");
 
 

@@ -32,6 +32,10 @@
 #define WM_MSG_GUI_SECTION WM_USER + 1
 #define WM_MSG_GUI_SECTION_GET 1
 
+#ifndef WITH_ALT_TASKBAR_IMPL
+#define WITH_ALT_TASKBAR_IMPL 0
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -693,6 +697,7 @@ inline BOOL DoesWindows10StartMenuExist()
     return FileExistsW(szPath);
 }
 
+#if WITH_ALT_TASKBAR_IMPL
 inline const WCHAR* PickTaskbarDll()
 {
     DWORD b = global_rovi.dwBuildNumber;
@@ -734,6 +739,12 @@ inline BOOL DoesTaskbarDllExist()
     wcscat_s(szPath, MAX_PATH, pszTaskbarDll);
     return FileExistsW(szPath);
 }
+#else
+inline BOOL DoesTaskbarDllExist()
+{
+    return FALSE;
+}
+#endif
 
 #ifdef __cplusplus
 }
