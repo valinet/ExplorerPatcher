@@ -600,13 +600,13 @@ inline BOOL WINAPI PatchContextMenuOfNewMicrosoftIME(BOOL* bFound)
     MODULEINFO mi;
     GetModuleInformation(GetCurrentProcess(), hInputSwitch, &mi, sizeof(mi));
 
-    // 44 38 ?? ?? 74 ?? 48 8B CE E8 ?? ?? ?? ?? 85 C0
+    // 44 38 ?? ?? 74 ?? ?? 8B CE E8 ?? ?? ?? ?? 85 C0
     //             ^^ Change jz into jmp
     PBYTE match = (PBYTE)FindPattern(
         hInputSwitch,
         mi.SizeOfImage,
-        "\x44\x38\x00\x00\x74\x00\x48\x8B\xCE\xE8\x00\x00\x00\x00\x85\xC0",
-        "xx??x?xxxx????xx"
+        "\x44\x38\x00\x00\x74\x00\x00\x8B\xCE\xE8\x00\x00\x00\x00\x85\xC0",
+        "xx??x??xxx????xx"
     );
     if (!match)
         return FALSE;
