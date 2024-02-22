@@ -31,6 +31,10 @@ Tested on OS builds 22000.2538, 22621.1992, 22621.3007, 22621.3085, and 22621.31
 * Taskbar10: Fixed flyout positioning on Windows 11 26058+. (dfe340d)
 * Slightly improved performance when interacting with the taskbar, both new and old. (dfe340d)
 
+##### 4
+
+* Setup: Reverted the method for ending `explorer.exe` and its subprocesses. (fdc357b)
+
 ## 22621.2861.62
 
 Tested on OS builds 22621.2715, 22621.2861, 22631.2787, 22631.2861, 22635.2915, and 23590.1000.
