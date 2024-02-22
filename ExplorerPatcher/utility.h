@@ -670,8 +670,6 @@ typedef struct _MonitorOverrideData
 } MonitorOverrideData;
 
 BOOL ExtractMonitorByIndex(HMONITOR hMonitor, HDC hDC, LPRECT lpRect, MonitorOverrideData* mod);
-DWORD GetProcessIdByExeName(LPCWSTR wszProcessName);
-void KillProcess(LPCWSTR wszProcessName);
 
 #ifdef _WIN64
 PVOID FindPattern(PVOID pBase, SIZE_T dwSize, LPCSTR lpPattern, LPCSTR lpMask);
