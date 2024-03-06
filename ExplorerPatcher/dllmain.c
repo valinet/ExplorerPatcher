@@ -2093,7 +2093,7 @@ static HRESULT WINAPI ICoreWindow5_get_DispatcherQueueHook(void* _this, void** p
     return ICoreWindow5_get_DispatcherQueueFunc(_this, ppValue);
 }
 
-HMODULE __fastcall Windows11v22H2_combase_LoadLibraryExW(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlags)
+static HMODULE __fastcall Windows11v22H2_combase_LoadLibraryExW(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlags)
 {
     HMODULE hModule = LoadLibraryExW(lpLibFileName, hFile, dwFlags);
     if (hModule && hModule == GetModuleHandleW(L"Windows.UI.Xaml.dll"))
@@ -2140,7 +2140,7 @@ HMODULE __fastcall Windows11v22H2_combase_LoadLibraryExW(LPCWSTR lpLibFileName, 
     return hModule;
 }
 
-HMODULE __fastcall combase_LoadLibraryExW(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlags)
+static HMODULE __fastcall combase_LoadLibraryExW(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlags)
 {
     HMODULE hModule = LoadLibraryExW(lpLibFileName, hFile, dwFlags);
     if (hModule && hModule == GetModuleHandleW(L"Windows.UI.Xaml.dll"))
@@ -2515,7 +2515,7 @@ static LRESULT CALLBACK Shell_TrayWndMouseProc(
     return CallNextHookEx(Shell_TrayWndMouseHook, nCode, wParam, lParam);
 }
 
-ITrayUIHost* g_pTrayUIHost;
+static ITrayUIHost* g_pTrayUIHost;
 
 static INT64 Shell_TrayWndSubclassProc(
     _In_ HWND   hWnd,
@@ -3339,7 +3339,6 @@ static INT64 OwnerDrawSubclassProc(
         lParam
     );
 }
-long long explorer_TrackPopupMenuExElapsed = 0;
 static BOOL explorer_TrackPopupMenuExHook(
     HMENU       hMenu,
     UINT        uFlags,
@@ -3349,6 +3348,8 @@ static BOOL explorer_TrackPopupMenuExHook(
     LPTPMPARAMS lptpm
 )
 {
+    static long long explorer_TrackPopupMenuExElapsed = 0;
+
     long long elapsed = milliseconds_now() - explorer_TrackPopupMenuExElapsed;
     BOOL b = FALSE;
 
@@ -3416,7 +3417,6 @@ static BOOL explorer_TrackPopupMenuExHook(
     }
     return b;
 }
-long long pnidui_TrackPopupMenuElapsed = 0;
 static BOOL pnidui_TrackPopupMenuHook(
     HMENU       hMenu,
     UINT        uFlags,
@@ -3427,6 +3427,8 @@ static BOOL pnidui_TrackPopupMenuHook(
     const RECT* prcRect
 )
 {
+    static long long pnidui_TrackPopupMenuElapsed = 0;
+
     long long elapsed = milliseconds_now() - pnidui_TrackPopupMenuElapsed;
     BOOL b = FALSE;
     if (elapsed > POPUPMENU_PNIDUI_TIMEOUT || !bFlyoutMenus)
@@ -3476,7 +3478,6 @@ static BOOL pnidui_TrackPopupMenuHook(
     }
     return b;
 }
-long long sndvolsso_TrackPopupMenuExElapsed = 0;
 static BOOL sndvolsso_TrackPopupMenuExHook(
     HMENU       hMenu,
     UINT        uFlags,
@@ -3486,6 +3487,8 @@ static BOOL sndvolsso_TrackPopupMenuExHook(
     LPTPMPARAMS lptpm
 )
 {
+    static long long sndvolsso_TrackPopupMenuExElapsed = 0;
+
     long long elapsed = milliseconds_now() - sndvolsso_TrackPopupMenuExElapsed;
     BOOL b = FALSE;
     if (elapsed > POPUPMENU_SNDVOLSSO_TIMEOUT || !bFlyoutMenus)
@@ -3585,7 +3588,6 @@ static void PatchSndvolsso(void)
 #endif
     printf("Setup sndvolsso functions done\n");
 }
-long long stobject_TrackPopupMenuExElapsed = 0;
 static BOOL stobject_TrackPopupMenuExHook(
     HMENU       hMenu,
     UINT        uFlags,
@@ -3595,6 +3597,8 @@ static BOOL stobject_TrackPopupMenuExHook(
     LPTPMPARAMS lptpm
 )
 {
+    static long long stobject_TrackPopupMenuExElapsed = 0;
+
     long long elapsed = milliseconds_now() - stobject_TrackPopupMenuExElapsed;
     BOOL b = FALSE;
     if (elapsed > POPUPMENU_SAFETOREMOVE_TIMEOUT || !bFlyoutMenus)
@@ -3646,7 +3650,6 @@ static BOOL stobject_TrackPopupMenuExHook(
     }
     return b;
 }
-long long stobject_TrackPopupMenuElapsed = 0;
 static BOOL stobject_TrackPopupMenuHook(
     HMENU       hMenu,
     UINT        uFlags,
@@ -3657,6 +3660,8 @@ static BOOL stobject_TrackPopupMenuHook(
     const RECT* prcRect
 )
 {
+    static long long stobject_TrackPopupMenuElapsed = 0;
+
     long long elapsed = milliseconds_now() - stobject_TrackPopupMenuElapsed;
     BOOL b = FALSE;
     if (elapsed > POPUPMENU_SAFETOREMOVE_TIMEOUT || !bFlyoutMenus)
@@ -3709,7 +3714,6 @@ static BOOL stobject_TrackPopupMenuHook(
     }
     return b;
 }
-long long bthprops_TrackPopupMenuExElapsed = 0;
 static BOOL bthprops_TrackPopupMenuExHook(
     HMENU       hMenu,
     UINT        uFlags,
@@ -3719,6 +3723,8 @@ static BOOL bthprops_TrackPopupMenuExHook(
     LPTPMPARAMS lptpm
 )
 {
+    static long long bthprops_TrackPopupMenuExElapsed = 0;
+
     long long elapsed = milliseconds_now() - bthprops_TrackPopupMenuExElapsed;
     BOOL b = FALSE;
     if (elapsed > POPUPMENU_BLUETOOTH_TIMEOUT || !bFlyoutMenus)
@@ -3770,7 +3776,6 @@ static BOOL bthprops_TrackPopupMenuExHook(
     }
     return b;
 }
-long long inputswitch_TrackPopupMenuExElapsed = 0;
 static BOOL inputswitch_TrackPopupMenuExHook(
     HMENU       hMenu,
     UINT        uFlags,
@@ -3780,6 +3785,8 @@ static BOOL inputswitch_TrackPopupMenuExHook(
     LPTPMPARAMS lptpm
 )
 {
+    static long long inputswitch_TrackPopupMenuExElapsed = 0;
+
     long long elapsed = milliseconds_now() - inputswitch_TrackPopupMenuExElapsed;
     BOOL b = FALSE;
     if (elapsed > POPUPMENU_INPUTSWITCH_TIMEOUT || !bFlyoutMenus)
@@ -3823,7 +3830,6 @@ static BOOL inputswitch_TrackPopupMenuExHook(
     }
     return b;
 }
-long long twinui_TrackPopupMenuElapsed = 0;
 static BOOL twinui_TrackPopupMenuHook(
     HMENU       hMenu,
     UINT        uFlags,
@@ -3834,6 +3840,8 @@ static BOOL twinui_TrackPopupMenuHook(
     const RECT* prcRect
 )
 {
+    static long long twinui_TrackPopupMenuElapsed = 0;
+
     //long long elapsed = milliseconds_now() - twinui_TrackPopupMenuElapsed;
     BOOL b = FALSE;
     if (1 /*elapsed > POPUPMENU_WINX_TIMEOUT || !bFlyoutMenus*/)
@@ -7480,7 +7488,7 @@ static void Explorer_RefreshClock(int unused)
     } while (hWnd);
 }
 
-void* TrayUI__UpdatePearlSizeFunc;
+static void* TrayUI__UpdatePearlSizeFunc;
 
 static void UpdateSearchBox(void)
 {
@@ -8523,7 +8531,7 @@ static HINSTANCE explorer_ShellExecuteW(
 
 #pragma region "Classic Drive Grouping"
 #ifdef _WIN64
-const struct { DWORD dwDescriptionId; UINT uResourceId; } driveCategoryMap[] = {
+static const struct { DWORD dwDescriptionId; UINT uResourceId; } driveCategoryMap[] = {
     { SHDID_FS_DIRECTORY,        9338 }, //shell32
     { SHDID_COMPUTER_SHAREDDOCS, 9338 }, //shell32
     { SHDID_COMPUTER_FIXED,      IDS_DRIVECATEGORY_HARDDISKDRIVES },
@@ -8559,7 +8567,7 @@ typedef struct _EPCategorizer
 
 #pragma region "EPCategorizer: ICategorizer"
 
-HRESULT STDMETHODCALLTYPE EPCategorizer_ICategorizer_QueryInterface(ICategorizer* _this, REFIID riid, void** ppvObject)
+static HRESULT STDMETHODCALLTYPE EPCategorizer_ICategorizer_QueryInterface(ICategorizer* _this, REFIID riid, void** ppvObject)
 {
     if (IsEqualIID(riid, &IID_IUnknown) || IsEqualIID(riid, &IID_ICategorizer))
     {
@@ -8580,12 +8588,12 @@ HRESULT STDMETHODCALLTYPE EPCategorizer_ICategorizer_QueryInterface(ICategorizer
     return S_OK;
 }
 
-ULONG STDMETHODCALLTYPE EPCategorizer_ICategorizer_AddRef(ICategorizer* _this)
+static ULONG STDMETHODCALLTYPE EPCategorizer_ICategorizer_AddRef(ICategorizer* _this)
 {
     return InterlockedIncrement(&((EPCategorizer*)_this)->ulRefCount);
 }
 
-ULONG STDMETHODCALLTYPE EPCategorizer_ICategorizer_Release(ICategorizer* _this)
+static ULONG STDMETHODCALLTYPE EPCategorizer_ICategorizer_Release(ICategorizer* _this)
 {
     ULONG ulNewCount = InterlockedDecrement(&((EPCategorizer*)_this)->ulRefCount);
 
@@ -8606,14 +8614,14 @@ ULONG STDMETHODCALLTYPE EPCategorizer_ICategorizer_Release(ICategorizer* _this)
     return ulNewCount;
 }
 
-HRESULT STDMETHODCALLTYPE EPCategorizer_ICategorizer_GetDescription(ICategorizer* _this, LPWSTR pszDesc, UINT cch)
+static HRESULT STDMETHODCALLTYPE EPCategorizer_ICategorizer_GetDescription(ICategorizer* _this, LPWSTR pszDesc, UINT cch)
 {
     //As of writing returns the string "Type". Same implementation as shell32!CStorageSystemTypeCategorizer::GetDescription
     LoadStringW(hShell32, 0x3105, pszDesc, cch);
     return S_OK;
 }
 
-HRESULT STDMETHODCALLTYPE EPCategorizer_ICategorizer_GetCategory(ICategorizer* _this, UINT cidl, PCUITEMID_CHILD_ARRAY apidl, DWORD* rgCategoryIds)
+static HRESULT STDMETHODCALLTYPE EPCategorizer_ICategorizer_GetCategory(ICategorizer* _this, UINT cidl, PCUITEMID_CHILD_ARRAY apidl, DWORD* rgCategoryIds)
 {
     EPCategorizer* epCategorizer = (EPCategorizer*)_this;
 
@@ -8652,7 +8660,7 @@ HRESULT STDMETHODCALLTYPE EPCategorizer_ICategorizer_GetCategory(ICategorizer* _
     return hr;
 }
 
-HRESULT STDMETHODCALLTYPE EPCategorizer_ICategorizer_GetCategoryInfo(ICategorizer* _this, DWORD dwCategoryId, CATEGORY_INFO* pci)
+static HRESULT STDMETHODCALLTYPE EPCategorizer_ICategorizer_GetCategoryInfo(ICategorizer* _this, DWORD dwCategoryId, CATEGORY_INFO* pci)
 {
     //Now retrieve the display name to use for the resource ID dwCategoryId.
     //pci is already populated with most of the information it needs, we just need to fill in the wszName
@@ -8662,7 +8670,7 @@ HRESULT STDMETHODCALLTYPE EPCategorizer_ICategorizer_GetCategoryInfo(ICategorize
     return S_OK;
 }
 
-HRESULT STDMETHODCALLTYPE EPCategorizer_ICategorizer_CompareCategory(ICategorizer* _this, CATSORT_FLAGS csfFlags, DWORD dwCategoryId1, DWORD dwCategoryId2)
+static HRESULT STDMETHODCALLTYPE EPCategorizer_ICategorizer_CompareCategory(ICategorizer* _this, CATSORT_FLAGS csfFlags, DWORD dwCategoryId1, DWORD dwCategoryId2)
 {
     //Typically a categorizer would use the resource IDs containing the names of each category as the "category ID" as well. In our case however, we're using
     //a combination of resource/category IDs provided by shell32 and resource/category IDs we're overriding ourselves. As a result, we are forced to compare
@@ -8703,22 +8711,22 @@ HRESULT STDMETHODCALLTYPE EPCategorizer_ICategorizer_CompareCategory(ICategorize
 #pragma region "EPCategorizer: IShellExtInit"
 
 //Adjustor Thunks: https://devblogs.microsoft.com/oldnewthing/20040206-00/?p=40723
-HRESULT STDMETHODCALLTYPE EPCategorizer_IShellExtInit_QueryInterface(IShellExtInit* _this, REFIID riid, void** ppvObject)
+static HRESULT STDMETHODCALLTYPE EPCategorizer_IShellExtInit_QueryInterface(IShellExtInit *_this, REFIID riid, void **ppvObject)
 {
     return EPCategorizer_ICategorizer_QueryInterface((ICategorizer*)((char*)_this - sizeof(IShellExtInitVtbl*)), riid, ppvObject);
 }
 
-ULONG STDMETHODCALLTYPE EPCategorizer_IShellExtInit_AddRef(IShellExtInit* _this)
+static ULONG STDMETHODCALLTYPE EPCategorizer_IShellExtInit_AddRef(IShellExtInit* _this)
 {
     return EPCategorizer_ICategorizer_AddRef((ICategorizer*)((char*)_this - sizeof(IShellExtInitVtbl*)));
 }
 
-ULONG STDMETHODCALLTYPE EPCategorizer_IShellExtInit_Release(IShellExtInit* _this)
+static ULONG STDMETHODCALLTYPE EPCategorizer_IShellExtInit_Release(IShellExtInit* _this)
 {
     return EPCategorizer_ICategorizer_Release((ICategorizer*)((char*)_this - sizeof(IShellExtInitVtbl*)));
 }
 
-HRESULT STDMETHODCALLTYPE EPCategorizer_IShellExtInit_Initialize(IShellExtInit* _this, PCIDLIST_ABSOLUTE pidlFolder, IDataObject* pdtobj, HKEY hkeyProgID)
+static HRESULT STDMETHODCALLTYPE EPCategorizer_IShellExtInit_Initialize(IShellExtInit* _this, PCIDLIST_ABSOLUTE pidlFolder, IDataObject* pdtobj, HKEY hkeyProgID)
 {
     EPCategorizer* epCategorizer = (EPCategorizer*)((char*)_this - sizeof(IShellExtInitVtbl*));
 
@@ -8727,7 +8735,7 @@ HRESULT STDMETHODCALLTYPE EPCategorizer_IShellExtInit_Initialize(IShellExtInit* 
 
 #pragma endregion
 
-const ICategorizerVtbl EPCategorizer_categorizerVtbl = {
+static const ICategorizerVtbl EPCategorizer_categorizerVtbl = {
     EPCategorizer_ICategorizer_QueryInterface,
     EPCategorizer_ICategorizer_AddRef,
     EPCategorizer_ICategorizer_Release,
@@ -8737,7 +8745,7 @@ const ICategorizerVtbl EPCategorizer_categorizerVtbl = {
     EPCategorizer_ICategorizer_CompareCategory
 };
 
-const IShellExtInitVtbl EPCategorizer_shellExtInitVtbl = {
+static const IShellExtInitVtbl EPCategorizer_shellExtInitVtbl = {
     EPCategorizer_IShellExtInit_QueryInterface,
     EPCategorizer_IShellExtInit_AddRef,
     EPCategorizer_IShellExtInit_Release,
@@ -8825,8 +8833,8 @@ DEFINE_GUID(IID_IInputSwitchControl,
 #define LANGUAGEUI_STYLE_OOBE 5
 #define LANGUAGEUI_STYLE_OTHER 100
 
-char mov_edx_val[6] = { 0xBA, 0x00, 0x00, 0x00, 0x00, 0xC3 };
-char* ep_pf = NULL;
+static char mov_edx_val[6] = { 0xBA, 0x00, 0x00, 0x00, 0x00, 0xC3 };
+static char* ep_pf = NULL;
 
 typedef interface IInputSwitchControl IInputSwitchControl;
 
@@ -9434,9 +9442,10 @@ static BOOL explorer_SetRect(LPRECT lprc, int xLeft, int yTop, int xRight, int y
 
 
 #pragma region "Disable Office Hotkeys"
-const UINT office_hotkeys[10] = { 0x57, 0x54, 0x59, 0x4F, 0x50, 0x44, 0x4C, 0x58, 0x4E, 0x20 };
 static BOOL explorer_RegisterHotkeyHook(HWND hWnd, int id, UINT fsModifiers, UINT vk)
 {
+    static const UINT office_hotkeys[10] = { 0x57, 0x54, 0x59, 0x4F, 0x50, 0x44, 0x4C, 0x58, 0x4E, 0x20 };
+
     if (bDisableOfficeHotkeys && fsModifiers == (MOD_ALT | MOD_CONTROL | MOD_SHIFT | MOD_WIN | MOD_NOREPEAT) && (
         vk == office_hotkeys[0] ||
         vk == office_hotkeys[1] ||
@@ -9492,8 +9501,8 @@ static BOOL twinui_RegisterHotkeyHook(HWND hWnd, int id, UINT fsModifiers, UINT 
 
 #pragma region "Fix taskbar thumbnails and acrylic in newer OS builds (22572+)"
 #ifdef _WIN64
-unsigned int (*GetTaskbarColor)(INT64 u1, INT64 u2) = NULL;
-unsigned int (*GetTaskbarTheme)() = NULL;
+static unsigned int (*GetTaskbarColor)(INT64 u1, INT64 u2) = NULL;
+static unsigned int (*GetTaskbarTheme)(void) = NULL;
 
 static HRESULT explorer_DwmUpdateThumbnailPropertiesHook(HTHUMBNAIL hThumbnailId, DWM_THUMBNAIL_PROPERTIES* ptnProperties)
 {
