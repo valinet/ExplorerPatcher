@@ -147,6 +147,13 @@
 ;p 2
 ;b %R:1112% *
 "SkinIcons"=dword:00000001
+;s Taskbar_AltImplSection IsAltImplTaskbar
+[HKEY_CURRENT_USER\Software\ExplorerPatcher]
+;c 2 %R:1143% *
+;x 0 %R:1144%
+;x 1 %R:1145%
+"TrayOverflowStyle"=dword:00000000
+;g Taskbar_AltImplSection
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;a %R:1113%
 ;c 3 %R:1114%
