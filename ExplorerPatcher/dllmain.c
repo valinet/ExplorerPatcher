@@ -4141,6 +4141,8 @@ DEFINE_GUID(CLSID_WindowsToGoSSO, 0x4DC9C264, 0x730E, 0x4CF6, 0x83, 0x74, 0x70, 
 
 typedef HRESULT(WINAPI* DllGetClassObject_t)(REFCLSID rclsid, REFIID riid, LPVOID* ppv);
 
+void PatchPnidui(HMODULE hPnidui);
+
 HRESULT stobject_CoCreateInstanceHook(
     REFCLSID  rclsid,
     LPUNKNOWN pUnkOuter,
@@ -4161,6 +4163,7 @@ HRESULT stobject_CoCreateInstanceHook(
         {
             return REGDB_E_CLASSNOTREG;
         }
+        PatchPnidui(hPnidui);
         IClassFactory* pClassFactory = NULL;
         HRESULT hr = pfnDllGetClassObject(rclsid, &IID_IClassFactory, (LPVOID*)&pClassFactory);
         if (SUCCEEDED(hr))
@@ -12078,6 +12081,35 @@ void PatchStobject(HANDLE hStobject)
         VirtualProtect(pssoEntryTarget, sizeof(SSOEntry), dwOldProtect, &dwOldProtect);
     }
 }
+
+LSTATUS pnidui_RegGetValueW(HKEY hkey, LPCWSTR lpSubKey, LPCWSTR lpValue, DWORD dwFlags, LPDWORD pdwType, PVOID pvData, LPDWORD pcbData)
+{
+    LSTATUS status = RegGetValueW(hkey, lpSubKey, lpValue, dwFlags, pdwType, pvData, pcbData);
+    if (!lstrcmpW(lpValue, L"ReplaceVan") && status == ERROR_FILE_NOT_FOUND)
+    {
+        *(DWORD*)pvData = 0;
+        status = ERROR_SUCCESS;
+    }
+    return status;
+}
+
+void PatchPnidui(HMODULE hPnidui)
+{
+    VnPatchIAT(hPnidui, "api-ms-win-core-com-l1-1-0.dll", "CoCreateInstance", pnidui_CoCreateInstanceHook);
+    if (global_rovi.dwBuildNumber >= 25000)
+    {
+        VnPatchIAT(hPnidui, "api-ms-win-core-registry-l1-1-0.dll", "RegGetValueW", pnidui_RegGetValueW);
+    }
+    VnPatchIAT(hPnidui, "user32.dll", "TrackPopupMenu", pnidui_TrackPopupMenuHook);
+    HOOK_IMMERSIVE_MENUS(Pnidui);
+#ifdef USE_PRIVATE_INTERFACES
+    if (bSkinIcons)
+    {
+        VnPatchIAT(hPnidui, "user32.dll", "LoadImageW", SystemTray_LoadImageWHook);
+    }
+#endif
+    printf("Setup pnidui functions done\n");
+}
 #endif
 #pragma endregion
 
@@ -12816,19 +12848,13 @@ DWORD Inject(BOOL bIsExplorer)
 
 
 
-    HANDLE hPnidui = LoadLibraryW(L"pnidui.dll");
-    if (hPnidui)
+    if (global_rovi.dwBuildNumber < 25000)
     {
-        VnPatchIAT(hPnidui, "api-ms-win-core-com-l1-1-0.dll", "CoCreateInstance", pnidui_CoCreateInstanceHook);
-        VnPatchIAT(hPnidui, "user32.dll", "TrackPopupMenu", pnidui_TrackPopupMenuHook);
-        HOOK_IMMERSIVE_MENUS(Pnidui);
-#ifdef USE_PRIVATE_INTERFACES
-        if (bSkinIcons)
+        HANDLE hPnidui = LoadLibraryW(L"pnidui.dll");
+        if (hPnidui)
         {
-            VnPatchIAT(hPnidui, "user32.dll", "LoadImageW", SystemTray_LoadImageWHook);
+            PatchPnidui(hPnidui);
         }
-#endif
-        printf("Setup pnidui functions done\n");
     }
 
 
