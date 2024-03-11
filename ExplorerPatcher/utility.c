@@ -1,7 +1,6 @@
 #include "utility.h"
 #include <Wininet.h>
 #pragma comment(lib, "Wininet.lib")
-#include <TlHelp32.h>
 
 RTL_OSVERSIONINFOW global_rovi;
 DWORD32 global_ubr;

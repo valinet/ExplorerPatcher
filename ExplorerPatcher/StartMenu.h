@@ -336,13 +336,13 @@ typedef struct WindowsUdk_UI_Shell_TaskbarLayoutManagerVtbl // : IInspectableVtb
     {
         HRESULT(STDMETHODCALLTYPE* ReportMonitorAdded)(
             __RPC__in WindowsUdk_UI_Shell_TaskbarLayoutManager* This,
-            __RPC__in HMONITOR hMonitor,
+            __RPC__in unsigned __int64 hMonitor,
             __RPC__in void* _instance_of_winrt_WindowsUdk_UI_Shell_ITaskbarSettings,
             __RPC__in void* _unknown_shellViewToRectMap);
 
         HRESULT(STDMETHODCALLTYPE* ReportMonitorAdded2)(
             __RPC__in WindowsUdk_UI_Shell_TaskbarLayoutManager* This,
-            __RPC__in HMONITOR hMonitor,
+            __RPC__in unsigned __int64 hMonitor,
             __RPC__in void* _instance_of_winrt_WindowsUdk_UI_Shell_ITaskbarSettings,
             __RPC__in void* _unknown_shellViewToRectMap,
             /* [out] */ __RPC__out unsigned __int64* result);
@@ -350,21 +350,21 @@ typedef struct WindowsUdk_UI_Shell_TaskbarLayoutManagerVtbl // : IInspectableVtb
 
     HRESULT(STDMETHODCALLTYPE* ReportMonitorRemoved)(
         __RPC__in WindowsUdk_UI_Shell_TaskbarLayoutManager* This,
-        __RPC__in HMONITOR hMonitor);
+        __RPC__in unsigned __int64 hMonitor);
 
     HRESULT(STDMETHODCALLTYPE* ReportMonitorChanged)(
         __RPC__in WindowsUdk_UI_Shell_TaskbarLayoutManager* This,
-        __RPC__in HMONITOR hMonitor,
+        __RPC__in unsigned __int64 hMonitor,
         __RPC__in LPRECT _unknown_lpGeometry);
 
     HRESULT(STDMETHODCALLTYPE* ReportSettingsForMonitor)(
         __RPC__in WindowsUdk_UI_Shell_TaskbarLayoutManager* This,
-        __RPC__in HMONITOR hMonitor,
+        __RPC__in unsigned __int64 hMonitor,
         __RPC__in void* _instance_of_winrt_WindowsUdk_UI_Shell_ITaskbarSettings);
 
     HRESULT(STDMETHODCALLTYPE* ReportShellViewButtonBounds)(
         __RPC__in WindowsUdk_UI_Shell_TaskbarLayoutManager* This,
-        __RPC__in HMONITOR hMonitor,
+        __RPC__in unsigned __int64 hMonitor,
         __RPC__in void* _instanceof_winrt_WindowsUdk_UI_Shell_Bamo_ShellViewButtonBounds);
 
     END_INTERFACE
@@ -375,12 +375,19 @@ interface WindowsUdk_UI_Shell_TaskbarLayoutManager // : IInspectable
     CONST_VTBL struct WindowsUdk_UI_Shell_TaskbarLayoutManagerVtbl* lpVtbl;
 };
 
+typedef struct _MonitorListEntry
+{
+    HMONITOR hMonitor;
+    unsigned __int64 token;
+} MonitorListEntry;
+
 typedef struct _StartMenuPositioningData
 {
     DWORD location;
     DWORD operation;
     DWORD* pMonitorCount;
-    HMONITOR* pMonitorList;
+    MonitorListEntry* pMonitorList;
+    DWORD i;
 } StartMenuPositioningData;
 
 #define STARTMENU_POSITIONING_OPERATION_ADD 0

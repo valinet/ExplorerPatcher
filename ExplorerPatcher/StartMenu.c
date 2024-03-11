@@ -638,6 +638,18 @@ typedef struct instanceof_WindowsUdk_UI_Shell_ITaskbarSettings // : IInspectable
 } WindowsUdk_UI_Shell_ITaskbarSettings;
 static const WindowsUdk_UI_Shell_ITaskbarSettings instanceof_WindowsUdk_UI_Shell_ITaskbarSettings = { instanceof_WindowsUdk_UI_Shell_ITaskbarSettingsVtbl };
 
+static unsigned __int64 FindTokenByHMONITOR(const StartMenuPositioningData* data, HMONITOR hMonitor)
+{
+    for (DWORD i = 0; i < *data->pMonitorCount; i++)
+    {
+        if (data->pMonitorList[i].hMonitor == hMonitor)
+        {
+            return data->pMonitorList[i].token;
+        }
+    }
+    return 0;
+}
+
 BOOL NeedsRo_PositionStartMenuForMonitor(
     HMONITOR hMonitor,
     HDC unused1,
@@ -724,44 +736,58 @@ BOOL NeedsRo_PositionStartMenuForMonitor(
 
         if (data->operation == STARTMENU_POSITIONING_OPERATION_ADD)
         {
+            unsigned __int64 token = 0;
             if (interfaceVersion == 1)
             {
                 hr = pTaskbarLayoutManager->lpVtbl->ReportMonitorAdded(
                     pTaskbarLayoutManager,
-                    hMonitor,
+                    (unsigned __int64)hMonitor,
                     &instanceof_WindowsUdk_UI_Shell_ITaskbarSettings,
                     NULL
                 );
             }
             else
             {
-                unsigned __int64 result = 0;
                 hr = pTaskbarLayoutManager->lpVtbl->ReportMonitorAdded2(
                     pTaskbarLayoutManager,
-                    hMonitor,
+                    (unsigned __int64)hMonitor,
                     &instanceof_WindowsUdk_UI_Shell_ITaskbarSettings,
                     NULL,
-                    &result
+                    &token
                 );
             }
-            data->pMonitorList[InterlockedIncrement(data->pMonitorCount) - 1] = hMonitor;
+            MonitorListEntry entry = {
+                .hMonitor = hMonitor,
+                .token = token
+            };
+            data->pMonitorList[InterlockedIncrement(data->pMonitorCount) - 1] = entry;
             printf("[Positioning] Added settings for monitor %p : %d\n", hMonitor, data->location);
         }
         else if (data->operation == STARTMENU_POSITIONING_OPERATION_CHANGE)
         {
-            hr = pTaskbarLayoutManager->lpVtbl->ReportSettingsForMonitor(
-                pTaskbarLayoutManager,
-                hMonitor,
-                &instanceof_WindowsUdk_UI_Shell_ITaskbarSettings
-            ); // TODO Doesn't work when the 2nd interface is used. Needs further investigation
+            hr = E_FAIL;
+            unsigned __int64 arg = interfaceVersion == 1 ? (unsigned __int64)hMonitor : FindTokenByHMONITOR(data, hMonitor);
+            if (arg)
+            {
+                hr = pTaskbarLayoutManager->lpVtbl->ReportSettingsForMonitor(
+                   pTaskbarLayoutManager,
+                   arg,
+                   &instanceof_WindowsUdk_UI_Shell_ITaskbarSettings
+               );
+            }
             printf("[Positioning] Changed settings for monitor: %p : %d\n", hMonitor, data->location);
         }
         else if (data->operation == STARTMENU_POSITIONING_OPERATION_REMOVE)
         {
-            hr = pTaskbarLayoutManager->lpVtbl->ReportMonitorRemoved(
-                pTaskbarLayoutManager,
-                hMonitor
-            );
+            hr = E_FAIL;
+            unsigned __int64 arg = interfaceVersion == 1 ? (unsigned __int64)hMonitor : data->pMonitorList[data->i].token;
+            if (arg)
+            {
+                hr = pTaskbarLayoutManager->lpVtbl->ReportMonitorRemoved(
+                   pTaskbarLayoutManager,
+                   arg
+               );
+            }
             printf("[Positioning] Removed settings for monitor: %p\n", hMonitor);
         }
     }

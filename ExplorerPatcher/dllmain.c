@@ -128,9 +128,6 @@ HANDLE hSwsSettingsChanged = NULL;
 HANDLE hSwsOpacityMaybeChanged = NULL;
 HANDLE hWin11AltTabInitialized = NULL;
 BYTE* lpShouldDisplayCCButton = NULL;
-#define MAX_NUM_MONITORS 30
-HMONITOR hMonitorList[MAX_NUM_MONITORS];
-DWORD dwMonitorCount = 0;
 HANDLE hCanStartSws = NULL;
 DWORD dwWeatherViewMode = EP_WEATHER_VIEW_ICONTEXT;
 DWORD dwWeatherTemperatureUnit = EP_WEATHER_TUNIT_CELSIUS;
@@ -220,6 +217,12 @@ BOOL g_bIsDesktopRaised = FALSE;
 DWORD dwUpdatePolicy = UPDATE_POLICY_DEFAULT;
 wchar_t* EP_TASKBAR_LENGTH_PROP_NAME = L"EPTBLEN";
 HWND hWinXWnd;
+
+#ifdef _WIN64
+#define MAX_NUM_MONITORS 30
+MonitorListEntry hMonitorList[MAX_NUM_MONITORS];
+DWORD dwMonitorCount = 0;
+#endif
 
 HRESULT WINAPI _DllRegisterServer();
 HRESULT WINAPI _DllUnregisterServer();
@@ -1826,15 +1829,18 @@ void UpdateStartMenuPositioning(LPARAM loIsShouldInitializeArray_hiIsShouldRoIni
             spd.pMonitorCount = &dwMonitorCount;
             spd.pMonitorList = hMonitorList;
             spd.location = dwPosCurrent;
+            spd.i = (DWORD)-1;
             if (bShouldInitialize)
             {
                 spd.operation = STARTMENU_POSITIONING_OPERATION_REMOVE;
                 unsigned int k = InterlockedAdd(&dwMonitorCount, 0);
                 for (unsigned int i = 0; i < k; ++i)
                 {
-                    NeedsRo_PositionStartMenuForMonitor(hMonitorList[i], NULL, NULL, &spd);
+                    spd.i = i;
+                    NeedsRo_PositionStartMenuForMonitor(hMonitorList[i].hMonitor, NULL, NULL, &spd);
                 }
                 InterlockedExchange(&dwMonitorCount, 0);
+                spd.i = (DWORD)-1;
                 spd.operation = STARTMENU_POSITIONING_OPERATION_ADD;
             }
             else
@@ -2575,7 +2581,7 @@ INT64 Shell_TrayWndSubclassProc(
         }
         case WM_HOTKEY:
         {
-            if (wParam == 500 && lParam == MAKELPARAM(MOD_WIN, 'A') && global_rovi.dwBuildNumber >= 25921 && bOldTaskbar == 1)
+            if (wParam == 500 && lParam == MAKELPARAM(MOD_WIN, 'A') && (bOldTaskbar && bHideControlCenterButton || global_rovi.dwBuildNumber >= 25921 && bOldTaskbar == 1))
             {
                 InvokeActionCenter();
                 return 0;
@@ -10081,7 +10087,7 @@ int RtlQueryFeatureConfigurationHook(UINT32 featureId, int sectionType, INT64* c
 #if !USE_MOMENT_3_FIXES_ON_MOMENT_2
         case 26008830: // STTest
         {
-            if (bOldTaskbar)
+            if (bOldTaskbar == 1)
             {
                 // Disable tablet optimized taskbar feature when using the Windows 10 taskbar
                 //
@@ -12677,7 +12683,7 @@ DWORD Inject(BOOL bIsExplorer)
     // - 23545.1000
     BOOL bPerformMoment2Patches = IsWindows11Version22H2Build2134OrHigher();
 #endif
-    if (!bOldTaskbar)
+    if (bOldTaskbar != 1)
     {
         bPerformMoment2Patches = FALSE;
     }
@@ -12948,36 +12954,6 @@ DWORD Inject(BOOL bIsExplorer)
                 {
                     VnPatchDelayIAT(hWindowsudkShellcommon, "ext-ms-win-security-slc-l1-1-0.dll", "SLGetWindowsInformationDWORD", windowsudkshellcommon_SLGetWindowsInformationDWORDHook);
                 }
-            }
-
-            if (bOldTaskbar)
-            {
-                MODULEINFO mi;
-                GetModuleInformation(GetCurrentProcess(), hWindowsudkShellcommon, &mi, sizeof(MODULEINFO));
-
-                // Fix ReportMonitorRemoved in UpdateStartMenuPositioning crashing, *for now*
-                // We can't use our RtlQueryFeatureConfiguration() hook because our function didn't get called with the feature ID
-                // TODO Need to check again later after this feature flag has been removed
-                // E8 ?? ?? ?? ?? 48 8B 7D ?? 84 C0 74 ?? 48 8D 4F 08
-                PBYTE match = FindPattern(
-                    hWindowsudkShellcommon,
-                    mi.SizeOfImage,
-                    "\xE8\x00\x00\x00\x00\x48\x8B\x7D\x00\x84\xC0\x74\x00\x48\x8D\x4F\x08",
-                    "x????xxx?xxx?xxxx"
-                );
-                if (match)
-                {
-                    match += 5 + *(int*)(match + 1);
-                    windowsudkshellcommon_TaskbarMultiMonIsEnabledFunc = match;
-                    printf("wil::details::FeatureImpl<__WilFeatureTraits_Feature_Servicing_TaskbarMultiMon_38545217>::__private_IsEnabled() = %llX\n", match - (PBYTE)hWindowsudkShellcommon);
-                    rv = funchook_prepare(
-                        funchook,
-                        (void**)&windowsudkshellcommon_TaskbarMultiMonIsEnabledFunc,
-                        windowsudkshellcommon_TaskbarMultiMonIsEnabledHook
-                    );
-                }
-
-                printf("Setup windowsudk.shellcommon functions done\n");
             }
         }
     }
