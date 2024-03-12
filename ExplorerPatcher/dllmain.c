@@ -1109,13 +1109,6 @@ HRESULT WINAPI windowsudkshellcommon_SLGetWindowsInformationDWORDHook(PCWSTR pws
     return hr;
 }
 
-static BOOL(*windowsudkshellcommon_TaskbarMultiMonIsEnabledFunc)(void* _this) = NULL;
-
-bool windowsudkshellcommon_TaskbarMultiMonIsEnabledHook(void* _this)
-{
-    return bOldTaskbar ? false : windowsudkshellcommon_TaskbarMultiMonIsEnabledFunc(_this);
-}
-
 #pragma endregion
 
 
@@ -8834,8 +8827,8 @@ DEFINE_GUID(IID_IInputSwitchControl,
 #define LANGUAGEUI_STYLE_OOBE 5
 #define LANGUAGEUI_STYLE_OTHER 100
 
-char mov_edx_val[6] = { 0xBA, 0x00, 0x00, 0x00, 0x00, 0xC3 };
-char* ep_pf = NULL;
+// char mov_edx_val[6] = { 0xBA, 0x00, 0x00, 0x00, 0x00, 0xC3 };
+// char* ep_pf = NULL;
 
 typedef interface IInputSwitchControl IInputSwitchControl;
 
@@ -8882,16 +8875,24 @@ interface IInputSwitchControl
     CONST_VTBL struct IInputSwitchControlVtbl* lpVtbl;
 };
 
+IInputSwitchControl* g_pDesktopInputSwitchControl;
+
 HRESULT(*CInputSwitchControl_InitFunc)(IInputSwitchControl*, unsigned int);
 HRESULT CInputSwitchControl_InitHook(IInputSwitchControl* _this, unsigned int dwOriginalIMEStyle)
 {
-    return CInputSwitchControl_InitFunc(_this, dwIMEStyle ? dwIMEStyle : dwOriginalIMEStyle);
+    // Note: Other than in explorer.exe!CTrayInputIndicator::_RegisterInputSwitch, we're also called by
+    // explorer.exe!HostAppEnvironment::_SetupInputSwitchServer which passes ISCT_IDL_USEROOBE (6) as the style.
+    if (dwOriginalIMEStyle == 0) // ISCT_IDL_DESKTOP
+    {
+        g_pDesktopInputSwitchControl = _this;
+    }
+    return CInputSwitchControl_InitFunc(_this, dwOriginalIMEStyle == 0 && dwIMEStyle ? dwIMEStyle : dwOriginalIMEStyle);
 }
 
 HRESULT (*CInputSwitchControl_ShowInputSwitchFunc)(IInputSwitchControl*, RECT*);
 HRESULT CInputSwitchControl_ShowInputSwitchHook(IInputSwitchControl* _this, RECT* lpRect)
 {
-    if (!dwIMEStyle) // impossible case (this is not called for the Windows 11 language switcher), but just in case
+    if (_this != g_pDesktopInputSwitchControl || !dwIMEStyle) // impossible case (this is not called for the Windows 11 language switcher), but just in case
     {
         return CInputSwitchControl_ShowInputSwitchFunc(_this, lpRect);
     }
@@ -8986,10 +8987,16 @@ HRESULT explorer_CoCreateInstanceHook(
             DWORD flOldProtect = 0;
             if (VirtualProtect(pInputSwitchControl->lpVtbl, sizeof(IInputSwitchControlVtbl), PAGE_EXECUTE_READWRITE, &flOldProtect))
             {
-                CInputSwitchControl_ShowInputSwitchFunc = pInputSwitchControl->lpVtbl->ShowInputSwitch;
-                pInputSwitchControl->lpVtbl->ShowInputSwitch = CInputSwitchControl_ShowInputSwitchHook;
-                CInputSwitchControl_InitFunc = pInputSwitchControl->lpVtbl->Init;
-                pInputSwitchControl->lpVtbl->Init = CInputSwitchControl_InitHook;
+                if (pInputSwitchControl->lpVtbl->ShowInputSwitch != CInputSwitchControl_ShowInputSwitchHook)
+                {
+                    CInputSwitchControl_ShowInputSwitchFunc = pInputSwitchControl->lpVtbl->ShowInputSwitch;
+                    pInputSwitchControl->lpVtbl->ShowInputSwitch = CInputSwitchControl_ShowInputSwitchHook;
+                }
+                if (pInputSwitchControl->lpVtbl->Init != CInputSwitchControl_InitHook)
+                {
+                    CInputSwitchControl_InitFunc = pInputSwitchControl->lpVtbl->Init;
+                    pInputSwitchControl->lpVtbl->Init = CInputSwitchControl_InitHook;
+                }
                 VirtualProtect(pInputSwitchControl->lpVtbl, sizeof(IInputSwitchControlVtbl), flOldProtect, &flOldProtect);
             }
             // Pff... how this works:
