@@ -205,6 +205,7 @@ BOOL g_bIsDesktopRaised = FALSE;
 #include "symbols.h"
 #include "dxgi_imp.h"
 #include "ArchiveMenu.h"
+#include "InputSwitch.h"
 #include "StartupSound.h"
 #include "StartMenu.h"
 #include "TaskbarCenter.h"
@@ -8807,197 +8808,32 @@ HRESULT ExplorerFrame_CoCreateInstanceHook(REFCLSID rclsid, LPUNKNOWN pUnkOuter,
 
 #pragma region "Change language UI style + Enable old taskbar"
 #ifdef _WIN64
-DEFINE_GUID(CLSID_InputSwitchControl,
-    0xB9BC2A50,
-    0x43C3, 0x41AA, 0xa0, 0x86,
-    0x5D, 0xB1, 0x4e, 0x18, 0x4b, 0xae
-);
-
-DEFINE_GUID(IID_IInputSwitchControl,
-    0xB9BC2A50,
-    0x43C3, 0x41AA, 0xa0, 0x82,
-    0x5D, 0xB1, 0x4e, 0x18, 0x4b, 0xae
-);
-
-#define LANGUAGEUI_STYLE_DESKTOP 0       // Windows 11 style
-#define LANGUAGEUI_STYLE_TOUCHKEYBOARD 1 // Windows 10 style
-#define LANGUAGEUI_STYLE_LOGONUI 2
-#define LANGUAGEUI_STYLE_UAC 3
-#define LANGUAGEUI_STYLE_SETTINGSPANE 4
-#define LANGUAGEUI_STYLE_OOBE 5
-#define LANGUAGEUI_STYLE_OTHER 100
-
-// char mov_edx_val[6] = { 0xBA, 0x00, 0x00, 0x00, 0x00, 0xC3 };
-// char* ep_pf = NULL;
-
-typedef interface IInputSwitchControl IInputSwitchControl;
-
-typedef struct IInputSwitchControlVtbl
-{
-    BEGIN_INTERFACE
-
-    HRESULT(STDMETHODCALLTYPE* QueryInterface)(
-        IInputSwitchControl* This,
-        /* [in] */ REFIID riid,
-        /* [annotation][iid_is][out] */
-        _COM_Outptr_  void** ppvObject);
-
-    ULONG(STDMETHODCALLTYPE* AddRef)(
-        IInputSwitchControl* This);
-
-    ULONG(STDMETHODCALLTYPE* Release)(
-        IInputSwitchControl* This);
-
-    HRESULT(STDMETHODCALLTYPE* Init)(
-        IInputSwitchControl* This,
-        /* [in] */ unsigned int clientType);
-
-    HRESULT(STDMETHODCALLTYPE* SetCallback)(
-        IInputSwitchControl* This,
-        /* [in] */ void* pInputSwitchCallback);
-
-    HRESULT(STDMETHODCALLTYPE* ShowInputSwitch)(
-        IInputSwitchControl* This,
-        /* [in] */ RECT* lpRect);
-
-    HRESULT(STDMETHODCALLTYPE* GetProfileCount)(
-        IInputSwitchControl* This,
-        /* [in] */ unsigned int* pOutNumberOfProfiles,
-        /* [in] */ int* a3);
-
-    // ...
-
-    END_INTERFACE
-} IInputSwitchControlVtbl;
-
-interface IInputSwitchControl
-{
-    CONST_VTBL struct IInputSwitchControlVtbl* lpVtbl;
-};
-
-IInputSwitchControl* g_pDesktopInputSwitchControl;
-
-HRESULT(*CInputSwitchControl_InitFunc)(IInputSwitchControl*, unsigned int);
-HRESULT CInputSwitchControl_InitHook(IInputSwitchControl* _this, unsigned int dwOriginalIMEStyle)
-{
-    // Note: Other than in explorer.exe!CTrayInputIndicator::_RegisterInputSwitch, we're also called by
-    // explorer.exe!HostAppEnvironment::_SetupInputSwitchServer which passes ISCT_IDL_USEROOBE (6) as the style.
-    if (dwOriginalIMEStyle == 0) // ISCT_IDL_DESKTOP
-    {
-        g_pDesktopInputSwitchControl = _this;
-    }
-    return CInputSwitchControl_InitFunc(_this, dwOriginalIMEStyle == 0 && dwIMEStyle ? dwIMEStyle : dwOriginalIMEStyle);
-}
-
-HRESULT (*CInputSwitchControl_ShowInputSwitchFunc)(IInputSwitchControl*, RECT*);
-HRESULT CInputSwitchControl_ShowInputSwitchHook(IInputSwitchControl* _this, RECT* lpRect)
-{
-    if (_this != g_pDesktopInputSwitchControl || !dwIMEStyle) // impossible case (this is not called for the Windows 11 language switcher), but just in case
-    {
-        return CInputSwitchControl_ShowInputSwitchFunc(_this, lpRect);
-    }
-
-    unsigned int dwNumberOfProfiles = 0;
-    int a3 = 0;
-    _this->lpVtbl->GetProfileCount(_this, &dwNumberOfProfiles, &a3);
-
-    HWND hWndTaskbar = FindWindowW(L"Shell_TrayWnd", NULL);
-
-    UINT dpiX = 96, dpiY = 96;
-    HRESULT hr = GetDpiForMonitor(
-        MonitorFromWindow(hWndTaskbar, MONITOR_DEFAULTTOPRIMARY),
-        MDT_DEFAULT,
-        &dpiX,
-        &dpiY
-    );
-    double dpix = dpiX / 96.0;
-    double dpiy = dpiY / 96.0;
-
-    //printf("RECT %d %d %d %d - %d %d\n", lpRect->left, lpRect->right, lpRect->top, lpRect->bottom, dwNumberOfProfiles, a3);
-
-    RECT rc;
-    GetWindowRect(hWndTaskbar, &rc);
-    POINT pt;
-    pt.x = rc.left;
-    pt.y = rc.top;
-    UINT tbPos = GetTaskbarLocationAndSize(pt, &rc);
-    if (tbPos == TB_POS_BOTTOM)
-    {
-    }
-    else if (tbPos == TB_POS_TOP)
-    {
-        if (dwIMEStyle == 1) // Windows 10 (with Language preferences link)
-        {
-            lpRect->top = rc.top + (rc.bottom - rc.top) + (UINT)(((double)dwNumberOfProfiles * (60.0 * dpiy)) + (5.0 * dpiy * 4.0) + (dpiy) + (48.0 * dpiy));
-        }
-        else if (dwIMEStyle == 2 || dwIMEStyle == 3 || dwIMEStyle == 4 || dwIMEStyle == 5) // LOGONUI, UAC, Windows 10, OOBE
-        {
-            lpRect->top = rc.top + (rc.bottom - rc.top) + (UINT)(((double)dwNumberOfProfiles * (60.0 * dpiy)) + (5.0 * dpiy * 2.0));
-        }
-    }
-    else if (tbPos == TB_POS_LEFT)
-    {
-        if (dwIMEStyle == 1 || dwIMEStyle == 2 || dwIMEStyle == 3 || dwIMEStyle == 4 || dwIMEStyle == 5)
-        {
-            lpRect->right = rc.left + (rc.right - rc.left) + (UINT)((double)(300.0 * dpix));
-            lpRect->top += (lpRect->bottom - lpRect->top);
-        }
-    }
-    if (tbPos == TB_POS_RIGHT)
-    {
-        if (dwIMEStyle == 1 || dwIMEStyle == 2 || dwIMEStyle == 3 || dwIMEStyle == 4 || dwIMEStyle == 5)
-        {
-            lpRect->right = lpRect->right - (rc.right - rc.left);
-            lpRect->top += (lpRect->bottom - lpRect->top);
-        }
-    }
-
-    if (dwIMEStyle == 4)
-    {
-        lpRect->right -= (UINT)((double)(300.0 * dpix)) - (lpRect->right - lpRect->left);
-    }
-
-    return CInputSwitchControl_ShowInputSwitchFunc(_this, lpRect);
-}
-
 DEFINE_GUID(CLSID_TrayUIComponent,
     0x88FC85D3,
     0x7090, 0x4F53, 0x8F, 0x7A,
     0xEB, 0x02, 0x68, 0x16, 0x27, 0x88
 );
 
-HRESULT explorer_CoCreateInstanceHook(
-    REFCLSID   rclsid,
-    LPUNKNOWN  pUnkOuter,
-    DWORD      dwClsContext,
-    REFIID     riid,
-    IUnknown** ppv
-)
+HRESULT EPTrayUIComponent_CreateInstance(REFIID riid, void** ppvObject);
+
+__declspec(dllexport) HRESULT explorer_CoCreateInstanceHook(REFCLSID rclsid, LPUNKNOWN pUnkOuter, DWORD dwClsContext, REFIID riid, void** ppv)
 {
     if (IsEqualCLSID(rclsid, &CLSID_InputSwitchControl) && IsEqualIID(riid, &IID_IInputSwitchControl))
     {
         HRESULT hr = CoCreateInstance(rclsid, pUnkOuter, dwClsContext, riid, ppv);
         if (SUCCEEDED(hr) && bOldTaskbar && dwIMEStyle)
         {
-            // The commented method below is no longer required as I have now came to patching
-            // the interface's vtable.
-            // Also, make sure to read the explanation below as well, it's useful for understanding
-            // how this worked.
-            IInputSwitchControl* pInputSwitchControl = *ppv;
-            DWORD flOldProtect = 0;
-            if (VirtualProtect(pInputSwitchControl->lpVtbl, sizeof(IInputSwitchControlVtbl), PAGE_EXECUTE_READWRITE, &flOldProtect))
+            // The commented method below is no longer required as I have now came to creating a wrapper class.
+            // Also, make sure to read the explanation below as well, it's useful for understanding how this worked.
+            // Note: Other than in explorer.exe!CTrayInputIndicator::_RegisterInputSwitch, we're also called by
+            // explorer.exe!HostAppEnvironment::_SetupInputSwitchServer which passes ISCT_IDL_USEROOBE (6) as the style.
+            if (IsWindows11Version22H2OrHigher())
             {
-                if (pInputSwitchControl->lpVtbl->ShowInputSwitch != CInputSwitchControl_ShowInputSwitchHook)
-                {
-                    CInputSwitchControl_ShowInputSwitchFunc = pInputSwitchControl->lpVtbl->ShowInputSwitch;
-                    pInputSwitchControl->lpVtbl->ShowInputSwitch = CInputSwitchControl_ShowInputSwitchHook;
-                }
-                if (pInputSwitchControl->lpVtbl->Init != CInputSwitchControl_InitHook)
-                {
-                    CInputSwitchControl_InitFunc = pInputSwitchControl->lpVtbl->Init;
-                    pInputSwitchControl->lpVtbl->Init = CInputSwitchControl_InitHook;
-                }
-                VirtualProtect(pInputSwitchControl->lpVtbl, sizeof(IInputSwitchControlVtbl), flOldProtect, &flOldProtect);
+                hr = CInputSwitchControlProxySV2_CreateInstance(*ppv, riid, ppv);
+            }
+            else
+            {
+                hr = CInputSwitchControlProxy_CreateInstance(*ppv, riid, ppv);
             }
             // Pff... how this works:
             // 
