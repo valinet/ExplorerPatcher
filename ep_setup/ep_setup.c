@@ -517,13 +517,6 @@ int WINAPI wWinMain(
     bIsUpdate = (argc >= 1 && !_wcsicmp(wargv[0], L"/update_silent"));
     if (!bInstall && (!_wcsicmp(wargv[0], L"/uninstall") || bForcePromptForUninstall))
     {
-        HWND hwndExistingMb = FindWindowExW(NULL, NULL, L"#32770", _T(PRODUCT_NAME));
-        if (hwndExistingMb)
-        {
-            SwitchToThisWindow(hwndExistingMb, TRUE);
-            exit(0);
-        }
-
         wchar_t mbText[256];
         mbText[0] = 0;
         LoadStringW(hInstance, IDS_SETUP_UNINSTALL_PROMPT, mbText, ARRAYSIZE(mbText));
