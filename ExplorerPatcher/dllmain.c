@@ -3576,6 +3576,8 @@ void PatchSndvolsso()
     funchook_t* funchook = funchook_create();
     HOOK_IMMERSIVE_MENUS(Sndvolsso);
     funchook_install(funchook, 0);
+    funchook_destroy(funchook);
+    funchook = NULL;
 
     VnPatchIAT(hSndvolsso, "api-ms-win-core-registry-l1-1-0.dll", "RegGetValueW", sndvolsso_RegGetValueW);
 #ifdef USE_PRIVATE_INTERFACES
@@ -8901,6 +8903,12 @@ __declspec(dllexport) HRESULT explorer_CoCreateInstanceHook(REFCLSID rclsid, LPU
     }
     return CoCreateInstance(rclsid, pUnkOuter, dwClsContext, riid, ppv);
 }
+
+bool(*DisableWin10TaskbarIsEnabledFunc)(void* _this);
+bool DisableWin10TaskbarIsEnabledHook(void* _this)
+{
+    return false;
+}
 #endif
 #pragma endregion
 
@@ -9343,9 +9351,6 @@ BOOL twinui_RegisterHotkeyHook(HWND hWnd, int id, UINT fsModifiers, UINT vk)
 
 #pragma region "Fix taskbar thumbnails and acrylic in newer OS builds (22572+)"
 #ifdef _WIN64
-unsigned int (*GetTaskbarColor)(INT64 u1, INT64 u2) = NULL;
-unsigned int (*GetTaskbarTheme)() = NULL;
-
 HRESULT explorer_DwmUpdateThumbnailPropertiesHook(HTHUMBNAIL hThumbnailId, DWM_THUMBNAIL_PROPERTIES* ptnProperties)
 {
     if (ptnProperties->dwFlags == 0 || ptnProperties->dwFlags == DWM_TNP_RECTSOURCE)
@@ -12075,6 +12080,8 @@ DWORD Inject(BOOL bIsExplorer)
             {
                 printf("Failed to install hooks. rv = %d\n", rv);
             }
+            funchook_destroy(funchook);
+            funchook = NULL;
         }
 #endif
         return 0;
@@ -12200,6 +12207,36 @@ DWORD Inject(BOOL bIsExplorer)
         if (symbols_PTRS.explorer_PTRS[0] && symbols_PTRS.explorer_PTRS[0] != 0xFFFFFFFF)
         {
             CImmersiveColor_GetColorFunc = (DWORD(*)(int))((uintptr_t)hExplorer + symbols_PTRS.explorer_PTRS[0]);
+        }
+
+        if (global_rovi.dwBuildNumber >= 26002)
+        {
+            // Please Microsoft 🙏
+            // 48 8B ?? 78 48 8D 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 84 C0 0F 85
+            //                                     ^^^^^^^^^^^
+            // 26040.1000: C28AE
+            // 26052.1000: BF052
+            // 26058.1000: BEFA2
+            // 26080.1   : 11795C
+            PBYTE match = FindPattern(
+                hExplorer,
+                miExplorer.SizeOfImage,
+                "\x48\x8B\x00\x78\x48\x8D\x0D\x00\x00\x00\x00\xE8\x00\x00\x00\x00\x84\xC0\x0F\x85",
+                "xx?xxxx????x????xxxx"
+            );
+            if (match)
+            {
+                match += 11;
+                match += 5 + *(int*)(match + 1);
+                DisableWin10TaskbarIsEnabledFunc = match;
+                printf("wil::details::FeatureImpl<__WilFeatureTraits_Feature_DisableWin10Taskbar>::__private_IsEnabled() = %llX\n", match - (PBYTE)hExplorer);
+
+                funchook_prepare(
+                    funchook,
+                    (void**)&DisableWin10TaskbarIsEnabledFunc,
+                    DisableWin10TaskbarIsEnabledHook
+                );
+            }
         }
     }
 
@@ -12758,6 +12795,8 @@ DWORD Inject(BOOL bIsExplorer)
         FreeLibraryAndExitThread(hModule, rv);
         return rv;
     }
+    funchook_destroy(funchook);
+    funchook = NULL;
     printf("Installed hooks.\n");
 
 
@@ -14221,6 +14260,8 @@ DWORD InjectStartMenu()
         FreeLibraryAndExitThread(hModule, rv);
         return rv;
     }
+    funchook_destroy(funchook);
+    funchook = NULL;
 #endif
     return 0;
 }
