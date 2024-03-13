@@ -1594,6 +1594,8 @@ finalize:
 
 #pragma region "Windows 10 Taskbar Hooks"
 #ifdef _WIN64
+DWORD (*CImmersiveColor_GetColorFunc)(int colorType);
+
 // credits: https://github.com/m417z/7-Taskbar-Tweaker
 
 DEFINE_GUID(IID_ITaskGroup,
@@ -9355,147 +9357,22 @@ HRESULT explorer_DwmUpdateThumbnailPropertiesHook(HTHUMBNAIL hThumbnailId, DWM_T
     return DwmUpdateThumbnailProperties(hThumbnailId, ptnProperties);
 }
 
+void UpdateWindowAccentProperties_PatchAttribData(WINCOMPATTRDATA* pAttrData);
+
 BOOL WINAPI explorer_SetWindowCompositionAttribute(HWND hWnd, WINCOMPATTRDATA* pData)
 {
     if (bClassicThemeMitigations)
     {
         return TRUE;
     }
-    if (bOldTaskbar && global_rovi.dwBuildNumber >= 22581 && GetTaskbarColor && GetTaskbarTheme && 
+    if (bOldTaskbar && global_rovi.dwBuildNumber >= 22581 &&
         (GetClassWord(hWnd, GCW_ATOM) == RegisterWindowMessageW(L"Shell_TrayWnd") || 
          GetClassWord(hWnd, GCW_ATOM) == RegisterWindowMessageW(L"Shell_SecondaryTrayWnd")) && 
         pData->nAttribute == 19 && pData->pData && pData->ulDataSize == sizeof(ACCENTPOLICY))
     {
-        ACCENTPOLICY* pAccentPolicy = pData->pData;
-        pAccentPolicy->nAccentState = (unsigned __int16)GetTaskbarTheme() >> 8 != 0 ? 4 : 1;
-        pAccentPolicy->nColor = GetTaskbarColor(0, 0);
+        UpdateWindowAccentProperties_PatchAttribData(pData);
     }
     return SetWindowCompositionAttribute(hWnd, pData);
-}
-
-void PatchExplorer_UpdateWindowAccentProperties()
-{
-    HMODULE hExplorer = GetModuleHandleW(NULL);
-    if (hExplorer)
-    {
-        PIMAGE_DOS_HEADER dosHeader = hExplorer;
-        if (dosHeader->e_magic == IMAGE_DOS_SIGNATURE)
-        {
-            PIMAGE_NT_HEADERS64 ntHeader = (PIMAGE_NT_HEADERS64)((u_char*)dosHeader + dosHeader->e_lfanew);
-            if (ntHeader->Signature == IMAGE_NT_SIGNATURE)
-            {
-                PBYTE pPatchArea = NULL;
-                // test al, al; jz rip+0x11; and ...
-                BYTE p1[] = { 0x84, 0xC0, 0x74, 0x11, 0x83, 0x65 };
-                BYTE p2[] = { 0xF3, 0xF3, 0xF3, 0xFF };
-                PBYTE pattern1 = p1;
-                int sizeof_pattern1 = 6;
-                if (global_rovi.dwBuildNumber >= 22581)
-                {
-                    pattern1 = p2;
-                    sizeof_pattern1 = 4;
-                }
-                BOOL bTwice = FALSE;
-                PIMAGE_SECTION_HEADER section = IMAGE_FIRST_SECTION(ntHeader);
-                for (unsigned int i = 0; i < ntHeader->FileHeader.NumberOfSections; ++i)
-                {
-                    if (section->Characteristics & IMAGE_SCN_CNT_CODE)
-                    {
-                        if (section->SizeOfRawData && !bTwice)
-                        {
-                            PBYTE pSectionBegin = (PBYTE)hExplorer + section->VirtualAddress;
-                            PBYTE pCandidate = NULL;
-                            while (TRUE)
-                            {
-                                pCandidate = memmem(
-                                    !pCandidate ? pSectionBegin : pCandidate,
-                                    !pCandidate ? section->SizeOfRawData : (uintptr_t)section->SizeOfRawData - (uintptr_t)(pCandidate - pSectionBegin),
-                                    pattern1,
-                                    sizeof_pattern1
-                                );
-                                if (!pCandidate)
-                                {
-                                    break;
-                                }
-                                if (!pPatchArea)
-                                {
-                                    pPatchArea = pCandidate;
-                                }
-                                else
-                                {
-                                    bTwice = TRUE;
-                                }
-                                pCandidate += sizeof_pattern1;
-                            }
-                        }
-                    }
-                    section++;
-                }
-                if (pPatchArea && !bTwice)
-                {
-                    if (global_rovi.dwBuildNumber >= 22581)
-                    {
-                        int dec_size = 200;
-                        _DecodedInst* decodedInstructions = calloc(110, sizeof(_DecodedInst));
-                        if (decodedInstructions)
-                        {
-                            PBYTE diasmBegin = pPatchArea - dec_size;
-                            unsigned int decodedInstructionsCount = 0;
-                            _DecodeResult res = distorm_decode(0, diasmBegin, dec_size + 20, Decode64Bits, decodedInstructions, 100, &decodedInstructionsCount);
-                            int status = 0;
-                            for (int i = decodedInstructionsCount - 1; i >= 0; i--)
-                            {
-                                if (status == 0 && strstr(decodedInstructions[i].instructionHex.p, "f3f3f3ff"))
-                                {
-                                    status = 1;
-                                }
-                                else if (status == 1 && !strcmp(decodedInstructions[i].instructionHex.p, "c3"))
-                                {
-                                    status = 2;
-                                }
-                                else if (status == 2 && strcmp(decodedInstructions[i].instructionHex.p, "cc"))
-                                {
-                                    GetTaskbarColor = diasmBegin + decodedInstructions[i].offset;
-                                    status = 3;
-                                }
-                                else if (status == 3 && !strncmp(decodedInstructions[i].instructionHex.p, "e8", 2))
-                                {
-                                    status = 4;
-                                }
-                                else if (status == 4 && !strncmp(decodedInstructions[i].instructionHex.p, "e8", 2))
-                                {
-                                    uint32_t* off = diasmBegin + decodedInstructions[i].offset + 1;
-                                    GetTaskbarTheme = diasmBegin + decodedInstructions[i].offset + decodedInstructions[i].size + (*off);
-                                    break;
-                                }
-                                if (status >= 2)
-                                {
-                                    i = i + 2;
-                                    if (i >= decodedInstructionsCount)
-                                    {
-                                        break;
-                                    }
-                                }
-                            }
-                            if (SetWindowCompositionAttribute && GetTaskbarColor && GetTaskbarTheme)
-                            {
-                                VnPatchIAT(GetModuleHandleW(NULL), "user32.dll", "SetWindowCompositionAttribute", explorer_SetWindowCompositionAttribute);
-                                printf("Patched taskbar transparency in newer OS builds\n");
-                            }
-                            free(decodedInstructions);
-                        }
-                    }
-                    else
-                    {
-                        DWORD dwOldProtect;
-                        VirtualProtect(pPatchArea, sizeof_pattern1, PAGE_EXECUTE_READWRITE, &dwOldProtect);
-                        pPatchArea[2] = 0xEB; // replace jz with jmp
-                        VirtualProtect(pPatchArea, sizeof_pattern1, dwOldProtect, &dwOldProtect);
-                    }
-                }
-            }
-        }
-    }
 }
 #endif
 #pragma endregion
@@ -10819,6 +10696,29 @@ inline BOOL FollowJnz(PBYTE pJnz, PBYTE* pTarget, DWORD* pJnzSize)
         return TRUE;
     }
     return FALSE;
+}
+
+void TryToFindExplorerOffsets(HANDLE hExplorer, MODULEINFO* pmiExplorer, DWORD* pOffsets)
+{
+    if (!pOffsets[0] || pOffsets[0] == 0xFFFFFFFF)
+    {
+        // CImmersiveColor::GetColor()
+        // Ref: Anything `CImmersiveColor::GetColor(colorTheme == CT_Light ? IMCLR_LightAltMediumLow : IMCLR_DarkListLow)`
+        //                                                        = 1        = 323                     = 298
+        // 8D 41 19 0F 44 C8 E8 ?? ?? ?? ?? 44 8B
+        //                      ^^^^^^^^^^^
+        PBYTE match = FindPattern(
+            hExplorer, pmiExplorer->SizeOfImage,
+            "\x8D\x41\x19\x0F\x44\xC8\xE8\x00\x00\x00\x00\x44\x8B",
+            "xxxxxxx????xx"
+        );
+        if (match)
+        {
+            match += 6;
+            pOffsets[0] = match + 5 + *(int*)(match + 1) - (PBYTE)hExplorer;
+            printf("explorer.exe!CImmersiveColor::GetColor() = %lX\n", pOffsets[0]);
+        }
+    }
 }
 
 void TryToFindTwinuiPCShellOffsets(DWORD* pOffsets)
@@ -12293,6 +12193,17 @@ DWORD Inject(BOOL bIsExplorer)
     HANDLE hExplorer = GetModuleHandleW(NULL);
     MODULEINFO miExplorer;
     GetModuleInformation(GetCurrentProcess(), hExplorer, &miExplorer, sizeof(MODULEINFO));
+
+    if (IsWindows11Version22H2OrHigher())
+    {
+        TryToFindExplorerOffsets(hExplorer, &miExplorer, symbols_PTRS.explorer_PTRS);
+
+        if (symbols_PTRS.explorer_PTRS[0] && symbols_PTRS.explorer_PTRS[0] != 0xFFFFFFFF)
+        {
+            CImmersiveColor_GetColorFunc = (DWORD(*)(int))((uintptr_t)hExplorer + symbols_PTRS.explorer_PTRS[0]);
+        }
+    }
+
     SetChildWindowNoActivateFunc = GetProcAddress(GetModuleHandleW(L"user32.dll"), (LPCSTR)2005);
     if (bOldTaskbar)
     {
@@ -12357,7 +12268,10 @@ DWORD Inject(BOOL bIsExplorer)
         if (global_rovi.dwBuildNumber >= 22572)
         {
             VnPatchIAT(hExplorer, "dwmapi.dll", "DwmUpdateThumbnailProperties", explorer_DwmUpdateThumbnailPropertiesHook);
-            PatchExplorer_UpdateWindowAccentProperties();
+            if (!bClassicThemeMitigations)
+            {
+                VnPatchIAT(hExplorer, "user32.dll", "SetWindowCompositionAttribute", explorer_SetWindowCompositionAttribute);
+            }
         }
     }
     if (IsWindows11())
@@ -14457,45 +14371,7 @@ void InjectShellExperienceHostFor22H2OrHigher() {
 #endif
 }
 
-HRESULT SHRegGetBOOLWithREGSAM(HKEY key, LPCWSTR subKey, LPCWSTR value, REGSAM regSam, BOOL* data)
-{
-    DWORD dwType = REG_NONE;
-    DWORD dwData;
-    DWORD cbData = 4;
-    LSTATUS lRes = RegGetValueW(
-        key,
-        subKey,
-        value,
-        ((regSam & 0x100) << 8) | RRF_RT_REG_DWORD | RRF_RT_REG_SZ | RRF_NOEXPAND,
-        &dwType,
-        &dwData,
-        &cbData
-    );
-    if (lRes != ERROR_SUCCESS)
-    {
-        if (lRes == ERROR_MORE_DATA)
-            return HRESULT_FROM_WIN32(ERROR_INVALID_DATA);
-        if (lRes > 0)
-            return HRESULT_FROM_WIN32(lRes);
-        return lRes;
-    }
-
-    if (dwType == REG_DWORD)
-    {
-        if (dwData > 1)
-            return HRESULT_FROM_WIN32(ERROR_INVALID_DATA);
-        *data = dwData == 1;
-    }
-    else
-    {
-        if (cbData != 4 || (WCHAR)dwData != L'0' && (WCHAR)dwData != L'1')
-            return HRESULT_FROM_WIN32(ERROR_INVALID_DATA);
-        *data = (WCHAR)dwData == L'1';
-    }
-
-    return S_OK;
-}
-
+#ifdef _WIN64
 bool IsUserOOBE()
 {
     BOOL b = FALSE;
@@ -14526,6 +14402,7 @@ bool IsUserOOBEOrCredentialReset()
 {
     return IsUserOOBE() || IsCredentialReset();
 }
+#endif
 
 #define DLL_INJECTION_METHOD_DXGI 0
 #define DLL_INJECTION_METHOD_COM 1
@@ -14614,12 +14491,14 @@ HRESULT EntryPoint(DWORD dwMethod)
     bIsExplorerProcess = bIsThisExplorer;
     if (bIsThisExplorer)
     {
+#ifdef _WIN64
         if (IsUserOOBEOrCredentialReset())
         {
             IncrementDLLReferenceCount(hModule);
             bInstanced = TRUE;
             return E_NOINTERFACE;
         }
+#endif
         BOOL desktopExists = IsDesktopWindowAlreadyPresent();
 #ifdef _WIN64
         if (!desktopExists && CrashCounterHandleEntryPoint())

@@ -96,43 +96,12 @@ DEFINE_GUID(IID_ITrayUI,
     0xae, 0x7f, 0x54, 0x91, 0x99, 0xd6
 );
 
-typedef interface ITrayUIComponent ITrayUIComponent;
-
 DEFINE_GUID(IID_ITrayUIComponent,
     0x27775f88,
     0x01d3, 0x46ec, 0xa1, 0xc1,
     0x64, 0xb4, 0xc0, 0x9b, 0x21, 0x1b
 );
 
-typedef struct ITrayUIComponentVtbl // : IUnknownVtbl
-{
-    BEGIN_INTERFACE
-
-    HRESULT(STDMETHODCALLTYPE* QueryInterface)(
-        __RPC__in ITrayUIComponent* This,
-        /* [in] */ __RPC__in REFIID riid,
-        /* [annotation][iid_is][out] */
-        _COM_Outptr_  void** ppvObject);
-
-    ULONG(STDMETHODCALLTYPE* AddRef)(
-        __RPC__in ITrayUIComponent* This);
-
-    ULONG(STDMETHODCALLTYPE* Release)(
-        __RPC__in ITrayUIComponent* This);
-
-    HRESULT(STDMETHODCALLTYPE* InitializeWithTray)(
-        __RPC__in ITrayUIComponent* This,
-        /* [in] */ __RPC__in ITrayUIHost* host,
-        /* [out] */ __RPC__out ITrayUI** result);
-    END_INTERFACE
-} ITrayUIComponentVtbl;
-
-interface ITrayUIComponent // : IInspectable
-{
-    const struct ITrayUIComponentVtbl* lpVtbl;
-};
-
-extern const ITrayUIComponent instanceof_ITrayUIComponent;
 HRESULT(*explorer_TrayUI_CreateInstanceFunc)(ITrayUIHost* host, REFIID riid, void** ppv);
 #pragma endregion
 
@@ -277,6 +246,8 @@ static bool(*ShouldAppsUseDarkMode)();
 static bool(*ShouldSystemUseDarkMode)();
 
 static void(*GetThemeName)(void*, void*, void*);
+
+extern DWORD (*CImmersiveColor_GetColorFunc)(int colorType);
 
 void* ReadFromFile(wchar_t* wszFileName, DWORD* dwSize);
 
@@ -670,6 +641,8 @@ typedef struct _MonitorOverrideData
 } MonitorOverrideData;
 
 BOOL ExtractMonitorByIndex(HMONITOR hMonitor, HDC hDC, LPRECT lpRect, MonitorOverrideData* mod);
+HRESULT SHRegGetBOOLWithREGSAM(HKEY key, LPCWSTR subKey, LPCWSTR value, REGSAM regSam, BOOL* data);
+HRESULT SHRegGetDWORD(HKEY hkey, const WCHAR* pwszSubKey, const WCHAR* pwszValue, DWORD* pdwData);
 
 #ifdef _WIN64
 PVOID FindPattern(PVOID pBase, SIZE_T dwSize, LPCSTR lpPattern, LPCSTR lpMask);
