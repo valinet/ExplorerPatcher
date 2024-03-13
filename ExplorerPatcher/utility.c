@@ -1582,7 +1582,7 @@ HRESULT SHRegGetDWORD(HKEY hkey, const WCHAR* pwszSubKey, const WCHAR* pwszValue
 }
 
 #ifdef _WIN64
-inline BOOL MaskCompare(PVOID pBuffer, LPCSTR lpPattern, LPCSTR lpMask)
+static BOOL MaskCompare(PVOID pBuffer, LPCSTR lpPattern, LPCSTR lpMask)
 {
     for (PBYTE value = (PBYTE)pBuffer; *lpMask; ++lpPattern, ++lpMask, ++value)
     {
@@ -1593,10 +1593,8 @@ inline BOOL MaskCompare(PVOID pBuffer, LPCSTR lpPattern, LPCSTR lpMask)
     return TRUE;
 }
 
-PVOID FindPattern(PVOID pBase, SIZE_T dwSize, LPCSTR lpPattern, LPCSTR lpMask)
+static __declspec(noinline) PVOID FindPatternHelper(PVOID pBase, SIZE_T dwSize, LPCSTR lpPattern, LPCSTR lpMask)
 {
-    dwSize -= strlen(lpMask);
-
     for (SIZE_T index = 0; index < dwSize; ++index)
     {
         PBYTE pAddress = (PBYTE)pBase + index;
@@ -1606,5 +1604,11 @@ PVOID FindPattern(PVOID pBase, SIZE_T dwSize, LPCSTR lpPattern, LPCSTR lpMask)
     }
 
     return NULL;
+}
+
+PVOID FindPattern(PVOID pBase, SIZE_T dwSize, LPCSTR lpPattern, LPCSTR lpMask)
+{
+    dwSize -= strlen(lpMask);
+    return FindPatternHelper(pBase, dwSize, lpPattern, lpMask);
 }
 #endif
