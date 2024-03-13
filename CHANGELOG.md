@@ -2,13 +2,13 @@
 
 This document includes the same release notes as in the [Releases](https://github.com/valinet/ExplorerPatcher/releases) section on GitHub.
 
-## 22621.3235.64
+## 22621.3296.64
 
 Tested on OS builds 22000.2538, 22621.1992, 22621.3155, 22621.3235, 22621.3296, 25951.1000, and 26058.1000.
 
 ##### 1
 
-* Taskbar10: Fixed a bug where SCOOBE would repeatedly crash Explorer when Language Switcher is set to anything other than Windows 11 (the default). (fe7f800)
+* Taskbar10: Fixed a bug where SCOOBE would repeatedly crash Explorer when Language Switcher is set to anything other than Windows 10 (the default). (fe7f800)
 * Taskbar10: Refined the method for aligning the Windows 11 Start menu and Search flyouts when using the Windows 10 taskbar on 22621.2792+. (8f84a96)
   * This should fix related crashes during logon and screen resolution change on 26063+.
 * Taskbar10: Revised the method for restoring acrylic to the Windows 10 taskbar on 22621+. (5e7bad2)
