@@ -8,7 +8,7 @@ Tested on OS builds 22000.2538, 22621.1992, 22621.3155, 22621.3235, 22621.3296, 
 
 ##### 1
 
-* Taskbar10: Fixed a bug where SCOOBE would repeatedly crash Explorer when Language Switcher is set to anything other than Windows 10 (the default). (fe7f800)
+* Taskbar10: Fixed a bug where SCOOBE would repeatedly crash Explorer when Language Switcher is set to anything other than Windows 10 (the default). (fe7f800, 5c35f58)
 * Taskbar10: Refined the method for aligning the Windows 11 Start menu and Search flyouts when using the Windows 10 taskbar on 22621.2792+. (8f84a96)
   * This should fix related crashes during logon and screen resolution change on 26063+.
 * Taskbar10: Revised the method for restoring acrylic to the Windows 10 taskbar on 22621+. (5e7bad2)
@@ -16,6 +16,10 @@ Tested on OS builds 22000.2538, 22621.1992, 22621.3155, 22621.3235, 22621.3296, 
 * ExplorerPatcher should now avoid further injection when the system is in safe mode. (95ea9e7)
 * Setup: Moved uninstallation prompt dialog existence check to the GUI. (0589a25)
 * Various changes to prepare for the alternate taskbar reimplementation that will be released in the future. (a0885c6, 0791bd7, fc61884, 623ecee)
+
+##### 2
+
+* Taskbar10: Revised the method for disabling DisableWin10Taskbar present on 26002+. (913b2d0)
 
 ## 22621.3007.63
 
