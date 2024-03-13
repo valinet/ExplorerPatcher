@@ -8896,8 +8896,7 @@ __declspec(dllexport) HRESULT explorer_CoCreateInstanceHook(REFCLSID rclsid, LPU
     {
         if (bOldTaskbar && explorer_TrayUI_CreateInstanceFunc)
         {
-            *ppv = &instanceof_ITrayUIComponent;
-            return S_OK;
+            return EPTrayUIComponent_CreateInstance(riid, ppv);
         }
     }
     return CoCreateInstance(rclsid, pUnkOuter, dwClsContext, riid, ppv);
@@ -9312,11 +9311,11 @@ BOOL explorer_RegisterHotkeyHook(HWND hWnd, int id, UINT fsModifiers, UINT vk)
     if (!bWinBHotkeyRegistered && fsModifiers == (MOD_WIN | MOD_NOREPEAT) && vk == 'D') // right after Win+D
     {
 #if USE_MOMENT_3_FIXES_ON_MOMENT_2
-        BOOL bPerformMoment2Patches = IsWindows11Version22H2Build1413OrHigher();
+        BOOL bPerformMoment2Patches = IsWindows11Version22H2Build1413OrHigher() && bOldTaskbar;
 #else
-        BOOL bPerformMoment2Patches = IsWindows11Version22H2Build2134OrHigher();
+        BOOL bPerformMoment2Patches = bOldTaskbar ? bOldTaskbar == 1 ? IsWindows11Version22H2Build2134OrHigher() : IsWindows11Version22H2Build1413OrHigher() : FALSE;
 #endif
-        if (bPerformMoment2Patches && bOldTaskbar)
+        if (bPerformMoment2Patches)
         {
             // Might be better if we scan the GlobalKeylist array to prevent hardcoded numbers?
             RegisterHotKey(hWnd, 500, MOD_WIN | MOD_NOREPEAT, 'A');
