@@ -14492,7 +14492,7 @@ HRESULT EntryPoint(DWORD dwMethod)
     if (bIsThisExplorer)
     {
 #ifdef _WIN64
-        if (IsUserOOBEOrCredentialReset())
+        if (GetSystemMetrics(SM_CLEANBOOT) != 0 || IsUserOOBEOrCredentialReset())
         {
             IncrementDLLReferenceCount(hModule);
             bInstanced = TRUE;
