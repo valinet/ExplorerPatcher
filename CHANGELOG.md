@@ -2,6 +2,21 @@
 
 This document includes the same release notes as in the [Releases](https://github.com/valinet/ExplorerPatcher/releases) section on GitHub.
 
+## 22621.3235.64
+
+Tested on OS builds 22000.2538, 22621.1992, 22621.3155, 22621.3235, 22621.3296, 25951.1000, and 26058.1000.
+
+##### 1
+
+* Taskbar10: Fixed a bug where SCOOBE would repeatedly crash Explorer when Language Switcher is set to anything other than Windows 11 (the default). (fe7f800)
+* Taskbar10: Refined the method for aligning the Windows 11 Start menu and Search flyouts when using the Windows 10 taskbar on 22621.2792+. (8f84a96)
+  * This should fix related crashes during logon and screen resolution change on 26063+.
+* Taskbar10: Revised the method for restoring acrylic to the Windows 10 taskbar on 22621+. (5e7bad2)
+  * This should fix the taskbar being fully transparent on recent builds such as 22635.3066 and 22621/22631.3296 despite not having any other customization software.
+* ExplorerPatcher should now avoid further injection when the system is in safe mode. (95ea9e7)
+* Setup: Moved uninstallation prompt dialog existence check to the GUI. (0589a25)
+* Various changes to prepare for the alternate taskbar reimplementation that will be released in the future. (a0885c6, 0791bd7, fc61884, 623ecee)
+
 ## 22621.3007.63
 
 Tested on OS builds 22000.2538, 22621.1992, 22621.3007, 22621.3085, and 22621.3155.
