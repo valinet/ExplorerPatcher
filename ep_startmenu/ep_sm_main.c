@@ -1,27 +1,97 @@
 #include <Windows.h>
+#include <initguid.h>
 #include <valinet/hooking/iatpatch.h>
+#include <valinet/utility/memmem.h>
+#include "../ExplorerPatcher/utility.h"
 #include "ep_sm_forwards.h"
 #pragma comment(lib, "Dbghelp.lib")
 
 HMODULE hModule = NULL;
 HMODULE hOrig = NULL;
-wchar_t* (*pGetCmdArguments)(int*) = NULL;
 SRWLOCK lockInstanced = { .Ptr = SRWLOCK_INIT };
 BOOL bInstanced = FALSE;
 
-BOOL start_GetProductInfo(DWORD dwOSMajorVersion, DWORD dwOSMinorVersion, DWORD dwSpMajorVersion, DWORD dwSpMinorVersion, PDWORD pdwReturnedProductType)
+DEFINE_GUID(IID_StartDocked_App, 0x4C2CAEAD, 0x9DA8, 0x30EC, 0xB6, 0xD3, 0xCB, 0xD5, 0x74, 0xED, 0xCB, 0x35); // 4C2CAEAD-9DA8-30EC-B6D3-CBD574EDCB35
+DEFINE_GUID(IID_StartUI_App, 0x1ECDC9E0, 0xBDB1, 0x3551, 0x8C, 0xEE, 0x4B, 0x77, 0x54, 0x0C, 0x44, 0xB3); // 1ECDC9E0-BDB1-3551-8CEE-4B77540C44B3
+DEFINE_GUID(IID_StartDocked_XamlMetaDataProvider, 0xD5783E97, 0x0462, 0x3A6B, 0xAA, 0x60, 0x50, 0x0D, 0xB1, 0x1D, 0x3E, 0xF6); // D5783E97-0462-3A6B-AA60-500DB11D3EF6
+DEFINE_GUID(IID_StartUI_XamlMetaDataProvider, 0xF2777C41, 0xD2CC, 0x34B6, 0xA7, 0xEA, 0x19, 0xF6, 0xC6, 0x5F, 0x0C, 0x19); // F2777C41-D2CC-34B6-A7EA-19F6C65F0C19
+
+/*BOOL start_GetProductInfo(DWORD dwOSMajorVersion, DWORD dwOSMinorVersion, DWORD dwSpMajorVersion, DWORD dwSpMinorVersion, PDWORD pdwReturnedProductType)
 {
     *pdwReturnedProductType = 119;
     return TRUE;
+}*/
+
+BOOL GetStartShowClassicMode()
+{
+    DWORD dwStartShowClassicMode = 0;
+    DWORD dwSize = sizeof(DWORD);
+    RegGetValueW(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", L"Start_ShowClassicMode", RRF_RT_DWORD, NULL, &dwStartShowClassicMode, &dwSize);
+    if (dwStartShowClassicMode == 0)
+        return FALSE;
+
+    if (!FileExistsW(L"StartUI.dll"))
+        return FALSE;
+
+    return TRUE;
+}
+
+void PatchXamlMetaDataProviderGuid()
+{
+    static BOOL bPatched = FALSE;
+    if (bPatched)
+    {
+        return;
+    }
+    bPatched = TRUE;
+
+    PBYTE beginRData = NULL;
+    DWORD sizeRData = 0;
+
+    // Our target is in .rdata
+    PIMAGE_DOS_HEADER dosHeader = (PIMAGE_DOS_HEADER)GetModuleHandleW(NULL);
+    if (dosHeader->e_magic == IMAGE_DOS_SIGNATURE)
+    {
+        PIMAGE_NT_HEADERS64 ntHeader = (PIMAGE_NT_HEADERS64)((u_char*)dosHeader + dosHeader->e_lfanew);
+        if (ntHeader->Signature == IMAGE_NT_SIGNATURE)
+        {
+            for (unsigned int i = 0; i < ntHeader->FileHeader.NumberOfSections; ++i)
+            {
+                PIMAGE_SECTION_HEADER section = IMAGE_FIRST_SECTION(ntHeader) + i;
+                if (!strncmp(section->Name, ".rdata", 6))
+                {
+                    beginRData = (PBYTE)dosHeader + section->VirtualAddress;
+                    sizeRData = section->SizeOfRawData;
+                    break;
+                }
+            }
+        }
+    }
+    if (!beginRData || !sizeRData)
+    {
+        return;
+    }
+
+    GUID* pguidTarget = memmem(beginRData, sizeRData, &IID_StartDocked_XamlMetaDataProvider, sizeof(GUID));
+    if (!pguidTarget)
+    {
+        return;
+    }
+
+    DWORD dwOldProtect = 0;
+    if (VirtualProtect(pguidTarget, sizeof(GUID), PAGE_EXECUTE_READWRITE, &dwOldProtect))
+    {
+        *pguidTarget = IID_StartUI_XamlMetaDataProvider;
+        VirtualProtect(pguidTarget, sizeof(GUID), dwOldProtect, &dwOldProtect);
+    }
 }
 
 void Init()
 {
-    DWORD dwStartShowClassicMode = 0, dwSize = sizeof(DWORD);
-    RegGetValueW(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", L"Start_ShowClassicMode", RRF_RT_DWORD, NULL, &dwStartShowClassicMode, &dwSize);
-    if (dwStartShowClassicMode)
+    if (GetStartShowClassicMode())
     {
-        VnPatchIAT(GetModuleHandleW(NULL), "api-ms-win-core-sysinfo-l1-2-0.dll", "GetProductInfo", start_GetProductInfo);
+        // VnPatchIAT(GetModuleHandleW(NULL), "api-ms-win-core-sysinfo-l1-2-0.dll", "GetProductInfo", start_GetProductInfo);
+        PatchXamlMetaDataProviderGuid();
     }
     HMODULE hMod;
     GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS, hModule, &hMod);
@@ -35,19 +105,56 @@ wchar_t* GetCmdArguments(int* a1)
     if (!hOrig)
     {
         hOrig = LoadLibraryW(L"wincorlib_orig.dll");
-        if (hOrig)
+    }
+    static wchar_t* (*pGetCmdArguments)(int*) = NULL;
+    if (!pGetCmdArguments && hOrig)
+    {
+        pGetCmdArguments = GetProcAddress(hOrig, "?GetCmdArguments@Details@Platform@@YAPEAPEA_WPEAH@Z");
+    }
+    if (!pGetCmdArguments)
+    {
+        ReleaseSRWLockExclusive(&lockInstanced);
+        return NULL;
+    }
+
+    if (!bInstanced) Init();
+    ReleaseSRWLockExclusive(&lockInstanced);
+    return pGetCmdArguments(a1);
+}
+
+#pragma comment(linker, "/export:?GetActivationFactoryByPCWSTR@@YAJPEAXAEAVGuid@Platform@@PEAPEAX@Z=GetActivationFactoryByPCWSTR,@129")
+HRESULT GetActivationFactoryByPCWSTR(PCWSTR activatableClassId, const GUID* iid, void** ppv)
+{
+    if (!hOrig)
+    {
+        hOrig = LoadLibraryW(L"wincorlib_orig.dll");
+    }
+    static HRESULT (*pGetActivationFactoryByPCWSTR)(PCWSTR, const GUID*, void**) = NULL;
+    if (!pGetActivationFactoryByPCWSTR && hOrig)
+    {
+        pGetActivationFactoryByPCWSTR = GetProcAddress(hOrig, "?GetActivationFactoryByPCWSTR@@YAJPEAXAEAVGuid@Platform@@PEAPEAX@Z");
+    }
+    if (!pGetActivationFactoryByPCWSTR)
+    {
+        return E_FAIL;
+    }
+
+    if (!wcscmp(activatableClassId, L"StartDocked.App") && IsEqualGUID(iid, &IID_StartDocked_App))
+    {
+        if (GetStartShowClassicMode())
         {
-            pGetCmdArguments = GetProcAddress(hOrig, "?GetCmdArguments@Details@Platform@@YAPEAPEA_WPEAH@Z");
+            return pGetActivationFactoryByPCWSTR(L"StartUI.App", &IID_StartUI_App, ppv);
         }
     }
-    if (pGetCmdArguments)
+    else if (!wcscmp(activatableClassId, L"StartDocked.startdocked_XamlTypeInfo.XamlMetaDataProvider"))
     {
-        if (!bInstanced) Init();
-        ReleaseSRWLockExclusive(&lockInstanced);
-        return pGetCmdArguments(a1);
+        if (GetStartShowClassicMode())
+        {
+            return pGetActivationFactoryByPCWSTR(L"StartUI.startui_XamlTypeInfo.XamlMetaDataProvider", iid, ppv);
+        }
     }
-    ReleaseSRWLockExclusive(&lockInstanced);
-    return NULL;
+
+    return pGetActivationFactoryByPCWSTR(activatableClassId, iid, ppv);
 }
 
 BOOL WINAPI DllMain(

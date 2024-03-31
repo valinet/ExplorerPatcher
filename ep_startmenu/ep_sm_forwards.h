@@ -128,7 +128,7 @@
 #pragma comment(linker, "/export:?Free@Heap@Details@Platform@@SAXPEAX@Z=wincorlib_orig.dll.?Free@Heap@Details@Platform@@SAXPEAX@Z,@126")
 #pragma comment(linker, "/export:?FreeException@Heap@Details@Platform@@SAXPEAX@Z=wincorlib_orig.dll.?FreeException@Heap@Details@Platform@@SAXPEAX@Z,@127")
 #pragma comment(linker, "/export:?GetActivationFactory@Details@Platform@@YAJPEAVModuleBase@1WRL@Microsoft@@PEAUHSTRING__@@PEAPEAUIActivationFactory@@@Z=wincorlib_orig.dll.?GetActivationFactory@Details@Platform@@YAJPEAVModuleBase@1WRL@Microsoft@@PEAUHSTRING__@@PEAPEAUIActivationFactory@@@Z,@128")
-#pragma comment(linker, "/export:?GetActivationFactoryByPCWSTR@@YAJPEAXAEAVGuid@Platform@@PEAPEAX@Z=wincorlib_orig.dll.?GetActivationFactoryByPCWSTR@@YAJPEAXAEAVGuid@Platform@@PEAPEAX@Z,@129")
+//#pragma comment(linker, "/export:?GetActivationFactoryByPCWSTR@@YAJPEAXAEAVGuid@Platform@@PEAPEAX@Z=wincorlib_orig.dll.?GetActivationFactoryByPCWSTR@@YAJPEAXAEAVGuid@Platform@@PEAPEAX@Z,@129")
 //#pragma comment(linker, "/export:?GetCmdArguments@Details@Platform@@YAPEAPEA_WPEAH@Z=wincorlib_orig.dll.?GetCmdArguments@Details@Platform@@YAPEAPEA_WPEAH@Z,@130")
 #pragma comment(linker, "/export:?GetHashCode@Attribute@Metadata@Platform@@QE$AAAHXZ=wincorlib_orig.dll.?GetHashCode@Attribute@Metadata@Platform@@QE$AAAHXZ,@131")
 #pragma comment(linker, "/export:?GetHashCode@Boolean@Platform@@QEAAHXZ=wincorlib_orig.dll.?GetHashCode@Boolean@Platform@@QEAAHXZ,@132")
