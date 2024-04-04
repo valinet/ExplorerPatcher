@@ -51,6 +51,8 @@ RTL_OSVERSIONINFOW global_rovi;
 DWORD32 global_ubr;
 #endif
 #include <featurestagingapi.h>
+#include <userenv.h>
+#pragma comment(lib, "Userenv.lib")
 
 #define WINX_ADJUST_X 5
 #define WINX_ADJUST_Y 5
@@ -233,6 +235,12 @@ HRESULT WINAPI _DllGetClassObject(
     REFIID   riid,
     LPVOID* ppv
 );
+
+// {09717D01-5D10-4FB5-BD05-46380B5165AA}
+#define CLSID_EPStart10_TEXT "{A6EA9C2D-4982-4827-9204-0AC532959F6D}"
+#define EPStart10_AnimationsPatched "EPStart10_AnimationsPatched_" CLSID_EPStart10_TEXT
+DEFINE_GUID(CLSID_EPStart10,
+    0x9717d01, 0x5d10, 0x4fb5, 0xbd, 0x5, 0x46, 0x38, 0xb, 0x51, 0x65, 0xaa);
 
 #pragma region "Updates"
 #ifdef _WIN64
@@ -12572,7 +12580,28 @@ DWORD Inject(BOOL bIsExplorer)
         GetCrashCounterSettings(&cfg);
         if (!cfg.bDisabled)
         {
-            FixStartMenuAnimation(&miTwinuiPcshell);
+            if (FixStartMenuAnimation(&miTwinuiPcshell)) {
+                PSID pMainSid = NULL;
+                GetLogonSid(&pMainSid);
+                PSID pSecondaySid = NULL;
+                DeriveAppContainerSidFromAppContainerName(L"Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy", &pSecondaySid);
+                PSECURITY_DESCRIPTOR pSecurityDescriptor = NULL;
+                if (PrepareSecurityDescriptor(pMainSid, STANDARD_RIGHTS_ALL | MUTEX_ALL_ACCESS, pSecondaySid, SYNCHRONIZE, &pSecurityDescriptor))
+                {
+                    SECURITY_ATTRIBUTES SecurityAttributes;
+                    ZeroMemory(&SecurityAttributes, sizeof(SecurityAttributes));
+                    SecurityAttributes.nLength = sizeof(SECURITY_ATTRIBUTES);
+                    SecurityAttributes.bInheritHandle = FALSE;
+                    SecurityAttributes.lpSecurityDescriptor = pSecurityDescriptor;
+                    if (CreateMutexW(&SecurityAttributes, FALSE, _T(EPStart10_AnimationsPatched)))
+                    {
+                        printf("[SMA] Advertising successful animations patching.\n");
+                    }
+                    free(pSecurityDescriptor);
+                }
+                if (pMainSid) free(pMainSid);
+                if (pSecondaySid) FreeSid(pSecondaySid);
+            }
         }
     }
 #endif
@@ -13503,8 +13532,19 @@ int Start_SetWindowRgn(HWND hWnd, HRGN hRgn, BOOL bRedraw)
     HRESULT hr = IsThreadCoreWindowVisible(&bIsWindowVisible);
     if (SUCCEEDED(hr))
     {
-        /*if (global_rovi.dwBuildNumber >= 25000 && dwStartShowClassicMode)
-            ShowWindow(hWnd, bIsWindowVisible ? SW_SHOW : SW_HIDE);*/
+        if (dwStartShowClassicMode && IsWindows11())
+        {
+            HANDLE hAnimationsPatched = OpenMutexW(SYNCHRONIZE, FALSE, _T(EPStart10_AnimationsPatched));
+            if (hAnimationsPatched)
+            {
+                CloseHandle(hAnimationsPatched);
+                if (!IsWindowVisible(hWnd)) ShowWindow(hWnd, SW_SHOW);
+            }
+            else
+            {
+                ShowWindow(hWnd, bIsWindowVisible ? SW_SHOW : SW_HIDE);
+            }
+        }
         DWORD TaskbarAl = InterlockedAdd(&dwTaskbarAl, 0);
         if (bIsWindowVisible && (!TaskbarAl ? (dwStartShowClassicMode ? StartUI_EnableRoundedCornersApply : StartDocked_DisableRecommendedSectionApply) : 1))
         {

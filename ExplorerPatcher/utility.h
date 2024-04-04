@@ -267,6 +267,10 @@ WCHAR* StrReplaceAllW(const WCHAR* s, const WCHAR* oldW, const WCHAR* newW, int*
 
 HRESULT InputBox(BOOL bPassword, HWND hWnd, LPCWSTR wszPrompt, LPCWSTR wszTitle, LPCWSTR wszDefault, LPWSTR wszAnswer, DWORD cbAnswer, BOOL* bCancelled);
 
+BOOL GetLogonSid(PSID* ppsid);
+
+BOOL PrepareSecurityDescriptor(PSID pMainSid, DWORD dwMainPermissions, PSID pSecondarySid, DWORD dwSecondayPermissions, PSECURITY_DESCRIPTOR* ppSD);
+
 inline BOOL IsHighContrast()
 {
     HIGHCONTRASTW highContrast;
