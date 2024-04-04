@@ -21,6 +21,11 @@ Tested on OS builds 22000.2538, 22621.1992, 22621.3155, 22621.3235, 22621.3296, 
 
 * Taskbar10: Revised the method for disabling DisableWin10Taskbar present on 26002+. (913b2d0)
 
+##### 3
+
+* Start10: Support for OS builds 226xx.3420+ and 24H2, including fixed animations (5e25663, c286ab5).
+* Start10: Prevent menu closing delay when patching standalone (without ExplorerPatcher injecting `explorer.exe`) (45bd735).
+
 ## 22621.3007.63
 
 Tested on OS builds 22000.2538, 22621.1992, 22621.3007, 22621.3085, and 22621.3155.
