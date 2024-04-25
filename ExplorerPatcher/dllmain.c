@@ -4189,7 +4189,7 @@ HRESULT stobject_CoCreateInstanceHook(
     LPVOID* ppv
 )
 {
-    if (global_rovi.dwBuildNumber >= 25000 && IsEqualGUID(rclsid, &CLSID_NetworkTraySSO) && bOldTaskbar)
+    if (global_rovi.dwBuildNumber >= 25236 && IsEqualGUID(rclsid, &CLSID_NetworkTraySSO) && bOldTaskbar)
     {
         wchar_t szPath[MAX_PATH];
         ZeroMemory(szPath, sizeof(szPath));
@@ -6555,6 +6555,7 @@ void WINAPI LoadSettings(LPARAM lParam)
         if (!bWasOldTaskbarSet)
         {
             bOldTaskbar = dwTemp;
+            AdjustTaskbarStyleValue(&bOldTaskbar);
             bWasOldTaskbarSet = TRUE;
         }
         dwSize = sizeof(DWORD);
@@ -9896,6 +9897,7 @@ int RtlQueryFeatureConfigurationHook(UINT32 featureId, int sectionType, INT64* c
             }
             break;
         }
+#if 0
         case 42537950: // DisableWin10Taskbar
         {
             if (bOldTaskbar)
@@ -9905,6 +9907,7 @@ int RtlQueryFeatureConfigurationHook(UINT32 featureId, int sectionType, INT64* c
             }
             break;
         }
+#endif
         case 44656322: // ID44656322
         {
             if (bOldTaskbar)
@@ -11872,7 +11875,7 @@ LSTATUS pnidui_RegGetValueW(HKEY hkey, LPCWSTR lpSubKey, LPCWSTR lpValue, DWORD 
 void PatchPnidui(HMODULE hPnidui)
 {
     VnPatchIAT(hPnidui, "api-ms-win-core-com-l1-1-0.dll", "CoCreateInstance", pnidui_CoCreateInstanceHook);
-    if (global_rovi.dwBuildNumber >= 25000)
+    if (global_rovi.dwBuildNumber >= 25236)
     {
         VnPatchIAT(hPnidui, "api-ms-win-core-registry-l1-1-0.dll", "RegGetValueW", pnidui_RegGetValueW);
     }
@@ -12211,6 +12214,7 @@ DWORD Inject(BOOL bIsExplorer)
     if (bOldTaskbar >= 2 && !pszTaskbarDll)
     {
         bOldTaskbar = 1;
+        AdjustTaskbarStyleValue(&bOldTaskbar);
     }
 
 
@@ -12238,6 +12242,7 @@ DWORD Inject(BOOL bIsExplorer)
             CImmersiveColor_GetColorFunc = (DWORD(*)(int))((uintptr_t)hExplorer + symbols_PTRS.explorer_PTRS[0]);
         }
 
+#if 0
         if (global_rovi.dwBuildNumber >= 26002)
         {
             // Please Microsoft 🙏
@@ -12267,6 +12272,7 @@ DWORD Inject(BOOL bIsExplorer)
                 );
             }
         }
+#endif
     }
 
     SetChildWindowNoActivateFunc = GetProcAddress(GetModuleHandleW(L"user32.dll"), (LPCSTR)2005);
@@ -12664,7 +12670,7 @@ DWORD Inject(BOOL bIsExplorer)
         VnPatchIAT(hStobject, "user32.dll", "TrackPopupMenu", stobject_TrackPopupMenuHook);
         VnPatchIAT(hStobject, "user32.dll", "TrackPopupMenuEx", stobject_TrackPopupMenuExHook);
     }
-    if (global_rovi.dwBuildNumber >= 25000 && bOldTaskbar)
+    if (global_rovi.dwBuildNumber >= 25236 && bOldTaskbar)
     {
         PatchStobject(hStobject);
     }
@@ -12690,7 +12696,7 @@ DWORD Inject(BOOL bIsExplorer)
 
 
 
-    if (global_rovi.dwBuildNumber < 25000)
+    if (global_rovi.dwBuildNumber < 25236)
     {
         HANDLE hPnidui = LoadLibraryW(L"pnidui.dll");
         if (hPnidui)

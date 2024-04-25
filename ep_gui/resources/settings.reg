@@ -20,6 +20,9 @@
 ;x 1 %R:1004%
 "OldTaskbar"=dword:00000001
 ;g Taskbar_StyleSection2
+;s Taskbar_StockWin10Unavailable !IsStockWindows10TaskbarAvailable
+;t ⚠ %R:1049%
+;g Taskbar_StockWin10Unavailable
 ;y %R:1005% 🡕
 ;ms-settings:taskbar
 ;y %R:1006% 🡕
