@@ -2,6 +2,17 @@
 
 This document includes the same release notes as in the [Releases](https://github.com/valinet/ExplorerPatcher/releases) section on GitHub.
 
+## 22621.3527.65
+
+Tested on OS builds 22621.3296, 22621.3447, and 22621.3527. (Note: 22621 and 22631 share the same OS files)
+
+##### 1
+
+* Taskbar10: The Windows 10 taskbar option is now no longer available on 26002+. (#3053, e57a6b0)
+  * This is to comply with Microsoft's removal of the stock Windows 10 taskbar in explorer.exe of said builds.
+* Start10: Fixed Pin to Start with a 50/50 chance of success on 226xx.3420+ (22H2, 23H2) and 25169+ (24H2). (232fe6b)
+* Start10: Reverted the menu closing delay fix when EP is injected only into `StartMenuExperienceHost.exe` for now. (e59c34c)
+
 ## 22621.3296.64
 
 Tested on OS builds 22000.2538, 22621.1992, 22621.3155, 22621.3235, 22621.3296, 25951.1000, and 26058.1000.
