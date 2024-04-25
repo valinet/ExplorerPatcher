@@ -1207,11 +1207,11 @@ extern "C" {
 
 void PatchStartTileDataFurther(HMODULE hModule, BOOL bSMEH)
 {
-    ComPtr<ABI::Windows::Internal::ApplicationModel::IPinnableSurfaceFactory> pPinnableSurfaceFactory;
-    PatchStartPinnableSurface(hModule, &pPinnableSurfaceFactory);
+    // ComPtr<ABI::Windows::Internal::ApplicationModel::IPinnableSurfaceFactory> pPinnableSurfaceFactory;
+    PatchStartPinnableSurface(hModule, nullptr /*&pPinnableSurfaceFactory*/); // We might not need to patch this but just in case
 
-    if (bSMEH)
-        pPinnableSurfaceFactory->AddRef(); // Pin in memory so that StartTileData.dll doesn't get unloaded
+    // if (bSMEH)
+        // pPinnableSurfaceFactory->AddRef(); // Pin in memory so that StartTileData.dll doesn't get unloaded
 
     PatchUnifiedTilePinUnpinProvider(hModule);
 }

@@ -51,8 +51,13 @@ RTL_OSVERSIONINFOW global_rovi;
 DWORD32 global_ubr;
 #endif
 #include <featurestagingapi.h>
+#ifndef WITH_SMA_PATCH_REPORT
+#define WITH_SMA_PATCH_REPORT 0
+#endif
+#if WITH_SMA_PATCH_REPORT
 #include <userenv.h>
 #pragma comment(lib, "Userenv.lib")
+#endif
 
 #define WINX_ADJUST_X 5
 #define WINX_ADJUST_Y 5
@@ -12612,7 +12617,9 @@ DWORD Inject(BOOL bIsExplorer)
         GetCrashCounterSettings(&cfg);
         if (!cfg.bDisabled)
         {
-            if (FixStartMenuAnimation(&miTwinuiPcshell)) {
+            if (FixStartMenuAnimation(&miTwinuiPcshell))
+            {
+#if WITH_SMA_PATCH_REPORT
                 PSID pMainSid = NULL;
                 GetLogonSid(&pMainSid);
                 PSID pSecondaySid = NULL;
@@ -12633,6 +12640,7 @@ DWORD Inject(BOOL bIsExplorer)
                 }
                 if (pMainSid) free(pMainSid);
                 if (pSecondaySid) FreeSid(pSecondaySid);
+#endif
             }
         }
     }
@@ -13554,19 +13562,20 @@ int Start_SetWindowRgn(HWND hWnd, HRGN hRgn, BOOL bRedraw)
     HRESULT hr = IsThreadCoreWindowVisible(&bIsWindowVisible);
     if (SUCCEEDED(hr))
     {
+#if WITH_SMA_PATCH_REPORT
         if (dwStartShowClassicMode && IsWindows11())
         {
             HANDLE hAnimationsPatched = OpenMutexW(SYNCHRONIZE, FALSE, _T(EPStart10_AnimationsPatched));
             if (hAnimationsPatched)
             {
                 CloseHandle(hAnimationsPatched);
-                if (!IsWindowVisible(hWnd)) ShowWindow(hWnd, SW_SHOW);
             }
             else
             {
                 ShowWindow(hWnd, bIsWindowVisible ? SW_SHOW : SW_HIDE);
             }
         }
+#endif
         DWORD TaskbarAl = InterlockedAdd(&dwTaskbarAl, 0);
         if (bIsWindowVisible && (!TaskbarAl ? (dwStartShowClassicMode ? StartUI_EnableRoundedCornersApply : StartDocked_DisableRecommendedSectionApply) : 1))
         {
