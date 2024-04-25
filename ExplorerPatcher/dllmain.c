@@ -11056,7 +11056,7 @@ static void PatchStartTileData(BOOL bSMEH)
         {
             PatchStartTileDataFurther(hStartTileData, bSMEH);
         }
-        if (!bSMEH && hr == S_OK)
+        if (hr == S_OK)
         {
             CoUninitialize();
         }
