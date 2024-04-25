@@ -39,6 +39,16 @@ public:
     STDMETHODIMP InitializeWithTray(ITrayUIHost* host, ITrayUI** result) override
     {
         RETURN_IF_FAILED(explorer_TrayUI_CreateInstanceFunc(host, IID_ITrayUI, (void**)result));
+
+        // Fix delayed logon when using the Windows 10 taskbar on Windows 11 21H2.
+        // Not present in 51, present in 120 onwards. 65, 71, and 100 are not checked yet.
+        if (global_rovi.dwBuildNumber == 22000 && global_ubr >= 120)
+        {
+            void** vtable = *(void***)host;
+            void (*FireDesktopSwitchIfReady)(ITrayUIHost*, int) = (decltype(FireDesktopSwitchIfReady))vtable[78];
+            FireDesktopSwitchIfReady(host, 8);
+        }
+
         return S_OK;
     }
 };

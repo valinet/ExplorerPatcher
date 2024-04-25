@@ -207,6 +207,34 @@ LSTATUS GUI_Internal_RegSetValueExW(
 {
     if (!lpValueName || wcsncmp(lpValueName, L"Virtualized_" _T(EP_CLSID), 50))
     {
+        if (lpValueName && !wcscmp(lpValueName, L"LogonLogoffShutdownSounds"))
+        {
+            DWORD bExcluded = !*(const DWORD*)lpData;
+
+            HKEY localHKey = NULL;
+            RegOpenKeyExW(HKEY_CURRENT_USER, L"AppEvents\\EventLabels\\SystemExit", REG_OPTION_NON_VOLATILE, KEY_WRITE, &localHKey);
+            if (localHKey && localHKey != INVALID_HANDLE_VALUE)
+            {
+                RegSetValueExW(localHKey, L"ExcludeFromCPL", 0, REG_DWORD, &bExcluded, sizeof(DWORD));
+                RegCloseKey(localHKey);
+            }
+
+            localHKey = NULL;
+            RegOpenKeyExW(HKEY_CURRENT_USER, L"AppEvents\\EventLabels\\WindowsLogoff", REG_OPTION_NON_VOLATILE, KEY_WRITE, &localHKey);
+            if (localHKey && localHKey != INVALID_HANDLE_VALUE)
+            {
+                RegSetValueExW(localHKey, L"ExcludeFromCPL", 0, REG_DWORD, &bExcluded, sizeof(DWORD));
+                RegCloseKey(localHKey);
+            }
+
+            localHKey = NULL;
+            RegOpenKeyExW(HKEY_CURRENT_USER, L"AppEvents\\EventLabels\\WindowsLogon", REG_OPTION_NON_VOLATILE, KEY_WRITE, &localHKey);
+            if (localHKey && localHKey != INVALID_HANDLE_VALUE)
+            {
+                RegSetValueExW(localHKey, L"ExcludeFromCPL", 0, REG_DWORD, &bExcluded, sizeof(DWORD));
+                RegCloseKey(localHKey);
+            }
+        }
         return RegSetValueExW(hKey, lpValueName, 0, dwType, lpData, cbData);
     }
     if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_TaskbarPosition"))

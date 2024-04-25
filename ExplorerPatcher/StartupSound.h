@@ -8,43 +8,33 @@ DEFINE_GUID(__uuidof_AuthUILogonSound,
     0x1100, 0x4389, 0xAB, 0x44,
     0x46, 0x4F, 0xAF, 0x00, 0x12, 0x88
 );
-DEFINE_GUID(__uuidof_IAuthUILogonSound,
-    0xc35243ea,
-    0x4cfc, 0x435a, 0x91, 0xc2,
-    0x9d, 0xbd, 0xec, 0xbf, 0xfc, 0x95
-);
 
-typedef interface AuthUILogonSound AuthUILogonSound;
-
-typedef struct AuthUILogonSoundVtbl
+#ifdef __cplusplus
+enum LOGON_SOUND_CLIENT
 {
-    BEGIN_INTERFACE
-
-        HRESULT(STDMETHODCALLTYPE* QueryInterface)(
-            AuthUILogonSound* This,
-            /* [in] */ REFIID riid,
-            /* [annotation][iid_is][out] */
-            _COM_Outptr_  void** ppvObject);
-
-    ULONG(STDMETHODCALLTYPE* AddRef)(
-        AuthUILogonSound* This);
-
-    ULONG(STDMETHODCALLTYPE* Release)(
-        AuthUILogonSound* This);
-
-    HRESULT(STDMETHODCALLTYPE* PlayIfNecessary)(
-        AuthUILogonSound* This,
-        /* [in] */ INT64 a1);
-
-    END_INTERFACE
-} AuthUILogonSoundVtbl;
-
-interface AuthUILogonSound
-{
-    CONST_VTBL struct AuthUILogonSoundVtbl* lpVtbl;
+    LSC_LOGONUI,
+    LSC_EXPLORER,
 };
 
-typedef DWORD PlayStartupSoundParams;
+MIDL_INTERFACE("c35243ea-4cfc-435a-91c2-9dbdecbffc95")
+IAuthUILogonSound : IUnknown
+{
+    virtual HRESULT STDMETHODCALLTYPE PlayIfNecessary(LOGON_SOUND_CLIENT client) = 0;
+};
+#endif
 
-DWORD PlayStartupSound(PlayStartupSoundParams* unused);
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+BOOL AreLogonLogoffShutdownSoundsEnabled();
+HRESULT HookLogonSound();
+BOOL InitSoundWindow();
+void TermSoundWindow();
+HRESULT SHPlaySound(LPCWSTR pszSound, DWORD dwFlags);
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif

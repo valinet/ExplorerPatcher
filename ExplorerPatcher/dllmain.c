@@ -85,7 +85,6 @@ DWORD bCenterMenus = TRUE;
 DWORD bSkinMenus = TRUE;
 DWORD bSkinIcons = TRUE;
 DWORD bReplaceNetwork = FALSE;
-DWORD dwExplorerReadyDelay = 0;
 DWORD bEnableArchivePlugin = FALSE;
 DWORD bMonitorOverride = TRUE;
 DWORD bOpenAtLogon = FALSE;
@@ -2623,6 +2622,39 @@ INT64 Shell_TrayWndSubclassProc(
             g_bIsDesktopRaised = (lParam & 1) == 0;
             break;
         }
+        case WM_QUIT:
+        {
+            if (AreLogonLogoffShutdownSoundsEnabled())
+            {
+                TermSoundWindow();
+            }
+            break;
+        }
+        case 0x581:
+        {
+            if (AreLogonLogoffShutdownSoundsEnabled())
+            {
+                BOOL bLogoff = wParam != 0;
+                SHPlaySound(bLogoff ? L"WindowsLogoff" : L"WindowsLogon", 1);
+            }
+            break;
+        }
+        case 0x590:
+        {
+            if (AreLogonLogoffShutdownSoundsEnabled())
+            {
+                InitSoundWindow();
+            }
+            break;
+        }
+        case 0x5B4:
+        {
+            if (AreLogonLogoffShutdownSoundsEnabled())
+            {
+                TermSoundWindow();
+            }
+            break;
+        }
     }
 
     if (uMsg >= 0xC000 && uMsg <= 0xFFFF && uMsg == RegisterWindowMessageW(L"Windows11ContextMenu_" _T(EP_CLSID)))
@@ -4033,7 +4065,7 @@ HRESULT uxtheme_DwmExtendFrameIntoClientAreaHook(HWND hWnd, MARGINS* m)
     return DwmExtendFrameIntoClientArea(hWnd, m);
 }
 
-static HWND(__stdcall *explorerframe_SHCreateWorkerWindowFunc)(
+HWND(__stdcall *explorerframe_SHCreateWorkerWindowFunc)(
     WNDPROC  	wndProc,
     HWND  	hWndParent,
     DWORD  	dwExStyle,
@@ -4270,7 +4302,7 @@ HRESULT pnidui_CoCreateInstanceHook(
         );
         if (dwVal)
         {
-            if (dwVal == 5 || dwVal == 6)
+            if ((dwVal == 5 || dwVal == 6) && IsWindows11() && !IsWindows11Version22H2Build1413OrHigher())
             {
                 if (hCheckForegroundThread)
                 {
@@ -5726,7 +5758,7 @@ INT64 ShowDesktopSubclassProc(
 #pragma endregion
 
 
-#pragma region "Notify shell ready (fixes delay at logon)"
+#pragma region "Notify shell ready"
 #ifdef _WIN64
 DWORD SignalShellReady(DWORD wait)
 {
@@ -5761,21 +5793,8 @@ DWORD SignalShellReady(DWORD wait)
         Sleep(100);
     }
 
-    if (!wait)
-    {
-        Sleep(600);
-    }
-    else
-    {
-        Sleep(wait);
-    }
+    Sleep(600);
 
-    HANDLE hEvent = CreateEventW(0, 0, 0, L"ShellDesktopSwitchEvent");
-    if (hEvent)
-    {
-        printf(">>> Signal shell ready.\n");
-        SetEvent(hEvent);
-    }
     SetEvent(hCanStartSws);
     if (bOldTaskbar && (global_rovi.dwBuildNumber >= 22567))
     {
@@ -6581,15 +6600,6 @@ void WINAPI LoadSettings(LPARAM lParam)
             0,
             NULL,
             &bReplaceNetwork,
-            &dwSize
-        );
-        dwSize = sizeof(DWORD);
-        RegQueryValueExW(
-            hKey,
-            TEXT("ExplorerReadyDelay"),
-            0,
-            NULL,
-            &dwExplorerReadyDelay,
             &dwSize
         );
         dwSize = sizeof(DWORD);
@@ -12828,39 +12838,29 @@ DWORD Inject(BOOL bIsExplorer)
 
 
 
+    if (AreLogonLogoffShutdownSoundsEnabled())
+    {
+        HookLogonSound();
+    }
+
     rv = funchook_install(funchook, 0);
     if (rv != 0)
     {
         FreeLibraryAndExitThread(hModule, rv);
         return rv;
     }
-    funchook_destroy(funchook);
-    funchook = NULL;
+    // funchook_destroy(funchook);
+    // funchook = NULL;
     printf("Installed hooks.\n");
 
 
 
 
-    /*HANDLE hEvent = CreateEventEx(
-        0,
-        L"ShellDesktopSwitchEvent",
-        CREATE_EVENT_MANUAL_RESET,
-        EVENT_ALL_ACCESS
-    );
-    if (GetLastError() != ERROR_ALREADY_EXISTS)
-    {
-        printf("Created ShellDesktopSwitchEvent event.\n");
-        ResetEvent(hEvent);
-    }*/
-
     if (IsWindows11())
     {
         if (bOldTaskbar)
         {
-            CreateThread(0, 0, PlayStartupSound, 0, 0, 0);
-            printf("Play startup sound thread...\n");
-            CreateThread(0, 0, SignalShellReady, dwExplorerReadyDelay, 0, 0);
-            printf("Signal shell ready...\n");
+            CreateThread(0, 0, SignalShellReady, 0, 0, 0);
         }
         else
         {

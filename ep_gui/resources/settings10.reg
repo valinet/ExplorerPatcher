@@ -496,6 +496,11 @@
 ;x 2 %R:1720%
 ;x 4 %R:1721%
 "Start_PowerButtonAction"=dword:00000002
+;s LogonLogoffShutdownSounds LogonLogoffShutdownSoundsAvailable
+[HKEY_CURRENT_USER\Software\ExplorerPatcher]
+;b %R:1727% *
+"LogonLogoffShutdownSounds"=dword:00000000
+;g LogonLogoffShutdownSounds
 ;t %R:1722%
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;b %R:1723%

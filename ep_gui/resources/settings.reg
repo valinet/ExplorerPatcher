@@ -682,6 +682,11 @@
 ;x 2 %R:1720%
 ;x 4 %R:1721%
 "Start_PowerButtonAction"=dword:00000002
+;s LogonLogoffShutdownSounds LogonLogoffShutdownSoundsAvailable
+[HKEY_CURRENT_USER\Software\ExplorerPatcher]
+;b %R:1727% *
+"LogonLogoffShutdownSounds"=dword:00000000
+;g LogonLogoffShutdownSounds
 ;t %R:1722%
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;b %R:1723%
@@ -756,20 +761,6 @@
 ;b %R:1913% *
 "RemoveExtraGapAroundPinnedItems"=dword:00000000
 ;g Advanced_Windows10
-;c 12 %R:1914% *
-;x 0 %R:1915%
-;x 300 %R:1916%
-;x 600 %R:1917%
-;x 1000 %R:1918%
-;x 1500 %R:1919%
-;x 2000 %R:1920%
-;x 3000 %R:1921%
-;x 4000 %R:1922%
-;x 5000 %R:1923%
-;x 6000 %R:1924%
-;x 8000 %R:1925%
-;x 10000 %R:1926%
-"ExplorerReadyDelay"=dword:00000000
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ExplorerPatcher]
 ;b %R:1927% *
 "XamlSounds"=dword:00000000
