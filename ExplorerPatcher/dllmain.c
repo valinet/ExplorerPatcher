@@ -11048,10 +11048,14 @@ static void PatchStartTileData(BOOL bSMEH)
 
     VnPatchIAT(hStartTileData, "api-ms-win-core-winrt-l1-1-0.dll", "RoGetActivationFactory", AppResolver_StartTileData_RoGetActivationFactory);
 
+    if (!bSMEH)
+        return;
+
     if ((global_rovi.dwBuildNumber >= 22621 && global_rovi.dwBuildNumber <= 22635) && global_ubr >= 3420
         || global_rovi.dwBuildNumber >= 25169)
     {
-        HRESULT hr = CoInitialize(NULL);
+        PatchStartTileDataFurther(hStartTileData, bSMEH);
+        /*HRESULT hr = CoInitialize(NULL);
         if (SUCCEEDED(hr))
         {
             PatchStartTileDataFurther(hStartTileData, bSMEH);
@@ -11059,7 +11063,7 @@ static void PatchStartTileData(BOOL bSMEH)
         if (hr == S_OK)
         {
             CoUninitialize();
-        }
+        }*/
     }
 }
 #endif

@@ -634,6 +634,7 @@ namespace ABI::WindowsInternal::Shell::UnifiedTile::CuratedTileCollections
     };
 }
 
+#if 0
 HRESULT StartTileData_Windows__Internal__ApplicationModel__StartPinnableSurface__GetUnifiedIdentifierForAumid(
     void* _this,
     const WCHAR* pszAumid,
@@ -898,6 +899,7 @@ HRESULT PatchStartPinnableSurface(HMODULE hModule, ABI::Windows::Internal::Appli
 
     return S_OK;
 }
+#endif
 
 namespace VerbGlyphs::SegoeMDL2Assets
 {
@@ -1208,7 +1210,7 @@ extern "C" {
 void PatchStartTileDataFurther(HMODULE hModule, BOOL bSMEH)
 {
     // ComPtr<ABI::Windows::Internal::ApplicationModel::IPinnableSurfaceFactory> pPinnableSurfaceFactory;
-    PatchStartPinnableSurface(hModule, nullptr /*&pPinnableSurfaceFactory*/); // We might not need to patch this but just in case
+    // PatchStartPinnableSurface(hModule, nullptr /*&pPinnableSurfaceFactory*/);
 
     // if (bSMEH)
         // pPinnableSurfaceFactory->AddRef(); // Pin in memory so that StartTileData.dll doesn't get unloaded
