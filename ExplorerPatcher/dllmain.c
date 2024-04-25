@@ -11035,11 +11035,27 @@ static void PatchAppResolver()
     }
 }
 
-static void PatchStartTileData()
+extern HRESULT PatchStartTileDataFurther(HMODULE hModule, BOOL bSMEH);
+
+static void PatchStartTileData(BOOL bSMEH)
 {
     HANDLE hStartTileData = LoadLibraryW(L"StartTileData.dll");
 
     VnPatchIAT(hStartTileData, "api-ms-win-core-winrt-l1-1-0.dll", "RoGetActivationFactory", AppResolver_StartTileData_RoGetActivationFactory);
+
+    if ((global_rovi.dwBuildNumber >= 22621 && global_rovi.dwBuildNumber <= 22635) && global_ubr >= 3420
+        || global_rovi.dwBuildNumber >= 25169)
+    {
+        HRESULT hr = CoInitialize(NULL);
+        if (SUCCEEDED(hr))
+        {
+            PatchStartTileDataFurther(hStartTileData, bSMEH);
+        }
+        if (!bSMEH && hr == S_OK)
+        {
+            CoUninitialize();
+        }
+    }
 }
 #endif
 #pragma endregion
@@ -12307,7 +12323,7 @@ DWORD Inject(BOOL bIsExplorer)
 
         // Fix Pin to Start/Unpin from Start
         PatchAppResolver();
-        PatchStartTileData();
+        PatchStartTileData(FALSE);
     }
     //VnPatchIAT(hExplorer, "api-ms-win-core-libraryloader-l1-2-0.dll", "LoadStringW", explorer_LoadStringWHook);
     if (bClassicThemeMitigations)
@@ -14132,7 +14148,7 @@ DWORD InjectStartMenu()
         {
             // Fixes Pin to Start/Unpin from Start
             PatchAppResolver();
-            PatchStartTileData();
+            PatchStartTileData(TRUE);
 
             // Fixes context menu crashes
             StartMenu_FixContextMenuXbfHijackMethod();
