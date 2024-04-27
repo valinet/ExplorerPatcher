@@ -13519,6 +13519,43 @@ static BOOL StartMenu_FixContextMenuXbfHijackMethod()
     return TRUE;
 }
 
+// void StartUI::UserTileView::AppendMenuFlyoutItemCommand(class Windows::UI::Xaml::Controls::MenuFlyout^, class Windows::Internal::Shell::StartUI::UserTileCommand^, enum Windows::Internal::Shell::StartUI::UserTileCommandId)
+void (*StartUI_UserTileView_AppendMenuFlyoutItemCommandFunc)(void* _this, void* menuFlyout, void* userTileCommand, int id);
+void StartUI_UserTileView_AppendMenuFlyoutItemCommandHook(void* _this, void* menuFlyout, void* userTileCommand, int id)
+{
+    // 4 = UserTile_LaunchAccountBadging
+    // 5 = UserTile_AccountBadgingSecondary
+    if (id == 4 || id == 5)
+    {
+        return;
+    }
+    StartUI_UserTileView_AppendMenuFlyoutItemCommandFunc(_this, menuFlyout, userTileCommand, id);
+}
+
+static void StartMenu_FixUserTileMenu(MODULEINFO* mi)
+{
+    // 41 B9 03 00 00 00 4D 8B C4 ?? 8B D6 49 8B CD E8 ?? ?? ?? ??
+    //                                                 ^^^^^^^^^^^
+    // Ref: <lambda_3a9b433356e31b02e54fffbca0ecf3fa>::operator()
+    PBYTE match = FindPattern(
+        mi->lpBaseOfDll,
+        mi->SizeOfImage,
+        "\x41\xB9\x03\x00\x00\x00\x4D\x8B\xC4\x00\x8B\xD6\x49\x8B\xCD\xE8",
+        "xxxxxxxxx?xxxxxx"
+    );
+    if (match)
+    {
+        match += 15;
+        match += 5 + *(int*)(match + 1);
+        StartUI_UserTileView_AppendMenuFlyoutItemCommandFunc = match;
+        funchook_prepare(
+            funchook,
+            (void**)&StartUI_UserTileView_AppendMenuFlyoutItemCommandFunc,
+            StartUI_UserTileView_AppendMenuFlyoutItemCommandHook
+        );
+    }
+}
+
 LSTATUS StartUI_RegOpenKeyExW(HKEY hKey, LPCWSTR lpSubKey, DWORD ulOptions, REGSAM samDesired, PHKEY phkResult)
 {
     if (wcsstr(lpSubKey, L"$start.tilegrid$windows.data.curatedtilecollection.tilecollection\\Current"))
@@ -14159,12 +14196,18 @@ DWORD InjectStartMenu()
 
         if (IsWindows11())
         {
+            MODULEINFO miStartUI;
+            GetModuleInformation(GetCurrentProcess(), hStartUI, &miStartUI, sizeof(miStartUI));
+
             // Fixes Pin to Start/Unpin from Start
             PatchAppResolver();
             PatchStartTileData(TRUE);
 
             // Fixes context menu crashes
             StartMenu_FixContextMenuXbfHijackMethod();
+
+            // Fixes user tile menu
+            StartMenu_FixUserTileMenu(&miStartUI);
 
             // Enables "Show more tiles" setting
             LoadLibraryW(L"Windows.CloudStore.dll");
