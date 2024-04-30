@@ -13,6 +13,10 @@ Tested on OS builds 22621.3296, 22621.3447, and 22621.3527. (Note: 22621 and 226
 * Start10: Fixed Pin to Start on 226xx.3420+ (22H2, 23H2) and 25169+ (24H2). (232fe6b)
 * Start10: Reverted the menu closing delay fix when EP is injected only into `StartMenuExperienceHost.exe` for now. (e59c34c)
 
+##### 2
+
+* Start10: Fixed a bug where the recently introduced "account suggestions" prevents the user tile menu from opening on later 22H2/23H2 builds and 24H2. (d11445a)
+
 ## 22621.3296.64
 
 Tested on OS builds 22000.2538, 22621.1992, 22621.3155, 22621.3235, 22621.3296, 25951.1000, and 26058.1000.
