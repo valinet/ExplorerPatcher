@@ -4,7 +4,7 @@ This document includes the same release notes as in the [Releases](https://githu
 
 ## 22621.3527.65
 
-Tested on OS builds 22621.3296, 22621.3447, and 22621.3527. (Note: 22621 and 22631 share the same OS files)
+Tested on OS builds 22621.3296, 22621.3447, 22621.3527, 22635.3566, 26058.1000, 26120.461, and 26200.5001. (Note: 22621 and 22631 share the same OS files)
 
 ##### 1
 
@@ -16,6 +16,11 @@ Tested on OS builds 22621.3296, 22621.3447, and 22621.3527. (Note: 22621 and 226
 ##### 2
 
 * Start10: Fixed a bug where the recently introduced "account suggestions" prevents the user tile menu from opening on later 22H2/23H2 builds and 24H2. (d11445a)
+
+##### 3
+
+* All: Updated some patterns to work with 22635.3430+ (Beta) and recent 24H2 builds. (b51ef38)
+  * This should fix the Windows 10 start menu crashing and Win+X not working on both aforementioned builds when symbols are not yet downloaded.
 
 ## 22621.3296.64
 
