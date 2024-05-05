@@ -33,11 +33,21 @@ env:
   SOLUTION_FILE_PATH: .
   BUILD_CONFIGURATION: Release
 
+permissions:
+  contents: read
+
 jobs:
   build:
+    permissions:
+      contents: write  # for actions/create-release to create a release
     runs-on: windows-latest
 
     steps:
+    - name: Harden Runner
+      uses: step-security/harden-runner@a4aa98b93cab29d9b1101a6143fb8bce00e2eac4 # v2.7.1
+      with:
+        egress-policy: audit
+
     - name: Print inputs
       shell: bash
       run: |
@@ -46,20 +56,20 @@ jobs:
         echo "build_dir: ${{ github.event.inputs.build_dir }}"
 
     - name: Checkout latest build and submodules
-      uses: actions/checkout@v2
+      uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
       if: github.event.inputs.ref == ''
       with:
         submodules: recursive
     
     - name: Checkout specific build and submodules
-      uses: actions/checkout@v2
+      uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
       if: github.event.inputs.ref != ''
       with:
         ref: ${{ github.event.inputs.ref }}
         submodules: recursive
 
     - name: Add MSBuild to PATH
-      uses: microsoft/setup-msbuild@v1.0.2
+      uses: microsoft/setup-msbuild@c26a08ba26249b81327e26f6ef381897b6a8754d # v1.0.2
       
     - name: Declare some variables
       id: vars
@@ -80,7 +90,7 @@ jobs:
         exit /b 0
         
     - name: Setup NuGet
-      uses: nuget/setup-nuget@v1
+      uses: nuget/setup-nuget@296fd3ccf8528660c91106efefe2364482f86d6f # v1.2.0
       
     - name: Restore NuGet packages
       run: |
@@ -135,7 +145,7 @@ jobs:
         exit /b 0
 
     - name: Upload artifacts
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@82c141cc518b40d92cc801eee768e7aafc9c2fa2 # v2.3.1
       with:
         name: ep_bin_multi_${{ steps.vars.outputs.sha_short }}_${{ steps.vars.outputs.branch }}
         path: |
@@ -162,7 +172,7 @@ jobs:
       id: release_description
       
     - name: Create/update release (valinet)
-      uses: actions/create-release@v1
+      uses: actions/create-release@0cb9c9b65d5d1901c1f53e5e66eaf4afd303e70e # v1.1.4
       if: github.repository_owner == 'valinet' && github.ref == 'refs/heads/master' && github.event.inputs.ref == ''
       id: create_release
       with:
@@ -175,7 +185,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.PAT }}
 
     - name: Upload setup (valinet)
-      uses: actions/upload-release-asset@v1
+      uses: actions/upload-release-asset@e8f9f06c4b078e705bd2ea027f0926603fc9b4d5 # v1.0.2
       if: github.repository_owner == 'valinet' && github.ref == 'refs/heads/master' && github.event.inputs.ref == ''
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
@@ -186,7 +196,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.PAT }}
         
     - name: Create/update release (forks)
-      uses: actions/create-release@v1
+      uses: actions/create-release@0cb9c9b65d5d1901c1f53e5e66eaf4afd303e70e # v1.1.4
       if: github.repository_owner != 'valinet' && github.ref == 'refs/heads/master' && github.event.inputs.ref == ''
       id: create_release_fork
       with:
@@ -199,7 +209,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Upload setup (forks)
-      uses: actions/upload-release-asset@v1
+      uses: actions/upload-release-asset@e8f9f06c4b078e705bd2ea027f0926603fc9b4d5 # v1.0.2
       if: github.repository_owner != 'valinet' && github.ref == 'refs/heads/master' && github.event.inputs.ref == ''
       with:
         upload_url: ${{ steps.create_release_fork.outputs.upload_url }}
