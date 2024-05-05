@@ -10733,6 +10733,7 @@ void TryToFindExplorerOffsets(HANDLE hExplorer, MODULEINFO* pmiExplorer, DWORD* 
     if (!pOffsets[0] || pOffsets[0] == 0xFFFFFFFF)
     {
         // CImmersiveColor::GetColor()
+
         // Ref: Anything `CImmersiveColor::GetColor(colorTheme == CT_Light ? IMCLR_LightAltMediumLow : IMCLR_DarkListLow)`
         //                                                        = 1        = 323                     = 298
         // 8D 41 19 0F 44 C8 E8 ?? ?? ?? ?? 44 8B
@@ -10746,7 +10747,207 @@ void TryToFindExplorerOffsets(HANDLE hExplorer, MODULEINFO* pmiExplorer, DWORD* 
         {
             match += 6;
             pOffsets[0] = match + 5 + *(int*)(match + 1) - (PBYTE)hExplorer;
+        }
+        else
+        {
+            // Ref: Anything `CImmersiveColor::GetColor(colorTheme != CT_Light ? IMCLR_DarkListLow : IMCLR_LightAltMediumLow)`
+            //                                                        = 1        = 298               = 323
+            // 8D 41 E7 0F 45 C8 E8 ?? ?? ?? ?? 44 8B
+            //                      ^^^^^^^^^^^
+            match = FindPattern(
+                hExplorer, pmiExplorer->SizeOfImage,
+                "\x8D\x41\xE7\x0F\x45\xC8\xE8\x00\x00\x00\x00\x44\x8B",
+                "xxxxxxx????xx"
+            );
+            if (match)
+            {
+                match += 6;
+                pOffsets[0] = match + 5 + *(int*)(match + 1) - (PBYTE)hExplorer;
+            }
+        }
+        if (match)
+        {
             printf("explorer.exe!CImmersiveColor::GetColor() = %lX\n", pOffsets[0]);
+        }
+    }
+
+    if (!pOffsets[1] || pOffsets[1] == 0xFFFFFFFF)
+    {
+        // CImmersiveColor::IsColorSchemeChangeMessage()
+        // Ref: Anything `if (CImmersiveColor::IsColorSchemeChangeMessage(WM_SETTINGCHANGE, lParam)) { ... }`
+        //                                                                = 0x1A
+        // B9 1A 00 00 00 E8 ?? ?? ?? ?? 84 C0
+        //                   ^^^^^^^^^^^
+        PBYTE match = FindPattern(
+            hExplorer, pmiExplorer->SizeOfImage,
+            "\xB9\x1A\x00\x00\x00\xE8\x00\x00\x00\x00\x84\xC0",
+            "xxxxxx????xx"
+        );
+        if (match)
+        {
+            match += 5;
+            pOffsets[1] = match + 5 + *(int*)(match + 1) - (PBYTE)hExplorer;
+            printf("explorer.exe!CImmersiveColor::IsColorSchemeChangeMessage() = %lX\n", pOffsets[1]);
+        }
+    }
+
+    if (!pOffsets[2] || pOffsets[2] == 0xFFFFFFFF)
+    {
+        // CImmersiveColorImpl::GetColorPreferenceImpl()
+        // Ref: CImmersiveColorImpl::SetColorPreferenceImpl()
+        // 48 83 64 24 ?? 00 45 33 C0 33 D2 48 8D 4C 24 ?? E8 ?? ?? ?? ??
+        //                                                    ^^^^^^^^^^^
+        PBYTE match = FindPattern(
+            hExplorer, pmiExplorer->SizeOfImage,
+            "\x48\x83\x64\x24\x00\x00\x45\x33\xC0\x33\xD2\x48\x8D\x4C\x24\x00\xE8",
+            "xxxx?xxxxxxxxxx?x"
+        );
+        if (match)
+        {
+            match += 16;
+            pOffsets[2] = match + 5 + *(int*)(match + 1) - (PBYTE)hExplorer;
+            printf("explorer.exe!CImmersiveColorImpl::GetColorPreferenceImpl() = %lX\n", pOffsets[2]);
+        }
+    }
+
+    if (!pOffsets[3] || pOffsets[3] == 0xFFFFFFFF)
+    {
+        // ImmersiveTray::AttachWindowToTray()
+        // Ref: CTaskListThumbnailWnd::SetSite()
+        // 48 8B 93 ?? ?? ?? ?? 48 8B 8B ?? ?? ?? ?? E8 ?? ?? ?? ?? 48 8B 4B
+        //                                              ^^^^^^^^^^^
+        PBYTE match = FindPattern(
+            hExplorer, pmiExplorer->SizeOfImage,
+            "\x48\x8B\x93\x00\x00\x00\x00\x48\x8B\x8B\x00\x00\x00\x00\xE8\x00\x00\x00\x00\x48\x8B\x4B",
+            "xxx????xxx????x????xxx"
+        );
+        if (match)
+        {
+            match += 14;
+            pOffsets[3] = match + 5 + *(int*)(match + 1) - (PBYTE)hExplorer;
+            printf("explorer.exe!ImmersiveTray::AttachWindowToTray() = %lX\n", pOffsets[3]);
+        }
+    }
+
+    if (!pOffsets[4] || pOffsets[4] == 0xFFFFFFFF)
+    {
+        // ImmersiveTray::RaiseWindow()
+        // Ref: CTaskListThumbnailWnd::_RaiseWindowForLivePreviewIfNeeded()
+        // 41 B9 02 00 00 00 48 8B 8B ?? ?? ?? ?? E8 ?? ?? ?? ?? 85 C0
+        //                                           ^^^^^^^^^^^
+        PBYTE match = FindPattern(
+            hExplorer, pmiExplorer->SizeOfImage,
+            "\x41\xB9\x02\x00\x00\x00\x48\x8B\x8B\x00\x00\x00\x00\xE8\x00\x00\x00\x00\x85\xC0",
+            "xxxxxxxxx????x????xx"
+        );
+        if (match)
+        {
+            match += 13;
+            pOffsets[4] = match + 5 + *(int*)(match + 1) - (PBYTE)hExplorer;
+            printf("explorer.exe!ImmersiveTray::RaiseWindow() = %lX\n", pOffsets[4]);
+        }
+    }
+
+    if (!pOffsets[5] || pOffsets[5] == 0xFFFFFFFF)
+    {
+        // CTaskBand_CreateInstance()
+        // Ref: CTrayBandSite::_AddRequiredBands()
+
+        // Pre-24H2 (output variable uninitialized)
+        // Tested: 19041.3758, 22000.51, 22621.1992
+        // 48 8B F1 4C 8D 44 24 ?? 48 8B 49 ?? 33 D2 E8 ?? ?? ?? ??
+        //                                              ^^^^^^^^^^^
+        PBYTE match = FindPattern(
+            hExplorer, pmiExplorer->SizeOfImage,
+            "\x48\x8B\xF1\x4C\x8D\x44\x24\x00\x48\x8B\x49\x00\x33\xD2\xE8",
+            "xxxxxxx?xxx?xxx"
+        );
+        if (match)
+        {
+            match += 14;
+            pOffsets[5] = match + 5 + *(int*)(match + 1) - (PBYTE)hExplorer;
+        }
+        else
+        {
+            // 24H2 (output variable initialized to 0)
+            // Tested: 25951, 26080
+            // 4C 8D 40 ?? 48 8B F1 33 D2 48 8B 49 ?? E8 ?? ?? ?? ??
+            //                                           ^^^^^^^^^^^
+            match = FindPattern(
+                hExplorer, pmiExplorer->SizeOfImage,
+                "\x4C\x8D\x40\x00\x48\x8B\xF1\x33\xD2\x48\x8B\x49\x00\xE8",
+                "xxx?xxxxxxxx?x"
+            );
+            if (match)
+            {
+                match += 13;
+                pOffsets[5] = match + 5 + *(int*)(match + 1) - (PBYTE)hExplorer;
+            }
+        }
+        if (match)
+        {
+            printf("explorer.exe!CTaskBand_CreateInstance() = %lX\n", pOffsets[5]);
+        }
+    }
+
+    if (!pOffsets[6] || pOffsets[6] == 0xFFFFFFFF)
+    {
+        // HandleFirstTimeLegacy()
+        // Ref: TrayUI::WndProc()
+
+        // Short Jump
+        // Tested: 19045.3758, 22000.51, 25951, 26080
+        // 4D 85 ?? 74 ?? 49 83 ?? 01 75 ??             E8 ?? ?? ?? ??
+        //                                                 ^^^^^^^^^^^
+        PBYTE match = FindPattern(
+            hExplorer, pmiExplorer->SizeOfImage,
+            "\x4D\x85\x00\x74\x00\x49\x83\x00\x01\x75\x00\xE8",
+            "xx?x?xx?xx?x"
+        );
+        if (match)
+        {
+            match += 11;
+            pOffsets[6] = match + 5 + *(int*)(match + 1) - (PBYTE)hExplorer;
+        }
+        else
+        {
+            // Long Jump
+            // Tested: 22621.1992
+            // 4D 85 ?? 74 ?? 49 83 ?? 01 0F 85 ?? ?? ?? ?? E8 ?? ?? ?? ??
+            //                                                 ^^^^^^^^^^^
+            match = FindPattern(
+                hExplorer, pmiExplorer->SizeOfImage,
+                "\x4D\x85\x00\x74\x00\x49\x83\x00\x01\x0F\x85\x00\x00\x00\x00\xE8",
+                "xx?x?xx?xxx????x"
+            );
+            if (match)
+            {
+                match += 15;
+                pOffsets[6] = match + 5 + *(int*)(match + 1) - (PBYTE)hExplorer;
+            }
+        }
+        if (match)
+        {
+            printf("explorer.exe!HandleFirstTimeLegacy() = %lX\n", pOffsets[6]);
+        }
+    }
+
+    if (!pOffsets[7] || pOffsets[7] == 0xFFFFFFFF)
+    {
+        // SetColorPreferenceForLogonUI()
+        // Ref: TrayUI::_HandleSettingChange()
+        // 48 8B F9 E8 ?? ?? ?? ?? 8B D8 85 C0 78 ?? 48 8B CF E8 ?? ?? ?? ??
+        //                                                       ^^^^^^^^^^^
+        PBYTE match = FindPattern(
+            hExplorer, pmiExplorer->SizeOfImage,
+            "\x48\x8B\xF9\xE8\x00\x00\x00\x00\x8B\xD8\x85\xC0\x78\x00\x48\x8B\xCF\xE8",
+            "xxxx????xxxxx?xxxx"
+        );
+        if (match)
+        {
+            match += 17;
+            pOffsets[7] = match + 5 + *(int*)(match + 1) - (PBYTE)hExplorer;
+            printf("explorer.exe!SetColorPreferenceForLogonUI() = %lX\n", pOffsets[7]);
         }
     }
 }
@@ -10783,32 +10984,43 @@ void TryToFindTwinuiPCShellOffsets(DWORD* pOffsets)
         if (!pOffsets[0] || pOffsets[0] == 0xFFFFFFFF)
         {
             // Ref: CMultitaskingViewFrame::v_WndProc()
-            // 4D 8B CF 4D 8B C4 8B D6 48 8B 49 08 E8 ? ? ? ? E9
-            //                                        ^^^^^^^
+            // 48 8B 49 08 E8 ?? ?? ?? ?? E9 ?? ?? ?? ?? 48 8B 89
+            //                ^^^^^^^^^^^
             PBYTE match = FindPattern(
                 pFile, dwSize,
-                "\x4D\x8B\xCF\x4D\x8B\xC4\x8B\xD6\x48\x8B\x49\x08\xE8\x00\x00\x00\x00\xE9",
-                "xxxxxxxxxxxxx????x"
+                "\x48\x8B\x49\x08\xE8\x00\x00\x00\x00\xE9\x00\x00\x00\x00\x48\x8B\x89",
+                "xxxxx????x????xxx"
             );
             if (match)
             {
-                match += 12;
+                match += 4;
                 pOffsets[0] = match + 5 + *(int*)(match + 1) - pFile;
                 printf("CImmersiveContextMenuOwnerDrawHelper::s_ContextMenuWndProc() = %lX\n", pOffsets[0]);
             }
         }
-        if (!pOffsets[1] || pOffsets[1] == 0xFFFFFFFF)
+        if ((!pOffsets[1] || pOffsets[1] == 0xFFFFFFFF) || (!pOffsets[6] || pOffsets[6] == 0xFFFFFFFF))
         {
-            // 48 89 5C 24 ? 48 89 74 24 ? 57 48 83 EC 30 49 8B D8 48 8B FA 48 8B F1 49 83 20 00 41 B0 03 B2 01
+            // 48 8D 05 ?? ?? ?? ?? 48 8B D9 48 89 01 48 8D 05 ?? ?? ?? ?? 48 89 41 18 48 8D 05 ?? ?? ?? ?? 48 89 41 20 48 8D 05 ?? ?? ?? ?? 48 89 41 58 48 8D 05 ?? ?? ?? ?? 48 89 41 60
+            //                                                                                                                   ^^^^^^^^^^^
             PBYTE match = FindPattern(
                 pFile, dwSize,
-                "\x48\x89\x5C\x24\x00\x48\x89\x74\x24\x00\x57\x48\x83\xEC\x30\x49\x8B\xD8\x48\x8B\xFA\x48\x8B\xF1\x49\x83\x20\x00\x41\xB0\x03\xB2\x01",
-                "xxxx?xxxx?xxxxxxxxxxxxxxxxxxxxxxx"
+                "\x48\x8D\x05\x00\x00\x00\x00\x48\x8B\xD9\x48\x89\x01\x48\x8D\x05\x00\x00\x00\x00\x48\x89\x41\x18\x48\x8D\x05\x00\x00\x00\x00\x48\x89\x41\x20\x48\x8D\x05\x00\x00\x00\x00\x48\x89\x41\x58\x48\x8D\x05\x00\x00\x00\x00\x48\x89\x41\x60",
+                "xxx????xxxxxxxxx????xxxxxxx????xxxxxxx????xxxxxxx????xxxx"
             );
             if (match)
             {
-                pOffsets[1] = match - pFile;
-                printf("CLauncherTipContextMenu::GetMenuItemsAsync() = %lX\n", pOffsets[1]);
+                match += 35; // Point to 48
+                INT_PTR* vtable = (INT_PTR*)(match + 7 + *(int*)(match + 3));
+                if (!pOffsets[6] || pOffsets[6] == 0xFFFFFFFF)
+                {
+                    pOffsets[6] = (DWORD)(vtable[3] - 0x180000000);
+                    printf("CLauncherTipContextMenu::GetMenuItemsAsync() = %lX\n", pOffsets[6]);
+                }
+                if (!pOffsets[1] || pOffsets[1] == 0xFFFFFFFF)
+                {
+                    pOffsets[1] = (DWORD)(vtable[4] - 0x180000000);
+                    printf("CLauncherTipContextMenu::ShowLauncherTipContextMenu() = %lX\n", pOffsets[1]);
+                }
             }
         }
         if (!pOffsets[2] || pOffsets[2] == 0xFFFFFFFF)
@@ -10888,26 +11100,12 @@ void TryToFindTwinuiPCShellOffsets(DWORD* pOffsets)
                 }
             }
         }
-        if (!pOffsets[6] || pOffsets[6] == 0xFFFFFFFF)
-        {
-            // 48 83 EC 28 41 B0 03 B2 01
-            PBYTE match = FindPattern(
-                pFile, dwSize,
-                "\x48\x83\xEC\x28\x41\xB0\x03\xB2\x01",
-                "xxxxxxxxx"
-            );
-            if (match)
-            {
-                pOffsets[6] = match - pFile;
-                printf("CLauncherTipContextMenu::ShowLauncherTipContextMenu() = %lX\n", pOffsets[6]);
-            }
-        }
         if (!pOffsets[7] || pOffsets[7] == 0xFFFFFFFF)
         {
             // Ref: CMultitaskingViewManager::_CreateMTVHost()
             // Inlined GetMTVHostKind()
-            // 4C 89 74 24 ? ? 8B ? ? 8B ? 8B D7 48 8B CE E8 ? ? ? ? 8B
-            //                                               ^^^^^^^
+            // 4C 89 74 24 ?? ?? 8B ?? ?? 8B ?? 8B D7 48 8B CE E8 ?? ?? ?? ?? 8B
+            //                                                    ^^^^^^^^^^^
             PBYTE match = FindPattern(
                 pFile, dwSize,
                 "\x4C\x89\x74\x24\x00\x00\x8B\x00\x00\x8B\x00\x8B\xD7\x48\x8B\xCE\xE8\x00\x00\x00\x00\x8B",
@@ -10922,11 +11120,11 @@ void TryToFindTwinuiPCShellOffsets(DWORD* pOffsets)
             else
             {
                 // Non-inlined GetMTVHostKind()
-                // 8B CF E8 ? ? ? ? ? 89 ? 24 ? 4D 8B CE ? 8B C5 8B D7 48 8B CE 83 F8 01 <jnz>
+                // 8B CF E8 ?? ?? ?? ?? ?? 89 ?? 24 ?? ?? 8B ?? ?? 8B ?? 8B D7 48 8B CE 83 F8 01 <jnz>
                 match = FindPattern(
                     pFile, dwSize,
-                    "\x8B\xCF\xE8\x00\x00\x00\x00\x00\x89\x00\x24\x00\x4D\x8B\xCE\x00\x8B\xC5\x8B\xD7\x48\x8B\xCE\x83\xF8\x01",
-                    "xxx?????x?x?xxx?xxxxxxxxxx"
+                    "\x8B\xCF\xE8\x00\x00\x00\x00\x00\x89\x00\x24\x00\x00\x8B\x00\x00\x8B\x00\x8B\xD7\x48\x8B\xCE\x83\xF8\x01",
+                    "xxx?????x?x??x??x?xxxxxxxx"
                 );
                 if (match)
                 {
@@ -10948,8 +11146,8 @@ void TryToFindTwinuiPCShellOffsets(DWORD* pOffsets)
         {
             // Ref: CMultitaskingViewManager::_CreateMTVHost()
             // Inlined GetMTVHostKind()
-            // 4C 89 74 24 ? ? 8B ? ? 8B ? 8B D7 48 8B CE E8 ? ? ? ? 90
-            //                                               ^^^^^^^
+            // 4C 89 74 24 ?? ?? 8B ?? ?? 8B ?? 8B D7 48 8B CE E8 ?? ?? ?? ?? 90
+            //                                                    ^^^^^^^^^^^
             PBYTE match = FindPattern(
                 pFile, dwSize,
                 "\x4C\x89\x74\x24\x00\x00\x8B\x00\x00\x8B\x00\x8B\xD7\x48\x8B\xCE\xE8\x00\x00\x00\x00\x90",
@@ -10964,11 +11162,11 @@ void TryToFindTwinuiPCShellOffsets(DWORD* pOffsets)
             else
             {
                 // Non-inlined GetMTVHostKind()
-                // 8B CF E8 ? ? ? ? ? 89 ? 24 ? 4D 8B CE ? 8B C5 8B D7 48 8B CE 83 F8 01 <jnz>
+                // 8B CF E8 ?? ?? ?? ?? ?? 89 ?? 24 ?? ?? 8B ?? ?? 8B ?? 8B D7 48 8B CE 83 F8 01 <jnz>
                 match = FindPattern(
                     pFile, dwSize,
-                    "\x8B\xCF\xE8\x00\x00\x00\x00\x00\x89\x00\x24\x00\x4D\x8B\xCE\x00\x8B\xC5\x8B\xD7\x48\x8B\xCE\x83\xF8\x01",
-                    "xxx?????x?x?xxx?xxxxxxxxxx"
+                    "\x8B\xCF\xE8\x00\x00\x00\x00\x00\x89\x00\x24\x00\x00\x8B\x00\x00\x8B\x00\x8B\xD7\x48\x8B\xCE\x83\xF8\x01",
+                    "xxx?????x?x??x??x?xxxxxxxx"
                 );
                 if (match)
                 {
@@ -11286,18 +11484,19 @@ BOOL FixStartMenuAnimation(LPMODULEINFO mi)
 
     // ### Offset of CStartExperienceManager::GetMonitorInformation()
     // ```
-    // E8 ?? ?? ?? ?? 8B ?? 85 C0 0F 88 ?? ?? ?? ?? C6 44 24
-    //    ^^^^^^^^^^^
+    // 48 8B ?? E8 ?? ?? ?? ?? 8B ?? 85 C0 0F 88 ?? ?? ?? ?? C6 44 24 ?? 01
+    //             ^^^^^^^^^^^
     // ```
     // Ref: CStartExperienceManager::PositionMenu()
     PBYTE matchGetMonitorInformation = FindPattern(
         mi->lpBaseOfDll,
         mi->SizeOfImage,
-        "\xE8\x00\x00\x00\x00\x8B\x00\x85\xC0\x0F\x88\x00\x00\x00\x00\xC6\x44\x24",
-        "x????x?xxxx????xxx"
+        "\x48\x8B\x00\xE8\x00\x00\x00\x00\x8B\x00\x85\xC0\x0F\x88\x00\x00\x00\x00\xC6\x44\x24\x00\x01",
+        "xx?x????x?xxxx????xxx?x"
     );
     if (matchGetMonitorInformation)
     {
+        matchGetMonitorInformation += 3;
         matchGetMonitorInformation += 5 + *(int*)(matchGetMonitorInformation + 1);
         CStartExperienceManager_GetMonitorInformationFunc = matchGetMonitorInformation;
         printf("[SMA] CStartExperienceManager::GetMonitorInformation() = %llX\n", matchGetMonitorInformation - (PBYTE)mi->lpBaseOfDll);
@@ -11712,7 +11911,7 @@ BOOL CrashCounterHandleEntryPoint()
 BOOL CheckExplorerSymbols(symbols_addr* symbols_PTRS)
 {
     BOOL bAllValid = TRUE;
-    for (SIZE_T j = 0; j < ARRAYSIZE(symbols_PTRS->explorer_PTRS); ++j)
+    for (SIZE_T j = 0; j < ARRAYSIZE(symbols_PTRS->explorer_PTRS) - 1; ++j)
     {
         DWORD i = symbols_PTRS->explorer_PTRS[j];
         bAllValid &= i && i != 0xFFFFFFFF;
@@ -12231,17 +12430,6 @@ DWORD Inject(BOOL bIsExplorer)
         }
     }
 
-#if WITH_ALT_TASKBAR_IMPL
-    const WCHAR* pszTaskbarDll = GetTaskbarDllChecked(&symbols_PTRS);
-#else
-    const WCHAR* pszTaskbarDll = NULL;
-#endif
-    if (bOldTaskbar >= 2 && !pszTaskbarDll)
-    {
-        bOldTaskbar = 1;
-        AdjustTaskbarStyleValue(&bOldTaskbar);
-    }
-
 
     HANDLE hUser32 = LoadLibraryW(L"user32.dll");
     CreateWindowInBand = GetProcAddress(hUser32, "CreateWindowInBand");
@@ -12298,6 +12486,17 @@ DWORD Inject(BOOL bIsExplorer)
             }
         }
 #endif
+    }
+
+#if WITH_ALT_TASKBAR_IMPL
+    const WCHAR* pszTaskbarDll = GetTaskbarDllChecked(&symbols_PTRS);
+#else
+    const WCHAR* pszTaskbarDll = NULL;
+#endif
+    if (bOldTaskbar >= 2 && !pszTaskbarDll)
+    {
+        bOldTaskbar = 1;
+        AdjustTaskbarStyleValue(&bOldTaskbar);
     }
 
     SetChildWindowNoActivateFunc = GetProcAddress(GetModuleHandleW(L"user32.dll"), (LPCSTR)2005);
