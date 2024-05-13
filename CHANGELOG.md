@@ -21,6 +21,12 @@ Tested on OS builds 22621.3296, 22621.3447, 22621.3527, 22635.3566, 26058.1000, 
 
 * All: Updated some patterns to work with 22635.3430+ (Beta) and recent 24H2 builds. (b51ef38)
   * This should fix the Windows 10 start menu crashing and Win+X not working on both aforementioned builds when symbols are not yet downloaded.
+  
+##### 4
+
+* Updates: Support for `ep_make`, a new script which builds ExplorerPatcher locally on your computer. Read more [here](https://github.com/valinet/ep_make). (80592f6)
+* GUI: Reorganized "About" and "Uninstall" sections. (4794713)
+* ep_weather: Fixed alignment.
 
 ## 22621.3296.64
 

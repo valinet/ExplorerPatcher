@@ -16,7 +16,7 @@ BEGIN
     IDS_UPDATES_DOWNLOADING_T   "Downloading and installing updates…"
     IDS_UPDATES_SUCCESS_T       "Update successful"
     IDS_UPDATES_DLFAILED_T      "Update failed"
-    IDS_UPDATES_DLFAILED_B      "The request was declined or an error has occured when attempting to install this update."
+    IDS_UPDATES_DLFAILED_B      "The has cancelled the process or an error has occured when attempting to install this update."
     IDS_UPDATES_INSTALLEDVER    "Installed version: %d.%d.%d.%d"
     IDS_UPDATES_PROMPT          "Would you like to install an update for ExplorerPatcher?\n\nDownloaded from:\n%s"
 
@@ -419,7 +419,7 @@ BEGIN
     IDS_ABOUT_WEBSITE           "Visit web site"
     IDS_ABOUT_DONATE            "Donate"
     IDS_ABOUT_FAQ               "Frequently Asked Questions"
-    IDS_ABOUT_SETTINGS          "Learn more managing these settings"
+    IDS_ABOUT_SETTINGS          "Learn more about managing your settings"
     IDS_ABOUT_IMPORT            "Import settings"
     IDS_ABOUT_EXPORT            "Export current settings"
     IDS_ABOUT_EXPORT_SUCCESS    "Settings have been exported successfully."
