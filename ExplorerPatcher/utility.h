@@ -273,6 +273,8 @@ int ComputeFileHash(LPCWSTR filename, LPSTR hash, DWORD dwHash);
 
 int ComputeFileHash2(HMODULE hModule, LPCWSTR filename, LPSTR hash, DWORD dwHash);
 
+void GetHardcodedHash(LPCWSTR wszPath, LPSTR hash, DWORD dwHash);
+
 void LaunchPropertiesGUI(HMODULE hModule);
 
 BOOL SystemShutdown(BOOL reboot);

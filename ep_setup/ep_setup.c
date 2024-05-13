@@ -354,10 +354,25 @@ BOOL InstallResourceHelper(BOOL bInstall, HMODULE hModule, HRSRC hRscr, WCHAR* w
                 return FALSE;
             }
             DWORD dwNumberOfBytesWritten = 0;
+            int offset = 0;
+            wchar_t wszDxgi[MAX_PATH];
+            if (GetWindowsDirectoryW(wszDxgi, MAX_PATH)) {
+                wcscat_s(wszDxgi, MAX_PATH, L"\\dxgi.dll");
+                if (!wcscmp(wszPath, wszDxgi)) {
+                    WCHAR wszOwnPath[MAX_PATH];
+                    GetModuleFileNameW(GetModuleHandle(NULL), wszOwnPath, MAX_PATH);
+                    CHAR hash[100];
+                    GetHardcodedHash(wszOwnPath, hash, 100);
+                    WriteFile(hFile, pRscr, DOSMODE_OFFSET, &dwNumberOfBytesWritten, NULL);
+                    offset += dwNumberOfBytesWritten;
+                    WriteFile(hFile, hash, 32, &dwNumberOfBytesWritten, NULL);
+                    offset += dwNumberOfBytesWritten;
+                }
+            }
             if (!WriteFile(
                 hFile,
-                pRscr,
-                cbRscr,
+                (char*)pRscr + offset,
+                cbRscr - offset,
                 &dwNumberOfBytesWritten,
                 NULL
             ))

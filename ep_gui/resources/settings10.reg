@@ -524,6 +524,8 @@
 "UpdatePreferStaging"=dword:00000000
 ;b %R:1807%
 "UpdateAllowDowngrades"=dword:00000000
+;b %R:1817%
+"UpdateUseLocal"=dword:00000000
 ;t %R:1808%
 ;w %R:1809%
 ;%R:1810%

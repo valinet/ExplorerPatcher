@@ -391,6 +391,7 @@ BEGIN
     IDS_UPDATES_INSTALL         "Update program and restart File Explorer"
     IDS_UPDATES_CHANGES         "Read about changes in the latest releases"
     IDS_UPDATES_LEARN           "Learn more"
+    IDS_UPDATES_USELOCAL        "Build updates locally before installing"
 
     IDS_ADV                     "Advanced"
 

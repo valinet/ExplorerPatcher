@@ -351,6 +351,36 @@ int ComputeFileHash2(HMODULE hModule, LPCWSTR filename, LPSTR hash, DWORD dwHash
     return ERROR_SUCCESS;
 }
 
+void GetHardcodedHash(LPCWSTR wszPath, LPSTR hash, DWORD dwHash)
+{
+    HANDLE hFile = CreateFileW(wszPath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+    if (hFile == INVALID_HANDLE_VALUE)
+    {
+        return 1;
+    }
+
+    HANDLE hFileMapping = CreateFileMappingW(hFile, NULL, PAGE_READONLY, 0, 0, NULL);
+    if (hFileMapping == 0)
+    {
+        CloseHandle(hFile);
+        return 2;
+    }
+
+    char* lpFileBase = MapViewOfFile(hFileMapping, FILE_MAP_READ, 0, 0, 0);
+    if (lpFileBase == 0)
+    {
+        CloseHandle(hFileMapping);
+        CloseHandle(hFile);
+        return 3;
+    }
+
+    memcpy_s(hash, MIN(32, dwHash), lpFileBase + DOSMODE_OFFSET, 32);
+
+    UnmapViewOfFile(lpFileBase);
+    CloseHandle(hFileMapping);
+    CloseHandle(hFile);
+}
+
 void LaunchPropertiesGUI(HMODULE hModule)
 {
     //CreateThread(0, 0, ZZGUI, 0, 0, 0);
