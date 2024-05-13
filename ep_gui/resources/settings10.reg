@@ -580,6 +580,22 @@
 "XamlSounds"=dword:00000000
 
 
+;T %R:2301%
+[HKEY_CURRENT_USER\Software\ExplorerPatcher]
+;z 10001 %R:1533%
+"Language"=dword:00000000
+;y %R:2011% 🡕
+;https://github.com/valinet/ExplorerPatcher/wiki/Settings-management
+;u %R:2012%
+;import
+;u %R:2013%
+;export
+;u %R:2015%
+;reset
+;u %R:2102%
+;uninstall
+
+
 ;T %R:2001%
 ;e %R:201%
 ;e %VERSIONINFORMATIONSTRING%
@@ -597,22 +613,6 @@
 ;https://github.com/valinet/ExplorerPatcher#donate
 ;y %R:2010% 🡕
 ;https://github.com/valinet/ExplorerPatcher/wiki/Frequently-asked-questions
-;y %R:2011% 🡕
-;https://github.com/valinet/ExplorerPatcher/wiki/Settings-management
-[HKEY_CURRENT_USER\Software\ExplorerPatcher]
-;z 10001 %R:1533%
-"Language"=dword:00000000
-;u %R:2012%
-;import
-;u %R:2013%
-;export
-;u %R:2015%
-;reset
-
-
-;T %R:2101%
-;u %R:2102%
-;uninstall
 
 
 
