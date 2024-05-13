@@ -18,8 +18,18 @@ int WINAPI wWinMain(
 
     CHAR hash[100];
     ZeroMemory(hash, 100);
-    ComputeFileHash2(hModule, wszPath, hash, 100);
-    FreeLibrary(hModule);
+    if (__argc > 1) 
+    {
+        for (size_t i = 0; i < MIN(wcslen(__wargv[1]), 32); ++i) 
+        {
+            hash[i] = __wargv[1][i];
+        }
+    }
+    else 
+    {
+        ComputeFileHash2(hModule, wszPath, hash, 100);
+        FreeLibrary(hModule);
+    }
 
     PathRemoveFileSpecW(wszPath);
     wcscat_s(wszPath, MAX_PATH, L"\\" _T(SETUP_UTILITY_NAME));
