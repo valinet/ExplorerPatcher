@@ -393,6 +393,7 @@ return ep_result;\n\
 let banner1 = document.getElementById(\"taw\"); if (banner1) { banner1.style = \"display: none\"; }\n\
 let wob_gsp = document.getElementById(\"wob_gsp\"); if (wob_gsp) { wob_gsp.style = \"width: 648.04px\"; }\n\
 let weird_line = document.getElementsByClassName(\"v5jHUb\")[0]; if (weird_line) { weird_line.style = \"display: none\"; }\n\
+let slim_appbar = document.getElementById(\"slim_appbar\"); if (slim_appbar) { slim_appbar.style = \"display: none\"; }\n\
 scrolldisable();\n\
 ep_weather_part2();\n\
 ";
