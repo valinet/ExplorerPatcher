@@ -28,6 +28,10 @@ Tested on OS builds 22621.3296, 22621.3447, 22621.3527, 22635.3566, 26058.1000, 
 * GUI: Reorganized "About" and "Uninstall" sections. (4794713)
 * ep_weather: Fixed alignment.
 
+##### 5
+
+* Weather: Layout fixes. (57b44d2, 2112a18)
+
 ## 22621.3296.64
 
 Tested on OS builds 22000.2538, 22621.1992, 22621.3155, 22621.3235, 22621.3296, 25951.1000, and 26058.1000.
