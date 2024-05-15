@@ -429,7 +429,7 @@ HRESULT STDMETHODCALLTYPE _ep_Weather_ReboundBrowser(EPWeather* _this, LONG64 dw
         DWORD dwTextScaleFactor = epw_Weather_GetTextScaleFactor(_this);
         DWORD dwZoomFactor = epw_Weather_GetZoomFactor(_this);
         bounds.left = 0 - MulDiv(MulDiv(MulDiv(181, dpi, 96), dwTextScaleFactor, 100), dwZoomFactor, 100);
-        bounds.top = 0 - MulDiv(MulDiv(MulDiv(172, dpi, 96), dwTextScaleFactor, 100), dwZoomFactor, 100);
+        bounds.top = 0 - MulDiv(MulDiv(MulDiv(152, dpi, 96), dwTextScaleFactor, 100), dwZoomFactor, 100);
         bounds.right = MulDiv(MulDiv(MulDiv((!InterlockedAdd64(&_this->dwTextDir, 0) ? 1333 : 705), dpi, 96), dwTextScaleFactor, 100), dwZoomFactor, 100);// 5560;
         bounds.bottom = MulDiv(MulDiv(MulDiv(600, dpi, 96), dwTextScaleFactor, 100), dwZoomFactor, 100);// 15600;
     }
