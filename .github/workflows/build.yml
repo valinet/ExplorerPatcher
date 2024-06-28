@@ -137,7 +137,7 @@ jobs:
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: ep_bin_multi_${{ steps.vars.outputs.sha_short }}_${{ steps.vars.outputs.branch }}
+        name: ep_bin_multi_${{ env.sha_short }}_${{ env.branch }}
         path: |
           build/Release/
 
@@ -146,7 +146,7 @@ jobs:
       working-directory: build/Release
       if: github.ref == 'refs/heads/master' && github.event.inputs.ref == ''
       run: |
-        echo "data=$(./ep_generate_release_name.exe)" >> $GITHUB_ENV
+        echo "release_name=$(./ep_generate_release_name.exe)" >> $GITHUB_ENV
       id: release_name
       
     - name: Generate release notes
@@ -154,11 +154,11 @@ jobs:
       working-directory: build/Release
       if: github.ref == 'refs/heads/master' && github.event.inputs.ref == ''
       run: |
-        MY_STRING=$(./ep_generate_release_description.exe ${{ steps.vars.outputs.sha_short }} ${{ steps.vars.outputs.branch }} ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+        MY_STRING=$(./ep_generate_release_description.exe ${{ env.sha_short }} ${{ env.branch }} ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
         MY_STRING="${MY_STRING//'%'/'%25'}"
         MY_STRING="${MY_STRING//$'\n'/'%0A'}"
         MY_STRING="${MY_STRING//$'\r'/'%0D'}"
-        echo "data=$MY_STRING" >> $GITHUB_ENV
+        echo "release_description=$MY_STRING" >> $GITHUB_ENV
       id: release_description
       
     - name: Create/update release (valinet)
@@ -168,9 +168,9 @@ jobs:
       with:
         draft: false
         prerelease: ${{ !startsWith(github.event.head_commit.message, 'rel_') }}
-        release_name: ${{ steps.release_name.outputs.data }}
-        tag_name: ${{ steps.release_name.outputs.data }}_${{ steps.vars.outputs.sha_short }}
-        body: ${{ steps.release_description.outputs.data }}
+        name: ${{ env.release_name }}
+        tag_name: ${{ env.release_name }}_${{ env.sha_short }}
+        body: ${{ env.release_description }}
         files: |
           ./build/Release/ep_setup.exe
       env:
@@ -183,9 +183,9 @@ jobs:
       with:
         draft: false
         prerelease: ${{ !startsWith(github.event.head_commit.message, 'rel_') }}
-        release_name: ${{ steps.release_name.outputs.data }}
-        tag_name: ${{ steps.release_name.outputs.data }}_${{ steps.vars.outputs.sha_short }}
-        body: ${{ steps.release_description.outputs.data }}
+        name: ${{ env.release_name }}
+        tag_name: ${{ env.release_name }}_${{ env.sha_short }}
+        body: ${{ env.release_description }}
         files: |
           ./build/Release/ep_setup.exe
       env:
