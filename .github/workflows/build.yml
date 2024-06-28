@@ -46,20 +46,20 @@ jobs:
         echo "build_dir: ${{ github.event.inputs.build_dir }}"
 
     - name: Checkout latest build and submodules
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       if: github.event.inputs.ref == ''
       with:
         submodules: recursive
     
     - name: Checkout specific build and submodules
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       if: github.event.inputs.ref != ''
       with:
         ref: ${{ github.event.inputs.ref }}
         submodules: recursive
 
     - name: Add MSBuild to PATH
-      uses: microsoft/setup-msbuild@v1.0.2
+      uses: microsoft/setup-msbuild@v2
       
     - name: Declare some variables
       id: vars
@@ -80,7 +80,7 @@ jobs:
         exit /b 0
         
     - name: Setup NuGet
-      uses: nuget/setup-nuget@v1
+      uses: nuget/setup-nuget@v2
       
     - name: Restore NuGet packages
       run: |
@@ -135,7 +135,7 @@ jobs:
         exit /b 0
 
     - name: Upload artifacts
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with:
         name: ep_bin_multi_${{ steps.vars.outputs.sha_short }}_${{ steps.vars.outputs.branch }}
         path: |
@@ -162,7 +162,7 @@ jobs:
       id: release_description
       
     - name: Create/update release (valinet)
-      uses: actions/create-release@v1
+      uses: softprops/action-gh-release@v2
       if: github.repository_owner == 'valinet' && github.ref == 'refs/heads/master' && github.event.inputs.ref == ''
       id: create_release
       with:
@@ -171,22 +171,13 @@ jobs:
         release_name: ${{ steps.release_name.outputs.data }}
         tag_name: ${{ steps.release_name.outputs.data }}_${{ steps.vars.outputs.sha_short }}
         body: ${{ steps.release_description.outputs.data }}
-      env:
-        GITHUB_TOKEN: ${{ secrets.PAT }}
-
-    - name: Upload setup (valinet)
-      uses: actions/upload-release-asset@v1
-      if: github.repository_owner == 'valinet' && github.ref == 'refs/heads/master' && github.event.inputs.ref == ''
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./build/Release/ep_setup.exe
-        asset_name: ep_setup.exe
-        asset_content_type: application/x-msdownload
+        files: |
+          ./build/Release/ep_setup.exe
       env:
         GITHUB_TOKEN: ${{ secrets.PAT }}
         
     - name: Create/update release (forks)
-      uses: actions/create-release@v1
+      uses: softprops/action-gh-release@v2
       if: github.repository_owner != 'valinet' && github.ref == 'refs/heads/master' && github.event.inputs.ref == ''
       id: create_release_fork
       with:
@@ -195,16 +186,7 @@ jobs:
         release_name: ${{ steps.release_name.outputs.data }}
         tag_name: ${{ steps.release_name.outputs.data }}_${{ steps.vars.outputs.sha_short }}
         body: ${{ steps.release_description.outputs.data }}
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: Upload setup (forks)
-      uses: actions/upload-release-asset@v1
-      if: github.repository_owner != 'valinet' && github.ref == 'refs/heads/master' && github.event.inputs.ref == ''
-      with:
-        upload_url: ${{ steps.create_release_fork.outputs.upload_url }}
-        asset_path: ./build/Release/ep_setup.exe
-        asset_name: ep_setup.exe
-        asset_content_type: application/x-msdownload
+        files: |
+          ./build/Release/ep_setup.exe
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
