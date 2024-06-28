@@ -46,27 +46,27 @@ jobs:
         echo "build_dir: ${{ github.event.inputs.build_dir }}"
 
     - name: Checkout latest build and submodules
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       if: github.event.inputs.ref == ''
       with:
         submodules: recursive
     
     - name: Checkout specific build and submodules
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       if: github.event.inputs.ref != ''
       with:
         ref: ${{ github.event.inputs.ref }}
         submodules: recursive
 
     - name: Add MSBuild to PATH
-      uses: microsoft/setup-msbuild@v1.0.2
+      uses: microsoft/setup-msbuild@v2
       
     - name: Declare some variables
       id: vars
       shell: bash
       run: |
-        echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
-        echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
+        echo "branch=$(echo ${GITHUB_REF#refs/heads/})" >> $GITHUB_OUTPUT
+        echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
       
     - name: Enable SimpleWindowSwitcher support for newer Windows SDKs
       shell: cmd
@@ -80,7 +80,7 @@ jobs:
         exit /b 0
         
     - name: Setup NuGet
-      uses: nuget/setup-nuget@v1
+      uses: nuget/setup-nuget@v2
       
     - name: Restore NuGet packages
       run: |
@@ -135,7 +135,7 @@ jobs:
         exit /b 0
 
     - name: Upload artifacts
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with:
         name: ep_bin_multi_${{ steps.vars.outputs.sha_short }}_${{ steps.vars.outputs.branch }}
         path: |
@@ -146,7 +146,7 @@ jobs:
       working-directory: build/Release
       if: github.ref == 'refs/heads/master' && github.event.inputs.ref == ''
       run: |
-        echo "::set-output name=data::$(./ep_generate_release_name.exe)"
+        echo "data=$(./ep_generate_release_name.exe)" >> $GITHUB_OUTPUT
       id: release_name
       
     - name: Generate release notes
@@ -154,57 +154,37 @@ jobs:
       working-directory: build/Release
       if: github.ref == 'refs/heads/master' && github.event.inputs.ref == ''
       run: |
-        MY_STRING=$(./ep_generate_release_description.exe ${{ steps.vars.outputs.sha_short }} ${{ steps.vars.outputs.branch }} ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
-        MY_STRING="${MY_STRING//'%'/'%25'}"
-        MY_STRING="${MY_STRING//$'\n'/'%0A'}"
-        MY_STRING="${MY_STRING//$'\r'/'%0D'}"
-        echo "::set-output name=data::$MY_STRING"
+        echo "data<<EP_RELEASE_DESCRIPTION_DELIM" >> $GITHUB_OUTPUT
+        echo "$(./ep_generate_release_description.exe ${{ steps.vars.outputs.sha_short }} ${{ steps.vars.outputs.branch }} ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_OUTPUT
+        echo "EP_RELEASE_DESCRIPTION_DELIM" >> $GITHUB_OUTPUT
       id: release_description
       
     - name: Create/update release (valinet)
-      uses: actions/create-release@v1
+      uses: softprops/action-gh-release@v2
       if: github.repository_owner == 'valinet' && github.ref == 'refs/heads/master' && github.event.inputs.ref == ''
       id: create_release
       with:
         draft: false
         prerelease: ${{ !startsWith(github.event.head_commit.message, 'rel_') }}
-        release_name: ${{ steps.release_name.outputs.data }}
+        name: ${{ steps.release_name.outputs.data }}
         tag_name: ${{ steps.release_name.outputs.data }}_${{ steps.vars.outputs.sha_short }}
         body: ${{ steps.release_description.outputs.data }}
-      env:
-        GITHUB_TOKEN: ${{ secrets.PAT }}
-
-    - name: Upload setup (valinet)
-      uses: actions/upload-release-asset@v1
-      if: github.repository_owner == 'valinet' && github.ref == 'refs/heads/master' && github.event.inputs.ref == ''
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./build/Release/ep_setup.exe
-        asset_name: ep_setup.exe
-        asset_content_type: application/x-msdownload
+        files: |
+          ./build/Release/ep_setup.exe
       env:
         GITHUB_TOKEN: ${{ secrets.PAT }}
         
     - name: Create/update release (forks)
-      uses: actions/create-release@v1
+      uses: softprops/action-gh-release@v2
       if: github.repository_owner != 'valinet' && github.ref == 'refs/heads/master' && github.event.inputs.ref == ''
       id: create_release_fork
       with:
         draft: false
         prerelease: ${{ !startsWith(github.event.head_commit.message, 'rel_') }}
-        release_name: ${{ steps.release_name.outputs.data }}
+        name: ${{ steps.release_name.outputs.data }}
         tag_name: ${{ steps.release_name.outputs.data }}_${{ steps.vars.outputs.sha_short }}
         body: ${{ steps.release_description.outputs.data }}
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: Upload setup (forks)
-      uses: actions/upload-release-asset@v1
-      if: github.repository_owner != 'valinet' && github.ref == 'refs/heads/master' && github.event.inputs.ref == ''
-      with:
-        upload_url: ${{ steps.create_release_fork.outputs.upload_url }}
-        asset_path: ./build/Release/ep_setup.exe
-        asset_name: ep_setup.exe
-        asset_content_type: application/x-msdownload
+        files: |
+          ./build/Release/ep_setup.exe
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
