@@ -166,7 +166,7 @@ jobs:
       with:
         draft: false
         prerelease: ${{ !startsWith(github.event.head_commit.message, 'rel_') }}
-        release_name: ${{ steps.release_name.outputs.data }}
+        name: ${{ steps.release_name.outputs.data }}
         tag_name: ${{ steps.release_name.outputs.data }}_${{ steps.vars.outputs.sha_short }}
         body: ${{ steps.release_description.outputs.data }}
         files: |
@@ -181,7 +181,7 @@ jobs:
       with:
         draft: false
         prerelease: ${{ !startsWith(github.event.head_commit.message, 'rel_') }}
-        release_name: ${{ steps.release_name.outputs.data }}
+        name: ${{ steps.release_name.outputs.data }}
         tag_name: ${{ steps.release_name.outputs.data }}_${{ steps.vars.outputs.sha_short }}
         body: ${{ steps.release_description.outputs.data }}
         files: |
