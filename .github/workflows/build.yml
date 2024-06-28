@@ -65,8 +65,8 @@ jobs:
       id: vars
       shell: bash
       run: |
-        echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
-        echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
+        echo "branch=$(echo ${GITHUB_REF#refs/heads/})" >> $GITHUB_ENV
+        echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
       
     - name: Enable SimpleWindowSwitcher support for newer Windows SDKs
       shell: cmd
@@ -146,7 +146,7 @@ jobs:
       working-directory: build/Release
       if: github.ref == 'refs/heads/master' && github.event.inputs.ref == ''
       run: |
-        echo "::set-output name=data::$(./ep_generate_release_name.exe)"
+        echo "data=$(./ep_generate_release_name.exe)" >> $GITHUB_ENV
       id: release_name
       
     - name: Generate release notes
@@ -158,7 +158,7 @@ jobs:
         MY_STRING="${MY_STRING//'%'/'%25'}"
         MY_STRING="${MY_STRING//$'\n'/'%0A'}"
         MY_STRING="${MY_STRING//$'\r'/'%0D'}"
-        echo "::set-output name=data::$MY_STRING"
+        echo "data=$MY_STRING" >> $GITHUB_ENV
       id: release_description
       
     - name: Create/update release (valinet)
