@@ -6,10 +6,7 @@ const char* explorer_SN[EXPLORER_SB_CNT] = {
     EXPLORER_SB_2,
     EXPLORER_SB_3,
     EXPLORER_SB_4,
-    EXPLORER_SB_5,
-    EXPLORER_SB_6,
-    EXPLORER_SB_7,
-    EXPLORER_SB_8
+    EXPLORER_SB_5
 };
 const char* twinui_pcshell_SN[TWINUI_PCSHELL_SB_CNT] = {
     TWINUI_PCSHELL_SB_0,
@@ -134,9 +131,6 @@ static BOOL ProcessExplorerSymbols(const char* pszSettingsPath, DWORD* pOffsets)
     RegSetValueExW(hKey, TEXT(EXPLORER_SB_3), 0, REG_DWORD, &pOffsets[3], sizeof(DWORD));
     RegSetValueExW(hKey, TEXT(EXPLORER_SB_4), 0, REG_DWORD, &pOffsets[4], sizeof(DWORD));
     RegSetValueExW(hKey, TEXT(EXPLORER_SB_5), 0, REG_DWORD, &pOffsets[5], sizeof(DWORD));
-    RegSetValueExW(hKey, TEXT(EXPLORER_SB_6), 0, REG_DWORD, &pOffsets[6], sizeof(DWORD));
-    RegSetValueExW(hKey, TEXT(EXPLORER_SB_7), 0, REG_DWORD, &pOffsets[7], sizeof(DWORD));
-    RegSetValueExW(hKey, TEXT(EXPLORER_SB_8), 0, REG_DWORD, &pOffsets[8], sizeof(DWORD));
 
     RegSetValueExA(hKey, "Hash", 0, REG_SZ, szHash, strlen(szHash) + 1);
     SaveVersion(hKey, EXPLORER_SB_VERSION);
@@ -672,9 +666,6 @@ LoadSymbolsResult LoadSymbols(symbols_addr* symbols_PTRS)
                 RegQueryValueExW(hKey, TEXT(EXPLORER_SB_3), 0, NULL, &symbols_PTRS->explorer_PTRS[3], &dwSize);
                 RegQueryValueExW(hKey, TEXT(EXPLORER_SB_4), 0, NULL, &symbols_PTRS->explorer_PTRS[4], &dwSize);
                 RegQueryValueExW(hKey, TEXT(EXPLORER_SB_5), 0, NULL, &symbols_PTRS->explorer_PTRS[5], &dwSize);
-                RegQueryValueExW(hKey, TEXT(EXPLORER_SB_6), 0, NULL, &symbols_PTRS->explorer_PTRS[6], &dwSize);
-                RegQueryValueExW(hKey, TEXT(EXPLORER_SB_7), 0, NULL, &symbols_PTRS->explorer_PTRS[7], &dwSize);
-                RegQueryValueExW(hKey, TEXT(EXPLORER_SB_8), 0, NULL, &symbols_PTRS->explorer_PTRS[8], &dwSize);
                 bOffsetsValid = TRUE;
             }
             else

@@ -265,8 +265,6 @@ static bool(*ShouldSystemUseDarkMode)();
 
 static void(*GetThemeName)(void*, void*, void*);
 
-extern DWORD (*CImmersiveColor_GetColorFunc)(int colorType);
-
 void* ReadFromFile(wchar_t* wszFileName, DWORD* dwSize);
 
 int ComputeFileHash(LPCWSTR filename, LPSTR hash, DWORD dwHash);

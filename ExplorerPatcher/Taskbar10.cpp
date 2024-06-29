@@ -1,12 +1,11 @@
 ﻿#include "utility.h"
+#include "ImmersiveColor.h"
 
 #include <dcomptypes.h>
 
 #include <wrl/implements.h>
 #include <wrl/wrappers/corewrappers.h>
 #include <wil/result_macros.h>
-
-extern "C" DWORD (*CImmersiveColor_GetColorFunc)(int colorType);
 
 #pragma region "Enable old taskbar"
 /***
@@ -242,9 +241,9 @@ DWORD GetTaskbarColor()
     if (tt.IsHighContrast())
         return GetSysColor(COLOR_WINDOW);
 
-    if (tt.bColorPrevalence && CImmersiveColor_GetColorFunc)
+    if (tt.bColorPrevalence)
     {
-        DWORD result = CImmersiveColor_GetColorFunc(tt.IsDark() ? 6 /*IMCLR_SystemAccentDark2*/ : 2 /*IMCLR_SystemAccentLight2*/);
+        DWORD result = CImmersiveColor::GetColor(tt.IsDark() ? IMCLR_SystemAccentDark2 : IMCLR_SystemAccentLight2);
         if (tt.bEnableTransparency)
             return (result & 0xFFFFFF) | 0xCC000000;
         return result;

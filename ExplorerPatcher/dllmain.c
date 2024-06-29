@@ -1606,8 +1606,6 @@ finalize:
 
 #pragma region "Windows 10 Taskbar Hooks"
 #ifdef _WIN64
-DWORD (*CImmersiveColor_GetColorFunc)(int colorType);
-
 // credits: https://github.com/m417z/7-Taskbar-Tweaker
 
 DEFINE_GUID(IID_ITaskGroup,
@@ -10732,86 +10730,6 @@ void TryToFindExplorerOffsets(HANDLE hExplorer, MODULEINFO* pmiExplorer, DWORD* 
 {
     if (!pOffsets[0] || pOffsets[0] == 0xFFFFFFFF)
     {
-        // CImmersiveColor::GetColor()
-
-        // Ref: Anything `CImmersiveColor::GetColor(colorTheme == CT_Light ? IMCLR_LightAltMediumLow : IMCLR_DarkListLow)`
-        //                                                        = 1        = 323                     = 298
-        // 8D 41 19 0F 44 C8 E8 ?? ?? ?? ?? 44 8B
-        //                      ^^^^^^^^^^^
-        PBYTE match = FindPattern(
-            hExplorer, pmiExplorer->SizeOfImage,
-            "\x8D\x41\x19\x0F\x44\xC8\xE8\x00\x00\x00\x00\x44\x8B",
-            "xxxxxxx????xx"
-        );
-        if (match)
-        {
-            match += 6;
-            pOffsets[0] = match + 5 + *(int*)(match + 1) - (PBYTE)hExplorer;
-        }
-        else
-        {
-            // Ref: Anything `CImmersiveColor::GetColor(colorTheme != CT_Light ? IMCLR_DarkListLow : IMCLR_LightAltMediumLow)`
-            //                                                        = 1        = 298               = 323
-            // 8D 41 E7 0F 45 C8 E8 ?? ?? ?? ?? 44 8B
-            //                      ^^^^^^^^^^^
-            match = FindPattern(
-                hExplorer, pmiExplorer->SizeOfImage,
-                "\x8D\x41\xE7\x0F\x45\xC8\xE8\x00\x00\x00\x00\x44\x8B",
-                "xxxxxxx????xx"
-            );
-            if (match)
-            {
-                match += 6;
-                pOffsets[0] = match + 5 + *(int*)(match + 1) - (PBYTE)hExplorer;
-            }
-        }
-        if (match)
-        {
-            printf("explorer.exe!CImmersiveColor::GetColor() = %lX\n", pOffsets[0]);
-        }
-    }
-
-    if (!pOffsets[1] || pOffsets[1] == 0xFFFFFFFF)
-    {
-        // CImmersiveColor::IsColorSchemeChangeMessage()
-        // Ref: Anything `if (CImmersiveColor::IsColorSchemeChangeMessage(WM_SETTINGCHANGE, lParam)) { ... }`
-        //                                                                = 0x1A
-        // B9 1A 00 00 00 E8 ?? ?? ?? ?? 84 C0
-        //                   ^^^^^^^^^^^
-        PBYTE match = FindPattern(
-            hExplorer, pmiExplorer->SizeOfImage,
-            "\xB9\x1A\x00\x00\x00\xE8\x00\x00\x00\x00\x84\xC0",
-            "xxxxxx????xx"
-        );
-        if (match)
-        {
-            match += 5;
-            pOffsets[1] = match + 5 + *(int*)(match + 1) - (PBYTE)hExplorer;
-            printf("explorer.exe!CImmersiveColor::IsColorSchemeChangeMessage() = %lX\n", pOffsets[1]);
-        }
-    }
-
-    if (!pOffsets[2] || pOffsets[2] == 0xFFFFFFFF)
-    {
-        // CImmersiveColorImpl::GetColorPreferenceImpl()
-        // Ref: CImmersiveColorImpl::SetColorPreferenceImpl()
-        // 48 83 64 24 ?? 00 45 33 C0 33 D2 48 8D 4C 24 ?? E8 ?? ?? ?? ??
-        //                                                    ^^^^^^^^^^^
-        PBYTE match = FindPattern(
-            hExplorer, pmiExplorer->SizeOfImage,
-            "\x48\x83\x64\x24\x00\x00\x45\x33\xC0\x33\xD2\x48\x8D\x4C\x24\x00\xE8",
-            "xxxx?xxxxxxxxxx?x"
-        );
-        if (match)
-        {
-            match += 16;
-            pOffsets[2] = match + 5 + *(int*)(match + 1) - (PBYTE)hExplorer;
-            printf("explorer.exe!CImmersiveColorImpl::GetColorPreferenceImpl() = %lX\n", pOffsets[2]);
-        }
-    }
-
-    if (!pOffsets[3] || pOffsets[3] == 0xFFFFFFFF)
-    {
         // ImmersiveTray::AttachWindowToTray()
         // Ref: CTaskListThumbnailWnd::SetSite()
         // 48 8B 93 ?? ?? ?? ?? 48 8B 8B ?? ?? ?? ?? E8 ?? ?? ?? ?? 48 8B 4B
@@ -10824,12 +10742,12 @@ void TryToFindExplorerOffsets(HANDLE hExplorer, MODULEINFO* pmiExplorer, DWORD* 
         if (match)
         {
             match += 14;
-            pOffsets[3] = match + 5 + *(int*)(match + 1) - (PBYTE)hExplorer;
-            printf("explorer.exe!ImmersiveTray::AttachWindowToTray() = %lX\n", pOffsets[3]);
+            pOffsets[0] = match + 5 + *(int*)(match + 1) - (PBYTE)hExplorer;
+            printf("explorer.exe!ImmersiveTray::AttachWindowToTray() = %lX\n", pOffsets[0]);
         }
     }
 
-    if (!pOffsets[4] || pOffsets[4] == 0xFFFFFFFF)
+    if (!pOffsets[1] || pOffsets[1] == 0xFFFFFFFF)
     {
         // ImmersiveTray::RaiseWindow()
         // Ref: CTaskListThumbnailWnd::_RaiseWindowForLivePreviewIfNeeded()
@@ -10843,12 +10761,12 @@ void TryToFindExplorerOffsets(HANDLE hExplorer, MODULEINFO* pmiExplorer, DWORD* 
         if (match)
         {
             match += 13;
-            pOffsets[4] = match + 5 + *(int*)(match + 1) - (PBYTE)hExplorer;
-            printf("explorer.exe!ImmersiveTray::RaiseWindow() = %lX\n", pOffsets[4]);
+            pOffsets[1] = match + 5 + *(int*)(match + 1) - (PBYTE)hExplorer;
+            printf("explorer.exe!ImmersiveTray::RaiseWindow() = %lX\n", pOffsets[1]);
         }
     }
 
-    if (!pOffsets[5] || pOffsets[5] == 0xFFFFFFFF)
+    if (!pOffsets[2] || pOffsets[2] == 0xFFFFFFFF)
     {
         // CTaskBand_CreateInstance()
         // Ref: CTrayBandSite::_AddRequiredBands()
@@ -10865,7 +10783,7 @@ void TryToFindExplorerOffsets(HANDLE hExplorer, MODULEINFO* pmiExplorer, DWORD* 
         if (match)
         {
             match += 14;
-            pOffsets[5] = match + 5 + *(int*)(match + 1) - (PBYTE)hExplorer;
+            pOffsets[2] = match + 5 + *(int*)(match + 1) - (PBYTE)hExplorer;
         }
         else
         {
@@ -10881,16 +10799,16 @@ void TryToFindExplorerOffsets(HANDLE hExplorer, MODULEINFO* pmiExplorer, DWORD* 
             if (match)
             {
                 match += 13;
-                pOffsets[5] = match + 5 + *(int*)(match + 1) - (PBYTE)hExplorer;
+                pOffsets[2] = match + 5 + *(int*)(match + 1) - (PBYTE)hExplorer;
             }
         }
         if (match)
         {
-            printf("explorer.exe!CTaskBand_CreateInstance() = %lX\n", pOffsets[5]);
+            printf("explorer.exe!CTaskBand_CreateInstance() = %lX\n", pOffsets[2]);
         }
     }
 
-    if (!pOffsets[6] || pOffsets[6] == 0xFFFFFFFF)
+    if (!pOffsets[3] || pOffsets[3] == 0xFFFFFFFF)
     {
         // HandleFirstTimeLegacy()
         // Ref: TrayUI::WndProc()
@@ -10907,7 +10825,7 @@ void TryToFindExplorerOffsets(HANDLE hExplorer, MODULEINFO* pmiExplorer, DWORD* 
         if (match)
         {
             match += 11;
-            pOffsets[6] = match + 5 + *(int*)(match + 1) - (PBYTE)hExplorer;
+            pOffsets[3] = match + 5 + *(int*)(match + 1) - (PBYTE)hExplorer;
         }
         else
         {
@@ -10923,16 +10841,16 @@ void TryToFindExplorerOffsets(HANDLE hExplorer, MODULEINFO* pmiExplorer, DWORD* 
             if (match)
             {
                 match += 15;
-                pOffsets[6] = match + 5 + *(int*)(match + 1) - (PBYTE)hExplorer;
+                pOffsets[3] = match + 5 + *(int*)(match + 1) - (PBYTE)hExplorer;
             }
         }
         if (match)
         {
-            printf("explorer.exe!HandleFirstTimeLegacy() = %lX\n", pOffsets[6]);
+            printf("explorer.exe!HandleFirstTimeLegacy() = %lX\n", pOffsets[3]);
         }
     }
 
-    if (!pOffsets[7] || pOffsets[7] == 0xFFFFFFFF)
+    if (!pOffsets[4] || pOffsets[4] == 0xFFFFFFFF)
     {
         // SetColorPreferenceForLogonUI()
         // Ref: TrayUI::_HandleSettingChange()
@@ -10946,8 +10864,8 @@ void TryToFindExplorerOffsets(HANDLE hExplorer, MODULEINFO* pmiExplorer, DWORD* 
         if (match)
         {
             match += 17;
-            pOffsets[7] = match + 5 + *(int*)(match + 1) - (PBYTE)hExplorer;
-            printf("explorer.exe!SetColorPreferenceForLogonUI() = %lX\n", pOffsets[7]);
+            pOffsets[4] = match + 5 + *(int*)(match + 1) - (PBYTE)hExplorer;
+            printf("explorer.exe!SetColorPreferenceForLogonUI() = %lX\n", pOffsets[4]);
         }
     }
 }
@@ -11911,13 +11829,13 @@ BOOL CrashCounterHandleEntryPoint()
 BOOL CheckExplorerSymbols(symbols_addr* symbols_PTRS)
 {
     BOOL bAllValid = TRUE;
-    for (SIZE_T j = 0; j < ARRAYSIZE(symbols_PTRS->explorer_PTRS) - 1; ++j)
+    /*for (SIZE_T j = 0; j < ARRAYSIZE(symbols_PTRS->explorer_PTRS) - 1; ++j)
     {
         DWORD i = symbols_PTRS->explorer_PTRS[j];
         bAllValid &= i && i != 0xFFFFFFFF;
         if (!bAllValid)
             break;
-    }
+    }*/
     return bAllValid;
 }
 
@@ -11963,7 +11881,7 @@ void PrepareAlternateTaskbarImplementation(symbols_addr* symbols_PTRS, const WCH
     typedef DWORD (*GetVersion_t)();
     GetVersion_t GetVersion = (GetVersion_t)GetProcAddress(hMyTaskbar, "GetVersion");
     DWORD version = GetVersion ? GetVersion() : 0;
-    if (version != 1)
+    if (version != 2)
     {
         wprintf(L"[TB] '%s' with version %d is not compatible\n", pszTaskbarDll, version);
         return;
@@ -12450,11 +12368,6 @@ DWORD Inject(BOOL bIsExplorer)
     {
         TryToFindExplorerOffsets(hExplorer, &miExplorer, symbols_PTRS.explorer_PTRS);
 
-        if (symbols_PTRS.explorer_PTRS[0] && symbols_PTRS.explorer_PTRS[0] != 0xFFFFFFFF)
-        {
-            CImmersiveColor_GetColorFunc = (DWORD(*)(int))((uintptr_t)hExplorer + symbols_PTRS.explorer_PTRS[0]);
-        }
-
 #if 0
         if (global_rovi.dwBuildNumber >= 26002)
         {
@@ -12599,9 +12512,9 @@ DWORD Inject(BOOL bIsExplorer)
     // Enable Windows 10 taskbar search box on 22621+
     if (IsWindows11Version22H2OrHigher())
     {
-        if (symbols_PTRS.explorer_PTRS[8] && symbols_PTRS.explorer_PTRS[8] != 0xFFFFFFFF)
+        if (symbols_PTRS.explorer_PTRS[5] && symbols_PTRS.explorer_PTRS[5] != 0xFFFFFFFF)
         {
-            TrayUI__UpdatePearlSizeFunc = (PBYTE)hExplorer + symbols_PTRS.explorer_PTRS[8];
+            TrayUI__UpdatePearlSizeFunc = (PBYTE)hExplorer + symbols_PTRS.explorer_PTRS[5];
         }
         UpdateSearchBox();
     }

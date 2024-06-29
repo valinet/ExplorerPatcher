@@ -341,6 +341,7 @@
     <ClInclude Include="HideExplorerSearchBar.h" />
     <ClInclude Include="hooking.h" />
     <ClInclude Include="ep_private.h" />
+    <ClInclude Include="ImmersiveColor.h" />
     <ClInclude Include="ImmersiveFlyouts.h" />
     <ClInclude Include="InputSwitch.h" />
     <ClInclude Include="Localization.h" />

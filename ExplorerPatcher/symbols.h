@@ -14,17 +14,14 @@
 #define EXIT_CODE_EXPLORER 1
 
 #define EXPLORER_SB_NAME "explorer"
-#define EXPLORER_SB_0 "CImmersiveColor::GetColor"
-#define EXPLORER_SB_1 "CImmersiveColor::IsColorSchemeChangeMessage"
-#define EXPLORER_SB_2 "CImmersiveColorImpl::GetColorPreferenceImpl"
-#define EXPLORER_SB_3 "ImmersiveTray::AttachWindowToTray"
-#define EXPLORER_SB_4 "ImmersiveTray::RaiseWindow"
-#define EXPLORER_SB_5 "CTaskBand_CreateInstance"
-#define EXPLORER_SB_6 "HandleFirstTimeLegacy"
-#define EXPLORER_SB_7 "SetColorPreferenceForLogonUI"
-#define EXPLORER_SB_8 "TrayUI::_UpdatePearlSize"
-#define EXPLORER_SB_CNT 9
-#define EXPLORER_SB_VERSION 2
+#define EXPLORER_SB_0 "ImmersiveTray::AttachWindowToTray"
+#define EXPLORER_SB_1 "ImmersiveTray::RaiseWindow"
+#define EXPLORER_SB_2 "CTaskBand_CreateInstance"
+#define EXPLORER_SB_3 "HandleFirstTimeLegacy"
+#define EXPLORER_SB_4 "SetColorPreferenceForLogonUI"
+#define EXPLORER_SB_5 "TrayUI::_UpdatePearlSize"
+#define EXPLORER_SB_CNT 6
+#define EXPLORER_SB_VERSION 3
 
 #define TWINUI_PCSHELL_SB_NAME "twinui.pcshell"
 #define TWINUI_PCSHELL_SB_0 "CImmersiveContextMenuOwnerDrawHelper::s_ContextMenuWndProc"
