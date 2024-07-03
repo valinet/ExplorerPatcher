@@ -96,8 +96,14 @@ extern "C"
 #endif
 
 #if HOW_TO_HOOK == HOOK_WITH_FUNCHOOK
+#ifdef __cplusplus
+inline
+#endif
 funchook_t* funchook;
 #elif HOW_TO_HOOK == HOOK_WITH_DETOURS
+#ifdef __cplusplus
+inline
+#endif
 void* funchook;
 #endif
 

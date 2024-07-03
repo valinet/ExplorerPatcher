@@ -1861,6 +1861,18 @@ void UpdateStartMenuPositioning(LPARAM loIsShouldInitializeArray_hiIsShouldRoIni
         }
     }
 }
+
+__declspec(dllexport) unsigned __int64 FindTaskbarLayoutTokenByHMONITOR(HMONITOR hMonitor)
+{
+    for (DWORD i = 0; i < dwMonitorCount; i++)
+    {
+        if (hMonitorList[i].hMonitor == hMonitor)
+        {
+            return hMonitorList[i].token;
+        }
+    }
+    return 0;
+}
 #else
 void UpdateStartMenuPositioning(LPARAM loIsShouldInitializeArray_hiIsShouldRoInitialize) {}
 #endif
@@ -11480,10 +11492,16 @@ BOOL FixStartMenuAnimation(LPMODULEINFO mi)
     }
 
     // ### CStartExperienceManager::Hide()
-    // ```
-    // 74 ?? ?? 03 00 00 00 44 88
-    // ^^ Turn jz into jmp
-    // ```
+    // * Pattern 1, mov [rbx+2A3h], r12b:
+    //   ```
+    //   74 ?? ?? 03 00 00 00 44 88
+    //   ^^ Turn jz into jmp
+    //   ```
+    // * Pattern 2, mov byte ptr [rbx+2A3h], 1:
+    //   ```
+    //   74 ?? ?? 03 00 00 00 C6 83
+    //   ^^ Turn jz into jmp
+    //   ```
     // Perform on exactly two matches
     PBYTE matchHideA = FindPattern(
         mi->lpBaseOfDll,
@@ -11504,6 +11522,31 @@ BOOL FixStartMenuAnimation(LPMODULEINFO mi)
         if (matchHideB)
         {
             printf("[SMA] matchHideB in CStartExperienceManager::Hide() = %llX\n", matchHideB - (PBYTE)mi->lpBaseOfDll);
+        }
+    }
+
+    if (!matchHideA || !matchHideB)
+    {
+        matchHideA = FindPattern(
+            mi->lpBaseOfDll,
+            mi->SizeOfImage,
+            "\x74\x00\x00\x03\x00\x00\x00\xC6\x83",
+            "x??xxxxxx"
+        );
+        matchHideB = NULL;
+        if (matchHideA)
+        {
+            printf("[SMA] matchHideA in CStartExperienceManager::Hide() = %llX\n", matchHideA - (PBYTE)mi->lpBaseOfDll);
+            matchHideB = FindPattern(
+                matchHideA + 14,
+                mi->SizeOfImage - (matchHideA + 14 - (PBYTE)mi->lpBaseOfDll),
+                "\x74\x00\x00\x03\x00\x00\x00\xC6\x83",
+                "x??xxxxxx"
+            );
+            if (matchHideB)
+            {
+                printf("[SMA] matchHideB in CStartExperienceManager::Hide() = %llX\n", matchHideB - (PBYTE)mi->lpBaseOfDll);
+            }
         }
     }
 
@@ -11859,11 +11902,11 @@ const WCHAR* GetTaskbarDllChecked(symbols_addr* symbols_PTRS)
     return pszTaskbarDll;
 }
 
-void PrepareAlternateTaskbarImplementation(symbols_addr* symbols_PTRS, const WCHAR* pszTaskbarDll)
+HMODULE PrepareAlternateTaskbarImplementation(symbols_addr* symbols_PTRS, const WCHAR* pszTaskbarDll)
 {
     if (!symbols_PTRS || !pszTaskbarDll)
     {
-        return;
+        return NULL;
     }
 
     wchar_t szPath[MAX_PATH];
@@ -11875,7 +11918,7 @@ void PrepareAlternateTaskbarImplementation(symbols_addr* symbols_PTRS, const WCH
     if (!hMyTaskbar)
     {
         wprintf(L"[TB] '%s' not found\n", pszTaskbarDll);
-        return;
+        return NULL;
     }
 
     typedef DWORD (*GetVersion_t)();
@@ -11884,7 +11927,8 @@ void PrepareAlternateTaskbarImplementation(symbols_addr* symbols_PTRS, const WCH
     if (version != 2)
     {
         wprintf(L"[TB] '%s' with version %d is not compatible\n", pszTaskbarDll, version);
-        return;
+        FreeLibrary(hMyTaskbar);
+        return NULL;
     }
 
     explorer_TrayUI_CreateInstanceFunc = GetProcAddress(hMyTaskbar, "EP_TrayUI_CreateInstance");
@@ -11908,6 +11952,7 @@ void PrepareAlternateTaskbarImplementation(symbols_addr* symbols_PTRS, const WCH
     }
 
     wprintf(L"[TB] Using '%s'\n", pszTaskbarDll);
+    return hMyTaskbar;
 }
 #endif
 #endif
@@ -12764,7 +12809,7 @@ DWORD Inject(BOOL bIsExplorer)
 
     VnPatchIAT(hTwinuiPcshell, "API-MS-WIN-CORE-REGISTRY-L1-1-0.DLL", "RegGetValueW", twinuipcshell_RegGetValueW);
 #if WITH_ALT_TASKBAR_IMPL
-    PrepareAlternateTaskbarImplementation(&symbols_PTRS, pszTaskbarDll);
+    HMODULE hMyTaskbar = PrepareAlternateTaskbarImplementation(&symbols_PTRS, pszTaskbarDll);
 #endif
     printf("Setup twinui.pcshell functions done\n");
 
@@ -13151,6 +13196,10 @@ DWORD Inject(BOOL bIsExplorer)
 
 
     VnPatchDelayIAT(hExplorer, "ext-ms-win-rtcore-ntuser-window-ext-l1-1-0.dll", "GetClientRect", TaskbarCenter_GetClientRectHook);
+#if WITH_ALT_TASKBAR_IMPL
+    if (hMyTaskbar)
+        VnPatchIAT(hMyTaskbar, "USER32.dll", "GetClientRect", TaskbarCenter_GetClientRectHook);
+#endif
     VnPatchIAT(hExplorer, "SHCORE.dll", (LPCSTR)190, TaskbarCenter_SHWindowsPolicy);
     printf("Initialized taskbar centering module.\n");
 

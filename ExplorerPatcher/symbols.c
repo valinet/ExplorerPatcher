@@ -8,6 +8,9 @@ const char* explorer_SN[EXPLORER_SB_CNT] = {
     EXPLORER_SB_4,
     EXPLORER_SB_5
 };
+const char* explorer_SN_26244[1] = {
+    EXPLORER_SB_4,
+};
 const char* twinui_pcshell_SN[TWINUI_PCSHELL_SB_CNT] = {
     TWINUI_PCSHELL_SB_0,
     TWINUI_PCSHELL_SB_1,
@@ -113,16 +116,19 @@ static BOOL ProcessExplorerSymbols(const char* pszSettingsPath, DWORD* pOffsets)
     }
 
     printf("[Symbols] Reading symbols...\n");
-    if (VnGetSymbols(
-        pszSettingsPath,
-        pOffsets,
-        explorer_SN,
-        EXPLORER_SB_CNT
-    ))
+    if (VnGetSymbols(pszSettingsPath, pOffsets, explorer_SN, ARRAYSIZE(explorer_SN)) != 0)
     {
-        printf("[Symbols] Failure in reading symbols for \"%s\".\n", explorer_sb_dll);
-        if (hKey) RegCloseKey(hKey);
-        return FALSE;
+        DWORD offsets26244[ARRAYSIZE(explorer_SN_26244)];
+        if (VnGetSymbols(pszSettingsPath, offsets26244, explorer_SN_26244, ARRAYSIZE(explorer_SN_26244)) == 0)
+        {
+            pOffsets[4] = offsets26244[0];
+        }
+        else
+        {
+            printf("[Symbols] Failure in reading symbols for \"%s\".\n", explorer_sb_dll);
+            if (hKey) RegCloseKey(hKey);
+            return FALSE;
+        }
     }
 
     RegSetValueExW(hKey, TEXT(EXPLORER_SB_0), 0, REG_DWORD, &pOffsets[0], sizeof(DWORD));

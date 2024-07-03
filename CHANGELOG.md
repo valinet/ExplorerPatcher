@@ -19,7 +19,7 @@ Tested on OS builds 22621.3296, 22621.3447, 22621.3527, 22635.3566, 26058.1000, 
 
 ##### 3
 
-* All: Updated some patterns to work with 22635.3430+ (Beta) and recent 24H2 builds. (b51ef38)
+* All: Updated some patterns to work with 22635.3430+ (Beta) and recent 24H2 builds. (6d22947)
   * This should fix the Windows 10 start menu crashing and Win+X not working on both aforementioned builds when symbols are not yet downloaded.
   
 ##### 4
