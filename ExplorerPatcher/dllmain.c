@@ -11868,7 +11868,6 @@ BOOL CrashCounterHandleEntryPoint()
 
 #pragma region "Loader for alternate taskbar implementation"
 #ifdef _WIN64
-#if WITH_ALT_TASKBAR_IMPL
 BOOL CheckExplorerSymbols(symbols_addr* symbols_PTRS)
 {
     BOOL bAllValid = TRUE;
@@ -11954,7 +11953,6 @@ HMODULE PrepareAlternateTaskbarImplementation(symbols_addr* symbols_PTRS, const 
     wprintf(L"[TB] Using '%s'\n", pszTaskbarDll);
     return hMyTaskbar;
 }
-#endif
 #endif
 #pragma endregion
 
@@ -12446,11 +12444,7 @@ DWORD Inject(BOOL bIsExplorer)
 #endif
     }
 
-#if WITH_ALT_TASKBAR_IMPL
     const WCHAR* pszTaskbarDll = GetTaskbarDllChecked(&symbols_PTRS);
-#else
-    const WCHAR* pszTaskbarDll = NULL;
-#endif
     if (bOldTaskbar >= 2 && !pszTaskbarDll)
     {
         bOldTaskbar = 1;
@@ -12808,9 +12802,7 @@ DWORD Inject(BOOL bIsExplorer)
 #endif
 
     VnPatchIAT(hTwinuiPcshell, "API-MS-WIN-CORE-REGISTRY-L1-1-0.DLL", "RegGetValueW", twinuipcshell_RegGetValueW);
-#if WITH_ALT_TASKBAR_IMPL
     HMODULE hMyTaskbar = PrepareAlternateTaskbarImplementation(&symbols_PTRS, pszTaskbarDll);
-#endif
     printf("Setup twinui.pcshell functions done\n");
 
 
@@ -13196,10 +13188,8 @@ DWORD Inject(BOOL bIsExplorer)
 
 
     VnPatchDelayIAT(hExplorer, "ext-ms-win-rtcore-ntuser-window-ext-l1-1-0.dll", "GetClientRect", TaskbarCenter_GetClientRectHook);
-#if WITH_ALT_TASKBAR_IMPL
     if (hMyTaskbar)
         VnPatchIAT(hMyTaskbar, "USER32.dll", "GetClientRect", TaskbarCenter_GetClientRectHook);
-#endif
     VnPatchIAT(hExplorer, "SHCORE.dll", (LPCSTR)190, TaskbarCenter_SHWindowsPolicy);
     printf("Initialized taskbar centering module.\n");
 

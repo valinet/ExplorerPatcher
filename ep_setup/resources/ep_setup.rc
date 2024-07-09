@@ -106,9 +106,6 @@ IDR_EP_STARTMENU        RCDATA             "..\\build\\Release\\ep_startmenu.dll
 
 IDR_EP_GUI              RCDATA             "..\\build\\Release\\ep_gui.dll"
 
-#ifdef WITH_ALT_TASKBAR_IMPL
-#if WITH_ALT_TASKBAR_IMPL
-
 #if EP_TASKBAR_2_EXISTS
 IDR_EP_TASKBAR_2        RCDATA             "..\\build\\Release\\ep_taskbar.2.dll"
 #endif
@@ -123,9 +120,6 @@ IDR_EP_TASKBAR_4        RCDATA             "..\\build\\Release\\ep_taskbar.4.dll
 
 #if EP_TASKBAR_5_EXISTS
 IDR_EP_TASKBAR_5        RCDATA             "..\\build\\Release\\ep_taskbar.5.dll"
-#endif
-
-#endif
 #endif
 
 #endif    // English (United States) resources

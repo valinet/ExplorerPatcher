@@ -24,7 +24,6 @@
     <RootNamespace>CenterTitlebarTextLibrary</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
     <ProjectName>ExplorerPatcher</ProjectName>
-    <WithAltTaskbarImpl>0</WithAltTaskbarImpl>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
@@ -91,11 +90,6 @@
     <TargetName>ExplorerPatcher.IA-32</TargetName>
     <OutDir>$(SolutionDir)\build\$(Configuration)\</OutDir>
   </PropertyGroup>
-  <ItemDefinitionGroup Condition="'$(WithAltTaskbarImpl)'=='1'">
-    <ClCompile>
-      <PreprocessorDefinitions>WITH_ALT_TASKBAR_IMPL=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-    </ClCompile>
-  </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>

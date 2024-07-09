@@ -85,6 +85,14 @@ jobs:
     - name: Restore NuGet packages
       run: |
         nuget restore ExplorerPatcher.sln
+
+    - name: Download ep_taskbar
+      uses: robinraju/release-downloader@v1
+      with:
+        repository: ExplorerPatcher/ep_taskbar_releases
+        fileName: ep_taskbar.*.dll
+        latest: true
+        outputDir: build/Release
       
     - name: Build funchook
       shell: powershell
