@@ -92,7 +92,7 @@ jobs:
         repository: ExplorerPatcher/ep_taskbar_releases
         fileName: ep_taskbar.*.dll
         latest: true
-        outputDir: build/Release
+        out-file-path: build/Release
       
     - name: Build funchook
       shell: powershell
