@@ -382,6 +382,7 @@ BEGIN
     IDS_UPDATES_POLICY_2        "Do not check for updates"
     IDS_UPDATES_PREFER_STAGING  "Receive pre-release versions, if available (not recommended)"
     IDS_UPDATES_DOWNGRADES      "Suggest the latest version on the server, even if it's older (not recommended)"
+    IDS_UPDATES_USELOCAL        "Build updates locally before installing"
     IDS_UPDATES_UPDATESERVERS   "Update servers:"
     IDS_UPDATES_RELEASES        "Releases"
     IDS_UPDATES_RELEASES_PROMPT "Type a URL that serves resources adhering to GitHub's releases API. To learn how to configure your own update server, please consult the wiki."
@@ -391,7 +392,6 @@ BEGIN
     IDS_UPDATES_INSTALL         "Update program and restart File Explorer"
     IDS_UPDATES_CHANGES         "Read about changes in the latest releases"
     IDS_UPDATES_LEARN           "Learn more"
-    IDS_UPDATES_USELOCAL        "Build updates locally before installing"
 
     IDS_ADV                     "Advanced"
 
