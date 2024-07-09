@@ -2,6 +2,17 @@
 
 This document includes the same release notes as in the [Releases](https://github.com/valinet/ExplorerPatcher/releases) section on GitHub.
 
+## 22621.3810.66
+
+##### 1
+
+Tested on OS builds 19045.4598, 22621.3296, 22621.3810, 26120.961, and 26244.5000. (Note: 22621 and 22631 share the same OS files)
+
+* Taskbar10: Introduced a new taskbar implementation: Windows 10 (ExplorerPatcher). (146070d, 0b86e55)
+  * You can try this implementation out by changing the "Taskbar style" to "Windows 10 (ExplorerPatcher)".
+  * For now, this is **only available for builds 22621, 22631, and 22635.** Other builds will not have the option.
+  * Refer to [this wiki article](https://github.com/valinet/ExplorerPatcher/wiki/ExplorerPatcher's-taskbar-implementation) for more information including important ones.
+
 ## 22621.3527.65
 
 Tested on OS builds 22621.3296, 22621.3447, 22621.3527, 22635.3566, 26058.1000, 26120.461, and 26200.5001. (Note: 22621 and 22631 share the same OS files)
