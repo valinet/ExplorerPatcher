@@ -580,6 +580,8 @@ inline BOOL IncrementDLLReferenceCount(HINSTANCE hinst)
 PVOID FindPattern(PVOID pBase, SIZE_T dwSize, LPCSTR lpPattern, LPCSTR lpMask);
 
 #if _M_ARM64
+// https://github.com/CAS-Atlantic/AArch64-Encoding
+
 __forceinline DWORD ARM64_ReadBits(DWORD value, int h, int l)
 {
     return (value >> l) & ((1 << (h - l + 1)) - 1);
@@ -670,20 +672,20 @@ __forceinline DWORD ARM64_DecodeLDRBIMM(DWORD insnLDRBIMM)
     return imm12;
 }
 
-__forceinline void* ARM64_DecodeADRL(DWORD* pInsnADRP, DWORD* pInsnADD)
+inline UINT_PTR ARM64_DecodeADRL(UINT_PTR offset, DWORD insnADRP, DWORD insnADD)
 {
-    if (!ARM64_IsADRP(*pInsnADRP))
+    if (!ARM64_IsADRP(insnADRP))
         return NULL;
 
-    UINT_PTR page = ARM64_Align((UINT_PTR)pInsnADRP, 0x1000);
+    UINT_PTR page = ARM64_Align(offset, 0x1000);
 
-    DWORD adrp_immlo = ARM64_ReadBits(*pInsnADRP, 30, 29);
-    DWORD adrp_immhi = ARM64_ReadBits(*pInsnADRP, 23, 5);
+    DWORD adrp_immlo = ARM64_ReadBits(insnADRP, 30, 29);
+    DWORD adrp_immhi = ARM64_ReadBits(insnADRP, 23, 5);
     DWORD adrp_imm = ((adrp_immhi << 2) | adrp_immlo) << 12;
 
-    DWORD add_imm = ARM64_DecodeADD(*pInsnADD);
+    DWORD add_imm = ARM64_DecodeADD(insnADD);
 
-    return (void*)(page + adrp_imm + add_imm);
+    return page + adrp_imm + add_imm;
 }
 #endif
 

@@ -733,7 +733,9 @@ LoadSymbolsResult LoadSymbols(symbols_addr* symbols_PTRS)
         else
         {
             printf("[Symbols] Symbols for \"%s\" are not available.\n", TWINUI_PCSHELL_SB_NAME);
+#ifdef _M_X64 // TODO Add support for ARM64
             result.bNeedToDownloadTwinuiPcshellSymbols = TRUE;
+#endif
         }
     }
 

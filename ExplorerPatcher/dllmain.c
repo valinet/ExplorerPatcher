@@ -52,7 +52,7 @@ DWORD32 global_ubr;
 #endif
 #include <featurestagingapi.h>
 #ifndef WITH_SMA_PATCH_REPORT
-#define WITH_SMA_PATCH_REPORT 0
+#define WITH_SMA_PATCH_REPORT 1
 #endif
 #if WITH_SMA_PATCH_REPORT
 #include <userenv.h>
@@ -1151,8 +1151,8 @@ typedef void(*ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenu_t)(HMENU hMenu,
 static ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenu_t ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc;
 static INT64(*CLauncherTipContextMenu_GetMenuItemsAsyncFunc)(
     void* _this,
-    void* rect,
-    void** iunk
+    RECT rect,
+    IUnknown** iunk
     ) = NULL;
 static INT64(*CImmersiveContextMenuOwnerDrawHelper_s_ContextMenuWndProcFunc)(
     HWND hWnd,
@@ -1566,11 +1566,8 @@ INT64 CLauncherTipContextMenu_ShowLauncherTipContextMenuHook(
     IUnknown* iunk = NULL;
     if (CLauncherTipContextMenu_GetMenuItemsAsyncFunc)
     {
-        CLauncherTipContextMenu_GetMenuItemsAsyncFunc(
-            _this,
-            &point,
-            &iunk
-        );
+        RECT rc = { 0 };
+        CLauncherTipContextMenu_GetMenuItemsAsyncFunc(_this, rc, &iunk);
     }
     if (iunk)
     {
@@ -7555,8 +7552,8 @@ void* TrayUI__UpdatePearlSizeFunc;
 
 void UpdateSearchBox()
 {
-#ifdef _WIN64
-    if (!IsWindows11Version22H2OrHigher())
+#if defined(_M_X64)
+    if (!IsWindows11Version22H2OrHigher() || bOldTaskbar != 1)
         return;
 
     if (!TrayUI__UpdatePearlSizeFunc)
@@ -9566,7 +9563,7 @@ int explorerframe_GetSystemMetricsForDpi(int nIndex, UINT dpi)
     return GetSystemMetricsForDpi(nIndex, dpi);
 }
 
-#ifdef _WIN64
+#if defined(_M_X64)
 static void PatchAddressBarSizing(const MODULEINFO* mi)
 {
     // <- means inlined
@@ -10226,6 +10223,7 @@ static struct
     int hardwareConfirmatorHost_bIsInLockScreen; // 22621.1992: 0xEC
 } g_Moment2PatchOffsets;
 
+#if defined(_M_X64)
 inline PBYTE GetTargetOfJzBeforeMe(PBYTE anchor)
 {
     // Check big jz
@@ -10236,10 +10234,12 @@ inline PBYTE GetTargetOfJzBeforeMe(PBYTE anchor)
         return anchor + *(char*)(anchor - 1);
     return NULL;
 }
+#endif
 
 // CActionCenterExperienceManager::GetViewPosition() patcher
 BOOL Moment2PatchActionCenter(LPMODULEINFO mi)
 {
+#if defined(_M_X64)
     // Step 1:
     // Scan within the DLL for `*a2 = mi.rcMonitor`.
     // ```0F 10 45 ?? F3 0F 7F ?? 80 ?? ?? ?? 00 00 00 // movups - movdqu - cmp```
@@ -10305,11 +10305,15 @@ BOOL Moment2PatchActionCenter(LPMODULEINFO mi)
 done:
     printf("[AC] Patched!\n");
     return TRUE;
+#else
+    return FALSE;
+#endif
 }
 
 // CControlCenterExperienceManager::PositionView() patcher
 BOOL Moment2PatchControlCenter(LPMODULEINFO mi)
 {
+#if defined(_M_X64)
     // Step 1:
     // Scan within the DLL for `rcMonitor = mi.rcMonitor`.
     // ```0F 10 44 24 ?? F3 0F 7F 44 24 ?? 80 // movups - movdqu - cmp```
@@ -10362,11 +10366,15 @@ BOOL Moment2PatchControlCenter(LPMODULEINFO mi)
 
     printf("[CC] Patched!\n");
     return TRUE;
+#else
+    return FALSE;
+#endif
 }
 
 // CToastCenterExperienceManager::PositionView() patcher
 BOOL Moment2PatchToastCenter(LPMODULEINFO mi)
 {
+#if defined(_M_X64)
     // Step 1:
     // Scan within the DLL for `rcMonitor = mi.rcMonitor`.
     //
@@ -10445,11 +10453,15 @@ BOOL Moment2PatchToastCenter(LPMODULEINFO mi)
 
     printf("[TC] Patched!\n");
     return TRUE;
+#else
+    return FALSE;
+#endif
 }
 
 // TaskViewFrame::RuntimeClassInitialize() patcher
 BOOL Moment2PatchTaskView(LPMODULEINFO mi)
 {
+#if defined(_M_X64)
     /***
     If we're using the old taskbar, it'll be stuck in an infinite loading since it's waiting for the new one to respond.
     Let's safely skip those by NOPing the `TaskViewFrame::UpdateWorkAreaAsync()` and `WaitForCompletion()` calls, and
@@ -10526,6 +10538,9 @@ BOOL Moment2PatchTaskView(LPMODULEINFO mi)
 
     printf("[TV] Patched!\n");
     return TRUE;
+#else
+    return FALSE;
+#endif
 }
 
 DEFINE_GUID(SID_EdgeUi,
@@ -10613,6 +10628,7 @@ void WINAPI HardwareConfirmatorShellcode(PBYTE pCoroInstance)
 // [HardwareConfirmatorHost::GetDisplayRectAsync$_ResumeCoro$1() patcher
 BOOL Moment2PatchHardwareConfirmator(LPMODULEINFO mi)
 {
+#if defined(_M_X64)
     // Find required offsets
 
     // pHardwareConfirmatorHost and bIsInLockScreen:
@@ -10708,6 +10724,9 @@ BOOL Moment2PatchHardwareConfirmator(LPMODULEINFO mi)
 
     printf("[HC] Patched!\n");
     return TRUE;
+#else
+    return FALSE;
+#endif
 }
 #endif
 #pragma endregion
@@ -10782,14 +10801,28 @@ UINT_PTR FileOffsetToRVA(PBYTE pBase, UINT_PTR offset)
     return 0;
 }
 
+UINT_PTR RVAToFileOffset(PBYTE pBase, UINT_PTR rva)
+{
+    PIMAGE_DOS_HEADER pDosHeader = (PIMAGE_DOS_HEADER)pBase;
+    PIMAGE_NT_HEADERS pNtHeaders = (PIMAGE_NT_HEADERS)(pBase + pDosHeader->e_lfanew);
+    PIMAGE_SECTION_HEADER pSection = IMAGE_FIRST_SECTION(pNtHeaders);
+    for (int i = 0; i < pNtHeaders->FileHeader.NumberOfSections; i++, pSection++)
+    {
+        if (rva >= pSection->VirtualAddress && rva < pSection->VirtualAddress + pSection->Misc.VirtualSize)
+            return rva - pSection->VirtualAddress + pSection->PointerToRawData;
+    }
+    return 0;
+}
+
 void TryToFindExplorerOffsets(HANDLE hExplorer, MODULEINFO* pmiExplorer, DWORD* pOffsets)
 {
     if (!pOffsets[0] || pOffsets[0] == 0xFFFFFFFF)
     {
         // ImmersiveTray::AttachWindowToTray()
-        // Ref: CTaskListThumbnailWnd::SetSite()
+#if defined(_M_X64)
         // 48 8B 93 ?? ?? ?? ?? 48 8B 8B ?? ?? ?? ?? E8 ?? ?? ?? ?? 48 8B 4B
         //                                              ^^^^^^^^^^^
+        // Ref: CTaskListThumbnailWnd::SetSite()
         PBYTE match = FindPattern(
             hExplorer, pmiExplorer->SizeOfImage,
             "\x48\x8B\x93\x00\x00\x00\x00\x48\x8B\x8B\x00\x00\x00\x00\xE8\x00\x00\x00\x00\x48\x8B\x4B",
@@ -10801,14 +10834,16 @@ void TryToFindExplorerOffsets(HANDLE hExplorer, MODULEINFO* pmiExplorer, DWORD* 
             pOffsets[0] = match + 5 + *(int*)(match + 1) - (PBYTE)hExplorer;
             printf("explorer.exe!ImmersiveTray::AttachWindowToTray() = %lX\n", pOffsets[0]);
         }
+#endif
     }
 
     if (!pOffsets[1] || pOffsets[1] == 0xFFFFFFFF)
     {
         // ImmersiveTray::RaiseWindow()
-        // Ref: CTaskListThumbnailWnd::_RaiseWindowForLivePreviewIfNeeded()
+#if defined(_M_X64)
         // 41 B9 02 00 00 00 48 8B 8B ?? ?? ?? ?? E8 ?? ?? ?? ?? 85 C0
         //                                           ^^^^^^^^^^^
+        // Ref: CTaskListThumbnailWnd::_RaiseWindowForLivePreviewIfNeeded()
         PBYTE match = FindPattern(
             hExplorer, pmiExplorer->SizeOfImage,
             "\x41\xB9\x02\x00\x00\x00\x48\x8B\x8B\x00\x00\x00\x00\xE8\x00\x00\x00\x00\x85\xC0",
@@ -10820,17 +10855,18 @@ void TryToFindExplorerOffsets(HANDLE hExplorer, MODULEINFO* pmiExplorer, DWORD* 
             pOffsets[1] = match + 5 + *(int*)(match + 1) - (PBYTE)hExplorer;
             printf("explorer.exe!ImmersiveTray::RaiseWindow() = %lX\n", pOffsets[1]);
         }
+#endif
     }
 
     if (!pOffsets[2] || pOffsets[2] == 0xFFFFFFFF)
     {
         // CTaskBand_CreateInstance()
-        // Ref: CTrayBandSite::_AddRequiredBands()
-
+#if defined(_M_X64)
         // Pre-24H2 (output variable uninitialized)
         // Tested: 19041.3758, 22000.51, 22621.1992
         // 48 8B F1 4C 8D 44 24 ?? 48 8B 49 ?? 33 D2 E8 ?? ?? ?? ??
         //                                              ^^^^^^^^^^^
+        // Ref: CTrayBandSite::_AddRequiredBands()
         PBYTE match = FindPattern(
             hExplorer, pmiExplorer->SizeOfImage,
             "\x48\x8B\xF1\x4C\x8D\x44\x24\x00\x48\x8B\x49\x00\x33\xD2\xE8",
@@ -10847,6 +10883,7 @@ void TryToFindExplorerOffsets(HANDLE hExplorer, MODULEINFO* pmiExplorer, DWORD* 
             // Tested: 25951, 26080
             // 4C 8D 40 ?? 48 8B F1 33 D2 48 8B 49 ?? E8 ?? ?? ?? ??
             //                                           ^^^^^^^^^^^
+            // Ref: CTrayBandSite::_AddRequiredBands()
             match = FindPattern(
                 hExplorer, pmiExplorer->SizeOfImage,
                 "\x4C\x8D\x40\x00\x48\x8B\xF1\x33\xD2\x48\x8B\x49\x00\xE8",
@@ -10862,17 +10899,18 @@ void TryToFindExplorerOffsets(HANDLE hExplorer, MODULEINFO* pmiExplorer, DWORD* 
         {
             printf("explorer.exe!CTaskBand_CreateInstance() = %lX\n", pOffsets[2]);
         }
+#endif
     }
 
     if (!pOffsets[3] || pOffsets[3] == 0xFFFFFFFF)
     {
         // HandleFirstTimeLegacy()
-        // Ref: TrayUI::WndProc()
-
+#if defined(_M_X64)
         // Short Jump
         // Tested: 19045.3758, 22000.51, 25951, 26080
         // 4D 85 ?? 74 ?? 49 83 ?? 01 75 ??             E8 ?? ?? ?? ??
         //                                                 ^^^^^^^^^^^
+        // Ref: TrayUI::WndProc()
         PBYTE match = FindPattern(
             hExplorer, pmiExplorer->SizeOfImage,
             "\x4D\x85\x00\x74\x00\x49\x83\x00\x01\x75\x00\xE8",
@@ -10904,10 +10942,12 @@ void TryToFindExplorerOffsets(HANDLE hExplorer, MODULEINFO* pmiExplorer, DWORD* 
         {
             printf("explorer.exe!HandleFirstTimeLegacy() = %lX\n", pOffsets[3]);
         }
+#endif
     }
 
     if (!pOffsets[4] || pOffsets[4] == 0xFFFFFFFF)
     {
+#if defined(_M_X64)
         // SetColorPreferenceForLogonUI()
         // Ref: TrayUI::_HandleSettingChange()
         // 48 8B F9 E8 ?? ?? ?? ?? 8B D8 85 C0 78 ?? 48 8B CF E8 ?? ?? ?? ??
@@ -10923,6 +10963,7 @@ void TryToFindExplorerOffsets(HANDLE hExplorer, MODULEINFO* pmiExplorer, DWORD* 
             pOffsets[4] = match + 5 + *(int*)(match + 1) - (PBYTE)hExplorer;
             printf("explorer.exe!SetColorPreferenceForLogonUI() = %lX\n", pOffsets[4]);
         }
+#endif
     }
 }
 
@@ -10957,9 +10998,10 @@ void TryToFindTwinuiPCShellOffsets(DWORD* pOffsets)
 
         if (!pOffsets[0] || pOffsets[0] == 0xFFFFFFFF)
         {
-            // Ref: CMultitaskingViewFrame::v_WndProc()
+#if defined(_M_X64)
             // 48 8B 49 08 E8 ?? ?? ?? ?? E9 ?? ?? ?? ?? 48 8B 89
             //                ^^^^^^^^^^^
+            // Ref: CMultitaskingViewFrame::v_WndProc()
             PBYTE match = FindPattern(
                 pFile, dwSize,
                 "\x48\x8B\x49\x08\xE8\x00\x00\x00\x00\xE9\x00\x00\x00\x00\x48\x8B\x89",
@@ -10969,11 +11011,31 @@ void TryToFindTwinuiPCShellOffsets(DWORD* pOffsets)
             {
                 match += 4;
                 pOffsets[0] = match + 5 + *(int*)(match + 1) - pFile;
+            }
+#elif defined(_M_ARM64)
+            // ?? AE 00 71 ?? ?? 00 54 ?? 06 40 F9 E3 03 ?? AA E2 03 ?? AA E1 03 ?? 2A ?? ?? ?? ??
+            //                                                                         ^^^^^^^^^^^
+            // Ref: CMultitaskingViewFrame::v_WndProc()
+            PBYTE match = FindPattern(
+                pFile, dwSize,
+                "\xAE\x00\x71\x00\x00\x00\x54\x00\x06\x40\xF9\xE3\x03\x00\xAA\xE2\x03\x00\xAA\xE1\x03\x00\x2A",
+                "xxx??xx?xxxxx?xxx?xxx?x"
+            );
+            if (match)
+            {
+                match += 23;
+                pOffsets[0] = FileOffsetToRVA(pFile, (PBYTE)ARM64_FollowBL((DWORD*)match) - pFile);
+            }
+#endif
+            if (pOffsets[0] && pOffsets[0] != 0xFFFFFFFF)
+            {
                 printf("CImmersiveContextMenuOwnerDrawHelper::s_ContextMenuWndProc() = %lX\n", pOffsets[0]);
             }
         }
         if ((!pOffsets[1] || pOffsets[1] == 0xFFFFFFFF) || (!pOffsets[6] || pOffsets[6] == 0xFFFFFFFF))
         {
+            UINT_PTR* vtable = NULL;
+#if defined(_M_X64)
             // 48 8D 05 ?? ?? ?? ?? 48 8B D9 48 89 01 48 8D 05 ?? ?? ?? ?? 48 89 41 18 48 8D 05 ?? ?? ?? ?? 48 89 41 20 48 8D 05 ?? ?? ?? ?? 48 89 41 58 48 8D 05 ?? ?? ?? ?? 48 89 41 60
             //                                                                                                                   ^^^^^^^^^^^
             PBYTE match = FindPattern(
@@ -10984,21 +11046,48 @@ void TryToFindTwinuiPCShellOffsets(DWORD* pOffsets)
             if (match)
             {
                 match += 35; // Point to 48
-                INT_PTR* vtable = (INT_PTR*)(match + 7 + *(int*)(match + 3));
+                vtable = (UINT_PTR*)(match + 7 + *(int*)(match + 3));
+            }
+#elif defined(_M_ARM64)
+            // * Pattern 1 (for 24H2):
+            //   69 A2 01 A9 ?? ?? 00 ?? 09 ?? ?? 91 ?? ?? 00 ?? 08 ?? ?? 91 69 A2 05 A9 ?? ?? 00 ?? 08 ?? ?? 91 68 36 00 F9 ?? ?? 00 ?? 08 ?? ?? 91 68 3E 00 F9
+            //               ^^^^^^^^^^^+^^^^^^^^^^^
+            PBYTE match = FindPattern(
+                pFile, dwSize,
+                "\x69\xA2\x01\xA9\x00\x00\x00\x00\x09\x00\x00\x91\x00\x00\x00\x00\x08\x00\x00\x91\x69\xA2\x05\xA9\x00\x00\x00\x00\x08\x00\x00\x91\x68\x36\x00\xF9\x00\x00\x00\x00\x08\x00\x00\x91\x68\x3E\x00\xF9",
+                "xxxx??x?x??x??x?x??xxxxx??x?x??xxxxx??x?x??xxxxx"
+            );
+            // Patterns for 226xx are not implemented
+            if (match)
+            {
+                match += 4; // Point to ADRP
+                UINT_PTR vtableRVA = ARM64_DecodeADRL(FileOffsetToRVA(pFile, match - pFile), *(DWORD*)match, *(DWORD*)(match + 4));
+                vtable = (UINT_PTR*)((UINT_PTR)pFile + RVAToFileOffset(pFile, vtableRVA));
+            }
+#endif
+            if (vtable)
+            {
                 if (!pOffsets[6] || pOffsets[6] == 0xFFFFFFFF)
                 {
                     pOffsets[6] = (DWORD)(vtable[3] - 0x180000000);
-                    printf("CLauncherTipContextMenu::GetMenuItemsAsync() = %lX\n", pOffsets[6]);
                 }
                 if (!pOffsets[1] || pOffsets[1] == 0xFFFFFFFF)
                 {
                     pOffsets[1] = (DWORD)(vtable[4] - 0x180000000);
-                    printf("CLauncherTipContextMenu::ShowLauncherTipContextMenu() = %lX\n", pOffsets[1]);
                 }
+            }
+            if (pOffsets[6] && pOffsets[6] != 0xFFFFFFFF)
+            {
+                printf("CLauncherTipContextMenu::ShowLauncherTipContextMenu() = %lX\n", pOffsets[6]);
+            }
+            if (pOffsets[1] && pOffsets[1] != 0xFFFFFFFF)
+            {
+                printf("CLauncherTipContextMenu::GetMenuItemsAsync() = %lX\n", pOffsets[1]);
             }
         }
         if (!pOffsets[2] || pOffsets[2] == 0xFFFFFFFF)
         {
+#if defined(_M_X64)
             // Don't worry if this is too long, this works on 17763 and 25951
             // 40 55 53 56 57 41 54 41 55 41 56 41 57 48 8D AC 24 ? ? ? ? 48 81 EC ? ? ? ? 48 8B 05 ? ? ? ? 48 33 C4 48 89 85 ? ? ? ? 4C 8B B5 ? ? ? ? 41 8B C1
             PBYTE match = FindPattern(
@@ -11009,11 +11098,30 @@ void TryToFindTwinuiPCShellOffsets(DWORD* pOffsets)
             if (match)
             {
                 pOffsets[2] = match - pFile;
+            }
+#elif defined(_M_ARM64)
+            // 40 F9 43 03 1C 32 E4 03 15 AA ?? ?? FF 97
+            //                               ^^^^^^^^^^^
+            // Ref: ImmersiveContextMenuHelper::ApplyOwnerDrawToMenu()
+            PBYTE match = FindPattern(
+                pFile, dwSize,
+                "\x40\xF9\x43\x03\x1C\x32\xE4\x03\x15\xAA\x00\x00\xFF\x97",
+                "xxxxxxxxxx??xx"
+            );
+            if (match)
+            {
+                match += 10;
+                pOffsets[2] = FileOffsetToRVA(pFile, (PBYTE)ARM64_FollowBL((DWORD*)match) - pFile);
+            }
+#endif
+            if (pOffsets[2] && pOffsets[2] != 0xFFFFFFFF)
+            {
                 printf("ImmersiveContextMenuHelper::ApplyOwnerDrawToMenu() = %lX\n", pOffsets[2]);
             }
         }
         if (!pOffsets[3] || pOffsets[3] == 0xFFFFFFFF)
         {
+#if defined(_M_X64)
             // 48 89 5C 24 ? 48 89 7C 24 ? 55 48 8B EC 48 83 EC 60 48 8B FA 48 8B D9 E8
             PBYTE match = FindPattern(
                 pFile, dwSize,
@@ -11023,11 +11131,29 @@ void TryToFindTwinuiPCShellOffsets(DWORD* pOffsets)
             if (match)
             {
                 pOffsets[3] = match - pFile;
+            }
+#elif defined(_M_ARM64)
+            // 7F 23 03 D5 F3 53 BF A9 FD 7B BB A9 FD 03 00 91 F3 03 00 AA F4 03 01 AA ?? ?? ?? ?? FF ?? 03 A9
+            // ----------- PACIBSP, don't scan for this because it's everywhere
+            PBYTE match = FindPattern(
+                pFile, dwSize,
+                "\xF3\x53\xBF\xA9\xFD\x7B\xBB\xA9\xFD\x03\x00\x91\xF3\x03\x00\xAA\xF4\x03\x01\xAA\x00\x00\x00\x00\xFF\x00\x03\xA9",
+                "xxxxxxxxxxxxxxxxxxxx????x?xx"
+            );
+            if (match)
+            {
+                match -= 4;
+                pOffsets[3] = FileOffsetToRVA(pFile, match - pFile);
+            }
+#endif
+            if (pOffsets[3] && pOffsets[3] != 0xFFFFFFFF)
+            {
                 printf("ImmersiveContextMenuHelper::RemoveOwnerDrawFromMenu() = %lX\n", pOffsets[3]);
             }
         }
         if (!pOffsets[4] || pOffsets[4] == 0xFFFFFFFF)
         {
+#if defined(_M_X64)
             // 48 8B ? E8 ? ? ? ? 4C 8B ? 48 8B ? 48 8B CE E8 ? ? ? ? 90
             //                                                ^^^^^^^
             PBYTE match = FindPattern(
@@ -11039,11 +11165,29 @@ void TryToFindTwinuiPCShellOffsets(DWORD* pOffsets)
             {
                 match += 17;
                 pOffsets[4] = match + 5 + *(int*)(match + 1) - pFile;
+            }
+#elif defined(_M_ARM64)
+            // 82 62 00 91 ?? A2 00 91 E0 03 ?? AA ?? ?? ?? ?? 1F 20 03 D5
+            //                                     ^^^^^^^^^^^
+            PBYTE match = FindPattern(
+                pFile, dwSize,
+                "\x82\x62\x00\x91\x00\xA2\x00\x91\xE0\x03\x00\xAA\x00\x00\x00\x00\x1F\x20\x03\xD5",
+                "xxxx?xxxxx?x????xxxx"
+            );
+            if (match)
+            {
+                match += 12;
+                pOffsets[4] = FileOffsetToRVA(pFile, (PBYTE)ARM64_FollowBL((DWORD*)match) - pFile);
+            }
+#endif
+            if (pOffsets[4] && pOffsets[4] != 0xFFFFFFFF)
+            {
                 printf("CLauncherTipContextMenu::_ExecuteShutdownCommand() = %lX\n", pOffsets[4]);
             }
         }
         if (!pOffsets[5] || pOffsets[5] == 0xFFFFFFFF)
         {
+#if defined(_M_X64)
             // 48 8B ? E8 ? ? ? ? 48 8B D3 48 8B CF E8 ? ? ? ? 90 48 8D 56 ? 48 8B CE
             //                                         ^^^^^^^    ------------------- Non-inlined ~::final_suspend()
             PBYTE match = FindPattern(
@@ -11055,7 +11199,6 @@ void TryToFindTwinuiPCShellOffsets(DWORD* pOffsets)
             {
                 match += 14;
                 pOffsets[5] = match + 5 + *(int*)(match + 1) - pFile;
-                printf("CLauncherTipContextMenu::_ExecuteCommand() = %lX\n", pOffsets[5]);
             }
             else
             {
@@ -11070,8 +11213,25 @@ void TryToFindTwinuiPCShellOffsets(DWORD* pOffsets)
                 {
                     match += 14;
                     pOffsets[5] = match + 5 + *(int*)(match + 1) - pFile;
-                    printf("CLauncherTipContextMenu::_ExecuteCommand() = %lX\n", pOffsets[5]);
                 }
+            }
+#elif defined(_M_ARM64)
+            // 08 09 40 F9 ?? 16 00 F9 ?? ?? ?? ?? ?? A2 00 91 E0 03 ?? AA ?? ?? ?? ?? 1F 20 03 D5
+            //                                                             ^^^^^^^^^^^
+            PBYTE match = FindPattern(
+                pFile, dwSize,
+                "\x08\x09\x40\xF9\x00\x16\x00\xF9\x00\x00\x00\x00\x00\xA2\x00\x91\xE0\x03\x00\xAA\x00\x00\x00\x00\x1F\x20\x03\xD5",
+                "xxxx?xxx?????xxxxx?x????xxxx"
+            );
+            if (match)
+            {
+                match += 20;
+                pOffsets[5] = FileOffsetToRVA(pFile, (PBYTE)ARM64_FollowBL((DWORD*)match) - pFile);
+            }
+#endif
+            if (pOffsets[5] && pOffsets[5] != 0xFFFFFFFF)
+            {
+                printf("CLauncherTipContextMenu::_ExecuteCommand() = %lX\n", pOffsets[5]);
             }
         }
         if (!pOffsets[7] || pOffsets[7] == 0xFFFFFFFF)
@@ -11090,7 +11250,6 @@ void TryToFindTwinuiPCShellOffsets(DWORD* pOffsets)
             {
                 match += 16;
                 pOffsets[7] = match + 5 + *(int*)(match + 1) - pFile;
-                printf("CMultitaskingViewManager::_CreateXamlMTVHost() = %lX\n", pOffsets[7]);
             }
             else
             {
@@ -11111,7 +11270,6 @@ void TryToFindTwinuiPCShellOffsets(DWORD* pOffsets)
                         if (match[0] == 0xE8)
                         {
                             pOffsets[7] = match + 5 + *(int*)(match + 1) - pFile;
-                            printf("CMultitaskingViewManager::_CreateXamlMTVHost() = %lX\n", pOffsets[7]);
                         }
                     }
                 }
@@ -11126,9 +11284,12 @@ void TryToFindTwinuiPCShellOffsets(DWORD* pOffsets)
             if (match)
             {
                 pOffsets[7] = FileOffsetToRVA(pFile, match - 4 - pFile);
-                printf("CMultitaskingViewManager::_CreateXamlMTVHost() = %lX\n", pOffsets[7]);
             }
 #endif
+            if (pOffsets[7] && pOffsets[7] != 0xFFFFFFFF)
+            {
+                printf("CMultitaskingViewManager::_CreateXamlMTVHost() = %lX\n", pOffsets[7]);
+            }
         }
         if (!pOffsets[8] || pOffsets[8] == 0xFFFFFFFF)
         {
@@ -11146,7 +11307,6 @@ void TryToFindTwinuiPCShellOffsets(DWORD* pOffsets)
             {
                 match += 16;
                 pOffsets[8] = match + 5 + *(int*)(match + 1) - pFile;
-                printf("CMultitaskingViewManager::_CreateDCompMTVHost() = %lX\n", pOffsets[8]);
             }
             else
             {
@@ -11164,7 +11324,6 @@ void TryToFindTwinuiPCShellOffsets(DWORD* pOffsets)
                     if (FollowJnz(match + 26, &target, &jnzSize) && target[0] == 0xE8)
                     {
                         pOffsets[8] = target + 5 + *(int*)(target + 1) - pFile;
-                        printf("CMultitaskingViewManager::_CreateDCompMTVHost() = %lX\n", pOffsets[8]);
                     }
                 }
             }
@@ -11178,9 +11337,12 @@ void TryToFindTwinuiPCShellOffsets(DWORD* pOffsets)
             if (match)
             {
                 pOffsets[8] = FileOffsetToRVA(pFile, match - 4 - pFile);
-                printf("CMultitaskingViewManager::_CreateDCompMTVHost() = %lX\n", pOffsets[8]);
             }
 #endif
+            if (pOffsets[8] && pOffsets[8] != 0xFFFFFFFF)
+            {
+                printf("CMultitaskingViewManager::_CreateDCompMTVHost() = %lX\n", pOffsets[8]);
+            }
         }
     }
 
@@ -11209,8 +11371,10 @@ static void PatchAppResolver()
     VnPatchDelayIAT(hAppResolver, "api-ms-win-core-winrt-l1-1-0.dll", "RoGetActivationFactory", AppResolver_StartTileData_RoGetActivationFactory);
 
     // CAppResolverCacheBuilder::_AddUserPinnedShortcutToStart()
+#if defined(_M_X64)
     // 8B ? 48 8B D3 E8 ? ? ? ? 48 8B 8D
     //                  ^^^^^^^
+    // Ref: CAppResolverCacheBuilder::_AddShortcutToCache()
     PBYTE match = FindPattern(
         hAppResolver,
         miAppResolver.SizeOfImage,
@@ -11221,6 +11385,23 @@ static void PatchAppResolver()
     {
         match += 5;
         match += 5 + *(int*)(match + 1);
+    }
+#elif defined(_M_ARM64)
+    // 7F 23 03 D5  FD 7B BC A9  F3 53 01 A9  F5 5B 02 A9  F7 1B 00 F9  FD 03 00 91  ?? ?? ?? ??  FF 43 01 D1  F7 03 00 91  30 00 80 92  F0 1A 00 F9  ?? 03 01 AA  ?? 03 02 AA  FF ?? 00 F9
+    // ----------- PACIBSP, don't scan for this because it's everywhere
+    PBYTE match = FindPattern(
+        hAppResolver,
+        miAppResolver.SizeOfImage,
+        "\xFD\x7B\xBC\xA9\xF3\x53\x01\xA9\xF5\x5B\x02\xA9\xF7\x1B\x00\xF9\xFD\x03\x00\x91\x00\x00\x00\x00\xFF\x43\x01\xD1\xF7\x03\x00\x91\x30\x00\x80\x92\xF0\x1A\x00\xF9\x00\x03\x01\xAA\x00\x03\x02\xAA\xFF\x00\x00\xF9",
+        "xxxxxxxxxxxxxxxxxxxx????xxxxxxxxxxxxxxxx?xxx?xxxx?xx"
+    );
+    if (match)
+    {
+        match -= 4;
+    }
+#endif
+    if (match)
+    {
         AppResolver_CAppResolverCacheBuilder__AddUserPinnedShortcutToStartFunc = match;
         printf("CAppResolverCacheBuilder::_AddUserPinnedShortcutToStart() = %llX\n", match - (PBYTE)hAppResolver);
     }
@@ -11440,7 +11621,7 @@ BOOL FixStartMenuAnimation(LPMODULEINFO mi)
     if (matchVtable)
     {
         matchVtable += 4;
-        matchVtable = ARM64_DecodeADRL((DWORD*)matchVtable, (DWORD*)(matchVtable + 4));
+        matchVtable = (PBYTE)ARM64_DecodeADRL((UINT_PTR)matchVtable, *(DWORD*)matchVtable, *(DWORD*)(matchVtable + 4));
     }
 #endif
     if (matchVtable)
@@ -11710,7 +11891,7 @@ BOOL FixStartMenuAnimation(LPMODULEINFO mi)
     }
 
     // ### Offset of CExperienceManagerAnimationHelper::End()
-#ifdef _M_X64
+#if defined(_M_X64)
     // ```
     // 40 53 48 83 EC 20 80 39 00 74
     // ```
@@ -11743,7 +11924,7 @@ BOOL FixStartMenuAnimation(LPMODULEINFO mi)
     }
 
     // ### CStartExperienceManager::Hide()
-#ifdef _M_X64
+#if defined(_M_X64)
     // * Pattern 1, mov [rbx+2A3h], r12b:
     //   ```
     //   74 ?? ?? 03 00 00 00 44 88
@@ -12715,6 +12896,7 @@ DWORD Inject(BOOL bIsExplorer)
 #if 0
         if (global_rovi.dwBuildNumber >= 26002)
         {
+#if defined(_M_X64)
             // Please Microsoft 🙏
             // 48 8B ?? 78 48 8D 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 84 C0 0F 85
             //                                     ^^^^^^^^^^^
@@ -12732,6 +12914,12 @@ DWORD Inject(BOOL bIsExplorer)
             {
                 match += 11;
                 match += 5 + *(int*)(match + 1);
+            }
+#elif defined(_M_ARM64)
+            PBYTE match = NULL;
+#endif
+            if (match)
+            {
                 DisableWin10TaskbarIsEnabledFunc = match;
                 printf("wil::details::FeatureImpl<__WilFeatureTraits_Feature_DisableWin10Taskbar>::__private_IsEnabled() = %llX\n", match - (PBYTE)hExplorer);
 
@@ -12825,9 +13013,10 @@ DWORD Inject(BOOL bIsExplorer)
     if (IsWindows11())
     {
         // Find pointers to various stuff needed to have a working Windows 10 taskbar and Windows 10 taskbar context menu on Windows 11 taskbar
-        // Ref: CTray::Init()
+#if defined(_M_X64)
         // 4C 8D 05 ? ? ? ? 48 8D 0D ? ? ? ? E8 ? ? ? ? 48 8B
         //                           ^^^^^^^    ^^^^^^^
+        // Ref: CTray::Init()
         PBYTE match = FindPattern(
             hExplorer,
             miExplorer.SizeOfImage,
@@ -12840,12 +13029,25 @@ DWORD Inject(BOOL bIsExplorer)
             g_pTrayUIHost = match + 7 + *(int*)(match + 3);
             match += 7; // Point to E8
             explorer_TrayUI_CreateInstanceFunc = match + 5 + *(int*)(match + 1);
+        }
+#elif defined(_M_ARM64)
+        // TODO Add support for ARM64
+#endif
+        if (g_pTrayUIHost)
+        {
             printf("ITrayUIHost = %llX\n", (PBYTE)g_pTrayUIHost - (PBYTE)hExplorer);
-            printf("explorer.exe!TrayUI_CreateInstance() = %llX\n", (PBYTE)explorer_TrayUI_CreateInstanceFunc - (PBYTE)hExplorer);
         }
         else
         {
             printf("Failed to find ITrayUIHost\n");
+        }
+        if (explorer_TrayUI_CreateInstanceFunc) // TODO This does not exist anymore in 26244+
+        {
+            printf("explorer.exe!TrayUI_CreateInstance() = %llX\n", (PBYTE)explorer_TrayUI_CreateInstanceFunc - (PBYTE)hExplorer);
+        }
+        else
+        {
+            printf("Failed to find explorer.exe!TrayUI_CreateInstance()\n");
         }
     }
 
@@ -12927,7 +13129,7 @@ DWORD Inject(BOOL bIsExplorer)
 
     if (symbols_PTRS.twinui_pcshell_PTRS[1] && symbols_PTRS.twinui_pcshell_PTRS[1] != 0xFFFFFFFF)
     {
-        CLauncherTipContextMenu_GetMenuItemsAsyncFunc = (INT64(*)(void*, void*, void**))
+        CLauncherTipContextMenu_GetMenuItemsAsyncFunc = (INT64(*)(void*, RECT, IUnknown**))
             ((uintptr_t)hTwinuiPcshell + symbols_PTRS.twinui_pcshell_PTRS[1]);
     }
 
@@ -13041,6 +13243,7 @@ DWORD Inject(BOOL bIsExplorer)
         Moment2PatchHardwareConfirmator(&miHardwareConfirmator);
 
         // Fix pen menu
+#if defined(_M_X64)
         // 48 89 5C 24 ? 48 89 74 24 ? 57 48 83 EC 50 49 8B ? 48 81 C1
         twinui_pcshell_PenMenuSystemTrayManager__GetDynamicSystemTrayHeightForMonitorFunc = FindPattern(
             hTwinuiPcshell,
@@ -13048,6 +13251,7 @@ DWORD Inject(BOOL bIsExplorer)
             "\x48\x89\x5C\x24\x00\x48\x89\x74\x24\x00\x57\x48\x83\xEC\x50\x49\x8B\x00\x48\x81\xC1",
             "xxxx?xxxx?xxxxxxx?xxx"
         );
+#endif
         rv = -1;
         if (twinui_pcshell_PenMenuSystemTrayManager__GetDynamicSystemTrayHeightForMonitorFunc)
         {
