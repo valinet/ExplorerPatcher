@@ -4,6 +4,7 @@
 //
 #define IDR_EP_AMD64                    103
 #define IDR_EP_IA32                     104
+#define IDR_EP_ARM64                    114
 #define IDR_EP_DWM                      105
 #define IDR_EP_WEATHER                  106
 #define IDR_EP_WEATHER_STUB             107

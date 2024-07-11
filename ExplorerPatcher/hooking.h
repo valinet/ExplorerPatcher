@@ -9,15 +9,14 @@
 
 #if HOW_TO_HOOK == HOOK_WITH_FUNCHOOK
 
-#ifdef _M_ARM64
-#error Cannot compile for ARM64 using funchook. Change the source to hook with Detours and try again. Compilation aborted.
-#endif
-
 #include <funchook.h>
-#include <distorm.h>
 #pragma comment(lib, "funchook.lib")
 #pragma comment(lib, "Psapi.lib") // required by funchook
+#if defined(_M_IX86) || defined(_M_X64)
 #pragma comment(lib, "distorm.lib")
+#else
+#pragma comment(lib, "capstone.lib")
+#endif
 
 #elif HOW_TO_HOOK == HOOK_WITH_DETOURS
 

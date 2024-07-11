@@ -90,36 +90,74 @@ END
 // RCDATA
 //
 
-IDR_EP_AMD64            RCDATA             "..\\build\\Release\\ExplorerPatcher.amd64.dll"
+IDR_EP_AMD64            RCDATA             "..\\build\\Release\\x64\\ExplorerPatcher.amd64.dll"
 
-IDR_EP_IA32             RCDATA             "..\\build\\Release\\ExplorerPatcher.IA-32.dll"
+IDR_EP_IA32             RCDATA             "..\\build\\Release\\Win32\\ExplorerPatcher.IA-32.dll"
 
-IDR_EP_DWM              RCDATA             "..\\build\\Release\\ep_dwm.exe"
+#ifdef PLATFORM_ARM64
+IDR_EP_ARM64            RCDATA             "..\\build\\Release\\ARM64\\ExplorerPatcher.arm64.dll"
+#endif
 
-IDR_EP_WEATHER          RCDATA             "..\\build\\Release\\ep_weather_host.dll"
+#if defined(PLATFORM_AMD64)
 
-IDR_EP_WEATHER_STUB     RCDATA             "..\\build\\Release\\ep_weather_host_stub.dll"
+IDR_EP_DWM              RCDATA             "..\\build\\Release\\x64\\ep_dwm.exe"
 
-IDR_MS_WEBVIEW2_LOADER  RCDATA             "..\\build\\Release\\WebView2Loader.dll"
+IDR_EP_WEATHER          RCDATA             "..\\build\\Release\\x64\\ep_weather_host.dll"
 
-IDR_EP_STARTMENU        RCDATA             "..\\build\\Release\\ep_startmenu.dll"
+IDR_EP_WEATHER_STUB     RCDATA             "..\\build\\Release\\x64\\ep_weather_host_stub.dll"
 
-IDR_EP_GUI              RCDATA             "..\\build\\Release\\ep_gui.dll"
+IDR_MS_WEBVIEW2_LOADER  RCDATA             "..\\build\\Release\\x64\\WebView2Loader.dll"
+
+IDR_EP_STARTMENU        RCDATA             "..\\build\\Release\\x64\\ep_startmenu.dll"
+
+IDR_EP_GUI              RCDATA             "..\\build\\Release\\x64\\ep_gui.dll"
 
 #if EP_TASKBAR_2_EXISTS
-IDR_EP_TASKBAR_2        RCDATA             "..\\build\\Release\\ep_taskbar.2.dll"
+IDR_EP_TASKBAR_2        RCDATA             "..\\build\\Release\\x64\\ep_taskbar.2.dll"
 #endif
 
 #if EP_TASKBAR_3_EXISTS
-IDR_EP_TASKBAR_3        RCDATA             "..\\build\\Release\\ep_taskbar.3.dll"
+IDR_EP_TASKBAR_3        RCDATA             "..\\build\\Release\\x64\\ep_taskbar.3.dll"
 #endif
 
 #if EP_TASKBAR_4_EXISTS
-IDR_EP_TASKBAR_4        RCDATA             "..\\build\\Release\\ep_taskbar.4.dll"
+IDR_EP_TASKBAR_4        RCDATA             "..\\build\\Release\\x64\\ep_taskbar.4.dll"
 #endif
 
 #if EP_TASKBAR_5_EXISTS
-IDR_EP_TASKBAR_5        RCDATA             "..\\build\\Release\\ep_taskbar.5.dll"
+IDR_EP_TASKBAR_5        RCDATA             "..\\build\\Release\\x64\\ep_taskbar.5.dll"
+#endif
+
+#elif defined(PLATFORM_ARM64)
+
+IDR_EP_DWM              RCDATA             "..\\build\\Release\\ARM64\\ep_dwm.exe"
+
+IDR_EP_WEATHER          RCDATA             "..\\build\\Release\\ARM64\\ep_weather_host.dll"
+
+IDR_EP_WEATHER_STUB     RCDATA             "..\\build\\Release\\ARM64\\ep_weather_host_stub.dll"
+
+IDR_MS_WEBVIEW2_LOADER  RCDATA             "..\\build\\Release\\ARM64\\WebView2Loader.dll"
+
+IDR_EP_STARTMENU        RCDATA             "..\\build\\Release\\ARM64\\ep_startmenu.dll"
+
+IDR_EP_GUI              RCDATA             "..\\build\\Release\\ARM64\\ep_gui.dll"
+
+#if EP_TASKBAR_2_EXISTS
+IDR_EP_TASKBAR_2        RCDATA             "..\\build\\Release\\ARM64\\ep_taskbar.2.dll"
+#endif
+
+#if EP_TASKBAR_3_EXISTS
+IDR_EP_TASKBAR_3        RCDATA             "..\\build\\Release\\ARM64\\ep_taskbar.3.dll"
+#endif
+
+#if EP_TASKBAR_4_EXISTS
+IDR_EP_TASKBAR_4        RCDATA             "..\\build\\Release\\ARM64\\ep_taskbar.4.dll"
+#endif
+
+#if EP_TASKBAR_5_EXISTS
+IDR_EP_TASKBAR_5        RCDATA             "..\\build\\Release\\ARM64\\ep_taskbar.5.dll"
+#endif
+
 #endif
 
 #endif    // English (United States) resources

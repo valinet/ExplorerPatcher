@@ -3,6 +3,8 @@
 #include "ep_weather_provider_google_script.h"
 #include "ep_weather_error_html.h"
 
+#include <stdio.h>
+
 RTL_OSVERSIONINFOW global_rovi;
 DWORD32 global_ubr;
 SYSTEMTIME stLastUpdate;

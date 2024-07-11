@@ -175,6 +175,8 @@ LONG NTAPI OnVex(PEXCEPTION_POINTERS ExceptionInfo)
             Eip
 #elif defined (_AMD64_)
             Rip
+#elif defined(_M_ARM64)
+            Pc
 #else
 #error not implemented
 #endif
@@ -1818,6 +1820,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                         RegSetKeyValueW(HKEY_CURRENT_USER, _T(REGPATH), L"OldTaskbar", REG_DWORD, &dwOldTaskbar, sizeof(DWORD));
 
                                         DWORD dwError = 0;
+#ifdef _M_X64
                                         // https://stackoverflow.com/questions/50298722/win32-launching-a-highestavailable-child-process-as-a-normal-user-process
                                         if (pvRtlQueryElevationFlags = GetProcAddress(GetModuleHandleW(L"ntdll"), "RtlQueryElevationFlags"))
                                         {
@@ -1832,6 +1835,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
 
                                                 if (SetThreadContext(GetCurrentThread(), &ctx))
                                                 {
+#endif
                                                     WCHAR wszExec[MAX_PATH * 2];
                                                     ZeroMemory(wszExec, MAX_PATH * 2 * sizeof(WCHAR));
                                                     wszExec[0] = L'"';
@@ -1854,7 +1858,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                                     {
                                                         dwError = GetLastError();
                                                     }
-
+#ifdef _M_X64
                                                     ctx.Dr7 = 0x400;
                                                     ctx.Dr1 = 0;
                                                     SetThreadContext(GetCurrentThread(), &ctx);
@@ -1882,6 +1886,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                         {
                                             dwError = GetLastError();
                                         }
+#endif
 
                                         dwSize = sizeof(DWORD);
                                         RegGetValueW(HKEY_CURRENT_USER, _T(REGPATH), L"OldTaskbar", RRF_RT_DWORD, NULL, &dwOldTaskbar, &dwSize);
@@ -2091,6 +2096,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                     RegDeleteKeyValueW(HKEY_CURRENT_USER, _T(REGPATH), L"ImportOK");
 
                                     DWORD dwError = 0;
+#ifdef _M_X64
                                     // https://stackoverflow.com/questions/50298722/win32-launching-a-highestavailable-child-process-as-a-normal-user-process
                                     if (pvRtlQueryElevationFlags = GetProcAddress(GetModuleHandleW(L"ntdll"), "RtlQueryElevationFlags"))
                                     {
@@ -2105,6 +2111,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
 
                                             if (SetThreadContext(GetCurrentThread(), &ctx))
                                             {
+#endif
                                                 WCHAR wszExec[MAX_PATH * 2];
                                                 ZeroMemory(wszExec, MAX_PATH * 2 * sizeof(WCHAR));
                                                 wszExec[0] = L'"';
@@ -2127,7 +2134,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                                 {
                                                     dwError = GetLastError();
                                                 }
-
+#ifdef _M_X64
                                                 ctx.Dr7 = 0x400;
                                                 ctx.Dr1 = 0;
                                                 SetThreadContext(GetCurrentThread(), &ctx);
@@ -2155,6 +2162,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                     {
                                         dwError = GetLastError();
                                     }
+#endif
 
                                     DWORD dwData = 0, dwSize = sizeof(DWORD);
                                     RegGetValueW(HKEY_CURRENT_USER, _T(REGPATH), L"ImportOK", RRF_RT_DWORD, NULL, &dwData, &dwSize);

@@ -93,16 +93,45 @@ jobs:
         fileName: ep_taskbar.*.dll
         latest: true
         out-file-path: build/Release
-      
-    - name: Build funchook
+
+    # build/Release/ep_taskbar.*.amd64.dll -> build/Release/x64/ep_taskbar.*.dll
+    # build/Release/ep_taskbar.*.arm64.dll -> build/Release/ARM64/ep_taskbar.*.dll
+    - name: Move ep_taskbar
+      shell: bash
+      run: |
+        if ls build/Release/ep_taskbar.*.amd64.dll 1> /dev/null 2>&1; then
+          mkdir -p build/Release/x64
+          for file in build/Release/ep_taskbar.*.amd64.dll; do
+            cp "$file" "build/Release/x64/$(basename "$file" .amd64.dll).dll"
+          done
+        fi
+
+        # if ls build/Release/ep_taskbar.*.arm64.dll 1> /dev/null 2>&1; then
+        #   mkdir -p build/Release/ARM64
+        #   for file in build/Release/ep_taskbar.*.arm64.dll; do
+        #     cp "$file" "build/Release/ARM64/$(basename "$file" .arm64.dll).dll"
+        #   done
+        # fi
+
+    - name: Build funchook amd64
       shell: powershell
       run: |
         cd libs/funchook
         md build
         cd build
-        cmake -G "Visual Studio 17 2022" -A x64 ..
+        cmake -G "Visual Studio 17 2022" -A x64 -DFUNCHOOK_CPU=x86 ..
         (gc .\funchook-static.vcxproj) -replace '<RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>', '<RuntimeLibrary>MultiThreaded</RuntimeLibrary>' | Out-File .\funchook-static.vcxproj
         cmake --build . --config Release
+
+    # - name: Build funchook arm64
+    #   shell: powershell
+    #   run: |
+    #     cd libs/funchook
+    #     md build-arm64
+    #     cd build-arm64
+    #     cmake -G "Visual Studio 17 2022" -A ARM64 -DFUNCHOOK_CPU=arm64 -DFUNCHOOK_DISASM=capstone -DFUNCHOOK_BUILD_TESTS=OFF ..
+    #     (gc .\funchook-static.vcxproj) -replace '<RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>', '<RuntimeLibrary>MultiThreaded</RuntimeLibrary>' | Out-File .\funchook-static.vcxproj
+    #     cmake --build . --config Release
         
     - name: Build EP IA-32
       if: github.event.inputs.config == ''
@@ -115,6 +144,12 @@ jobs:
       working-directory: ${{env.GITHUB_WORKSPACE}}
       run: |
         msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} /p:Platform=amd64 ${{env.SOLUTION_FILE_PATH}}
+
+    # - name: Build EP arm64
+    #   if: github.event.inputs.config == ''
+    #   working-directory: ${{env.GITHUB_WORKSPACE}}
+    #   run: |
+    #     msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} /p:Platform=arm64 ${{env.SOLUTION_FILE_PATH}}
 
     - name: Build EP custom
       if: github.event.inputs.config != ''
@@ -131,13 +166,13 @@ jobs:
     
     - name: Generate dxgi.dll
       shell: bash
-      working-directory: build/Release
       run: |
-        if [[ -f "ExplorerPatcher.amd64.dll" ]]; then cp ExplorerPatcher.amd64.dll dxgi.dll; fi
-        
+        if [[ -f "build/Release/x64/ExplorerPatcher.amd64.dll" ]]; then cp build/Release/x64/ExplorerPatcher.dll build/Release/x64/dxgi.dll; fi
+        if [[ -f "build/Release/ARM64/ExplorerPatcher.arm64.dll" ]]; then cp build/Release/ARM64/ExplorerPatcher.dll build/Release/ARM64/dxgi.dll; fi
+
     - name: Patch setup
       shell: cmd
-      working-directory: build/Release
+      working-directory: build/Release/x64
       run: |
         ep_setup_patch.exe
         exit /b 0
@@ -151,7 +186,7 @@ jobs:
 
     - name: Generate release name
       shell: bash
-      working-directory: build/Release
+      working-directory: build/Release/x64
       if: github.ref == 'refs/heads/master' && github.event.inputs.ref == ''
       run: |
         echo "data=$(./ep_generate_release_name.exe)" >> $GITHUB_OUTPUT
@@ -159,7 +194,7 @@ jobs:
       
     - name: Generate release notes
       shell: bash
-      working-directory: build/Release
+      working-directory: build/Release/x64
       if: github.ref == 'refs/heads/master' && github.event.inputs.ref == ''
       run: |
         echo "data<<EP_RELEASE_DESCRIPTION_DELIM" >> $GITHUB_OUTPUT
@@ -178,7 +213,7 @@ jobs:
         tag_name: ${{ steps.release_name.outputs.data }}_${{ steps.vars.outputs.sha_short }}
         body: ${{ steps.release_description.outputs.data }}
         files: |
-          ./build/Release/ep_setup.exe
+          build/Release/x64/ep_setup.exe
       env:
         GITHUB_TOKEN: ${{ secrets.PAT }}
         
@@ -193,6 +228,6 @@ jobs:
         tag_name: ${{ steps.release_name.outputs.data }}_${{ steps.vars.outputs.sha_short }}
         body: ${{ steps.release_description.outputs.data }}
         files: |
-          ./build/Release/ep_setup.exe
+          build/Release/x64/ep_setup.exe
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

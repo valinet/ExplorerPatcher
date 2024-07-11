@@ -195,7 +195,11 @@ BOOL SetupUninstallEntry(BOOL bInstall, WCHAR* wszPath)
                 if (!dwLastError)
                 {
                     PathRemoveFileSpecW(wszPath + 1);
+#if defined(_M_X64)
                     wcscat_s(wszPath + 1, MAX_PATH - 2, L"\\" _T(PRODUCT_NAME) L".amd64.dll");
+#elif defined(_M_ARM64)
+                    wcscat_s(wszPath + 1, MAX_PATH - 2, L"\\" _T(PRODUCT_NAME) L".arm64.dll");
+#endif
                     HMODULE hEP = LoadLibraryExW(wszPath + 1, NULL, LOAD_LIBRARY_AS_DATAFILE);
                     if (hEP)
                     {
@@ -499,6 +503,7 @@ int WINAPI wWinMain(
         }
         if (bOk) bOk = InstallResource(bInstall, hInstance, IDR_EP_IA32, wszPath, _T(PRODUCT_NAME) L".IA-32.dll");
         if (bOk) bOk = InstallResource(bInstall, hInstance, IDR_EP_AMD64, wszPath, _T(PRODUCT_NAME) L".amd64.dll");
+        if (bOk) bOk = InstallResource(bInstall, hInstance, IDR_EP_ARM64, wszPath, _T(PRODUCT_NAME) L".arm64.dll");
         if (bOk) bOk = InstallResource(bInstall, hInstance, IDR_EP_DWM, wszPath, L"ep_dwm.exe");
         if (bOk) bOk = InstallResource(bInstall, hInstance, IDR_EP_WEATHER, wszPath, L"ep_weather_host.dll");
         if (bOk) bOk = InstallResource(bInstall, hInstance, IDR_EP_WEATHER_STUB, wszPath, L"ep_weather_host_stub.dll");
@@ -815,7 +820,11 @@ int WINAPI wWinMain(
                     wszArgs[2] = L' ';
                     wszArgs[3] = L'"';
                     SHGetFolderPathW(NULL, SPECIAL_FOLDER, NULL, SHGFP_TYPE_CURRENT, wszArgs + 4);
+#if defined(_M_X64)
                     wcscat_s(wszArgs, MAX_PATH, _T(APP_RELATIVE_PATH) L"\\" _T(PRODUCT_NAME) L".amd64.dll\"");
+#elif defined(_M_ARM64)
+                    wcscat_s(wszArgs, MAX_PATH, _T(APP_RELATIVE_PATH) L"\\" _T(PRODUCT_NAME) L".arm64.dll\"");
+#endif
                     wprintf(L"%s\n", wszArgs);
                     WCHAR wszApp[MAX_PATH * 2];
                     GetSystemDirectoryW(wszApp, MAX_PATH * 2);
@@ -845,6 +854,9 @@ int WINAPI wWinMain(
         }
         if (bOk) bOk = InstallResource(bInstall, hInstance, IDR_EP_IA32, wszPath, _T(PRODUCT_NAME) L".IA-32.dll");
         if (bOk) bOk = InstallResource(bInstall, hInstance, IDR_EP_AMD64, wszPath, _T(PRODUCT_NAME) L".amd64.dll");
+#ifdef _M_ARM64
+        if (bOk) bOk = InstallResource(bInstall, hInstance, IDR_EP_ARM64, wszPath, _T(PRODUCT_NAME) L".arm64.dll");
+#endif
         if (bOk) bOk = InstallResource(bInstall, hInstance, IDR_EP_GUI, wszPath, L"ep_gui.dll");
         if (bOk) bOk = InstallResource(bInstall, hInstance, IDR_EP_DWM, wszPath, L"ep_dwm.exe");
         if (bInstall)
@@ -860,7 +872,11 @@ int WINAPI wWinMain(
         // C:\Windows
         // + dxgi.dll
         if (bOk) GetWindowsDirectoryW(wszPath, MAX_PATH);
+#ifdef _M_X64
         if (bOk) bOk = InstallResource(bInstall, hInstance, IDR_EP_AMD64, wszPath, L"dxgi.dll");
+#elif defined(_M_ARM64)
+        if (bOk) bOk = InstallResource(bInstall, hInstance, IDR_EP_ARM64, wszPath, L"dxgi.dll");
+#endif
 
         // --------------------------------------------------------------------------------
 
@@ -875,7 +891,11 @@ int WINAPI wWinMain(
         // - pris2\Windows.UI.ShellCommon.en-US.pri
         if (bOk) GetWindowsDirectoryW(wszPath, MAX_PATH);
         if (bOk) wcscat_s(wszPath, MAX_PATH, L"\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy");
+#ifdef _M_X64
         if (bOk) bOk = InstallResource(bInstall, hInstance, IDR_EP_AMD64, wszPath, L"dxgi.dll");
+#elif defined(_M_ARM64)
+        if (bOk) bOk = InstallResource(bInstall, hInstance, IDR_EP_ARM64, wszPath, L"dxgi.dll");
+#endif
         if (bOk) bOk = InstallResource(bInstall && IsWindows11(), hInstance, IDR_EP_STARTMENU, wszPath, L"wincorlib.dll");
         if (bOk) bOk = DeleteResource(wszPath, L"wincorlib_orig.dll");
         if (bOk && IsWindows11() && bInstall)
@@ -930,7 +950,11 @@ int WINAPI wWinMain(
         // + dxgi.dll
         if (bOk) GetWindowsDirectoryW(wszPath, MAX_PATH);
         if (bOk) wcscat_s(wszPath, MAX_PATH, L"\\SystemApps\\ShellExperienceHost_cw5n1h2txyewy");
+#ifdef _M_X64
         if (bOk && IsWindows11()) bOk = InstallResource(bInstall, hInstance, IDR_EP_AMD64, wszPath, L"dxgi.dll");
+#elif defined(_M_ARM64)
+        if (bOk && IsWindows11()) bOk = InstallResource(bInstall, hInstance, IDR_EP_ARM64, wszPath, L"dxgi.dll");
+#endif
 
         // --------------------------------------------------------------------------------
 
