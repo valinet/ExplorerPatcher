@@ -576,7 +576,6 @@ inline BOOL IncrementDLLReferenceCount(HINSTANCE hinst)
     return TRUE;
 }
 
-#ifdef _WIN64
 PVOID FindPattern(PVOID pBase, SIZE_T dwSize, LPCSTR lpPattern, LPCSTR lpMask);
 
 #if _M_ARM64
@@ -689,6 +688,7 @@ inline UINT_PTR ARM64_DecodeADRL(UINT_PTR offset, DWORD insnADRP, DWORD insnADD)
 }
 #endif
 
+#if defined(WITH_MAIN_PATCHER) && WITH_MAIN_PATCHER
 inline BOOL WINAPI PatchContextMenuOfNewMicrosoftIME(BOOL* bFound)
 {
     // huge thanks to @Simplestas: https://github.com/valinet/ExplorerPatcher/issues/598
@@ -801,9 +801,35 @@ BOOL ExtractMonitorByIndex(HMONITOR hMonitor, HDC hDC, LPRECT lpRect, MonitorOve
 HRESULT SHRegGetBOOLWithREGSAM(HKEY key, LPCWSTR subKey, LPCWSTR value, REGSAM regSam, BOOL* data);
 HRESULT SHRegGetDWORD(HKEY hkey, const WCHAR* pwszSubKey, const WCHAR* pwszValue, DWORD* pdwData);
 
-#ifdef _WIN64
-PVOID FindPattern(PVOID pBase, SIZE_T dwSize, LPCSTR lpPattern, LPCSTR lpMask);
-#endif
+inline BOOL MaskCompare(PVOID pBuffer, LPCSTR lpPattern, LPCSTR lpMask)
+{
+    for (PBYTE value = (PBYTE)pBuffer; *lpMask; ++lpPattern, ++lpMask, ++value)
+    {
+        if (*lpMask == 'x' && *(LPCBYTE)lpPattern != *value)
+            return FALSE;
+    }
+
+    return TRUE;
+}
+
+inline __declspec(noinline) PVOID FindPatternHelper(PVOID pBase, SIZE_T dwSize, LPCSTR lpPattern, LPCSTR lpMask)
+{
+    for (SIZE_T index = 0; index < dwSize; ++index)
+    {
+        PBYTE pAddress = (PBYTE)pBase + index;
+
+        if (MaskCompare(pAddress, lpPattern, lpMask))
+            return pAddress;
+    }
+
+    return NULL;
+}
+
+inline PVOID FindPattern(PVOID pBase, SIZE_T dwSize, LPCSTR lpPattern, LPCSTR lpMask)
+{
+    dwSize -= strlen(lpMask);
+    return FindPatternHelper(pBase, dwSize, lpPattern, lpMask);
+}
 
 inline HMODULE LoadGuiModule()
 {

@@ -1,4 +1,4 @@
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
 #include "hooking.h"
 #endif
 #include <initguid.h>
@@ -27,7 +27,7 @@
 #include <UIAutomationClient.h>
 #include <math.h>
 #include "lvt.h"
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
 #include <valinet/pdb/pdb.h>
 #endif
 #if defined(DEBUG) | defined(_DEBUG)
@@ -36,7 +36,7 @@
 #include <valinet/hooking/iatpatch.h>
 #include <valinet/utility/memmem.h>
 #include "../ep_weather_host/ep_weather.h"
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
 #include "../ep_weather_host/ep_weather_host_h.h"
 IEPWeather* epw = NULL;
 CRITICAL_SECTION lock_epw;
@@ -46,7 +46,7 @@ HWND PeopleButton_LastHWND = NULL;
 #include "osutility.h"
 HANDLE hServiceWindowThread = NULL;
 //#pragma comment(lib, "Winmm.lib")
-#ifndef _WIN64
+#if !WITH_MAIN_PATCHER
 RTL_OSVERSIONINFOW global_rovi;
 DWORD32 global_ubr;
 #endif
@@ -207,7 +207,7 @@ BOOL g_bIsDesktopRaised = FALSE;
 #ifdef USE_PRIVATE_INTERFACES
 #include "ep_private.h"
 #endif
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
 #include "symbols.h"
 #include "dxgi_imp.h"
 #include "ArchiveMenu.h"
@@ -225,7 +225,7 @@ DWORD dwUpdatePolicy = UPDATE_POLICY_DEFAULT;
 wchar_t* EP_TASKBAR_LENGTH_PROP_NAME = L"EPTBLEN";
 HWND hWinXWnd;
 
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
 #define MAX_NUM_MONITORS 30
 MonitorListEntry hMonitorList[MAX_NUM_MONITORS];
 DWORD dwMonitorCount = 0;
@@ -247,7 +247,7 @@ DEFINE_GUID(CLSID_EPStart10,
     0x9717d01, 0x5d10, 0x4fb5, 0xbd, 0x5, 0x46, 0x38, 0xb, 0x51, 0x65, 0xaa);
 
 #pragma region "Updates"
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
 DWORD CheckForUpdatesThread(LPVOID timeout)
 {
     HRESULT hr = S_OK;
@@ -438,7 +438,7 @@ DWORD CheckForUpdatesThread(LPVOID timeout)
 
 
 #pragma region "Generics"
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
 HWND GetMonitorInfoFromPointForTaskbarFlyoutActivation(POINT ptCursor, DWORD dwFlags, LPMONITORINFO lpMi)
 {
     HMONITOR hMonitor = MonitorFromPoint(ptCursor, dwFlags);
@@ -788,7 +788,7 @@ void LaunchNetworkTargets(DWORD dwTarget)
 
 
 #pragma region "Service Window"
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
 HWND hWndServiceWindow = NULL;
 
 void FixUpCenteredTaskbar()
@@ -1029,7 +1029,7 @@ BOOL ToggleActionCenter()
     return PostMessageW(FindWindowExW(NULL, NULL, L"Shell_TrayWnd", NULL), WM_HOTKEY, 500, MAKELPARAM(MOD_WIN, 0x41));
 }
 
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
 void ToggleLauncherTipContextMenu()
 {
     if (hIsWinXShown)
@@ -1126,7 +1126,7 @@ HRESULT WINAPI windowsudkshellcommon_SLGetWindowsInformationDWORDHook(PCWSTR pws
 
 
 #pragma region "twinui.pcshell.dll hooks"
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
 #define LAUNCHERTIP_CLASS_NAME L"LauncherTipWnd"
 static INT64(*winrt_Windows_Internal_Shell_implementation_MeetAndChatManager_OnMessageFunc)(
     void* _this,
@@ -1602,7 +1602,7 @@ finalize:
 
 
 #pragma region "Windows 10 Taskbar Hooks"
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
 // credits: https://github.com/m417z/7-Taskbar-Tweaker
 
 DEFINE_GUID(IID_ITaskGroup,
@@ -1806,7 +1806,7 @@ HRESULT explorer_QISearch(void* that, LPCQITAB pqit, REFIID riid, void** ppv)
 
 
 #pragma region "Show Start in correct location according to TaskbarAl"
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
 void UpdateStartMenuPositioning(LPARAM loIsShouldInitializeArray_hiIsShouldRoInitialize)
 {
     BOOL bShouldInitialize = LOWORD(loIsShouldInitializeArray_hiIsShouldRoInitialize);
@@ -1877,7 +1877,7 @@ void UpdateStartMenuPositioning(LPARAM loIsShouldInitializeArray_hiIsShouldRoIni
 
 
 #pragma region "Fix Windows 11 taskbar not showing tray when auto hide is on"
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
 #define FIXTASKBARAUTOHIDE_CLASS_NAME L"FixTaskbarAutohide_" _T(EP_CLSID)
 LRESULT CALLBACK FixTaskbarAutohide_WndProc(
     HWND hWnd,
@@ -1964,7 +1964,7 @@ DWORD FixTaskbarAutohide(DWORD unused)
 
 
 #pragma region "Allow enabling XAML sounds"
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
 void ForceEnableXamlSounds(HMODULE hWindowsUIXaml)
 {
     MODULEINFO mi;
@@ -2034,7 +2034,7 @@ BOOL IsXamlSoundsEnabled()
 
 
 #pragma region "EnsureXAML on OS builds 22621+"
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
 DEFINE_GUID(uuidof_Windows_Internal_Shell_XamlExplorerHost_IXamlApplicationStatics,
     0xECC13292,
     0x27EF, 0x547A, 0xAC, 0x8B,
@@ -2206,7 +2206,7 @@ HMODULE __fastcall combase_LoadLibraryExW(LPCWSTR lpLibFileName, HANDLE hFile, D
 
 
 #pragma region "Shell_TrayWnd subclass"
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
 int HandleTaskbarCornerInteraction(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     POINT pt; pt.x = 0; pt.y = 0;
@@ -2855,7 +2855,7 @@ INT64 Shell_TrayWndSubclassProc(
 
 
 #pragma region "Allow legacy volume applet"
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
 LSTATUS sndvolsso_RegGetValueW(
     HKEY    hkey,
     LPCWSTR lpSubKey,
@@ -2887,7 +2887,7 @@ LSTATUS sndvolsso_RegGetValueW(
 
 
 #pragma region "Allow legacy date and time"
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
 DEFINE_GUID(GUID_Win32Clock,
     0x0A323554A,
     0x0FE1, 0x4E49, 0xae, 0xe1,
@@ -3056,7 +3056,7 @@ void RemoveOwnerDrawFromMenu(int level, HMENU hMenu)
 }
 BOOL CheckIfMenuContainsOwnPropertiesItem(HMENU hMenu)
 {
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
     if (hMenu)
     {
         int k = GetMenuItemCount(hMenu);
@@ -3076,7 +3076,7 @@ BOOL CheckIfMenuContainsOwnPropertiesItem(HMENU hMenu)
     return FALSE;
 }
 
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
 #define DEFINE_IMMERSIVE_MENU_HOOK(name) \
     static ImmersiveContextMenuHelper_ApplyOwnerDrawToMenu_t name##_ApplyOwnerDrawToMenuFunc = NULL; \
     static HRESULT name##_ApplyOwnerDrawToMenuHook(HMENU hMenu, HWND hWnd, POINT* pPt, unsigned int options, void* data) \
@@ -3179,7 +3179,7 @@ BOOL TrackPopupMenuHookEx(
         if (IsImmersiveMenu)
         {
             IsImmersiveMenu = FALSE;
-#ifndef _WIN64
+#if !WITH_MAIN_PATCHER
             if (bIsExplorerProcess)
             {
 #else
@@ -3207,7 +3207,7 @@ BOOL TrackPopupMenuHookEx(
                 hWnd,
                 lptpm
             );
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
             if (bContainsOwn && (bRet >= 12000 && bRet <= 12200))
             {
                 LaunchPropertiesGUI(hModule);
@@ -3226,7 +3226,7 @@ BOOL TrackPopupMenuHookEx(
         hWnd,
         lptpm
     );
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
     if (bContainsOwn && (b >= 12000 && b <= 12200))
     {
         LaunchPropertiesGUI(hModule);
@@ -3267,7 +3267,7 @@ BOOL TrackPopupMenuHook(
         {
             IsImmersiveMenu = FALSE;
 
-#ifndef _WIN64
+#if !WITH_MAIN_PATCHER
             if (bIsExplorerProcess)
             {
 #else
@@ -3296,7 +3296,7 @@ BOOL TrackPopupMenuHook(
                 hWnd,
                 prcRect
             );
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
             if (bContainsOwn && (bRet >= 12000 && bRet <= 12200))
             {
                 LaunchPropertiesGUI(hModule);
@@ -3316,7 +3316,7 @@ BOOL TrackPopupMenuHook(
         hWnd,
         prcRect
     );
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
     if (bContainsOwn && (b >= 12000 && b <= 12200))
     {
         LaunchPropertiesGUI(hModule);
@@ -3325,7 +3325,7 @@ BOOL TrackPopupMenuHook(
 #endif
     return b;
 }
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
 #define TB_POS_NOWHERE 0
 #define TB_POS_BOTTOM 1
 #define TB_POS_TOP 2
@@ -4189,7 +4189,7 @@ HWND WINAPI explorerframe_SHCreateWorkerWindowHook(
 
 
 #pragma region "Fix battery flyout"
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
 LSTATUS stobject_RegGetValueW(
     HKEY    hkey,
     LPCWSTR lpSubKey,
@@ -4321,7 +4321,7 @@ HRESULT stobject_CoCreateInstanceHook(
 
 
 #pragma region "Show WiFi networks on network icon click"
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
 HRESULT pnidui_CoCreateInstanceHook(
     REFCLSID  rclsid,
     LPUNKNOWN pUnkOuter,
@@ -4425,7 +4425,7 @@ HRESULT pnidui_CoCreateInstanceHook(
 
 
 #pragma region "Clock flyout helper"
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
 typedef struct _ClockButton_ToggleFlyoutCallback_Params
 {
     void* TrayUIInstance;
@@ -4604,7 +4604,7 @@ INT64 winrt_Windows_Internal_Shell_implementation_MeetAndChatManager_OnMessageHo
 
 
 #pragma region "Open power user menu on Win+X"
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
 LRESULT explorer_SendMessageW(HWND hWndx, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     if (uMsg == TB_GETTEXTROWS)
@@ -4646,7 +4646,7 @@ LRESULT explorer_SendMessageW(HWND hWndx, UINT uMsg, WPARAM wParam, LPARAM lPara
 
 
 #pragma region "Set up taskbar button hooks, implement Weather widget"
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
 
 DWORD ShouldShowWidgetsInsteadOfCortana()
 {
@@ -5760,7 +5760,7 @@ BOOL explorer_SetChildWindowNoActivateHook(HWND hWnd)
 
 
 #pragma region "Hide Show desktop button"
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
 INT64 ShowDesktopSubclassProc(
     _In_ HWND   hWnd,
     _In_ UINT   uMsg,
@@ -5802,7 +5802,7 @@ INT64 ShowDesktopSubclassProc(
 
 
 #pragma region "Notify shell ready"
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
 DWORD SignalShellReady(DWORD wait)
 {
     printf("Started \"Signal shell ready\" thread.\n");
@@ -5852,7 +5852,7 @@ DWORD SignalShellReady(DWORD wait)
 
 
 #pragma region "Window Switcher"
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
 DWORD sws_IsEnabled = FALSE;
 
 void sws_ReadSettings(sws_WindowSwitcher* sws)
@@ -6223,7 +6223,7 @@ void WINAPI LoadSettings(LPARAM lParam)
     }
     if (hKey)
     {
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
         dwSize = sizeof(DWORD);
         dwTemp = 0;
         RegQueryValueExW(
@@ -6795,7 +6795,7 @@ void WINAPI LoadSettings(LPARAM lParam)
         );
         if (!IsAppRunningAsAdminMode() && dwTemp)
         {
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
             LaunchPropertiesGUI(hModule);
 #endif
         }
@@ -6867,7 +6867,7 @@ void WINAPI LoadSettings(LPARAM lParam)
         if (dwTemp != bDisableSpotlightIcon)
         {
             bDisableSpotlightIcon = dwTemp;
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
             if (IsSpotlightEnabled()) dwRefreshUIMask |= REFRESHUI_SPOTLIGHT;
 #endif
         }
@@ -6893,7 +6893,7 @@ void WINAPI LoadSettings(LPARAM lParam)
         if (dwTemp != dwSpotlightUpdateSchedule)
         {
             dwSpotlightUpdateSchedule = dwTemp;
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
             if (IsSpotlightEnabled() && hWndServiceWindow)
             {
                 if (dwSpotlightUpdateSchedule)
@@ -6955,7 +6955,7 @@ void WINAPI LoadSettings(LPARAM lParam)
             &dwSize
         );
 
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
         EnterCriticalSection(&lock_epw);
 
         DWORD dwOldWeatherTemperatureUnit = dwWeatherTemperatureUnit;
@@ -7451,7 +7451,7 @@ void WINAPI LoadSettings(LPARAM lParam)
             {
                 //if (epw_dummytext[0] == 0) epw_dummytext = L"\u2009";
                 //else epw_dummytext = L"";
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
                 InvalidateRect(PeopleButton_LastHWND, NULL, TRUE);
 #endif
             }
@@ -7475,7 +7475,7 @@ void WINAPI LoadSettings(LPARAM lParam)
         }
         if (dwRefreshUIMask & REFRESHUI_CENTER)
         {
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
             //ToggleTaskbarAutohide();
             //Sleep(1000);
             //ToggleTaskbarAutohide();
@@ -7700,7 +7700,7 @@ void WINAPI Explorer_RefreshUI(int src)
     Explorer_RefreshClock(0);
     if (dwRefreshMask & REFRESHUI_CENTER)
     {
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
         FixUpCenteredTaskbar();
 #endif
     }
@@ -7816,7 +7816,7 @@ HWND CreateWindowExWHook(
         hInstance,
         lpParam
     );
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
     if (bIsExplorerProcess && (*((WORD*)&(lpClassName)+1)) && (!wcscmp(lpClassName, L"TrayClockWClass") || !wcscmp(lpClassName, L"ClockButton")))
     {
         SetWindowSubclass(hWnd, ClockButtonSubclassProc, ClockButtonSubclassProc, 0);
@@ -7913,7 +7913,7 @@ LONG_PTR SetWindowLongPtrWHook(
     return SetWindowLongPtrWFunc(hWnd, nIndex, dwNewLong);
 }
 
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
 HRESULT (*explorer_SetWindowThemeFunc)(
     HWND    hwnd,
     LPCWSTR pszSubAppName,
@@ -8391,7 +8391,7 @@ int ExplorerFrame_CompareStringOrdinal(const WCHAR* a1, int a2, const WCHAR* a3,
     return CSTR_GREATER_THAN;
 }
 
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
 DEFINE_GUID(IID_EnumExplorerCommand,
     0xA88826F8,
     0x186F, 0x4987, 0xAA, 0xDE,
@@ -8591,7 +8591,7 @@ HINSTANCE explorer_ShellExecuteW(
 
 
 #pragma region "Classic Drive Grouping"
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
 const struct { DWORD dwDescriptionId; UINT uResourceId; } driveCategoryMap[] = {
     { SHDID_FS_DIRECTORY,        9338 }, //shell32
     { SHDID_COMPUTER_SHAREDDOCS, 9338 }, //shell32
@@ -8873,7 +8873,7 @@ HRESULT ExplorerFrame_CoCreateInstanceHook(REFCLSID rclsid, LPUNKNOWN pUnkOuter,
 
 
 #pragma region "Change language UI style + Enable old taskbar"
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
 DEFINE_GUID(CLSID_TrayUIComponent,
     0x88FC85D3,
     0x7090, 0x4F53, 0x8F, 0x7A,
@@ -9412,7 +9412,7 @@ BOOL twinui_RegisterHotkeyHook(HWND hWnd, int id, UINT fsModifiers, UINT vk)
 
 
 #pragma region "Fix taskbar thumbnails and acrylic in newer OS builds (22572+)"
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
 HRESULT explorer_DwmUpdateThumbnailPropertiesHook(HTHUMBNAIL hThumbnailId, DWM_THUMBNAIL_PROPERTIES* ptnProperties)
 {
     if (ptnProperties->dwFlags == 0 || ptnProperties->dwFlags == DWM_TNP_RECTSOURCE)
@@ -9455,7 +9455,7 @@ BOOL SHELL32_CanDisplayWin8CopyDialogHook()
 
 
 #pragma region "Windows Spotlight customization"
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
 
 HKEY hKeySpotlight1 = NULL;
 HKEY hKeySpotlight2 = NULL;
@@ -9522,7 +9522,7 @@ BOOL shell32_TrackPopupMenu(HMENU hMenu, UINT uFlags, int x, int y, int nReserve
 
 
 #pragma region "Fix Windows 10 taskbar high DPI button width bug"
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
 int patched_GetSystemMetrics(int nIndex)
 {
     if ((bOldTaskbar && nIndex == SM_CXMINIMIZED) || nIndex == SM_CXICONSPACING || nIndex == SM_CYICONSPACING)
@@ -9991,7 +9991,7 @@ DWORD InjectBasicFunctions(BOOL bIsExplorer, BOOL bInstall)
     {
         if (bInstall)
         {
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
             if (DoesOSBuildSupportSpotlight())
             {
                 VnPatchIAT(hShell32, "user32.dll", "TrackPopupMenu", shell32_TrackPopupMenu);
@@ -10000,7 +10000,7 @@ DWORD InjectBasicFunctions(BOOL bIsExplorer, BOOL bInstall)
             {
 #endif
                 VnPatchIAT(hShell32, "user32.dll", "TrackPopupMenu", TrackPopupMenuHook);
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
             }
 #endif
             if (bIsExplorerProcess)
@@ -10065,7 +10065,7 @@ DWORD InjectBasicFunctions(BOOL bIsExplorer, BOOL bInstall)
             }
             VnPatchIAT(hExplorerFrame, "API-MS-WIN-CORE-STRING-L1-1-0.DLL", "CompareStringOrdinal", ExplorerFrame_CompareStringOrdinal);
             VnPatchIAT(hExplorerFrame, "user32.dll", "GetSystemMetricsForDpi", explorerframe_GetSystemMetricsForDpi);
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
             MODULEINFO mi;
             GetModuleInformation(GetCurrentProcess(), hExplorerFrame, &mi, sizeof(MODULEINFO));
             if (bShrinkExplorerAddressBar)
@@ -10135,7 +10135,7 @@ DWORD InjectBasicFunctions(BOOL bIsExplorer, BOOL bInstall)
         }
     }
 
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
     // As of writing, this function is never invoked with bInstall=TRUE, so we don't handle the case if it's false for now
     if (bIsExplorerProcess)
     {
@@ -10201,7 +10201,7 @@ INT64 twinui_pcshell_CMultitaskingViewManager__CreateXamlMTVHostHook(INT64 _this
 
 
 #pragma region "Fixes related to the removal of STTest feature flag (22621.2134+)"
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
 HRESULT(*twinui_pcshell_PenMenuSystemTrayManager__GetDynamicSystemTrayHeightForMonitorFunc)(IInspectable* _this, HMONITOR hMonitor, float* outHeight);
 HRESULT twinui_pcshell_PenMenuSystemTrayManager__GetDynamicSystemTrayHeightForMonitorHook(IInspectable* _this, HMONITOR hMonitor, float* outHeight)
 {
@@ -10733,7 +10733,7 @@ BOOL Moment2PatchHardwareConfirmator(LPMODULEINFO mi)
 
 
 #pragma region "Enable EP weather on Windows Server SKUs"
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
 BOOL PeopleBand_IsOS(DWORD dwOS)
 {
     if (dwOS == OS_ANYSERVER) return FALSE;
@@ -10768,7 +10768,7 @@ BOOL explorer_IsOS(DWORD dwOS)
 
 
 #pragma region "Find offsets of needed functions when symbols are not available"
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
 inline BOOL FollowJnz(PBYTE pJnz, PBYTE* pTarget, DWORD* pJnzSize)
 {
     // Check big jnz
@@ -11355,7 +11355,7 @@ cleanup:
 
 
 #pragma region "Fix Pin to Start from Explorer not working when using Windows 10 start menu"
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
 extern HRESULT AppResolver_StartTileData_RoGetActivationFactory(HSTRING activatableClassId, REFIID iid, void** factory);
 
 typedef struct CCacheShortcut CCacheShortcut;
@@ -11452,7 +11452,7 @@ static void PatchStartTileData(BOOL bSMEH)
 
 
 #pragma region "Fix Windows 10 start menu animation on 22000.65+"
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
 static struct
 {
     int startExperienceManager_IStartExperienceManager;
@@ -12118,7 +12118,7 @@ BOOL FixStartMenuAnimation(LPMODULEINFO mi)
 
 
 #pragma region "Crash counter system"
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
 typedef struct CrashCounterSettings
 {
     BOOL bDisabled;
@@ -12349,7 +12349,7 @@ BOOL CrashCounterHandleEntryPoint()
 
 
 #pragma region "Loader for alternate taskbar implementation"
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
 BOOL CheckExplorerSymbols(symbols_addr* symbols_PTRS)
 {
     BOOL bAllValid = TRUE;
@@ -12440,7 +12440,7 @@ HMODULE PrepareAlternateTaskbarImplementation(symbols_addr* symbols_PTRS, const 
 
 
 #pragma region "Restore network icon on builds without pnidui.dll shipped"
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
 typedef struct SSOEntry
 {
     GUID* pguid;
@@ -12576,7 +12576,7 @@ DWORD Inject(BOOL bIsExplorer)
 
     if (bIsExplorer)
     {
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
         InitializeCriticalSection(&lock_epw);
 #endif
         wszWeatherLanguage = malloc(sizeof(WCHAR) * MAX_PATH);
@@ -12586,7 +12586,7 @@ DWORD Inject(BOOL bIsExplorer)
     LoadSettings(MAKELPARAM(bIsExplorer, FALSE));
     Explorer_RefreshUI(99);
 
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
     if (bIsExplorerProcess)
     {
         funchook = funchook_create();
@@ -12771,7 +12771,7 @@ DWORD Inject(BOOL bIsExplorer)
 
     if (!bIsExplorer)
     {
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
         if (bIsExplorerProcess)
         {
             rv = funchook_install(funchook, 0);
@@ -12786,7 +12786,7 @@ DWORD Inject(BOOL bIsExplorer)
         return 0;
     }
 
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
     extern void InitializeWilLogCallback();
     InitializeWilLogCallback();
     wprintf(L"Running on Windows %d, OS Build %d.%d.%d.%d.\n", IsWindows11() ? 11 : 10, global_rovi.dwMajorVersion, global_rovi.dwMinorVersion, global_rovi.dwBuildNumber, global_ubr);
@@ -12800,7 +12800,7 @@ DWORD Inject(BOOL bIsExplorer)
         CreateDirectoryW(wszPath, NULL);
     }
 
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
     wszEPWeatherKillswitch = calloc(sizeof(WCHAR), MAX_PATH);
     srand(time(NULL));
     rand_string(wszEPWeatherKillswitch, MAX_PATH / 2 - 1);
@@ -12824,7 +12824,7 @@ DWORD Inject(BOOL bIsExplorer)
 #endif
 
 
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
     hCanStartSws = CreateEventW(NULL, FALSE, FALSE, NULL);
     hWin11AltTabInitialized = CreateEventW(NULL, FALSE, FALSE, NULL);
     CreateThread(
@@ -13210,7 +13210,7 @@ DWORD Inject(BOOL bIsExplorer)
         printf("Failed to hook winrt_Windows_Internal_Shell_implementation_MeetAndChatManager_OnMessage(). rv = %d\n", rv);
     }*/
 
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
 #if USE_MOMENT_3_FIXES_ON_MOMENT_2
     // Use this only for testing, since the RtlQueryFeatureConfiguration() hook is perfect.
     // Only tested on 22621.1992.
@@ -13388,7 +13388,7 @@ DWORD Inject(BOOL bIsExplorer)
     }
 
 
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
     if (global_rovi.dwBuildNumber < 22567)
     {
         PatchSndvolsso();
@@ -13736,7 +13736,7 @@ DWORD Inject(BOOL bIsExplorer)
     return 0;
 }
 
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
 char VisibilityChangedEventArguments_GetVisible(__int64 a1)
 {
     int v1;
@@ -14517,7 +14517,13 @@ void Setup_Regsvr32(BOOL bInstall)
                 wszCurrentDirectory[2] = L' ';
                 wszCurrentDirectory[3] = L'"';
             }
+#if defined(_M_X64)
             wcscat_s(wszCurrentDirectory, ARRAYSIZE(wszCurrentDirectory), L"\\ExplorerPatcher.amd64.dll\"");
+#elif defined(_M_ARM64)
+            wcscat_s(wszCurrentDirectory, ARRAYSIZE(wszCurrentDirectory), L"\\ExplorerPatcher.arm64.dll\"");
+#else
+#error "Unsupported architecture"
+#endif
             SHELLEXECUTEINFOW sei;
             ZeroMemory(&sei, sizeof(SHELLEXECUTEINFOW));
             sei.cbSize = sizeof(sei);
@@ -14873,7 +14879,7 @@ HRESULT WINAPI _DllCanUnloadNow()
 
 DWORD InjectStartMenu()
 {
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
     funchook = funchook_create();
 
     HANDLE hStartDocked = NULL;
@@ -15093,7 +15099,7 @@ DWORD InjectStartMenu()
 
 void InjectShellExperienceHost()
 {
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
     HKEY hKey;
     if (RegOpenKeyW(HKEY_CURRENT_USER, _T(SEH_REGPATH), &hKey) != ERROR_SUCCESS)
     {
@@ -15220,7 +15226,7 @@ BOOL SEH_GetProductInfo(DWORD dwOSMajorVersion, DWORD dwOSMinorVersion, DWORD dw
 }
 
 void InjectShellExperienceHostFor22H2OrHigher() {
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
     if (!IsWindows11Version22H2Build1413OrHigher())
     {
         HKEY hKey;
@@ -15236,7 +15242,7 @@ void InjectShellExperienceHostFor22H2OrHigher() {
 #endif
 }
 
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
 bool IsUserOOBE()
 {
     BOOL b = FALSE;
@@ -15340,7 +15346,7 @@ HRESULT EntryPoint(DWORD dwMethod)
         TCHAR wszRealDXGIPath[MAX_PATH];
         GetSystemDirectoryW(wszRealDXGIPath, MAX_PATH);
         wcscat_s(wszRealDXGIPath, MAX_PATH, L"\\dxgi.dll");
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
         SetupDXGIImportFunctions(LoadLibraryW(wszRealDXGIPath));
 #endif
     }
@@ -15356,7 +15362,7 @@ HRESULT EntryPoint(DWORD dwMethod)
     bIsExplorerProcess = bIsThisExplorer;
     if (bIsThisExplorer)
     {
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
         if (GetSystemMetrics(SM_CLEANBOOT) != 0 || IsUserOOBEOrCredentialReset())
         {
             IncrementDLLReferenceCount(hModule);
@@ -15365,7 +15371,7 @@ HRESULT EntryPoint(DWORD dwMethod)
         }
 #endif
         BOOL desktopExists = IsDesktopWindowAlreadyPresent();
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
         if (!desktopExists && CrashCounterHandleEntryPoint())
         {
             IncrementDLLReferenceCount(hModule);
@@ -15380,7 +15386,7 @@ HRESULT EntryPoint(DWORD dwMethod)
     else if (bIsThisStartMEH)
     {
         InjectStartMenu();
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
         if (IsXamlSoundsEnabled())
         {
             HMODULE hWindowsUIXaml = LoadLibraryW(L"Windows.UI.Xaml.dll");
@@ -15400,7 +15406,7 @@ HRESULT EntryPoint(DWORD dwMethod)
         {
             InjectShellExperienceHost();
         }
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
         if (IsXamlSoundsEnabled())
         {
             HMODULE hWindowsUIXaml = LoadLibraryW(L"Windows.UI.Xaml.dll");
@@ -15420,7 +15426,7 @@ HRESULT EntryPoint(DWORD dwMethod)
     return E_NOINTERFACE;
 }
 
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
 // for explorer.exe and ShellExperienceHost.exe
 __declspec(dllexport) HRESULT DXGIDeclareAdapterRemovalSupport()
 {
@@ -15439,6 +15445,9 @@ HRESULT InjectStartFromExplorer()
     EntryPoint(DLL_INJECTION_METHOD_START_INJECTION);
     return HRESULT_FROM_WIN32(GetLastError());
 }
+#endif
+
+#ifdef _WIN64
 #pragma comment(linker, "/export:DllGetClassObject=_DllGetClassObject")
 #else
 #pragma comment(linker, "/export:DllGetClassObject=__DllGetClassObject@12")
@@ -15475,7 +15484,7 @@ BOOL WINAPI DllMain(
     return TRUE;
 }
 
-#ifdef _WIN64
+#if WITH_MAIN_PATCHER
 __declspec(dllexport) int ZZGUI(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLine, int nCmdShow)
 {
     // Forward to ep_gui.dll

@@ -2,7 +2,7 @@
 #define _H_AS_SERVICE_P_H_
 #include "ep_weather.h"
 #include "ep_weather_utility.h"
-#include "../ep_weather_host_stub/ep_weather_host_h.h"
+#include "ep_weather_host_h.h"
 #include "../ExplorerPatcher/def.h"
 #include <windowsx.h>
 #include <ShlObj.h>

@@ -531,7 +531,6 @@ LSTATUS GUI_Internal_RegSetValueExW(
         {
             wszArgs[0] = L'\"';
             SHGetFolderPathW(NULL, SPECIAL_FOLDER, NULL, SHGFP_TYPE_CURRENT, wszArgs + 1);
-            wcscat_s(wszArgs, MAX_PATH, _T(APP_RELATIVE_PATH) L"\\" _T(PRODUCT_NAME) L".amd64.dll\"");
         }
         else
         {
@@ -540,8 +539,14 @@ LSTATUS GUI_Internal_RegSetValueExW(
             wszArgs[2] = L' ';
             wszArgs[3] = L'"';
             SHGetFolderPathW(NULL, SPECIAL_FOLDER, NULL, SHGFP_TYPE_CURRENT, wszArgs + 4);
-            wcscat_s(wszArgs, MAX_PATH, _T(APP_RELATIVE_PATH) L"\\" _T(PRODUCT_NAME) L".amd64.dll\"");
         }
+#if defined(_M_X64)
+        wcscat_s(wszArgs, MAX_PATH, _T(APP_RELATIVE_PATH) L"\\" _T(PRODUCT_NAME) L".amd64.dll\"");
+#elif defined(_M_ARM64)
+        wcscat_s(wszArgs, MAX_PATH, _T(APP_RELATIVE_PATH) L"\\" _T(PRODUCT_NAME) L".arm64.dll\"");
+#else
+#error "Unsupported architecture"
+#endif
         wprintf(L"%s\n", wszArgs);
         WCHAR wszApp[MAX_PATH * 2];
         GetSystemDirectoryW(wszApp, MAX_PATH * 2);
@@ -2745,7 +2750,6 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                     {
                                         wszArgs[0] = L'\"';
                                         SHGetFolderPathW(NULL, SPECIAL_FOLDER, NULL, SHGFP_TYPE_CURRENT, wszArgs + 1);
-                                        wcscat_s(wszArgs, MAX_PATH, _T(APP_RELATIVE_PATH) L"\\" _T(PRODUCT_NAME) L".amd64.dll\"");
                                     }
                                     else
                                     {
@@ -2754,8 +2758,14 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                         wszArgs[2] = L' ';
                                         wszArgs[3] = L'"';
                                         SHGetFolderPathW(NULL, SPECIAL_FOLDER, NULL, SHGFP_TYPE_CURRENT, wszArgs + 4);
-                                        wcscat_s(wszArgs, MAX_PATH, _T(APP_RELATIVE_PATH) L"\\" _T(PRODUCT_NAME) L".amd64.dll\"");
                                     }
+#if defined(_M_X64)
+                                    wcscat_s(wszArgs, MAX_PATH, _T(APP_RELATIVE_PATH) L"\\" _T(PRODUCT_NAME) L".amd64.dll\"");
+#elif defined(_M_ARM64)
+                                    wcscat_s(wszArgs, MAX_PATH, _T(APP_RELATIVE_PATH) L"\\" _T(PRODUCT_NAME) L".arm64.dll\"");
+#else
+#error "Unsupported architecture"
+#endif
                                     wprintf(L"%s\n", wszArgs);
                                     WCHAR wszApp[MAX_PATH * 2];
                                     GetSystemDirectoryW(wszApp, MAX_PATH * 2);

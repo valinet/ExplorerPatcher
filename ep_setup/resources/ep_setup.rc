@@ -90,15 +90,11 @@ END
 // RCDATA
 //
 
-IDR_EP_AMD64            RCDATA             "..\\build\\Release\\x64\\ExplorerPatcher.amd64.dll"
-
 IDR_EP_IA32             RCDATA             "..\\build\\Release\\Win32\\ExplorerPatcher.IA-32.dll"
 
-#ifdef PLATFORM_ARM64
-IDR_EP_ARM64            RCDATA             "..\\build\\Release\\ARM64\\ExplorerPatcher.arm64.dll"
-#endif
-
 #if defined(PLATFORM_AMD64)
+
+IDR_EP_AMD64            RCDATA             "..\\build\\Release\\x64\\ExplorerPatcher.amd64.dll"
 
 IDR_EP_DWM              RCDATA             "..\\build\\Release\\x64\\ep_dwm.exe"
 
@@ -129,6 +125,8 @@ IDR_EP_TASKBAR_5        RCDATA             "..\\build\\Release\\x64\\ep_taskbar.
 #endif
 
 #elif defined(PLATFORM_ARM64)
+
+IDR_EP_ARM64            RCDATA             "..\\build\\Release\\ARM64\\ExplorerPatcher.arm64.dll"
 
 IDR_EP_DWM              RCDATA             "..\\build\\Release\\ARM64\\ep_dwm.exe"
 

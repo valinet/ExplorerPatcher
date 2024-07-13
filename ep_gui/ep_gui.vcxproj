@@ -92,7 +92,7 @@
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)libs\libvalinet;$(SolutionDir)libs\funchook\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)libs\libvalinet;$(SolutionDir)libs\funchook\include;$(SolutionDir)\ep_weather_host;$(SolutionDir)\ep_weather_host\$(Platform)\$(Configuration);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
     </ClCompile>
     <Link>
@@ -133,7 +133,7 @@
     <ClCompile Include="..\ExplorerPatcher\getline.c" />
     <ClCompile Include="..\ExplorerPatcher\Localization.cpp" />
     <ClCompile Include="..\ExplorerPatcher\utility.c" />
-    <ClCompile Include="..\ep_weather_host_stub\ep_weather_host_i.c" />
+    <ClCompile Include="..\ep_weather_host_stub\$(Platform)\$(Configuration)\ep_weather_host_i.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="GUI.h" />

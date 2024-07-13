@@ -38,9 +38,6 @@
     <ClInclude Include="ep_weather_host.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\ep_weather_host_stub\ep_weather_host_h.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="ep_weather_utility.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -54,6 +51,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\ExplorerPatcher\def.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ep_weather_host_stub\$(Platform)\$(Configuration)\ep_weather_host_h.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
