@@ -167,8 +167,8 @@ jobs:
     - name: Generate dxgi.dll
       shell: bash
       run: |
-        if [[ -f "build/Release/x64/ExplorerPatcher.amd64.dll" ]]; then cp build/Release/x64/ExplorerPatcher.dll build/Release/x64/dxgi.dll; fi
-        if [[ -f "build/Release/ARM64/ExplorerPatcher.arm64.dll" ]]; then cp build/Release/ARM64/ExplorerPatcher.dll build/Release/ARM64/dxgi.dll; fi
+        if [[ -f "build/Release/x64/ExplorerPatcher.amd64.dll" ]]; then cp build/Release/x64/ExplorerPatcher.amd64.dll build/Release/x64/dxgi.dll; fi
+        if [[ -f "build/Release/ARM64/ExplorerPatcher.arm64.dll" ]]; then cp build/Release/ARM64/ExplorerPatcher.arm64.dll build/Release/ARM64/dxgi.dll; fi
 
     - name: Patch setup
       shell: cmd
