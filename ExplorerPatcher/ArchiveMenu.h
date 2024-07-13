@@ -26,7 +26,7 @@ typedef struct _ArchiveMenuThreadParams
 	WNDPROC wndProc;
     HWND(WINAPI* CreateWindowInBand)(
         _In_ DWORD dwExStyle,
-        _In_opt_ ATOM atom,
+        _In_opt_ LPCWSTR lpClassName,
         _In_opt_ LPCWSTR lpWindowName,
         _In_ DWORD dwStyle,
         _In_ int X,
