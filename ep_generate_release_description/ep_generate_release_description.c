@@ -22,13 +22,17 @@ int main(int argc, char** argv)
     sprintf_s(szEndPattern, MAX_PATH, "## ");
 
     FILE* f = NULL;
-    fopen_s(&f, "..\\..\\" FILE_NAME, "r");
+    fopen_s(&f, "..\\..\\..\\" FILE_NAME, "r");
     if (!f)
     {
-        fopen_s(&f, "..\\" FILE_NAME, "r");
+        fopen_s(&f, "..\\..\\" FILE_NAME, "r");
         if (!f)
         {
-            fopen_s(&f, "" FILE_NAME, "r");
+            fopen_s(&f, "..\\" FILE_NAME, "r");
+            if (!f)
+            {
+                fopen_s(&f, "" FILE_NAME, "r");
+            }
         }
     }
     if (f)

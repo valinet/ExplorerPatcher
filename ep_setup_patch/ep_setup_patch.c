@@ -10,49 +10,47 @@ int WINAPI wWinMain(
     _In_ int nShowCmd
 ) 
 {
-    WCHAR wszPath[MAX_PATH];
-    GetModuleFileNameW(GetModuleHandle(NULL), wszPath, MAX_PATH);
-    PathRemoveFileSpecW(wszPath);
-    wcscat_s(wszPath, MAX_PATH, L"\\" _T(PRODUCT_NAME) L".amd64.dll");
-    HMODULE hModule = LoadLibraryExW(wszPath, NULL, LOAD_LIBRARY_AS_DATAFILE);
+    if (__argc < 3)
+    {
+        return __LINE__;
+    }
+
+    WCHAR wszMainModulePath[MAX_PATH];
+    WCHAR wszSetupPath[MAX_PATH];
+    wcscpy_s(wszMainModulePath, MAX_PATH, __wargv[1]);
+    wcscpy_s(wszSetupPath, MAX_PATH, __wargv[2]);
+
+    HMODULE hModule = LoadLibraryExW(wszMainModulePath, NULL, LOAD_LIBRARY_AS_DATAFILE);
+    if (hModule == NULL)
+    {
+        return __LINE__;
+    }
 
     CHAR hash[100];
     ZeroMemory(hash, 100);
-    if (__argc > 1) 
-    {
-        for (size_t i = 0; i < MIN(wcslen(__wargv[1]), 32); ++i) 
-        {
-            hash[i] = __wargv[1][i];
-        }
-    }
-    else 
-    {
-        ComputeFileHash2(hModule, wszPath, hash, 100);
-        FreeLibrary(hModule);
-    }
+    ComputeFileHash2(hModule, wszMainModulePath, hash, 100);
 
-    PathRemoveFileSpecW(wszPath);
-    wcscat_s(wszPath, MAX_PATH, L"\\" _T(SETUP_UTILITY_NAME));
+    FreeLibrary(hModule);
 
-    HANDLE hFile = CreateFileW(wszPath, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+    HANDLE hFile = CreateFileW(wszSetupPath, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
     if (hFile == INVALID_HANDLE_VALUE)
     {
-        return 1;
+        return __LINE__;
     }
 
     HANDLE hFileMapping = CreateFileMappingW(hFile, NULL, PAGE_READWRITE, 0, 0, NULL);
-    if (hFileMapping == 0)
+    if (!hFileMapping)
     {
         CloseHandle(hFile);
-        return 2;
+        return __LINE__;
     }
 
     char* lpFileBase = MapViewOfFile(hFileMapping, FILE_MAP_ALL_ACCESS, 0, 0, 0);
-    if (lpFileBase == 0)
+    if (!lpFileBase)
     {
         CloseHandle(hFileMapping);
         CloseHandle(hFile);
-        return 3;
+        return __LINE__;
     }
 
     memcpy(lpFileBase + DOSMODE_OFFSET, hash, strlen(hash));
@@ -60,28 +58,6 @@ int WINAPI wWinMain(
     UnmapViewOfFile(lpFileBase);
     CloseHandle(hFileMapping);
     CloseHandle(hFile);
-
-    if (__argc > 1)
-    {
-        SHELLEXECUTEINFO ShExecInfo = { 0 };
-        ShExecInfo.cbSize = sizeof(SHELLEXECUTEINFO);
-        ShExecInfo.fMask = SEE_MASK_NOCLOSEPROCESS;
-        ShExecInfo.hwnd = NULL;
-        ShExecInfo.lpVerb = L"runas";
-        ShExecInfo.lpFile = wszPath;
-        ShExecInfo.lpParameters = NULL;
-        ShExecInfo.lpDirectory = NULL;
-        ShExecInfo.nShow = SW_SHOW;
-        ShExecInfo.hInstApp = NULL;
-        if (ShellExecuteExW(&ShExecInfo) && ShExecInfo.hProcess)
-        {
-            WaitForSingleObject(ShExecInfo.hProcess, INFINITE);
-            DWORD dwExitCode = 0;
-            GetExitCodeProcess(ShExecInfo.hProcess, &dwExitCode);
-            CloseHandle(ShExecInfo.hProcess);
-            return dwExitCode;
-        }
-    }
 
     return 0;
 }

@@ -12,7 +12,11 @@
 #define EP_CLSID_LITE "D17F1E1A-5919-4427-8F89-A1A8503CA3EB"
 #define EP_CLSID "{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}"
 #define DOSMODE_OFFSET 78
+#ifndef _M_ARM64
 #define SETUP_UTILITY_NAME "ep_setup.exe"
+#else
+#define SETUP_UTILITY_NAME "ep_setup.arm64.exe"
+#endif
 #define TOAST_BUFSIZ 1024
 #define SEH_REGPATH "Control Panel\\Quick Actions\\Control Center\\QuickActionsStateCapture\\ExplorerPatcher"
 #define EP_SETUP_HELPER_SWITCH "/CreateExplorerShellUnelevatedAfterServicing"
