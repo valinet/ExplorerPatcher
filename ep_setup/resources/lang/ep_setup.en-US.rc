@@ -5,6 +5,7 @@ LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 
 STRINGTABLE
 BEGIN
+    IDS_SETUP_UNSUPPORTED_ARCH  "Please run the %1$s version of the setup file on %1$s devices. This setup file is only for %2$s devices."
     IDS_SETUP_UNINSTALL_PROMPT  "Are you sure you want to remove ExplorerPatcher from your PC?"
     IDS_SETUP_INSTALL_LOGOFF    "In order to install, you will be automatically signed out of Windows. ExplorerPatcher will be ready for use when you sign back in.\n\nDo you want to continue?"
     IDS_SETUP_UNINSTALL_LOGOFF  "To complete the uninstallation, you will be automatically signed out of Windows.\n\nDo you want to continue?"

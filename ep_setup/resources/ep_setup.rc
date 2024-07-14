@@ -68,11 +68,11 @@ BEGIN
     BEGIN
         BLOCK "040904b0"
         BEGIN
-            VALUE "CompanyName", "VALINET Solutions SRL"
+            VALUE "CompanyName", "ExplorerPatcher Developers"
             VALUE "FileDescription", "ExplorerPatcher Setup Program"
             VER_FILE_STRING
             VALUE "InternalName", "ep_setup.exe"
-            VALUE "LegalCopyright", "Copyright (C) 2006-2024 VALINET Solutions SRL. All rights reserved."
+            VALUE "LegalCopyright", "(C) 2021-2024 ExplorerPatcher Developers. All rights reserved."
             VALUE "OriginalFilename", "ep_setup.exe"
             VALUE "ProductName", "ExplorerPatcher"
             VER_PRODUCT_STRING
@@ -126,7 +126,7 @@ IDR_EP_TASKBAR_5        RCDATA             "..\\build\\Release\\x64\\ep_taskbar.
 
 #elif defined(PLATFORM_ARM64)
 
-IDR_EP_ARM64            RCDATA             "..\\build\\Release\\ARM64\\ExplorerPatcher.arm64.dll"
+IDR_EP_AMD64            RCDATA             "..\\build\\Release\\ARM64\\ExplorerPatcher.arm64.dll"
 
 IDR_EP_DWM              RCDATA             "..\\build\\Release\\ARM64\\ep_dwm.exe"
 

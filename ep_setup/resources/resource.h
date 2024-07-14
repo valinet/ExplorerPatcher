@@ -15,12 +15,13 @@
 #define IDR_EP_TASKBAR_4                112
 #define IDR_EP_TASKBAR_5                113
 
-#define IDS_SETUP_UNINSTALL_PROMPT      301
-#define IDS_SETUP_INSTALL_LOGOFF        302
-#define IDS_SETUP_UNINSTALL_LOGOFF      303
-#define IDS_SETUP_UNINSTALL_RESTART     304
-#define IDS_SETUP_UNINSTALL_FINISH      305
-#define IDS_SETUP_FAILED                306
+#define IDS_SETUP_UNSUPPORTED_ARCH      301
+#define IDS_SETUP_UNINSTALL_PROMPT      302
+#define IDS_SETUP_INSTALL_LOGOFF        303
+#define IDS_SETUP_UNINSTALL_LOGOFF      304
+#define IDS_SETUP_UNINSTALL_RESTART     305
+#define IDS_SETUP_UNINSTALL_FINISH      306
+#define IDS_SETUP_FAILED                307
 
 
 // Next default values for new objects

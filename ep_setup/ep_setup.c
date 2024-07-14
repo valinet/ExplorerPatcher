@@ -517,6 +517,32 @@ int WINAPI wWinMain(
         return !bOk;
     }
 
+#if defined(_M_X64)
+    typedef BOOL (WINAPI *IsWow64Process2_t)(HANDLE hProcess, USHORT* pProcessMachine, USHORT* pNativeMachine);
+    IsWow64Process2_t pfnIsWow64Process2 = (IsWow64Process2_t)GetProcAddress(GetModuleHandleW(L"kernel32.dll"), "IsWow64Process2");
+    if (pfnIsWow64Process2)
+    {
+        USHORT processMachine, nativeMachine;
+        if (pfnIsWow64Process2(GetCurrentProcess(), &processMachine, &nativeMachine))
+        {
+            if (nativeMachine == IMAGE_FILE_MACHINE_ARM64)
+            {
+                WCHAR szFormat[256];
+                szFormat[0] = 0;
+                int written = LoadStringW(hInstance, IDS_SETUP_UNSUPPORTED_ARCH, szFormat, ARRAYSIZE(szFormat));
+                if (written > 0 && written < ARRAYSIZE(szFormat))
+                {
+                    WCHAR szMessage[256];
+                    szMessage[0] = 0;
+                    _swprintf_p(szMessage, ARRAYSIZE(szMessage), szFormat, L"ARM64", L"x64");
+                    MessageBoxW(NULL, szMessage, _T(PRODUCT_NAME), MB_OK | MB_ICONERROR);
+                }
+                exit(0);
+            }
+        }
+    }
+#endif
+
     WCHAR wszOwnPath[MAX_PATH];
     ZeroMemory(wszOwnPath, ARRAYSIZE(wszOwnPath));
     if (!GetModuleFileNameW(NULL, wszOwnPath, ARRAYSIZE(wszOwnPath)))
