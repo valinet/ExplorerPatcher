@@ -102,16 +102,16 @@ jobs:
         if ls build/Release/ep_taskbar.*.amd64.dll 1> /dev/null 2>&1; then
           mkdir -p build/Release/x64
           for file in build/Release/ep_taskbar.*.amd64.dll; do
-            cp "$file" "build/Release/x64/$(basename "$file" .amd64.dll).dll"
+            mv "$file" "build/Release/x64/$(basename "$file" .amd64.dll).dll"
           done
         fi
 
-        # if ls build/Release/ep_taskbar.*.arm64.dll 1> /dev/null 2>&1; then
-        #   mkdir -p build/Release/ARM64
-        #   for file in build/Release/ep_taskbar.*.arm64.dll; do
-        #     cp "$file" "build/Release/ARM64/$(basename "$file" .arm64.dll).dll"
-        #   done
-        # fi
+        if ls build/Release/ep_taskbar.*.arm64.dll 1> /dev/null 2>&1; then
+          mkdir -p build/Release/ARM64
+          for file in build/Release/ep_taskbar.*.arm64.dll; do
+            mv "$file" "build/Release/ARM64/$(basename "$file" .arm64.dll).dll"
+          done
+        fi
 
     - name: Build funchook amd64
       shell: powershell

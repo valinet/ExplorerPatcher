@@ -257,7 +257,7 @@
     <ClCompile Include="TaskbarCenter.c">
       <ExcludedFromBuild Condition="'$(WithMainPatcher)'!='true'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="updates.c">
+    <ClCompile Include="updates.cpp">
       <ExcludedFromBuild Condition="'$(WithMainPatcher)'!='true'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="utility.c">

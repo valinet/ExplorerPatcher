@@ -17,7 +17,7 @@
 #else
 #define SETUP_UTILITY_NAME "ep_setup.arm64.exe"
 #endif
-#define TOAST_BUFSIZ 1024
+#define TOAST_BUFSIZ 1536
 #define SEH_REGPATH "Control Panel\\Quick Actions\\Control Center\\QuickActionsStateCapture\\ExplorerPatcher"
 #define EP_SETUP_HELPER_SWITCH "/CreateExplorerShellUnelevatedAfterServicing"
 #define EP_DWM_SERVICENAME "ep_dwm_" EP_CLSID_LITE
