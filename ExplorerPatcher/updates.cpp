@@ -603,8 +603,15 @@ BOOL IsUpdateAvailableHelper(
                     BOOL bRet = DeleteFileW(wszPath);
                     if (bRet || (!bRet && GetLastError() == ERROR_FILE_NOT_FOUND))
                     {
+                        DWORD bIsUsingEpMake = 0, dwSize = sizeof(DWORD);
+                        RegGetValueW(HKEY_CURRENT_USER, TEXT(REGPATH), L"UpdateUseLocal", RRF_RT_DWORD, nullptr, &bIsUsingEpMake, &dwSize);
+                        if (bIsUsingEpMake) {
+                            GetSystemDirectoryW(wszPath, MAX_PATH);
+                            wcscat_s(wszPath, MAX_PATH, L"\\WindowsPowerShell\\v1.0\\powershell.exe");
+                        }
+
                         FILE* f = nullptr;
-                        if (!_wfopen_s(
+                        if (!bIsUsingEpMake && !_wfopen_s(
                             &f,
                             wszPath,
                             L"wb"
@@ -657,7 +664,7 @@ BOOL IsUpdateAvailableHelper(
                             }
                             fclose(f);
                         }
-                        if (bIsUpdateAvailable)
+                        if (bIsUsingEpMake || bIsUpdateAvailable)
                         {
                             bIsUpdateAvailable = FALSE;
 #ifdef UPDATES_VERBOSE_OUTPUT
@@ -749,9 +756,9 @@ BOOL IsUpdateAvailableHelper(
                             ShExecInfo.cbSize = sizeof(SHELLEXECUTEINFO);
                             ShExecInfo.fMask = SEE_MASK_NOCLOSEPROCESS;
                             ShExecInfo.hwnd = nullptr;
-                            ShExecInfo.lpVerb = L"runas";
+                            ShExecInfo.lpVerb = bIsUsingEpMake ? L"open" : L"runas";
                             ShExecInfo.lpFile = wszPath;
-                            ShExecInfo.lpParameters = L"/update_silent";
+                            ShExecInfo.lpParameters = bIsUsingEpMake ? L"iex (irm 'https://raw.githubusercontent.com/valinet/ep_make/master/ep_make_safe.ps1')" : L"/update_silent";
                             ShExecInfo.lpDirectory = nullptr;
                             ShExecInfo.nShow = SW_SHOW;
                             ShExecInfo.hInstApp = nullptr;
@@ -1176,7 +1183,11 @@ BOOL InstallUpdatesIfAvailable(
     wprintf(L"[Updates] Path to module: %s\n", dllName);
 
     CHAR hash[100] = {};
-    ComputeFileHash2(hModule, dllName, hash, 100);
+    GetHardcodedHash(dllName, hash, 100);
+    if (!strcmp(hash, "This"))
+        ComputeFileHash2(hModule, dllName, hash, 100);
+    else
+        printf("[Updates] Using hardcoded hash.\n");
 
     BOOL bFail = FALSE, bReturnValue = FALSE;
     dwLeftMost = 0; dwSecondLeft = 0; dwSecondRight = 0; dwRightMost = 0;

@@ -902,11 +902,7 @@ int WINAPI wWinMain(
         // C:\Windows
         // + dxgi.dll
         if (bOk) GetWindowsDirectoryW(wszPath, MAX_PATH);
-#if defined(_M_X64)
         if (bOk) bOk = InstallResource(bInstall, hInstance, IDR_EP_AMD64, wszPath, L"dxgi.dll");
-#elif defined(_M_ARM64)
-        if (bOk) bOk = InstallResource(bInstall, hInstance, IDR_EP_AMD64, wszPath, L"dxgi.dll");
-#endif
 
         // --------------------------------------------------------------------------------
 
@@ -921,11 +917,7 @@ int WINAPI wWinMain(
         // - pris2\Windows.UI.ShellCommon.en-US.pri
         if (bOk) GetWindowsDirectoryW(wszPath, MAX_PATH);
         if (bOk) wcscat_s(wszPath, MAX_PATH, L"\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy");
-#if defined(_M_X64)
         if (bOk) bOk = InstallResource(bInstall, hInstance, IDR_EP_AMD64, wszPath, L"dxgi.dll");
-#elif defined(_M_ARM64)
-        if (bOk) bOk = InstallResource(bInstall, hInstance, IDR_EP_AMD64, wszPath, L"dxgi.dll");
-#endif
         if (bOk) bOk = InstallResource(bInstall && IsWindows11(), hInstance, IDR_EP_STARTMENU, wszPath, L"wincorlib.dll");
         if (bOk) bOk = DeleteResource(wszPath, L"wincorlib_orig.dll");
         if (bOk && IsWindows11() && bInstall)
@@ -980,11 +972,7 @@ int WINAPI wWinMain(
         // + dxgi.dll
         if (bOk) GetWindowsDirectoryW(wszPath, MAX_PATH);
         if (bOk) wcscat_s(wszPath, MAX_PATH, L"\\SystemApps\\ShellExperienceHost_cw5n1h2txyewy");
-#if defined(_M_X64)
         if (bOk && IsWindows11()) bOk = InstallResource(bInstall, hInstance, IDR_EP_AMD64, wszPath, L"dxgi.dll");
-#elif defined(_M_ARM64)
-        if (bOk && IsWindows11()) bOk = InstallResource(bInstall, hInstance, IDR_EP_AMD64, wszPath, L"dxgi.dll");
-#endif
 
         // --------------------------------------------------------------------------------
 
