@@ -84,7 +84,7 @@ typedef struct _GUI
 	void* pAccPropServices;
 	HWND hAccLabel;
 	BOOL bShouldAnnounceSelected;
-	WCHAR sectionNames[20][32];
+	WCHAR sectionNames[20][64];
 	BOOL bRebuildIfTabOrderIsEmpty;
 	int dwPageLocation;
 	DWORD last_section;

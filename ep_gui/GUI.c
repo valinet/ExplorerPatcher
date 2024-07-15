@@ -1284,7 +1284,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                     GUI_SubstituteLocalizedString(text, MAX_LINE_LENGTH);
                     if (_this->sectionNames[currentSection + 1][0] == 0)
                     {
-                        wcscpy_s(_this->sectionNames[currentSection + 1], 32, text);
+                        wcscpy_s(_this->sectionNames[currentSection + 1], 64, text);
                     }
                     if (hDC)
                     {
