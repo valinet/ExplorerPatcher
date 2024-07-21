@@ -33,6 +33,12 @@
 #define WM_MSG_GUI_SECTION_GET 1
 
 #ifdef __cplusplus
+#define EP_INLINE inline
+#else
+#define EP_INLINE
+#endif
+
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -98,10 +104,7 @@ DEFINE_GUID(IID_ITrayUIComponent,
     0x64, 0xb4, 0xc0, 0x9b, 0x21, 0x1b
 );
 
-#ifdef __cplusplus
-inline
-#endif
-HRESULT(*explorer_TrayUI_CreateInstanceFunc)(ITrayUIHost* host, REFIID riid, void** ppv);
+EP_INLINE HRESULT(*explorer_TrayUI_CreateInstanceFunc)(ITrayUIHost* host, REFIID riid, void** ppv);
 #pragma endregion
 
 inline int FileExistsW(wchar_t* file)
@@ -144,10 +147,7 @@ typedef LSTATUS(*t_SHRegGetValueFromHKCUHKLM)(
     void* pvData,
     DWORD* pcbData
 );
-#ifdef __cplusplus
-inline
-#endif
-t_SHRegGetValueFromHKCUHKLM SHRegGetValueFromHKCUHKLMFunc;
+EP_INLINE t_SHRegGetValueFromHKCUHKLM SHRegGetValueFromHKCUHKLMFunc;
 
 inline LSTATUS SHRegGetValueFromHKCUHKLMWithOpt(
     PCWSTR pwszKey,
@@ -217,10 +217,7 @@ inline LSTATUS SHRegGetValueFromHKCUHKLMWithOpt(
     return lRes;
 }
 
-#ifdef __cplusplus
-inline
-#endif
-HWND(WINAPI* CreateWindowInBand)(
+EP_INLINE HWND(WINAPI* CreateWindowInBand)(
     _In_ DWORD dwExStyle,
     _In_opt_ LPCWSTR lpClassName,
     _In_opt_ LPCWSTR lpWindowName,
@@ -236,30 +233,59 @@ HWND(WINAPI* CreateWindowInBand)(
     DWORD band
 );
 
-#ifdef __cplusplus
-inline
-#endif
-BOOL(WINAPI* GetWindowBand)(HWND hWnd, PDWORD pdwBand);
+EP_INLINE BOOL(WINAPI* GetWindowBand)(HWND hWnd, PDWORD pdwBand);
 
-#ifdef __cplusplus
-inline
-#endif
-BOOL(WINAPI* SetWindowBand)(HWND hWnd, HWND hwndInsertAfter, DWORD dwBand);
+EP_INLINE BOOL(WINAPI* SetWindowBand)(HWND hWnd, HWND hwndInsertAfter, DWORD dwBand);
 
-#ifdef __cplusplus
-inline
-#endif
-INT64(*SetWindowCompositionAttribute)(HWND, void*);
+EP_INLINE INT64(*SetWindowCompositionAttribute)(HWND, void*);
 
-static void(*SetPreferredAppMode)(BOOL bAllowDark);
+// uxtheme.dll private functions
 
-static void(*AllowDarkModeForWindow)(HWND hWnd, BOOL bAllowDark);
+typedef enum IMMERSIVE_COLOR_TYPE
+{
+    // Defining only used ones
+    IMCLR_SystemAccentLight2 = 2,
+    IMCLR_SystemAccentDark2 = 6
+} IMMERSIVE_COLOR_TYPE;
 
-static bool(*ShouldAppsUseDarkMode)();
+typedef struct IMMERSIVE_COLOR_PREFERENCE
+{
+    DWORD crStartColor;
+    DWORD crAccentColor;
+} IMMERSIVE_COLOR_PREFERENCE;
 
-static bool(*ShouldSystemUseDarkMode)();
+typedef enum IMMERSIVE_HC_CACHE_MODE
+{
+    IHCM_USE_CACHED_VALUE = 0,
+    IHCM_REFRESH = 1
+} IMMERSIVE_HC_CACHE_MODE;
 
-static void(*GetThemeName)(void*, void*, void*);
+typedef void(*GetThemeName_t)(void*, void*, void*); // 74
+EP_INLINE GetThemeName_t GetThemeName;
+
+typedef bool(*RefreshImmersiveColorPolicyState_t)(); // 104
+EP_INLINE RefreshImmersiveColorPolicyState_t RefreshImmersiveColorPolicyState;
+
+typedef bool(*GetIsImmersiveColorUsingHighContrast_t)(IMMERSIVE_HC_CACHE_MODE); // 106
+EP_INLINE GetIsImmersiveColorUsingHighContrast_t GetIsImmersiveColorUsingHighContrast;
+
+typedef HRESULT(*GetUserColorPreference_t)(IMMERSIVE_COLOR_PREFERENCE*, bool); // 120
+EP_INLINE GetUserColorPreference_t GetUserColorPreference;
+
+typedef DWORD(*GetColorFromPreference_t)(const IMMERSIVE_COLOR_PREFERENCE*, IMMERSIVE_COLOR_TYPE, bool, IMMERSIVE_HC_CACHE_MODE); // 121
+EP_INLINE GetColorFromPreference_t GetColorFromPreference;
+
+typedef bool(*ShouldAppsUseDarkMode_t)(); // 132
+EP_INLINE ShouldAppsUseDarkMode_t ShouldAppsUseDarkMode;
+
+typedef void(*AllowDarkModeForWindow_t)(HWND hWnd, BOOL bAllowDark); // 133
+EP_INLINE AllowDarkModeForWindow_t AllowDarkModeForWindow;
+
+typedef void(*SetPreferredAppMode_t)(BOOL bAllowDark); // 135
+EP_INLINE SetPreferredAppMode_t SetPreferredAppMode;
+
+typedef bool(*ShouldSystemUseDarkMode_t)(); // 138
+EP_INLINE ShouldSystemUseDarkMode_t ShouldSystemUseDarkMode;
 
 void* ReadFromFile(wchar_t* wszFileName, DWORD* dwSize);
 

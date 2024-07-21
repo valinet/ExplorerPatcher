@@ -10,7 +10,6 @@ WCHAR wszThreadLanguage[LOCALE_NAME_MAX_LENGTH];
 void* GUI_FileMapping = NULL;
 DWORD GUI_FileSize = 0;
 BOOL g_darkModeEnabled = FALSE;
-static void(*RefreshImmersiveColorPolicyState)() = NULL;
 DWORD dwTaskbarPosition = 3;
 DWORD GUI_TaskbarStyle = 1;
 

@@ -12597,15 +12597,19 @@ DWORD Inject(BOOL bIsExplorer)
 
 
     HANDLE hUxtheme = LoadLibraryW(L"uxtheme.dll");
-    SetPreferredAppMode = GetProcAddress(hUxtheme, (LPCSTR)0x87);
-    AllowDarkModeForWindow = GetProcAddress(hUxtheme, (LPCSTR)0x85);
-    ShouldAppsUseDarkMode = GetProcAddress(hUxtheme, (LPCSTR)0x84);
-    ShouldSystemUseDarkMode = GetProcAddress(hUxtheme, (LPCSTR)0x8A);
-    GetThemeName = GetProcAddress(hUxtheme, (LPCSTR)0x4A);
-    PeopleBand_DrawTextWithGlowFunc = GetProcAddress(hUxtheme, (LPCSTR)0x7E);
+    GetThemeName = (GetThemeName_t)GetProcAddress(hUxtheme, MAKEINTRESOURCEA(74));
+    RefreshImmersiveColorPolicyState = (RefreshImmersiveColorPolicyState_t)GetProcAddress(hUxtheme, MAKEINTRESOURCEA(104));
+    GetIsImmersiveColorUsingHighContrast = (GetIsImmersiveColorUsingHighContrast_t)GetProcAddress(hUxtheme, MAKEINTRESOURCEA(106));
+    GetUserColorPreference = (GetUserColorPreference_t)GetProcAddress(hUxtheme, MAKEINTRESOURCEA(120));
+    GetColorFromPreference = (GetColorFromPreference_t)GetProcAddress(hUxtheme, MAKEINTRESOURCEA(121));
+    PeopleBand_DrawTextWithGlowFunc = GetProcAddress(hUxtheme, MAKEINTRESOURCEA(126));
+    ShouldAppsUseDarkMode = (ShouldAppsUseDarkMode_t)GetProcAddress(hUxtheme, MAKEINTRESOURCEA(132));
+    AllowDarkModeForWindow = (AllowDarkModeForWindow_t)GetProcAddress(hUxtheme, MAKEINTRESOURCEA(133));
+    SetPreferredAppMode = (SetPreferredAppMode_t)GetProcAddress(hUxtheme, MAKEINTRESOURCEA(135));
+    ShouldSystemUseDarkMode = (ShouldSystemUseDarkMode_t)GetProcAddress(hUxtheme, MAKEINTRESOURCEA(138));
     if (bOldTaskbar)
     {
-        VnPatchIAT(hExplorer, "uxtheme.dll", (LPCSTR)0x7E, PeopleBand_DrawTextWithGlowHook);
+        VnPatchIAT(hExplorer, "uxtheme.dll", MAKEINTRESOURCEA(138), PeopleBand_DrawTextWithGlowHook);
     }
     // DwmExtendFrameIntoClientArea hooked in LoadSettings
     printf("Setup uxtheme functions done\n");
