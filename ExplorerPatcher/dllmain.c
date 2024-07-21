@@ -2284,10 +2284,12 @@ INT64 ReBarWindow32SubclassProc(_In_ HWND hWnd, _In_ UINT uMsg, _In_ WPARAM wPar
     return DefSubclassProc(hWnd, uMsg, wParam, lParam);
 }
 
+HMODULE g_hMyTaskbar;
+
 HMENU explorer_LoadMenuW(HINSTANCE hInstance, LPCWSTR lpMenuName)
 {
     HMENU hMenu = LoadMenuW(hInstance, lpMenuName);
-    if (hInstance == GetModuleHandle(NULL) && lpMenuName == MAKEINTRESOURCEW(205))
+    if ((hInstance == GetModuleHandle(NULL) || (g_hMyTaskbar && hInstance == g_hMyTaskbar)) && lpMenuName == MAKEINTRESOURCEW(205))
     {
         HMENU hSubMenu = GetSubMenu(hMenu, 0);
         if (hSubMenu)
@@ -11919,6 +11921,7 @@ HMODULE PrepareAlternateTaskbarImplementation(symbols_addr* symbols_PTRS, const 
         wprintf(L"[TB] '%s' not found\n", pszTaskbarDll);
         return NULL;
     }
+    g_hMyTaskbar = hMyTaskbar;
 
     typedef DWORD (*GetVersion_t)();
     GetVersion_t GetVersion = (GetVersion_t)GetProcAddress(hMyTaskbar, "GetVersion");
@@ -12609,7 +12612,7 @@ DWORD Inject(BOOL bIsExplorer)
     ShouldSystemUseDarkMode = (ShouldSystemUseDarkMode_t)GetProcAddress(hUxtheme, MAKEINTRESOURCEA(138));
     if (bOldTaskbar)
     {
-        VnPatchIAT(hExplorer, "uxtheme.dll", MAKEINTRESOURCEA(138), PeopleBand_DrawTextWithGlowHook);
+        VnPatchIAT(hExplorer, "uxtheme.dll", MAKEINTRESOURCEA(126), PeopleBand_DrawTextWithGlowHook);
     }
     // DwmExtendFrameIntoClientArea hooked in LoadSettings
     printf("Setup uxtheme functions done\n");
@@ -12807,6 +12810,11 @@ DWORD Inject(BOOL bIsExplorer)
 
     VnPatchIAT(hTwinuiPcshell, "API-MS-WIN-CORE-REGISTRY-L1-1-0.DLL", "RegGetValueW", twinuipcshell_RegGetValueW);
     HMODULE hMyTaskbar = PrepareAlternateTaskbarImplementation(&symbols_PTRS, pszTaskbarDll);
+    if (hMyTaskbar)
+    {
+        VnPatchIAT(hMyTaskbar, "user32.dll", "LoadMenuW", explorer_LoadMenuW);
+        VnPatchIAT(hMyTaskbar, "user32.dll", "TrackPopupMenuEx", explorer_TrackPopupMenuExHook);
+    }
     printf("Setup twinui.pcshell functions done\n");
 
 
