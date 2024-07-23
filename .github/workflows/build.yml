@@ -86,10 +86,10 @@ jobs:
         run: |
           nuget restore ExplorerPatcher.sln
 
-      - name: Setup dependency projects
+      - name: Build dependencies
         shell: cmd
         run: |
-          GenerateDependencyProjects.bat
+          BuildDependencies%BUILD_CONFIGURATION%.bat
 
       # - name: Download ep_taskbar
       #   uses: robinraju/release-downloader@v1
