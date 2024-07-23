@@ -379,9 +379,6 @@
     <EncryptFile OutputFile="..\build\$(Configuration)\$(Platform)\ep_setup_files.zip" EncryptionKey="$(ZipEncryptionKey)" Condition="'$(WithEncryption)' == 'true'" />
     <Copy SourceFiles="..\build\$(Configuration)\$(Platform)\ep_setup_files.zip" DestinationFiles="..\build\$(Configuration)\$(Platform)\ep_setup_files.zip.bin" Condition="'$(WithEncryption)' != 'true'" />
   </Target>
-  <Target Name="BuildDependencies" BeforeTargets="PrepareForBuild">
-    <Exec Command="cmake --build . --config $(Configuration)" WorkingDirectory="$(SolutionDir)libs\zlib\build-$(Platform)" />
-  </Target>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
