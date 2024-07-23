@@ -7,6 +7,13 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #pragma comment(lib, "Shlwapi.lib")
 #include "resources/resource.h"
 #include "../ExplorerPatcher/utility.h"
+#include "../version.h"
+#include <zlib.h>
+#include <minizip/unzip.h>
+#ifdef WITH_ENCRYPTION
+#include "rijndael-alg-fst.c" // Include the C file for __forceinline to work
+#endif
+#pragma comment(lib, "zlibstatic.lib")
 
 BOOL SetupShortcut(BOOL bInstall, WCHAR* wszPath, WCHAR* wszArguments)
 {
@@ -290,7 +297,190 @@ BOOL SetupUninstallEntry(BOOL bInstall, WCHAR* wszPath)
      return !dwLastError;
 }
 
-BOOL InstallResourceHelper(BOOL bInstall, HMODULE hModule, HRSRC hRscr, WCHAR* wszPath)
+typedef struct
+{
+    PBYTE base;
+    ZPOS64_T size;
+    ZPOS64_T curOffset;
+} MemoryBuffer;
+
+void MemoryBuffer_Destroy(MemoryBuffer** mem)
+{
+    if (*mem)
+    {
+        if ((*mem)->base)
+            free((*mem)->base);
+        free(*mem);
+        *mem = NULL;
+    }
+}
+
+voidpf ZCALLBACK MemOpenFile(voidpf opaque, const void* filename, int mode)
+{
+    MemoryBuffer* pMem = (MemoryBuffer*)opaque;
+    return pMem;
+}
+
+uLong ZCALLBACK MemReadFile(voidpf opaque, voidpf stream, void* buf, uLong size)
+{
+    MemoryBuffer* pMem = (MemoryBuffer*)stream;
+    uLong toRead = size;
+
+    if (pMem->curOffset + toRead > pMem->size)
+    {
+        toRead = pMem->size - pMem->curOffset;
+    }
+
+    if (toRead > 0)
+    {
+        memcpy(buf, pMem->base + pMem->curOffset, toRead);
+        pMem->curOffset += toRead;
+    }
+
+    return toRead;
+}
+
+uLong ZCALLBACK MemWriteFile(voidpf opaque, voidpf stream, const void* buf, uLong size)
+{
+    return 0;
+}
+
+ZPOS64_T ZCALLBACK MemTellFile(voidpf opaque, voidpf stream)
+{
+    MemoryBuffer* pMem = (MemoryBuffer*)stream;
+    return pMem->curOffset;
+}
+
+long ZCALLBACK MemSeekFile(voidpf opaque, voidpf stream, ZPOS64_T offset, int origin)
+{
+    MemoryBuffer* pMem = (MemoryBuffer*)stream;
+    ZPOS64_T newOffset;
+
+    switch (origin)
+    {
+        case ZLIB_FILEFUNC_SEEK_CUR:
+            newOffset = pMem->curOffset + offset;
+            break;
+        case ZLIB_FILEFUNC_SEEK_END:
+            newOffset = pMem->size + offset;
+            break;
+        case ZLIB_FILEFUNC_SEEK_SET:
+            newOffset = offset;
+            break;
+        default:
+            return -1;
+    }
+
+    if (newOffset > pMem->size)
+    {
+        return -1;
+    }
+
+    pMem->curOffset = newOffset;
+    return 0;
+}
+
+int ZCALLBACK MemCloseFile(voidpf opaque, voidpf stream)
+{
+    return 0;
+}
+
+int ZCALLBACK MemErrorFile(voidpf opaque, voidpf stream)
+{
+    return 0;
+}
+
+void FillMemoryFileIOFunctions(zlib_filefunc64_def* pFileFunc, MemoryBuffer* pMem)
+{
+    pFileFunc->zopen64_file = MemOpenFile;
+    pFileFunc->zread_file = MemReadFile;
+    pFileFunc->zwrite_file = MemWriteFile;
+    pFileFunc->ztell64_file = MemTellFile;
+    pFileFunc->zseek64_file = MemSeekFile;
+    pFileFunc->zclose_file = MemCloseFile;
+    pFileFunc->zerror_file = MemErrorFile;
+    pFileFunc->opaque = pMem;
+}
+
+#define AES_KEYBITS				256
+
+#define KEYLENGTH( keybits )		( ( keybits ) / 8 )
+#define RKLENGTH( keybits )		( ( keybits ) / 8 + 28 )
+#define NROUNDS( keybits )			( ( keybits ) / 32 + 6 )
+
+#if defined(WITH_ENCRYPTION) && !defined(ZIP_ENCRYPTION_KEY)
+#define ZIP_ENCRYPTION_KEY 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
+#endif
+
+unzFile LoadZipFileFromResources(MemoryBuffer** outMem)
+{
+    *outMem = NULL;
+
+    HRSRC hRsrc = FindResourceW(NULL, MAKEINTRESOURCE(IDR_EP_ZIP), RT_RCDATA);
+    if (!hRsrc)
+    {
+        return NULL;
+    }
+
+    HGLOBAL hGlobal = LoadResource(NULL, hRsrc);
+    if (!hGlobal)
+    {
+        return NULL;
+    }
+
+    PBYTE pRsrc = (PBYTE)LockResource(hGlobal);
+    DWORD cbRsrc = SizeofResource(NULL, hRsrc);
+    if (!pRsrc || !cbRsrc)
+    {
+        return NULL;
+    }
+
+#ifdef WITH_ENCRYPTION
+    if ((cbRsrc % 16) != 0)
+    {
+        return NULL;
+    }
+#endif
+
+    MemoryBuffer* pMem = (MemoryBuffer*)malloc(sizeof(MemoryBuffer));
+    if (!pMem)
+    {
+        return NULL;
+    }
+
+    pMem->base = (PBYTE)malloc(cbRsrc);
+    pMem->size = cbRsrc;
+    pMem->curOffset = 0;
+    if (!pMem->base)
+    {
+        free(pMem);
+        return NULL;
+    }
+
+    *outMem = pMem;
+
+#ifdef WITH_ENCRYPTION
+    BYTE keyBytes[32] = { ZIP_ENCRYPTION_KEY };
+
+    UINT rk[RKLENGTH(AES_KEYBITS)] = { 0 };
+    int nrounds = rijndaelKeySetupDec(rk, keyBytes, AES_KEYBITS);
+
+    // Decrypt the data a block at a time
+    for (UINT offset = 0; offset < cbRsrc; offset += 16)
+    {
+        rijndaelDecrypt(rk, nrounds, pRsrc + offset, pMem->base + offset);
+    }
+#else
+    memcpy(mem->base, pRsrc, cbRsrc);
+#endif
+
+    zlib_filefunc64_def fileFunc = { 0 };
+    FillMemoryFileIOFunctions(&fileFunc, pMem);
+
+    return unzOpen2_64(NULL, &fileFunc);
+}
+
+BOOL InstallResourceHelper(BOOL bInstall, HMODULE hModule, unzFile zipFile, const WCHAR* wszPath)
 {
     WCHAR wszReplace[MAX_PATH];
     wcscpy_s(wszReplace, MAX_PATH, wszPath);
@@ -313,7 +503,7 @@ BOOL InstallResourceHelper(BOOL bInstall, HMODULE hModule, HRSRC hRscr, WCHAR* w
             return FALSE;
         }
     }
-    if (!hRscr)
+    if (!zipFile)
     {
         if (bInstall)
         {
@@ -323,85 +513,81 @@ BOOL InstallResourceHelper(BOOL bInstall, HMODULE hModule, HRSRC hRscr, WCHAR* w
         }
         return TRUE;
     }
-    else
+
+    if (!bInstall)
     {
-        if (!hRscr)
-        {
-            return FALSE;
-        }
-        HGLOBAL hgRscr = LoadResource(
-            hModule,
-            hRscr
-        );
-        if (!hgRscr)
-        {
-            return FALSE;
-        }
-        void* pRscr = LockResource(hgRscr);
-        DWORD cbRscr = SizeofResource(
-            hModule,
-            hRscr
-        );
-        if (bInstall)
-        {
-            HANDLE hFile = CreateFileW(
-                wszPath,
-                GENERIC_WRITE,
-                0,
-                NULL,
-                CREATE_ALWAYS,
-                FILE_ATTRIBUTE_NORMAL,
-                NULL
-            );
-            if (!hFile)
-            {
-                return FALSE;
-            }
-            DWORD dwNumberOfBytesWritten = 0;
-            int offset = 0;
-            wchar_t wszDxgi[MAX_PATH];
-            if (GetWindowsDirectoryW(wszDxgi, MAX_PATH)) {
-                wcscat_s(wszDxgi, MAX_PATH, L"\\dxgi.dll");
-                if (!wcscmp(wszPath, wszDxgi)) {
-                    WCHAR wszOwnPath[MAX_PATH];
-                    GetModuleFileNameW(GetModuleHandle(NULL), wszOwnPath, MAX_PATH);
-                    CHAR hash[100];
-                    GetHardcodedHash(wszOwnPath, hash, 100);
-                    WriteFile(hFile, pRscr, DOSMODE_OFFSET, &dwNumberOfBytesWritten, NULL);
-                    offset += dwNumberOfBytesWritten;
-                    WriteFile(hFile, hash, 32, &dwNumberOfBytesWritten, NULL);
-                    offset += dwNumberOfBytesWritten;
-                }
-            }
-            if (!WriteFile(
-                hFile,
-                (char*)pRscr + offset,
-                cbRscr - offset,
-                &dwNumberOfBytesWritten,
-                NULL
-            ))
-            {
-                return FALSE;
-            }
-            CloseHandle(hFile);
-        }
         return TRUE;
     }
+
+    unz_file_info64 fileInfo = { 0 };
+    // Caller (InstallResource) has already called unzOpenCurrentFile
+    if (unzGetCurrentFileInfo64(zipFile, &fileInfo, NULL, 0, NULL, 0, NULL, 0) != UNZ_OK)
+    {
+        return FALSE;
+    }
+
+    BOOL bRet = FALSE;
+    void* pRscr = malloc(fileInfo.uncompressed_size);
+    DWORD cbRscr = fileInfo.uncompressed_size;
+    if (pRscr)
+    {
+        if (unzReadCurrentFile(zipFile, pRscr, cbRscr) == cbRscr)
+        {
+            HANDLE hFile = CreateFileW(wszPath, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+            if (hFile)
+            {
+                DWORD dwNumberOfBytesWritten = 0;
+                int offset = 0;
+                wchar_t wszDxgi[MAX_PATH];
+                if (GetWindowsDirectoryW(wszDxgi, MAX_PATH))
+                {
+                    wcscat_s(wszDxgi, MAX_PATH, L"\\dxgi.dll");
+                    if (!wcscmp(wszPath, wszDxgi))
+                    {
+                        WCHAR wszOwnPath[MAX_PATH];
+                        GetModuleFileNameW(GetModuleHandle(NULL), wszOwnPath, MAX_PATH);
+                        CHAR hash[100];
+                        GetHardcodedHash(wszOwnPath, hash, 100);
+                        WriteFile(hFile, pRscr, DOSMODE_OFFSET, &dwNumberOfBytesWritten, NULL);
+                        offset += dwNumberOfBytesWritten;
+                        WriteFile(hFile, hash, 32, &dwNumberOfBytesWritten, NULL);
+                        offset += dwNumberOfBytesWritten;
+                    }
+                }
+                bRet = WriteFile(hFile, (char*)pRscr + offset, cbRscr - offset, &dwNumberOfBytesWritten, NULL);
+                CloseHandle(hFile);
+            }
+        }
+        free(pRscr);
+    }
+    // Caller (InstallResource) will call unzCloseCurrentFile
+    return bRet;
 }
 
-BOOL InstallResource(BOOL bInstall, HMODULE hInstance, int res, LPCWSTR pwszDirectory, LPCWSTR pwszFileName)
+__declspec(noinline) BOOL InstallResource(BOOL bInstall, HMODULE hInstance, unzFile zipFile, const char* pszFileNameInZip, LPCWSTR pwszDirectory, LPCWSTR pwszFileName)
 {
-    BOOL bOk = TRUE;
-    HRSRC hRscr = NULL;
-    if (res == 0 || ((hRscr = FindResourceW(hInstance, MAKEINTRESOURCE(res), RT_RCDATA))))
+    if (bInstall && zipFile && pszFileNameInZip)
     {
-        WCHAR wszPath[MAX_PATH];
-        wcscpy_s(wszPath, MAX_PATH, pwszDirectory);
-        wcscat_s(wszPath, MAX_PATH, L"\\");
-        wcscat_s(wszPath, MAX_PATH, pwszFileName);
-        bOk = InstallResourceHelper(bInstall, hInstance, hRscr, wszPath);
+        int resultLocateFile = unzLocateFile(zipFile, pszFileNameInZip, 0);
+        if (resultLocateFile != UNZ_OK)
+        {
+            return resultLocateFile == UNZ_END_OF_LIST_OF_FILE; // Don't touch this file, we don't pack this file in the setup
+        }
+
+        if (unzOpenCurrentFile(zipFile) != UNZ_OK)
+        {
+            return FALSE;
+        }
     }
-    return bOk;
+
+    WCHAR wszPath[MAX_PATH];
+    wcscpy_s(wszPath, MAX_PATH, pwszDirectory);
+    wcscat_s(wszPath, MAX_PATH, L"\\");
+    wcscat_s(wszPath, MAX_PATH, pwszFileName);
+    BOOL bRet = InstallResourceHelper(bInstall, hInstance, zipFile, wszPath);
+    if (bInstall && zipFile && pszFileNameInZip)
+        unzCloseCurrentFile(zipFile);
+    return bRet;
 }
 
 BOOL DeleteResource(LPCWSTR pwszDirectory, LPCWSTR pwszFileName)
@@ -459,13 +645,13 @@ BOOL DownloadResource(BOOL bInstall, LPCWSTR pwszURL, DWORD dwSize, LPCSTR chash
     return bOk;
 }
 
-void ProcessTaskbarDlls(BOOL* bInOutOk, BOOL bInstall, BOOL bExtractMode, HINSTANCE hInstance, WCHAR wszPath[260])
+void ProcessTaskbarDlls(BOOL* bInOutOk, BOOL bInstall, BOOL bExtractMode, HINSTANCE hInstance, unzFile zipFile, WCHAR wszPath[260])
 {
     LPCWSTR pwszTaskbarDllName = bExtractMode ? NULL : PickTaskbarDll();
-    if (*bInOutOk) *bInOutOk = InstallResource(bInstall && (bExtractMode || pwszTaskbarDllName && !wcscmp(pwszTaskbarDllName, L"ep_taskbar.2.dll")), hInstance, IDR_EP_TASKBAR_2, wszPath, L"ep_taskbar.2.dll");
-    if (*bInOutOk) *bInOutOk = InstallResource(bInstall && (bExtractMode || pwszTaskbarDllName && !wcscmp(pwszTaskbarDllName, L"ep_taskbar.3.dll")), hInstance, IDR_EP_TASKBAR_3, wszPath, L"ep_taskbar.3.dll");
-    if (*bInOutOk) *bInOutOk = InstallResource(bInstall && (bExtractMode || pwszTaskbarDllName && !wcscmp(pwszTaskbarDllName, L"ep_taskbar.4.dll")), hInstance, IDR_EP_TASKBAR_4, wszPath, L"ep_taskbar.4.dll");
-    if (*bInOutOk) *bInOutOk = InstallResource(bInstall && (bExtractMode || pwszTaskbarDllName && !wcscmp(pwszTaskbarDllName, L"ep_taskbar.5.dll")), hInstance, IDR_EP_TASKBAR_5, wszPath, L"ep_taskbar.5.dll");
+    if (*bInOutOk) *bInOutOk = InstallResource(bInstall && (bExtractMode || pwszTaskbarDllName && !wcscmp(pwszTaskbarDllName, L"ep_taskbar.2.dll")), hInstance, zipFile, "ep_taskbar.2.dll", wszPath, L"ep_taskbar.2.dll");
+    if (*bInOutOk) *bInOutOk = InstallResource(bInstall && (bExtractMode || pwszTaskbarDllName && !wcscmp(pwszTaskbarDllName, L"ep_taskbar.3.dll")), hInstance, zipFile, "ep_taskbar.3.dll", wszPath, L"ep_taskbar.3.dll");
+    if (*bInOutOk) *bInOutOk = InstallResource(bInstall && (bExtractMode || pwszTaskbarDllName && !wcscmp(pwszTaskbarDllName, L"ep_taskbar.4.dll")), hInstance, zipFile, "ep_taskbar.4.dll", wszPath, L"ep_taskbar.4.dll");
+    if (*bInOutOk) *bInOutOk = InstallResource(bInstall && (bExtractMode || pwszTaskbarDllName && !wcscmp(pwszTaskbarDllName, L"ep_taskbar.5.dll")), hInstance, zipFile, "ep_taskbar.5.dll", wszPath, L"ep_taskbar.5.dll");
 }
 
 int WINAPI wWinMain(
@@ -501,19 +687,26 @@ int WINAPI wWinMain(
         {
             GetCurrentDirectoryW(MAX_PATH, wszPath);
         }
-        if (bOk) bOk = InstallResource(bInstall, hInstance, IDR_EP_IA32, wszPath, _T(PRODUCT_NAME) L".IA-32.dll");
+        MemoryBuffer* pMem;
+        unzFile zipFile = LoadZipFileFromResources(&pMem);
+        bOk = zipFile != NULL;
+        if (bOk) bOk = InstallResource(bInstall, hInstance, zipFile, PRODUCT_NAME ".IA-32.dll", wszPath, _T(PRODUCT_NAME) L".IA-32.dll");
 #if defined(_M_X64)
-        if (bOk) bOk = InstallResource(bInstall, hInstance, IDR_EP_AMD64, wszPath, _T(PRODUCT_NAME) L".amd64.dll");
+        if (bOk) bOk = InstallResource(bInstall, hInstance, zipFile, PRODUCT_NAME ".amd64.dll", wszPath, _T(PRODUCT_NAME) L".amd64.dll");
 #elif defined(_M_ARM64)
-        if (bOk) bOk = InstallResource(bInstall, hInstance, IDR_EP_AMD64, wszPath, _T(PRODUCT_NAME) L".arm64.dll");
+        if (bOk) bOk = InstallResource(bInstall, hInstance, zipFile, PRODUCT_NAME ".arm64.dll", wszPath, _T(PRODUCT_NAME) L".arm64.dll");
 #endif
-        if (bOk) bOk = InstallResource(bInstall, hInstance, IDR_EP_DWM, wszPath, L"ep_dwm.exe");
-        if (bOk) bOk = InstallResource(bInstall, hInstance, IDR_EP_WEATHER, wszPath, L"ep_weather_host.dll");
-        if (bOk) bOk = InstallResource(bInstall, hInstance, IDR_EP_WEATHER_STUB, wszPath, L"ep_weather_host_stub.dll");
-        if (bOk) bOk = InstallResource(bInstall, hInstance, IDR_MS_WEBVIEW2_LOADER, wszPath, L"WebView2Loader.dll");
-        if (bOk) bOk = InstallResource(bInstall, hInstance, IDR_EP_STARTMENU, wszPath, L"wincorlib.dll");
-        if (bOk) bOk = InstallResource(bInstall, hInstance, IDR_EP_GUI, wszPath, L"ep_gui.dll");
-        ProcessTaskbarDlls(&bOk, bInstall, TRUE, hInstance, wszPath);
+        if (bOk) bOk = InstallResource(bInstall, hInstance, zipFile, "ep_dwm.exe", wszPath, L"ep_dwm.exe");
+        if (bOk) bOk = InstallResource(bInstall, hInstance, zipFile, "ep_weather_host.dll", wszPath, L"ep_weather_host.dll");
+        if (bOk) bOk = InstallResource(bInstall, hInstance, zipFile, "ep_weather_host_stub.dll", wszPath, L"ep_weather_host_stub.dll");
+        if (bOk) bOk = InstallResource(bInstall, hInstance, zipFile, "WebView2Loader.dll", wszPath, L"WebView2Loader.dll");
+        if (bOk) bOk = InstallResource(bInstall, hInstance, zipFile, "wincorlib.dll", wszPath, L"wincorlib.dll");
+        if (bOk) bOk = InstallResource(bInstall, hInstance, zipFile, "ep_gui.dll", wszPath, L"ep_gui.dll");
+        ProcessTaskbarDlls(&bOk, bInstall, TRUE, hInstance, zipFile, wszPath);
+        if (zipFile)
+            unzClose(zipFile);
+        if (pMem)
+            MemoryBuffer_Destroy(&pMem);
         return !bOk;
     }
 
@@ -593,6 +786,17 @@ int WINAPI wWinMain(
         exit(0);
     }
 
+    MemoryBuffer* pMem = NULL;
+    unzFile zipFile = NULL;
+    if (bInstall)
+    {
+        zipFile = LoadZipFileFromResources(&pMem);
+        if (!zipFile)
+        {
+            exit(0);
+        }
+    }
+
     DWORD bIsUndockingDisabled = FALSE, dwSize = sizeof(DWORD);
     RegGetValueW(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Shell\\Update\\Packages", L"UndockingDisabled", RRF_RT_DWORD, NULL, &bIsUndockingDisabled, &dwSize);
     if (bIsUndockingDisabled)
@@ -628,23 +832,23 @@ int WINAPI wWinMain(
             if (explorerProcessId != 0)
             {
                 HANDLE explorerProcess = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, explorerProcessId);
-                if (explorerProcess != NULL) 
+                if (explorerProcess != NULL)
                 {
                     OpenProcessToken(explorerProcess, TOKEN_QUERY | TOKEN_DUPLICATE | TOKEN_ASSIGN_PRIMARY, &userToken);
                     CloseHandle(explorerProcess);
                 }
-                if (userToken) 
+                if (userToken)
                 {
                     HANDLE myToken = INVALID_HANDLE_VALUE;
                     OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY | TOKEN_DUPLICATE | TOKEN_ASSIGN_PRIMARY, &myToken);
-                    if (myToken != INVALID_HANDLE_VALUE) 
+                    if (myToken != INVALID_HANDLE_VALUE)
                     {
                         DWORD cbSizeNeeded = 0;
                         SetLastError(0);
                         if (!GetTokenInformation(userToken, TokenUser, NULL, 0, &cbSizeNeeded) && GetLastError() == ERROR_INSUFFICIENT_BUFFER)
                         {
                             TOKEN_USER* userTokenInfo = malloc(cbSizeNeeded);
-                            if (userTokenInfo) 
+                            if (userTokenInfo)
                             {
                                 if (GetTokenInformation(userToken, TokenUser, userTokenInfo, cbSizeNeeded, &cbSizeNeeded))
                                 {
@@ -819,7 +1023,7 @@ int WINAPI wWinMain(
         // C:\Program Files\ExplorerPatcher
         SHGetFolderPathW(NULL, SPECIAL_FOLDER, NULL, SHGFP_TYPE_CURRENT, wszPath);
         wcscat_s(wszPath, MAX_PATH, _T(APP_RELATIVE_PATH));
-        if (bOk && bInstall) bOk = InstallResource(bInstall, hInstance, 0, wszPath, _T(SETUP_UTILITY_NAME));
+        if (bOk && bInstall) bOk = InstallResource(bInstall, hInstance, NULL, NULL, wszPath, _T(SETUP_UTILITY_NAME));
         if (bOk)
         {
             if (!bInstall)
@@ -881,28 +1085,32 @@ int WINAPI wWinMain(
                 }
             }
         }
-        if (bOk) bOk = InstallResource(bInstall, hInstance, IDR_EP_IA32, wszPath, _T(PRODUCT_NAME) L".IA-32.dll");
+        if (bOk) bOk = InstallResource(bInstall, hInstance, zipFile, PRODUCT_NAME ".IA-32.dll", wszPath, _T(PRODUCT_NAME) L".IA-32.dll");
 #if defined(_M_X64)
-        if (bOk) bOk = InstallResource(bInstall, hInstance, IDR_EP_AMD64, wszPath, _T(PRODUCT_NAME) L".amd64.dll");
+        if (bOk) bOk = InstallResource(bInstall, hInstance, zipFile, PRODUCT_NAME ".amd64.dll", wszPath, _T(PRODUCT_NAME) L".amd64.dll");
 #elif defined(_M_ARM64)
-        if (bOk) bOk = InstallResource(bInstall, hInstance, IDR_EP_AMD64, wszPath, _T(PRODUCT_NAME) L".arm64.dll");
+        if (bOk) bOk = InstallResource(bInstall, hInstance, zipFile, PRODUCT_NAME ".arm64.dll", wszPath, _T(PRODUCT_NAME) L".arm64.dll");
 #endif
-        if (bOk) bOk = InstallResource(bInstall, hInstance, IDR_EP_GUI, wszPath, L"ep_gui.dll");
-        if (bOk) bOk = InstallResource(bInstall, hInstance, IDR_EP_DWM, wszPath, L"ep_dwm.exe");
+        if (bOk) bOk = InstallResource(bInstall, hInstance, zipFile, "ep_gui.dll", wszPath, L"ep_gui.dll");
+        if (bOk) bOk = InstallResource(bInstall, hInstance, zipFile, "ep_dwm.exe", wszPath, L"ep_dwm.exe");
         if (bInstall)
         {
-            if (bOk) bOk = InstallResource(bInstall, hInstance, IDR_EP_WEATHER, wszPath, L"ep_weather_host.dll");
-            if (bOk) bOk = InstallResource(bInstall, hInstance, IDR_EP_WEATHER_STUB, wszPath, L"ep_weather_host_stub.dll");
-            if (bOk) bOk = InstallResource(bInstall, hInstance, IDR_MS_WEBVIEW2_LOADER, wszPath, L"WebView2Loader.dll");
+            if (bOk) bOk = InstallResource(bInstall, hInstance, zipFile, "ep_weather_host.dll", wszPath, L"ep_weather_host.dll");
+            if (bOk) bOk = InstallResource(bInstall, hInstance, zipFile, "ep_weather_host_stub.dll", wszPath, L"ep_weather_host_stub.dll");
+            if (bOk) bOk = InstallResource(bInstall, hInstance, zipFile, "WebView2Loader.dll", wszPath, L"WebView2Loader.dll");
         }
-        ProcessTaskbarDlls(&bOk, bInstall, FALSE, hInstance, wszPath);
+        ProcessTaskbarDlls(&bOk, bInstall, FALSE, hInstance, zipFile, wszPath);
 
         // --------------------------------------------------------------------------------
 
         // C:\Windows
         // + dxgi.dll
         if (bOk) GetWindowsDirectoryW(wszPath, MAX_PATH);
-        if (bOk) bOk = InstallResource(bInstall, hInstance, IDR_EP_AMD64, wszPath, L"dxgi.dll");
+#if defined(_M_X64)
+        if (bOk) bOk = InstallResource(bInstall, hInstance, zipFile, PRODUCT_NAME ".amd64.dll", wszPath, L"dxgi.dll");
+#elif defined(_M_ARM64)
+        if (bOk) bOk = InstallResource(bInstall, hInstance, zipFile, PRODUCT_NAME ".arm64.dll", wszPath, L"dxgi.dll");
+#endif
 
         // --------------------------------------------------------------------------------
 
@@ -917,8 +1125,12 @@ int WINAPI wWinMain(
         // - pris2\Windows.UI.ShellCommon.en-US.pri
         if (bOk) GetWindowsDirectoryW(wszPath, MAX_PATH);
         if (bOk) wcscat_s(wszPath, MAX_PATH, L"\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy");
-        if (bOk) bOk = InstallResource(bInstall, hInstance, IDR_EP_AMD64, wszPath, L"dxgi.dll");
-        if (bOk) bOk = InstallResource(bInstall && IsWindows11(), hInstance, IDR_EP_STARTMENU, wszPath, L"wincorlib.dll");
+#if defined(_M_X64)
+        if (bOk) bOk = InstallResource(bInstall, hInstance, zipFile, PRODUCT_NAME ".amd64.dll", wszPath, L"dxgi.dll");
+#elif defined(_M_ARM64)
+        if (bOk) bOk = InstallResource(bInstall, hInstance, zipFile, PRODUCT_NAME ".arm64.dll", wszPath, L"dxgi.dll");
+#endif
+        if (bOk) bOk = InstallResource(bInstall && IsWindows11(), hInstance, zipFile, "ep_startmenu.dll", wszPath, L"wincorlib.dll");
         if (bOk) bOk = DeleteResource(wszPath, L"wincorlib_orig.dll");
         if (bOk && IsWindows11() && bInstall)
         {
@@ -972,7 +1184,11 @@ int WINAPI wWinMain(
         // + dxgi.dll
         if (bOk) GetWindowsDirectoryW(wszPath, MAX_PATH);
         if (bOk) wcscat_s(wszPath, MAX_PATH, L"\\SystemApps\\ShellExperienceHost_cw5n1h2txyewy");
-        if (bOk && IsWindows11()) bOk = InstallResource(bInstall, hInstance, IDR_EP_AMD64, wszPath, L"dxgi.dll");
+#if defined(_M_X64)
+        if (bOk && IsWindows11()) bOk = InstallResource(bInstall, hInstance, zipFile, PRODUCT_NAME ".amd64.dll", wszPath, L"dxgi.dll");
+#elif defined(_M_ARM64)
+        if (bOk && IsWindows11()) bOk = InstallResource(bInstall, hInstance, zipFile, PRODUCT_NAME ".arm64.dll", wszPath, L"dxgi.dll");
+#endif
 
         // --------------------------------------------------------------------------------
 
@@ -1207,6 +1423,11 @@ int WINAPI wWinMain(
         StartExplorerWithDelay(1000, userToken);
         if (userToken != INVALID_HANDLE_VALUE) CloseHandle(userToken);
     }
+
+    if (zipFile)
+        unzClose(zipFile);
+    if (pMem)
+        MemoryBuffer_Destroy(&pMem);
 
 	return GetLastError();
 }

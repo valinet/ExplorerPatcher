@@ -32,6 +32,8 @@
     <ProjectGuid>{2fd40b09-f224-4e9a-b2fe-a22b50b2debf}</ProjectGuid>
     <RootNamespace>epsetup</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <GitCommitHashShort>0000000</GitCommitHashShort>
+    <WithEncryption>true</WithEncryption>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -128,11 +130,12 @@
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
-      <AdditionalIncludeDirectories>$(SolutionDir)libs\libvalinet;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)libs\libvalinet;$(SolutionDir)libs\zlib;$(SolutionDir)libs\zlib\contrib;$(SolutionDir)libs\zlib\build-$(Platform);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>$(SolutionDir)libs\zlib\build-$(Platform)\$(Configuration)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -144,13 +147,14 @@
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <AdditionalIncludeDirectories>$(SolutionDir)libs\libvalinet;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)libs\libvalinet;$(SolutionDir)libs\zlib;$(SolutionDir)libs\zlib\contrib;$(SolutionDir)libs\zlib\build-$(Platform);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>$(SolutionDir)libs\zlib\build-$(Platform)\$(Configuration)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -160,11 +164,12 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
-      <AdditionalIncludeDirectories>$(SolutionDir)libs\libvalinet;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)libs\libvalinet;$(SolutionDir)libs\zlib;$(SolutionDir)libs\zlib\contrib;$(SolutionDir)libs\zlib\build-$(Platform);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>$(SolutionDir)libs\zlib\build-$(Platform)\$(Configuration)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -176,13 +181,14 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <AdditionalIncludeDirectories>$(SolutionDir)libs\libvalinet;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)libs\libvalinet;$(SolutionDir)libs\zlib;$(SolutionDir)libs\zlib\contrib;$(SolutionDir)libs\zlib\build-$(Platform);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>$(SolutionDir)libs\zlib\build-$(Platform)\$(Configuration)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
@@ -192,11 +198,12 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
-      <AdditionalIncludeDirectories>$(SolutionDir)libs\libvalinet;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)libs\libvalinet;$(SolutionDir)libs\zlib;$(SolutionDir)libs\zlib\contrib;$(SolutionDir)libs\zlib\build-$(Platform);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>$(SolutionDir)libs\zlib\build-$(Platform)\$(Configuration)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
@@ -208,14 +215,20 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <AdditionalIncludeDirectories>$(SolutionDir)libs\libvalinet;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)libs\libvalinet;$(SolutionDir)libs\zlib;$(SolutionDir)libs\zlib\contrib;$(SolutionDir)libs\zlib\build-$(Platform);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>$(SolutionDir)libs\zlib\build-$(Platform)\$(Configuration)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(WithEncryption)' == 'true'">
+    <ClCompile>
+      <PreprocessorDefinitions>WITH_ENCRYPTION;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="Exists('..\build\$(Configuration)\$(Platform)\ep_taskbar.2.dll')">
     <ResourceCompile>
@@ -250,10 +263,15 @@
   <ItemGroup>
     <ClCompile Include="..\ExplorerPatcher\utility.c" />
     <ClCompile Include="ep_setup.c" />
+    <ClCompile Include="..\libs\zlib\contrib\minizip\ioapi.c" />
+    <ClCompile Include="..\libs\zlib\contrib\minizip\unzip.c">
+      <PreprocessorDefinitions>NOCRYPT;NOUNCRYPT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\ExplorerPatcher\utility.h" />
     <ClInclude Include="resources\resource.h" />
+    <ClInclude Include="rijndael-alg-fst.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="resources\ep_setup.rc">
@@ -266,38 +284,104 @@
     <ResourceCompile Include="..\ExplorerPatcher-L10N\resources\lang\ep_setup.*.rc" Condition="Exists('..\ExplorerPatcher-L10N\resources\lang')" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\build\Debug\ep_dwm.exe">
-      <ExcludedFromBuild Condition="'$(Configuration)'=='Release'">true</ExcludedFromBuild>
-    </None>
-    <None Include="..\build\Debug\ep_weather_host.dll">
-      <ExcludedFromBuild Condition="'$(Configuration)'=='Release'">true</ExcludedFromBuild>
-    </None>
-    <None Include="..\build\Debug\ep_weather_host_stub.dll">
-      <ExcludedFromBuild Condition="'$(Configuration)'=='Release'">true</ExcludedFromBuild>
-    </None>
-    <None Include="..\build\Debug\ExplorerPatcher.amd64.dll">
-      <ExcludedFromBuild Condition="'$(Configuration)'=='Release'">true</ExcludedFromBuild>
-    </None>
-    <None Include="..\build\Debug\ExplorerPatcher.IA-32.dll">
-      <ExcludedFromBuild Condition="'$(Configuration)'=='Release'">true</ExcludedFromBuild>
-    </None>
-    <None Include="..\build\Release\ep_dwm.exe">
-      <ExcludedFromBuild Condition="'$(Configuration)'=='Debug'">true</ExcludedFromBuild>
-    </None>
-    <None Include="..\build\Release\ep_weather_host.dll">
-      <ExcludedFromBuild Condition="'$(Configuration)'=='Debug'">true</ExcludedFromBuild>
-    </None>
-    <None Include="..\build\Release\ep_weather_host_stub.dll">
-      <ExcludedFromBuild Condition="'$(Configuration)'=='Debug'">true</ExcludedFromBuild>
-    </None>
-    <None Include="..\build\Release\ExplorerPatcher.amd64.dll">
-      <ExcludedFromBuild Condition="'$(Configuration)'=='Debug'">true</ExcludedFromBuild>
-    </None>
-    <None Include="..\build\Release\ExplorerPatcher.IA-32.dll">
-      <ExcludedFromBuild Condition="'$(Configuration)'=='Debug'">true</ExcludedFromBuild>
-    </None>
     <None Include="applicat.bin" />
   </ItemGroup>
+  <ItemGroup>
+    <PackFile Include="..\build\$(Configuration)\$(Platform)\ExplorerPatcher.IA-32.dll" Condition="Exists('..\build\$(Configuration)\$(Platform)\ExplorerPatcher.IA-32.dll')" />
+    <PackFile Include="..\build\$(Configuration)\$(Platform)\ExplorerPatcher.amd64.dll" Condition="Exists('..\build\$(Configuration)\$(Platform)\ExplorerPatcher.amd64.dll')" />
+    <PackFile Include="..\build\$(Configuration)\$(Platform)\WebView2Loader.dll" Condition="Exists('..\build\$(Configuration)\$(Platform)\WebView2Loader.dll')" />
+    <PackFile Include="..\build\$(Configuration)\$(Platform)\ep_dwm.exe" Condition="Exists('..\build\$(Configuration)\$(Platform)\ep_dwm.exe')" />
+    <PackFile Include="..\build\$(Configuration)\$(Platform)\ep_gui.dll" Condition="Exists('..\build\$(Configuration)\$(Platform)\ep_gui.dll')" />
+    <PackFile Include="..\build\$(Configuration)\$(Platform)\ep_startmenu.dll" Condition="Exists('..\build\$(Configuration)\$(Platform)\ep_startmenu.dll')" />
+    <PackFile Include="..\build\$(Configuration)\$(Platform)\ep_taskbar.2.dll" Condition="Exists('..\build\$(Configuration)\$(Platform)\ep_taskbar.2.dll')" />
+    <PackFile Include="..\build\$(Configuration)\$(Platform)\ep_taskbar.3.dll" Condition="Exists('..\build\$(Configuration)\$(Platform)\ep_taskbar.3.dll')" />
+    <PackFile Include="..\build\$(Configuration)\$(Platform)\ep_taskbar.4.dll" Condition="Exists('..\build\$(Configuration)\$(Platform)\ep_taskbar.4.dll')" />
+    <PackFile Include="..\build\$(Configuration)\$(Platform)\ep_taskbar.5.dll" Condition="Exists('..\build\$(Configuration)\$(Platform)\ep_taskbar.5.dll')" />
+    <PackFile Include="..\build\$(Configuration)\$(Platform)\ep_weather_host.dll" Condition="Exists('..\build\$(Configuration)\$(Platform)\ep_weather_host.dll')" />
+    <PackFile Include="..\build\$(Configuration)\$(Platform)\ep_weather_host_stub.dll" Condition="Exists('..\build\$(Configuration)\$(Platform)\ep_weather_host_stub.dll')" />
+  </ItemGroup>
+  <Target Name="GetCommitHash" AfterTargets="PrepareForBuild">
+    <Exec Command="git rev-parse --short HEAD" ConsoleToMSBuild="true" Condition="'$(GitCommitHashShort)' == '0000000'">
+      <Output TaskParameter="ConsoleOutput" PropertyName="GitCommitHashShort" />
+    </Exec>
+    <Message Text="Git commit hash: $(GitCommitHashShort)" />
+  </Target>
+  <UsingTask TaskName="GenerateAesKey" TaskFactory="CodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <Seed ParameterType="System.String" Required="true" />
+      <EncryptionKey ParameterType="System.String" Output="true" />
+      <EncryptionKeyCommaSeparated ParameterType="System.String" Output="true" />
+    </ParameterGroup>
+    <Task>
+      <Code Type="Fragment" Language="cs">
+        <![CDATA[
+          using (System.Security.Cryptography.SHA256 sha256 = System.Security.Cryptography.SHA256.Create())
+          {
+            byte[] seedBytes = System.Text.Encoding.UTF8.GetBytes(Seed);
+            byte[] hashBytes = sha256.ComputeHash(seedBytes);
+            Random random = new System.Random(System.BitConverter.ToInt32(hashBytes, 0));
+
+            byte[] keyBytes = new byte[32];
+            random.NextBytes(keyBytes);
+
+            EncryptionKey = System.BitConverter.ToString(keyBytes).Replace("-", "").ToLowerInvariant();
+            EncryptionKeyCommaSeparated = "0x" + System.BitConverter.ToString(keyBytes).Replace("-", ",0x");
+          }
+        ]]>
+      </Code>
+    </Task>
+  </UsingTask>
+  <Target Name="GenerateAesKey" AfterTargets="GetCommitHash">
+    <GenerateAesKey Seed="$(GitCommitHashShort)" Condition="'$(WithEncryption)' == 'true'">
+      <Output TaskParameter="EncryptionKey" PropertyName="ZipEncryptionKey" />
+      <Output TaskParameter="EncryptionKeyCommaSeparated" PropertyName="ZipEncryptionKeyCommaSeparated" />
+    </GenerateAesKey>
+    <ItemGroup Condition="'$(WithEncryption)' == 'true'">
+      <ClCompile>
+        <PreprocessorDefinitions>ZIP_ENCRYPTION_KEY=$(ZipEncryptionKeyCommaSeparated);%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      </ClCompile>
+    </ItemGroup>
+    <Message Text="Generated AES key: 0x$(ZipEncryptionKey)" Condition="'$(WithEncryption)' == 'true'" />
+  </Target>
+  <UsingTask TaskName="EncryptFile" TaskFactory="CodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <OutputFile ParameterType="System.String" />
+      <EncryptionKey ParameterType="System.String" />
+    </ParameterGroup>
+    <Task>
+      <Code Type="Fragment" Language="cs">
+        <![CDATA[
+          using (System.Security.Cryptography.Aes aes = System.Security.Cryptography.Aes.Create())
+          {
+            int numChars = EncryptionKey.Length;
+            byte[] keyBytes = new byte[numChars / 2];
+            for (int i = 0; i < numChars; i += 2)
+            {
+              keyBytes[i / 2] = System.Convert.ToByte(EncryptionKey.Substring(i, 2), 16);
+            }
+            aes.Key = keyBytes;
+            aes.Mode = System.Security.Cryptography.CipherMode.ECB;
+            using (System.IO.FileStream inputFileStream = new System.IO.FileStream(OutputFile, System.IO.FileMode.Open, System.IO.FileAccess.Read))
+            using (System.IO.FileStream outputFileStream = new System.IO.FileStream(OutputFile + ".bin", System.IO.FileMode.Create, System.IO.FileAccess.Write))
+            using (System.Security.Cryptography.ICryptoTransform encryptor = aes.CreateEncryptor())
+            using (System.Security.Cryptography.CryptoStream cryptoStream = new System.Security.Cryptography.CryptoStream(outputFileStream, encryptor, System.Security.Cryptography.CryptoStreamMode.Write))
+            {
+              inputFileStream.CopyTo(cryptoStream);
+            }
+          }
+        ]]>
+      </Code>
+    </Task>
+  </UsingTask>
+  <Target Name="CreateZip" BeforeTargets="ResourceCompile">
+    <Copy SourceFiles="@(PackFile)" DestinationFolder="..\build\$(Configuration)\$(Platform)\ep_setup_files" />
+    <ZipDirectory SourceDirectory="..\build\$(Configuration)\$(Platform)\ep_setup_files" DestinationFile="..\build\$(Configuration)\$(Platform)\ep_setup_files.zip" Overwrite="true" />
+    <EncryptFile OutputFile="..\build\$(Configuration)\$(Platform)\ep_setup_files.zip" EncryptionKey="$(ZipEncryptionKey)" Condition="'$(WithEncryption)' == 'true'" />
+    <Copy SourceFiles="..\build\$(Configuration)\$(Platform)\ep_setup_files.zip" DestinationFiles="..\build\$(Configuration)\$(Platform)\ep_setup_files.zip.bin" Condition="'$(WithEncryption)' != 'true'" />
+  </Target>
+  <Target Name="BuildDependencies" BeforeTargets="PrepareForBuild">
+    <Exec Command="cmake --build . --config $(Configuration)" WorkingDirectory="$(SolutionDir)libs\zlib\build-$(Platform)" />
+  </Target>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

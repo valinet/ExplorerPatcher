@@ -120,12 +120,12 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Platform)'=='x64'">
     <Link>
-      <AdditionalLibraryDirectories>$(SolutionDir)libs\funchook\build\Release\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)libs\funchook\build-x64\$(Configuration)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Platform)'=='ARM64'">
     <Link>
-      <AdditionalLibraryDirectories>$(SolutionDir)libs\funchook\build-arm64\Release\;$(SolutionDir)libs\funchook\build-arm64\_deps\capstone-build\Release\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)libs\funchook\build-arm64\$(Configuration)\;$(SolutionDir)libs\funchook\build-arm64\_deps\capstone-build\Release\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -167,5 +167,8 @@
     <PropertyGroup>
       <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
     </PropertyGroup>
+  </Target>
+  <Target Name="BuildDependencies" BeforeTargets="PrepareForBuild">
+    <Exec Command="cmake --build . --config $(Configuration)" WorkingDirectory="$(SolutionDir)libs\funchook\build-$(Platform)" />
   </Target>
 </Project>

@@ -86,6 +86,11 @@ jobs:
         run: |
           nuget restore ExplorerPatcher.sln
 
+      - name: Setup dependency projects
+        shell: cmd
+        run: |
+          GenerateDependencyProjects.bat
+
       # - name: Download ep_taskbar
       #   uses: robinraju/release-downloader@v1
       #   with:
@@ -112,26 +117,6 @@ jobs:
       #         mv "$file" "build/Release/ARM64/$(basename "$file" .arm64.dll).dll"
       #       done
       #     fi
-
-      - name: Build funchook amd64
-        shell: powershell
-        run: |
-          cd libs/funchook
-          md build
-          cd build
-          cmake -G "Visual Studio 17 2022" -A x64 -DFUNCHOOK_CPU=x86 ..
-          (gc .\funchook-static.vcxproj) -replace '<RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>', '<RuntimeLibrary>MultiThreaded</RuntimeLibrary>' | Out-File .\funchook-static.vcxproj
-          cmake --build . --config Release
-
-      - name: Build funchook arm64
-        shell: powershell
-        run: |
-          cd libs/funchook
-          md build-arm64
-          cd build-arm64
-          cmake -G "Visual Studio 17 2022" -A ARM64 -DFUNCHOOK_CPU=arm64 -DFUNCHOOK_DISASM=capstone -DFUNCHOOK_BUILD_TESTS=OFF ..
-          (gc .\funchook-static.vcxproj) -replace '<RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>', '<RuntimeLibrary>MultiThreaded</RuntimeLibrary>' | Out-File .\funchook-static.vcxproj
-          cmake --build . --config Release
 
       - name: Build EP IA-32
         if: github.event.inputs.config == ''
