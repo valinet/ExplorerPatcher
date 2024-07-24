@@ -19,6 +19,15 @@ Tested on OS builds 19045.4598, 22621.3296, 22621.3810, 26120.961, and 26244.500
   * If you want to use the new taskbar implementation, you can download the appropriate DLL for your system from the [Releases](https://github.com/ExplorerPatcher/ep_taskbar_releases/releases/latest) page of its releases repository, and then manually putting it in `C:\Program Files\ExplorerPatcher` without the architecture specifier.
   * For example, for 226xx builds on x64-based systems, download `ep_taskbar.2.amd64.dll`, rename to `ep_taskbar.2.dll`, and lastly put it in `C:\Program Files\ExplorerPatcher`.
 
+##### 3
+
+* Introduced support for ARM64 devices. (992b3a6, 2e4e4f5, b76c0e4, c9884b2, 57f63ad, 78788ec, 4799b4b, 5d0d218)
+  * These builds are only tested on and made to work with 24H2 ARM64 builds. Older ARM64 Windows versions than 24H2 may not work as expected.
+  * An ARM64 device to support the making and testing of ARM64 builds is not cheap, so please consider [donating @Amrsatrio via Ko-fi](https://ko-fi.com/amrsatrio) to recoup the costs.
+* Added an "Update now" button into update notifications for easier updating. (2b9c747, 8c16a9a)
+* Revised how files are packed in ep_setup for smaller size and easier maintenance. (30579b0, b253625, 04fd2b7, db54ce9, 126c024, c0201ff)
+* ⚠️ **Note for users with the pre-release versions enabled:** Versions before this one will not be able to update to this version or later versions due to the updater code of previous versions not supporting multiple binaries in one GitHub release. Please manually update by downloading the appropriate binary from this page.
+
 ## 22621.3527.65
 
 Tested on OS builds 22621.3296, 22621.3447, 22621.3527, 22635.3566, 26058.1000, 26120.461, and 26200.5001. (Note: 22621 and 22631 share the same OS files)
