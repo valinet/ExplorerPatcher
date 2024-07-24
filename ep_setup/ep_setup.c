@@ -149,7 +149,7 @@ BOOL SetupUninstallEntry(BOOL bInstall, WCHAR* wszPath)
                         L"UninstallString",
                         0,
                         REG_SZ,
-                        wszPath,
+                        (const BYTE*)wszPath,
                         (wcslen(wszPath) + 1) * sizeof(wchar_t)
                     );
                 }
@@ -160,7 +160,7 @@ BOOL SetupUninstallEntry(BOOL bInstall, WCHAR* wszPath)
                         L"DisplayName",
                         0,
                         REG_SZ,
-                        _T(PRODUCT_NAME),
+                        (const BYTE*)_T(PRODUCT_NAME),
                         (wcslen(_T(PRODUCT_NAME)) + 1) * sizeof(wchar_t)
                     );
                 }
@@ -171,7 +171,7 @@ BOOL SetupUninstallEntry(BOOL bInstall, WCHAR* wszPath)
                         L"Publisher",
                         0,
                         REG_SZ,
-                        _T(PRODUCT_PUBLISHER),
+                        (const BYTE*)_T(PRODUCT_PUBLISHER),
                         (wcslen(_T(PRODUCT_PUBLISHER)) + 1) * sizeof(wchar_t)
                     );
                 }
@@ -183,7 +183,7 @@ BOOL SetupUninstallEntry(BOOL bInstall, WCHAR* wszPath)
                         L"NoModify",
                         0,
                         REG_DWORD,
-                        &dw1,
+                        (const BYTE*)&dw1,
                         sizeof(DWORD)
                     );
                 }
@@ -195,7 +195,7 @@ BOOL SetupUninstallEntry(BOOL bInstall, WCHAR* wszPath)
                         L"NoRepair",
                         0,
                         REG_DWORD,
-                        &dw1,
+                        (const BYTE*)&dw1,
                         sizeof(DWORD)
                     );
                 }
@@ -227,7 +227,7 @@ BOOL SetupUninstallEntry(BOOL bInstall, WCHAR* wszPath)
                                 L"DisplayVersion",
                                 0,
                                 REG_SZ,
-                                wszBuf,
+                                (const BYTE*)wszBuf,
                                 (wcslen(wszBuf) + 1) * sizeof(wchar_t)
                             );
                             if (!dwLastError)
@@ -237,7 +237,7 @@ BOOL SetupUninstallEntry(BOOL bInstall, WCHAR* wszPath)
                                     L"VersionMajor",
                                     0,
                                     REG_DWORD,
-                                    &dwSecondRight,
+                                    (const BYTE*)&dwSecondRight,
                                     sizeof(DWORD)
                                 );
                                 if (!dwLastError)
@@ -247,7 +247,7 @@ BOOL SetupUninstallEntry(BOOL bInstall, WCHAR* wszPath)
                                         L"VersionMinor",
                                         0,
                                         REG_DWORD,
-                                        &dwRightMost,
+                                        (const BYTE*)&dwRightMost,
                                         sizeof(DWORD)
                                     );
                                 }
@@ -266,8 +266,8 @@ BOOL SetupUninstallEntry(BOOL bInstall, WCHAR* wszPath)
                         L"DisplayIcon",
                         0,
                         REG_SZ,
-                        wszPath,
-                        (wcslen(wszPath) + 1) * sizeof(wchar_t)
+                        (const BYTE*)wszPath,
+                        (DWORD)((wcslen(wszPath) + 1) * sizeof(wchar_t))
                     );
                 }
                 RegCloseKey(hKey);
@@ -328,7 +328,7 @@ uLong ZCALLBACK MemReadFile(voidpf opaque, voidpf stream, void* buf, uLong size)
 
     if (pMem->curOffset + toRead > pMem->size)
     {
-        toRead = pMem->size - pMem->curOffset;
+        toRead = (uLong)(pMem->size - pMem->curOffset);
     }
 
     if (toRead > 0)
@@ -528,7 +528,7 @@ BOOL InstallResourceHelper(BOOL bInstall, HMODULE hModule, unzFile zipFile, cons
 
     BOOL bRet = FALSE;
     void* pRscr = malloc(fileInfo.uncompressed_size);
-    DWORD cbRscr = fileInfo.uncompressed_size;
+    DWORD cbRscr = (DWORD)fileInfo.uncompressed_size;
     if (pRscr)
     {
         if (unzReadCurrentFile(zipFile, pRscr, cbRscr) == cbRscr)
@@ -878,7 +878,7 @@ int WINAPI wWinMain(
                     }
                 }
             }
-            PDWORD_PTR res = -1;
+            DWORD_PTR res = -1;
             if (!SendMessageTimeoutW(hShellTrayWnd, 1460, 0, 0, SMTO_ABORTIFHUNG, 2000, &res) && res)
             {
                 HANDLE hExplorerRestartThread = CreateThread(NULL, 0, BeginExplorerRestart, NULL, 0, NULL);
@@ -978,7 +978,7 @@ int WINAPI wWinMain(
                 HANDLE hProcess = OpenProcess(PROCESS_TERMINATE, FALSE, dwGUIPid);
                 if (hProcess)
                 {
-                    DWORD dwSection = SendMessageW(hWnd, WM_MSG_GUI_SECTION, WM_MSG_GUI_SECTION_GET, 0);
+                    DWORD dwSection = (DWORD)SendMessageW(hWnd, WM_MSG_GUI_SECTION, WM_MSG_GUI_SECTION_GET, 0);
 
                     TerminateProcess(hProcess, 0);
                     CloseHandle(hProcess);
@@ -1007,7 +1007,7 @@ int WINAPI wWinMain(
                             TEXT("OpenPropertiesAtNextStart"),
                             0,
                             REG_DWORD,
-                            &dwSection,
+                            (const BYTE*)&dwSection,
                             sizeof(DWORD)
                         );
                         RegCloseKey(hKey);
@@ -1196,9 +1196,9 @@ int WINAPI wWinMain(
         {
             GetSystemDirectoryW(wszPath, MAX_PATH);
             WCHAR* pArgs = NULL;
-            DWORD dwLen = wcslen(wszPath);
+            DWORD dwLen = (DWORD)wcslen(wszPath);
             wcscat_s(wszPath, MAX_PATH - dwLen, L"\\rundll32.exe \"");
-            dwLen = wcslen(wszPath);
+            dwLen = (DWORD)wcslen(wszPath);
             pArgs = wszPath + dwLen - 2;
             SHGetFolderPathW(NULL, SPECIAL_FOLDER, NULL, SHGFP_TYPE_CURRENT, wszPath + dwLen);
             wcscat_s(wszPath, MAX_PATH, _T(APP_RELATIVE_PATH) L"\\ep_gui.dll\",ZZGUI");
@@ -1398,7 +1398,7 @@ int WINAPI wWinMain(
                             TEXT("IsUpdatePending"),
                             0,
                             REG_DWORD,
-                            &dwSize,
+                            (const BYTE*)&dwSize,
                             sizeof(DWORD)
                         );
                         RegCloseKey(hKey);

@@ -287,18 +287,19 @@
     <None Include="applicat.bin" />
   </ItemGroup>
   <ItemGroup>
-    <PackFile Include="..\build\$(Configuration)\$(Platform)\ExplorerPatcher.IA-32.dll" Condition="Exists('..\build\$(Configuration)\$(Platform)\ExplorerPatcher.IA-32.dll')" />
-    <PackFile Include="..\build\$(Configuration)\$(Platform)\ExplorerPatcher.amd64.dll" Condition="Exists('..\build\$(Configuration)\$(Platform)\ExplorerPatcher.amd64.dll')" />
-    <PackFile Include="..\build\$(Configuration)\$(Platform)\WebView2Loader.dll" Condition="Exists('..\build\$(Configuration)\$(Platform)\WebView2Loader.dll')" />
-    <PackFile Include="..\build\$(Configuration)\$(Platform)\ep_dwm.exe" Condition="Exists('..\build\$(Configuration)\$(Platform)\ep_dwm.exe')" />
-    <PackFile Include="..\build\$(Configuration)\$(Platform)\ep_gui.dll" Condition="Exists('..\build\$(Configuration)\$(Platform)\ep_gui.dll')" />
-    <PackFile Include="..\build\$(Configuration)\$(Platform)\ep_startmenu.dll" Condition="Exists('..\build\$(Configuration)\$(Platform)\ep_startmenu.dll')" />
-    <PackFile Include="..\build\$(Configuration)\$(Platform)\ep_taskbar.2.dll" Condition="Exists('..\build\$(Configuration)\$(Platform)\ep_taskbar.2.dll')" />
-    <PackFile Include="..\build\$(Configuration)\$(Platform)\ep_taskbar.3.dll" Condition="Exists('..\build\$(Configuration)\$(Platform)\ep_taskbar.3.dll')" />
-    <PackFile Include="..\build\$(Configuration)\$(Platform)\ep_taskbar.4.dll" Condition="Exists('..\build\$(Configuration)\$(Platform)\ep_taskbar.4.dll')" />
-    <PackFile Include="..\build\$(Configuration)\$(Platform)\ep_taskbar.5.dll" Condition="Exists('..\build\$(Configuration)\$(Platform)\ep_taskbar.5.dll')" />
-    <PackFile Include="..\build\$(Configuration)\$(Platform)\ep_weather_host.dll" Condition="Exists('..\build\$(Configuration)\$(Platform)\ep_weather_host.dll')" />
-    <PackFile Include="..\build\$(Configuration)\$(Platform)\ep_weather_host_stub.dll" Condition="Exists('..\build\$(Configuration)\$(Platform)\ep_weather_host_stub.dll')" />
+    <PackFile Include="..\build\$(Configuration)\Win32\ExplorerPatcher.IA-32.dll" Condition="Exists('$(SolutionDir)\build\$(Configuration)\Win32\ExplorerPatcher.IA-32.dll')" />
+    <PackFile Include="..\build\$(Configuration)\x64\ExplorerPatcher.amd64.dll" Condition="Exists('$(SolutionDir)\build\$(Configuration)\x64\ExplorerPatcher.amd64.dll')" />
+    <PackFile Include="..\build\$(Configuration)\ARM64\ExplorerPatcher.arm64.dll" Condition="Exists('$(SolutionDir)\build\$(Configuration)\ARM64\ExplorerPatcher.arm64.dll')" />
+    <PackFile Include="..\build\$(Configuration)\$(Platform)\WebView2Loader.dll" Condition="Exists('$(SolutionDir)\build\$(Configuration)\$(Platform)\WebView2Loader.dll')" />
+    <PackFile Include="..\build\$(Configuration)\$(Platform)\ep_dwm.exe" Condition="Exists('$(SolutionDir)\build\$(Configuration)\$(Platform)\ep_dwm.exe')" />
+    <PackFile Include="..\build\$(Configuration)\$(Platform)\ep_gui.dll" Condition="Exists('$(SolutionDir)\build\$(Configuration)\$(Platform)\ep_gui.dll')" />
+    <PackFile Include="..\build\$(Configuration)\$(Platform)\ep_startmenu.dll" Condition="Exists('$(SolutionDir)\build\$(Configuration)\$(Platform)\ep_startmenu.dll')" />
+    <PackFile Include="..\build\$(Configuration)\$(Platform)\ep_taskbar.2.dll" Condition="Exists('$(SolutionDir)\build\$(Configuration)\$(Platform)\ep_taskbar.2.dll')" />
+    <PackFile Include="..\build\$(Configuration)\$(Platform)\ep_taskbar.3.dll" Condition="Exists('$(SolutionDir)\build\$(Configuration)\$(Platform)\ep_taskbar.3.dll')" />
+    <PackFile Include="..\build\$(Configuration)\$(Platform)\ep_taskbar.4.dll" Condition="Exists('$(SolutionDir)\build\$(Configuration)\$(Platform)\ep_taskbar.4.dll')" />
+    <PackFile Include="..\build\$(Configuration)\$(Platform)\ep_taskbar.5.dll" Condition="Exists('$(SolutionDir)\build\$(Configuration)\$(Platform)\ep_taskbar.5.dll')" />
+    <PackFile Include="..\build\$(Configuration)\$(Platform)\ep_weather_host.dll" Condition="Exists('$(SolutionDir)\build\$(Configuration)\$(Platform)\ep_weather_host.dll')" />
+    <PackFile Include="..\build\$(Configuration)\$(Platform)\ep_weather_host_stub.dll" Condition="Exists('$(SolutionDir)\build\$(Configuration)\$(Platform)\ep_weather_host_stub.dll')" />
   </ItemGroup>
   <Target Name="GetCommitHash" AfterTargets="PrepareForBuild">
     <Exec Command="git rev-parse --short HEAD" ConsoleToMSBuild="true" Condition="'$(GitCommitHashShort)' == '0000000'">
@@ -374,6 +375,7 @@
     </Task>
   </UsingTask>
   <Target Name="CreateZip" BeforeTargets="ResourceCompile">
+    <MakeDir Directories="..\build\$(Configuration)\$(Platform)\ep_setup_files" />
     <Copy SourceFiles="@(PackFile)" DestinationFolder="..\build\$(Configuration)\$(Platform)\ep_setup_files" />
     <ZipDirectory SourceDirectory="..\build\$(Configuration)\$(Platform)\ep_setup_files" DestinationFile="..\build\$(Configuration)\$(Platform)\ep_setup_files.zip" Overwrite="true" />
     <EncryptFile OutputFile="..\build\$(Configuration)\$(Platform)\ep_setup_files.zip" EncryptionKey="$(ZipEncryptionKey)" Condition="'$(WithEncryption)' == 'true'" />
