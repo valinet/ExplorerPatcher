@@ -26,7 +26,7 @@ Tested on OS builds 19045.4598, 22621.3296, 22621.3810, 26120.961, and 26244.500
   * An ARM64 device to support the making and testing of ARM64 builds is not cheap, so please consider [donating @Amrsatrio via Ko-fi](https://ko-fi.com/amrsatrio) to recoup the costs.
 * Added an "Update now" button into update notifications for easier updating. (2b9c747, 8c16a9a)
 * Revised how files are packed in ep_setup for smaller size and easier maintenance. (30579b0, b253625, 04fd2b7, db54ce9, 126c024, c0201ff)
-* ⚠️ **Note for users with the pre-release versions enabled:** Versions before this one will not be able to update to this version or later versions due to the updater code of previous versions not supporting multiple binaries in one GitHub release. Please manually update by downloading the appropriate binary from this page.
+* EP's taskbar implementation for 24H2 is now available in [its releases repository](https://github.com/ExplorerPatcher/ep_taskbar_releases/releases/latest), as `ep_taskbar.5.dll`. If you want to try this out, follow the steps explained above.
 
 ## 22621.3527.65
 

@@ -179,7 +179,7 @@ jobs:
             build/Release/
 
       # build/Release/x64/ep_setup.exe -> build/Release/ep_setup.exe
-      # build/Release/ARM64/ep_setup.exe -> build/Release/ep_setup.arm64.exe
+      # build/Release/ARM64/ep_setup.exe -> build/Release/ep_setup_arm64.exe
       - name: Stage files for release
         if: github.ref == 'refs/heads/master' && github.event.inputs.ref == ''
         shell: bash
@@ -188,7 +188,7 @@ jobs:
             cp build/Release/x64/ep_setup.exe build/Release/ep_setup.exe
           fi
           if [ -d "build/Release/ARM64" ] && ls build/Release/ARM64/ep_setup.exe 1> /dev/null 2>&1; then
-            cp build/Release/ARM64/ep_setup.exe build/Release/ep_setup.arm64.exe
+            cp build/Release/ARM64/ep_setup.exe build/Release/ep_setup_arm64.exe
           fi
 
       - name: Generate release name
@@ -221,7 +221,7 @@ jobs:
           body: ${{ steps.release_description.outputs.data }}
           files: |
             build/Release/ep_setup.exe
-            build/Release/ep_setup.arm64.exe
+            build/Release/ep_setup_arm64.exe
         env:
           GITHUB_TOKEN: ${{ secrets.PAT }}
 
@@ -237,6 +237,6 @@ jobs:
           body: ${{ steps.release_description.outputs.data }}
           files: |
             build/Release/ep_setup.exe
-            build/Release/ep_setup.arm64.exe
+            build/Release/ep_setup_arm64.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

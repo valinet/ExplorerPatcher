@@ -15,7 +15,7 @@
 #ifndef _M_ARM64
 #define SETUP_UTILITY_NAME "ep_setup.exe"
 #else
-#define SETUP_UTILITY_NAME "ep_setup.arm64.exe"
+#define SETUP_UTILITY_NAME "ep_setup_arm64.exe"
 #endif
 #define TOAST_BUFSIZ 1536
 #define SEH_REGPATH "Control Panel\\Quick Actions\\Control Center\\QuickActionsStateCapture\\ExplorerPatcher"
