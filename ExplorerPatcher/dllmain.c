@@ -11327,6 +11327,69 @@ HRESULT OnViewUncloakingHook(void* eventHandler, void* pSender)
             target | 0x200000, NULL, NULL, NULL, NULL, &rc);
     }
 
+    if (global_rovi.dwBuildNumber >= 25169)
+    {
+        // Patch hardcoded EUITSP_BOTTOM present in the original function with the correct value
+#if defined(_M_X64)
+        static int* rgpConstants[2];
+        if (!rgpConstants[0] && rgpConstants[0] != (int*)-1)
+        {
+            // 03 00 00 00
+            PBYTE match = FindPattern(OnViewUncloakingFunc, 80, "\x03\x00\x00\x00", "xxxx");
+            rgpConstants[0] = match ? (int*)match : (int*)-1;
+            if (match)
+            {
+                match = FindPattern(match + 4, 40, "\x03\x00\x00\x00", "xxxx");
+                rgpConstants[1] = match ? (int*)match : (int*)-1;
+            }
+        }
+        for (int i = 0; i < ARRAYSIZE(rgpConstants); i++)
+        {
+            if (rgpConstants[i] && rgpConstants[i] != (int*)-1)
+            {
+                DWORD dwOldProtect;
+                if (VirtualProtect(rgpConstants[i], 4, PAGE_EXECUTE_READWRITE, &dwOldProtect))
+                {
+                    *rgpConstants[i] = tsp;
+                    VirtualProtect(rgpConstants[i], 4, dwOldProtect, &dwOldProtect);
+                }
+            }
+        }
+#elif defined(_M_ARM64)
+        static DWORD* rgpInsnMovs[2];
+        if (!rgpInsnMovs[0] && rgpInsnMovs[0] != (DWORD*)-1)
+        {
+            // 68 00 80 52
+            PBYTE match = FindPattern(OnViewUncloakingFunc, 160, "\x68\x00\x80\x52", "xxxx");
+            rgpInsnMovs[0] = match ? (DWORD*)match : (DWORD*)-1;
+            if (match)
+            {
+                match = FindPattern(match + 4, 40, "\x68\x00\x80\x52", "xxxx");
+                rgpInsnMovs[1] = match ? (DWORD*)match : (DWORD*)-1;
+            }
+        }
+        for (int i = 0; i < ARRAYSIZE(rgpInsnMovs); i++)
+        {
+            if (rgpInsnMovs[i] && rgpInsnMovs[i] != (DWORD*)-1)
+            {
+                DWORD dwOldProtect;
+                if (VirtualProtect(rgpInsnMovs[i], 4, PAGE_EXECUTE_READWRITE, &dwOldProtect))
+                {
+                    if (ARM64_IsInRange(tsp, 16))
+                    {
+                        DWORD insn = *rgpInsnMovs[i];
+                        int imm16Mask = ((1 << 16) - 1) << 5;
+                        insn &= ~imm16Mask; // clear imm16
+                        insn |= (tsp << 5) & imm16Mask; // set imm16
+                        *rgpInsnMovs[i] = insn;
+                    }
+                    VirtualProtect(rgpInsnMovs[i], 4, dwOldProtect, &dwOldProtect);
+                }
+            }
+        }
+#endif
+    }
+
     return OnViewUncloakingFunc(eventHandler, pSender);
 }
 
