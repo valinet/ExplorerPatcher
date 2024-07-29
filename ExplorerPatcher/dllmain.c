@@ -11295,8 +11295,9 @@ enum DWMTRANSITION_TARGET
     DWMTARGET_LAUNCHERFULLSCREEN = 0x52,
 };
 
-HRESULT(*CStartExperienceManager_GetMonitorInformationFunc)(void* _this, void* experience, RECT* a3, enum EDGEUI_TRAYSTUCKPLACE* pTsp, bool* a5, HMONITOR* a7);
-HRESULT(*CExperienceManagerAnimationHelper_BeginFunc)(void* _this, void*, enum DWMTRANSITION_TARGET, const RECT*, const RECT*, const RECT*, const RECT*, const RECT*);
+extern HRESULT CStartExperienceManager_GetMonitorInformationHook(void* _this, void* experience, RECT* rcOutWorkArea, enum EDGEUI_TRAYSTUCKPLACE* outTrayStuckPlace, bool* bOutRtl, HMONITOR* hOutMonitor);
+HRESULT(*CStartExperienceManager_GetMonitorInformationFunc)(void* _this, void* experience, RECT* rcOutWorkArea, enum EDGEUI_TRAYSTUCKPLACE* outTrayStuckPlace, bool* bOutRtl, HMONITOR* hOutMonitor);
+HRESULT(*CExperienceManagerAnimationHelper_BeginFunc)(void* _this, void* pViewWrapper, enum DWMTRANSITION_TARGET target, const RECT* prcBeginSource, const RECT* prcBeginDestination, const RECT* prcEndSource, const RECT* prcEndDestination, const RECT* prcClip);
 HRESULT(*CExperienceManagerAnimationHelper_EndFunc)(void* _this);
 
 HRESULT(*OnViewUncloakingFunc)(void* eventHandler, void* pSender);
@@ -11304,10 +11305,10 @@ HRESULT OnViewUncloakingHook(void* eventHandler, void* pSender)
 {
     PBYTE _this = (PBYTE)eventHandler - g_SMAnimationPatchOffsets.startExperienceManager_SingleViewShellExperienceEventHandler;
 
-    RECT rc;
+    RECT rcWorkArea;
     enum EDGEUI_TRAYSTUCKPLACE tsp;
-    bool bUnknown;
-    if (SUCCEEDED(CStartExperienceManager_GetMonitorInformationFunc(_this, pSender, &rc, &tsp, &bUnknown, NULL)))
+    bool bRtl;
+    if (SUCCEEDED(CStartExperienceManager_GetMonitorInformationHook(_this, pSender, &rcWorkArea, &tsp, &bRtl, NULL)))
     {
         enum DWMTRANSITION_TARGET target = DWMTARGET_LAUNCHERFLYOUT;
         if (*(bool*)((PBYTE)pSender + 0x34))
@@ -11324,7 +11325,7 @@ HRESULT OnViewUncloakingHook(void* eventHandler, void* pSender)
         CExperienceManagerAnimationHelper_BeginFunc(
             _this + g_SMAnimationPatchOffsets.startExperienceManager_openingAnimation,
             *(void**)((PBYTE)pSender + 0x18), // viewWrapper
-            target | 0x200000, NULL, NULL, NULL, NULL, &rc);
+            target | 0x200000, NULL, NULL, NULL, NULL, &rcWorkArea);
     }
 
     if (global_rovi.dwBuildNumber >= 25169)
@@ -11411,11 +11412,11 @@ HRESULT OnViewCloakingHook(void* eventHandler, void* pSender)
     bool bTransitioningToCortana = *(_this + g_SMAnimationPatchOffsets.startExperienceManager_bTransitioningToCortana);
     if (!bTransitioningToCortana)
     {
-        RECT rc;
+        RECT rcWorkArea;
         enum EDGEUI_TRAYSTUCKPLACE tsp;
-        bool bUnknown;
+        bool bRtl;
         HMONITOR hMonitor;
-        if (SUCCEEDED(CStartExperienceManager_GetMonitorInformationFunc(_this, pSender, &rc, &tsp, &bUnknown, &hMonitor)))
+        if (SUCCEEDED(CStartExperienceManager_GetMonitorInformationHook(_this, pSender, &rcWorkArea, &tsp, &bRtl, &hMonitor)))
         {
             enum DWMTRANSITION_TARGET target = DWMTARGET_LAUNCHERFLYOUT;
             if (*(bool*)((PBYTE)pSender + 0x34))
@@ -11432,7 +11433,7 @@ HRESULT OnViewCloakingHook(void* eventHandler, void* pSender)
             CExperienceManagerAnimationHelper_BeginFunc(
                 _this + g_SMAnimationPatchOffsets.startExperienceManager_closingAnimation,
                 *(void**)((PBYTE)pSender + 0x18), // viewWrapper
-                target | 0x200000u, NULL, NULL, NULL, NULL, &rc);
+                target | 0x200000u, NULL, NULL, NULL, NULL, &rcWorkArea);
         }
     }
 
@@ -11984,6 +11985,20 @@ BOOL FixStartMenuAnimation(LPMODULEINFO mi)
         }
     }
 #endif
+
+    int rv = -1;
+    if (CStartExperienceManager_GetMonitorInformationFunc)
+    {
+        rv = funchook_prepare(
+            funchook,
+            (void**)&CStartExperienceManager_GetMonitorInformationFunc,
+            CStartExperienceManager_GetMonitorInformationHook
+        );
+    }
+    if (rv != 0)
+    {
+        printf("Failed to hook CStartExperienceManager::GetMonitorInformation(). rv = %d\n", rv);
+    }
 
     return TRUE;
 }
