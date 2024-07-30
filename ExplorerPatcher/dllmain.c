@@ -2006,7 +2006,7 @@ INT64 Shell_TrayWndSubclassProc(
         pt.y = GET_Y_LPARAM(lParam);
 
         HMENU hMenu = LoadMenuW(GetModuleHandleW(NULL), MAKEINTRESOURCEW(205));
-        if (!hMenu)
+        if (!hMenu && g_hMyTaskbar)
         {
             hMenu = LoadMenuW(g_hMyTaskbar, MAKEINTRESOURCEW(205));
         }
