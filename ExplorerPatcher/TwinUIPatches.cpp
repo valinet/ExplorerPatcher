@@ -8,6 +8,7 @@
 #include <wil/result_macros.h>
 
 #include <valinet/utility/memmem.h>
+#include <wrl/wrappers/corewrappers.h>
 
 #include "ArchiveMenu.h"
 #include "utility.h"
@@ -205,7 +206,77 @@ BOOL Mirror_IsThreadRTL()
 {
     return IsBiDiLocale(GetThreadUILanguage());
 }
+
+enum ZBID : int;
+enum ACCENT_STATE : int;
+
 class CSingleViewShellExperience;
+
+class SingleViewShellExperiencePersonality;
+
+class CSingleViewShellExperience
+{
+public:
+    enum class Border
+    {
+        None = 0,
+        Left = 1,
+        Top = 2,
+        Right = 4,
+        Bottom = 8
+    };
+
+    HRESULT SetPosition(const RECT* rect);
+
+    Wrappers::HString _args;
+    Wrappers::HString _aumid;
+    Wrappers::HString _experience;
+    void* _viewWrapper;
+    ComPtr<ABI::Windows::Foundation::Collections::IPropertySet> _propertySet;
+    int _viewState;
+    ABI::Windows::Foundation::Size _desiredSize;
+    BOOLEAN _fullScreen;
+    bool _isSessionIdle;
+    DWORD _pid;
+    ZBID _zbidDefault;
+    int _pendingViewAction;
+    int _pendingViewShowFlags;
+    int _navLevelOverrideHelper[2];
+    wistd::unique_ptr<SingleViewShellExperiencePersonality> m_personality;
+    // ...
+};
+
+class SingleViewShellExperiencePersonality
+{
+public:
+    virtual ~SingleViewShellExperiencePersonality() = 0;
+    virtual bool IsPersonality(void*) = 0;
+    virtual HRESULT Initialize(IServiceProvider*) = 0;
+    virtual HRESULT EnableSessionIdleNotifications(IServiceProvider*) = 0;
+    virtual HRESULT OnViewWrapperChanged() = 0;
+    virtual HRESULT ShowView() = 0;
+    virtual HRESULT HideView() = 0;
+    virtual HRESULT IsViewVisible(bool*) = 0;
+    virtual HRESULT SetWindowBand(ZBID) = 0;
+    virtual HRESULT BringToForeground() = 0;
+    virtual HRESULT BringToFocus() = 0;
+    virtual HRESULT ShowBorder(CSingleViewShellExperience::Border, ACCENT_STATE, DWORD, const RECT*) = 0;
+    virtual HRESULT SetPosition(const RECT*) = 0;
+};
+
+HRESULT CSingleViewShellExperience::SetPosition(const RECT* rect)
+{
+    RETURN_HR(m_personality->SetPosition(rect));
+}
+
+namespace ExperienceManagerUtils
+{
+    void ScaleByDPI(const ABI::Windows::Foundation::Size* size, int dpi, int* outWidth, int* outHeight)
+    {
+        *outWidth = MulDiv((int)size->Width, dpi, 96);
+        *outHeight = MulDiv((int)size->Height, dpi, 96);
+    }
+}
 
 #pragma endregion
 
@@ -1274,7 +1345,7 @@ BOOL Moment2PatchHardwareConfirmator(LPMODULEINFO mi)
 #pragma endregion
 
 
-#pragma region "Fix Windows 10 start menu positioning issues caused by 40874676 and 44656322"
+#pragma region "Fix broken Windows 10 start menu positioning issues caused by 44656322"
 
 // Reverts 44656322's effects on the start menu
 extern "C" HRESULT CStartExperienceManager_GetMonitorInformationHook(void* _this, CSingleViewShellExperience* experience, RECT* rcOutWorkArea, EDGEUI_TRAYSTUCKPLACE* outTrayStuckPlace, bool* bOutRtl, HMONITOR* hOutMonitor)
@@ -1286,7 +1357,7 @@ extern "C" HRESULT CStartExperienceManager_GetMonitorInformationHook(void* _this
         *hOutMonitor = nullptr;
 
     ComPtr<IServiceProvider> spImmersiveShellServiceProvider;
-    RETURN_IF_FAILED(CoCreateInstance(CLSID_ImmersiveShell, nullptr, CLSCTX_LOCAL_SERVER, IID_IServiceProvider, &spImmersiveShellServiceProvider));
+    RETURN_IF_FAILED(CoCreateInstance(CLSID_ImmersiveShell, nullptr, CLSCTX_LOCAL_SERVER, IID_PPV_ARGS(&spImmersiveShellServiceProvider)));
 
     ComPtr<IImmersiveLauncher> spImmersiveLauncher;
     RETURN_IF_FAILED(spImmersiveShellServiceProvider->QueryService(SID_ImmersiveLauncher, IID_PPV_ARGS(&spImmersiveLauncher)));
@@ -1373,10 +1444,10 @@ HRESULT CStartExperienceManager_OnViewUncloakingHook(void* eventHandler, CSingle
     RECT rcWorkArea;
     EDGEUI_TRAYSTUCKPLACE tsp;
     bool bRtl;
-    if (SUCCEEDED(CStartExperienceManager_GetMonitorInformationHook(_this, pSender, &rcWorkArea, &tsp, &bRtl, NULL)))
+    if (SUCCEEDED(CStartExperienceManager_GetMonitorInformationHook(_this, pSender, &rcWorkArea, &tsp, &bRtl, NULL)) && dwStartShowClassicMode)
     {
         DWMTRANSITION_TARGET target = DWMTARGET_LAUNCHERFLYOUT;
-        if (*(bool*)((PBYTE)pSender + 0x34))
+        if (pSender->_fullScreen)
             target = DWMTARGET_LAUNCHERFULLSCREEN;
         else if (tsp == EUITSP_LEFT)
             target = DWMTARGET_LAUNCHERFLYOUTTORIGHT;
@@ -1389,7 +1460,7 @@ HRESULT CStartExperienceManager_OnViewUncloakingHook(void* eventHandler, CSingle
 
         CExperienceManagerAnimationHelper_BeginFunc(
             _this + g_SMAnimationPatchOffsets.startExperienceManager_openingAnimation,
-            *(void**)((PBYTE)pSender + 0x18), // viewWrapper
+            pSender->_viewWrapper,
             (DWMTRANSITION_TARGET)(target | 0x200000), nullptr, nullptr, nullptr, nullptr, &rcWorkArea);
     }
 
@@ -1464,7 +1535,10 @@ HRESULT CStartExperienceManager_OnViewUncloakedHook(void* eventHandler, CSingleV
 {
     PBYTE _this = (PBYTE)eventHandler - g_SMAnimationPatchOffsets.startExperienceManager_SingleViewShellExperienceEventHandler;
 
-    CExperienceManagerAnimationHelper_EndFunc(_this + g_SMAnimationPatchOffsets.startExperienceManager_openingAnimation);
+    if (dwStartShowClassicMode)
+    {
+        CExperienceManagerAnimationHelper_EndFunc(_this + g_SMAnimationPatchOffsets.startExperienceManager_openingAnimation);
+    }
 
     return CStartExperienceManager_OnViewUncloakedFunc(eventHandler, pSender);
 }
@@ -1475,7 +1549,7 @@ HRESULT CStartExperienceManager_OnViewCloakingHook(void* eventHandler, CSingleVi
     PBYTE _this = (PBYTE)eventHandler - g_SMAnimationPatchOffsets.startExperienceManager_SingleViewShellExperienceEventHandler;
 
     bool bTransitioningToCortana = *(_this + g_SMAnimationPatchOffsets.startExperienceManager_bTransitioningToCortana);
-    if (!bTransitioningToCortana)
+    if (!bTransitioningToCortana && dwStartShowClassicMode)
     {
         RECT rcWorkArea;
         EDGEUI_TRAYSTUCKPLACE tsp;
@@ -1484,7 +1558,7 @@ HRESULT CStartExperienceManager_OnViewCloakingHook(void* eventHandler, CSingleVi
         if (SUCCEEDED(CStartExperienceManager_GetMonitorInformationHook(_this, pSender, &rcWorkArea, &tsp, &bRtl, &hMonitor)))
         {
             DWMTRANSITION_TARGET target = DWMTARGET_LAUNCHERFLYOUT;
-            if (*(bool*)((PBYTE)pSender + 0x34))
+            if (pSender->_fullScreen)
                 target = DWMTARGET_LAUNCHERFULLSCREEN;
             else if (tsp == EUITSP_LEFT)
                 target = DWMTARGET_LAUNCHERFLYOUTTOLEFT;
@@ -1497,7 +1571,7 @@ HRESULT CStartExperienceManager_OnViewCloakingHook(void* eventHandler, CSingleVi
 
             CExperienceManagerAnimationHelper_BeginFunc(
                 _this + g_SMAnimationPatchOffsets.startExperienceManager_closingAnimation,
-                *(void**)((PBYTE)pSender + 0x18), // viewWrapper
+                pSender->_viewWrapper,
                 (DWMTRANSITION_TARGET)(target | 0x200000), nullptr, nullptr, nullptr, nullptr, &rcWorkArea);
         }
     }
@@ -1511,7 +1585,7 @@ HRESULT CStartExperienceManager_OnViewHiddenHook(void* eventHandler, CSingleView
     PBYTE _this = (PBYTE)eventHandler - g_SMAnimationPatchOffsets.startExperienceManager_SingleViewShellExperienceEventHandler;
 
     bool bTransitioningToCortana = *(_this + g_SMAnimationPatchOffsets.startExperienceManager_bTransitioningToCortana);
-    if (!bTransitioningToCortana)
+    if (!bTransitioningToCortana && dwStartShowClassicMode)
     {
         CExperienceManagerAnimationHelper_EndFunc(_this + g_SMAnimationPatchOffsets.startExperienceManager_closingAnimation);
     }
@@ -2019,37 +2093,40 @@ BOOL FixStartMenuAnimation(LPMODULEINFO mi)
         }
     }
 
+    if (dwStartShowClassicMode)
+    {
 #if defined(_M_X64)
-    if (VirtualProtect(matchHideA, 1, PAGE_EXECUTE_READWRITE, &dwOldProtect))
-    {
-        matchHideA[0] = 0xEB;
-        VirtualProtect(matchHideA, 1, dwOldProtect, &dwOldProtect);
-
-        dwOldProtect = 0;
-        if (VirtualProtect(matchHideB, 1, PAGE_EXECUTE_READWRITE, &dwOldProtect))
+        if (VirtualProtect(matchHideA, 1, PAGE_EXECUTE_READWRITE, &dwOldProtect))
         {
-            matchHideB[0] = 0xEB;
-            VirtualProtect(matchHideB, 1, dwOldProtect, &dwOldProtect);
+            matchHideA[0] = 0xEB;
+            VirtualProtect(matchHideA, 1, dwOldProtect, &dwOldProtect);
+
+            dwOldProtect = 0;
+            if (VirtualProtect(matchHideB, 1, PAGE_EXECUTE_READWRITE, &dwOldProtect))
+            {
+                matchHideB[0] = 0xEB;
+                VirtualProtect(matchHideB, 1, dwOldProtect, &dwOldProtect);
+            }
         }
-    }
 #elif defined(_M_ARM64)
-    if (VirtualProtect(matchHideA, 4, PAGE_EXECUTE_READWRITE, &dwOldProtect))
-    {
-        DWORD newInsn = ARM64_CBZWToB(*(DWORD*)matchHideA);
-        if (newInsn)
-            *(DWORD*)matchHideA = newInsn;
-        VirtualProtect(matchHideA, 4, dwOldProtect, &dwOldProtect);
-
-        dwOldProtect = 0;
-        if (VirtualProtect(matchHideB, 4, PAGE_EXECUTE_READWRITE, &dwOldProtect))
+        if (VirtualProtect(matchHideA, 4, PAGE_EXECUTE_READWRITE, &dwOldProtect))
         {
-            newInsn = ARM64_CBZWToB(*(DWORD*)matchHideB);
+            DWORD newInsn = ARM64_CBZWToB(*(DWORD*)matchHideA);
             if (newInsn)
-                *(DWORD*)matchHideB = newInsn;
-            VirtualProtect(matchHideB, 4, dwOldProtect, &dwOldProtect);
+                *(DWORD*)matchHideA = newInsn;
+            VirtualProtect(matchHideA, 4, dwOldProtect, &dwOldProtect);
+
+            dwOldProtect = 0;
+            if (VirtualProtect(matchHideB, 4, PAGE_EXECUTE_READWRITE, &dwOldProtect))
+            {
+                newInsn = ARM64_CBZWToB(*(DWORD*)matchHideB);
+                if (newInsn)
+                    *(DWORD*)matchHideB = newInsn;
+                VirtualProtect(matchHideB, 4, dwOldProtect, &dwOldProtect);
+            }
         }
-    }
 #endif
+    }
 
     int rv = -1;
     if (CStartExperienceManager_GetMonitorInformationFunc)
@@ -2064,6 +2141,565 @@ BOOL FixStartMenuAnimation(LPMODULEINFO mi)
     {
         printf("Failed to hook CStartExperienceManager::GetMonitorInformation(). rv = %d\n", rv);
     }
+
+    return TRUE;
+}
+
+#pragma endregion
+
+
+#pragma region "Fix broken taskbar jump list positioning caused by 40874676"
+
+class RoVariant
+{
+    enum States
+    {
+        StateIsNull = 0,
+        StateIsObjNoRef = 1,
+        StateIsObj = 3,
+        StateIsPV = 7
+    };
+
+    static bool StateHasRefcount(HRESULT hrState)
+    {
+        return hrState == StateIsPV || hrState == StateIsObj;
+    }
+
+    class Accessor
+    {
+        IInspectable* _pI;
+        HRESULT _hrState;
+
+        ABI::Windows::Foundation::IPropertyValue* _PV() const
+        {
+            return (ABI::Windows::Foundation::IPropertyValue*)_pI;
+        }
+
+        HRESULT VerifyPV() const
+        {
+            if (_hrState == StateIsPV)
+                return S_OK;
+            if (SUCCEEDED(_hrState))
+                return TYPE_E_TYPEMISMATCH;
+            return _hrState;
+        }
+
+    public:
+        Accessor(IInspectable* pI, HRESULT hr) : _pI(pI), _hrState(hr) {}
+        Accessor* operator->() { return this; }
+        HRESULT get_Type(ABI::Windows::Foundation::PropertyType* type) const;
+
+        #define GETTER(name, type) HRESULT Get##name(type* value) const \
+        { \
+            if (!value) \
+                return E_POINTER; \
+            *value = {}; \
+            HRESULT hr = VerifyPV(); \
+            if (SUCCEEDED(hr)) \
+                hr = _PV()->Get##name(value); \
+            return hr; \
+        }
+
+        GETTER(UInt8, UINT8);
+        GETTER(Int16, INT16);
+        GETTER(UInt16, UINT16);
+        GETTER(Int32, INT32);
+        GETTER(UInt32, UINT32);
+        GETTER(Int64, INT64);
+        GETTER(UInt64, UINT64);
+        GETTER(Single, float);
+        GETTER(Double, double);
+        GETTER(Char16, WCHAR);
+        GETTER(Boolean, BOOLEAN);
+        GETTER(String, HSTRING);
+        GETTER(Guid, GUID);
+        GETTER(DateTime, ABI::Windows::Foundation::DateTime);
+        GETTER(TimeSpan, ABI::Windows::Foundation::TimeSpan);
+        GETTER(Point, ABI::Windows::Foundation::Point);
+        GETTER(Size, ABI::Windows::Foundation::Size);
+        GETTER(Rect, ABI::Windows::Foundation::Rect);
+
+        #undef GETTER
+
+        HRESULT GetInspectable(IInspectable** value) const
+        {
+            if (!value)
+                return E_POINTER;
+            *value = nullptr;
+            HRESULT hr = _hrState;
+            if (SUCCEEDED(hr))
+            {
+                if (hr != StateIsNull && (hr == StateIsObj || hr == StateIsObjNoRef))
+                {
+                    *value = _pI;
+                    _pI->AddRef();
+                    hr = S_OK;
+                }
+                else
+                {
+                    hr = TYPE_E_TYPEMISMATCH;
+                }
+            }
+            return hr;
+        }
+
+        #define GETTER_ARRAY(name, type) HRESULT Get##name##Array(UINT* length, type** value) const \
+        { \
+            if (!length || !value) \
+                return E_POINTER; \
+            *length = 0; \
+            *value = nullptr; \
+            HRESULT hr = VerifyPV(); \
+            if (SUCCEEDED(hr)) \
+                hr = _PV()->Get##name##Array(length, value); \
+            return hr; \
+        }
+
+        GETTER_ARRAY(UInt8, UINT8);
+        GETTER_ARRAY(Int16, INT16);
+        GETTER_ARRAY(UInt16, UINT16);
+        GETTER_ARRAY(Int32, INT32);
+        GETTER_ARRAY(UInt32, UINT32);
+        GETTER_ARRAY(Int64, INT64);
+        GETTER_ARRAY(UInt64, UINT64);
+        GETTER_ARRAY(Single, float);
+        GETTER_ARRAY(Double, double);
+        GETTER_ARRAY(Char16, WCHAR);
+        GETTER_ARRAY(Boolean, BOOLEAN);
+        GETTER_ARRAY(String, HSTRING);
+        GETTER_ARRAY(Inspectable, IInspectable*);
+        GETTER_ARRAY(Guid, GUID);
+        GETTER_ARRAY(DateTime, ABI::Windows::Foundation::DateTime);
+        GETTER_ARRAY(TimeSpan, ABI::Windows::Foundation::TimeSpan);
+        GETTER_ARRAY(Point, ABI::Windows::Foundation::Point);
+        GETTER_ARRAY(Size, ABI::Windows::Foundation::Size);
+        GETTER_ARRAY(Rect, ABI::Windows::Foundation::Rect);
+
+        #undef GETTER_ARRAY
+    };
+
+    class OutRef
+    {
+        RoVariant* _pOwner;
+        IInspectable* _pI;
+
+    public:
+        OutRef(RoVariant* pOwner) : _pOwner(pOwner), _pI(nullptr) {}
+        operator ABI::Windows::Foundation::IPropertyValue**() { return (ABI::Windows::Foundation::IPropertyValue**)&_pI; }
+        operator IInspectable**() { return &_pI; }
+        ~OutRef() { _pOwner->Attach(_pI); }
+    };
+
+    IInspectable* _pI = nullptr;
+    HRESULT _hrState = StateIsNull;
+
+public:
+    RoVariant() = default;
+    RoVariant(RoVariant*);
+    RoVariant(RoVariant&);
+    RoVariant(ABI::Windows::Foundation::IPropertyValue*, bool);
+
+private:
+    RoVariant(IInspectable* pI, bool fAddRefInspectable, bool attach)
+    {
+        if (pI)
+        {
+            ABI::Windows::Foundation::IPropertyValue* pPV;
+            HRESULT hr = pI->QueryInterface(IID_PPV_ARGS(&pPV));
+            if (SUCCEEDED(hr))
+            {
+                _pI = pPV;
+                if (attach)
+                    pI->Release();
+                _hrState = StateIsPV;
+            }
+            else if (hr != E_NOINTERFACE)
+            {
+                _pI = nullptr;
+                _hrState = hr;
+                if (attach)
+                    pI->Release();
+            }
+            else
+            {
+                _pI = pI;
+                if (fAddRefInspectable && !attach)
+                    _pI->AddRef();
+                _hrState = fAddRefInspectable ? StateIsObj : StateIsObjNoRef;
+            }
+        }
+        else
+        {
+            _pI = nullptr;
+            _hrState = StateIsNull;
+        }
+    }
+
+public:
+    RoVariant(IInspectable* pI, bool attach)
+    {
+        RoVariant tmp(pI, true, attach);
+        Swap(tmp);
+    }
+
+    RoVariant(void*);
+
+    ~RoVariant()
+    {
+        if (_pI && StateHasRefcount(_hrState))
+            _pI->Release();
+    }
+
+    RoVariant& operator=(RoVariant other)
+    {
+        Swap(other);
+        return *this;
+    }
+
+    void Swap(RoVariant& other)
+    {
+        IInspectable* pI = _pI;
+        _pI = other._pI;
+        other._pI = pI;
+
+        HRESULT hrState = _hrState;
+        _hrState = other._hrState;
+        other._hrState = hrState;
+    }
+
+    operator IInspectable*() const { return Get(); }
+    IInspectable* Get() const { return _pI; }
+    IInspectable* Detach();
+    void Attach(ABI::Windows::Foundation::IPropertyValue*);
+
+    void Attach(IInspectable* pI)
+    {
+        RoVariant tmp = RoVariant(pI, true, true);
+        Swap(tmp);
+    }
+
+    Accessor operator*() const { return Accessor(_pI, _hrState); }
+    Accessor operator->() const { return Accessor(_pI, _hrState); }
+    OutRef operator&() { return ReleaseAndGetAddressOf(); }
+
+    struct USE_INSTEAD_ReleaseAndGetAddressOf
+    {
+    };
+
+    USE_INSTEAD_ReleaseAndGetAddressOf GetAddressOf() { return USE_INSTEAD_ReleaseAndGetAddressOf(); }
+    OutRef ReleaseAndGetAddressOf() { return OutRef(this); }
+    bool operator!();
+    static RoVariant Wrap(ABI::Windows::Foundation::IPropertyValue*);
+    static RoVariant Wrap(IInspectable* pI) { return RoVariant(pI, false, false); }
+    HRESULT CopyTo(ABI::Windows::Foundation::IPropertyValue**);
+    HRESULT CopyTo(IInspectable**);
+};
+
+namespace ABI::Windows::UI::Xaml
+{
+    enum HorizontalAlignment
+    {
+        HorizontalAlignment_Left = 0,
+        HorizontalAlignment_Center = 1,
+        HorizontalAlignment_Right = 2,
+        HorizontalAlignment_Stretch = 3,
+    };
+
+    enum VerticalAlignment
+    {
+        VerticalAlignment_Top = 0,
+        VerticalAlignment_Center = 1,
+        VerticalAlignment_Bottom = 2,
+        VerticalAlignment_Stretch = 3,
+    };
+}
+
+HRESULT CJumpViewExperienceManager_CalcWindowPosition(
+    RECT rcWork,
+    POINT ptAnchor,
+    int width,
+    int height,
+    ABI::Windows::UI::Xaml::HorizontalAlignment hAlign,
+    ABI::Windows::UI::Xaml::VerticalAlignment vAlign,
+    RECT& result)
+{
+    using namespace ABI::Windows::UI::Xaml;
+
+    if (false) // Feature_40874676
+    {
+        result.bottom = max(min(ptAnchor.y, rcWork.bottom), rcWork.top);
+        int desiredTop = result.bottom - height;
+        result.top = max(desiredTop, rcWork.top);
+        int desiredLeft = ptAnchor.x - (width / 2);
+        result.left = min(max(desiredLeft, rcWork.left), rcWork.right);
+        result.right = min(result.left + width, rcWork.right);
+        return S_OK;
+    }
+
+    switch (vAlign)
+    {
+        case VerticalAlignment_Center:
+        {
+            int desiredTopPre = (height / -2) + ptAnchor.y;
+            result.bottom = min(height + max(desiredTopPre, rcWork.top), rcWork.bottom);
+            int desiredTop = result.bottom - height;
+            result.top = max(desiredTop, rcWork.top);
+            break;
+        }
+        case VerticalAlignment_Top:
+        {
+            int desiredTopPre = ptAnchor.y;
+            result.bottom = min(height + max(desiredTopPre, rcWork.top), rcWork.bottom);
+            int desiredTop = result.bottom - height;
+            result.top = max(desiredTop, rcWork.top);
+            break;
+        }
+        case VerticalAlignment_Bottom:
+        {
+            int top = max(min(ptAnchor.y, rcWork.bottom) - height, rcWork.top);
+            result.bottom = min(top + height, rcWork.bottom);
+            result.top = top;
+            break;
+        }
+        default:
+        {
+            RETURN_HR(E_NOTIMPL);
+        }
+    }
+
+    switch (hAlign)
+    {
+        case HorizontalAlignment_Center:
+        {
+            int desiredLeftPre = (width / -2) + ptAnchor.x;
+            result.right = min(width + max(desiredLeftPre, rcWork.left), rcWork.right);
+            int desiredLeft = result.right - width;
+            result.left = max(desiredLeft, rcWork.left);
+            break;
+        }
+        case HorizontalAlignment_Left:
+        {
+            int desiredLeftPre = ptAnchor.x;
+            result.right = min(width + max(desiredLeftPre, rcWork.left), rcWork.right);
+            int desiredLeft = result.right - width;
+            result.left = max(desiredLeft, rcWork.left);
+            break;
+        }
+        case HorizontalAlignment_Right:
+        {
+            result.left = max(min(ptAnchor.x, rcWork.right) - width, rcWork.left);
+            result.right = min(result.left + width, rcWork.right);
+            break;
+        }
+        default:
+        {
+            RETURN_HR(E_NOTIMPL);
+        }
+    }
+
+    return S_OK;
+}
+
+HRESULT CJumpViewExperienceManager_GetMonitorInformation(void* _this, POINT ptAnchor, RECT* prcOutWorkArea, UINT* outDpi, EDGEUI_TRAYSTUCKPLACE* outStuckPlace)
+{
+    HMONITOR hMonitor = MonitorFromPoint(ptAnchor, MONITOR_DEFAULTTONEAREST);
+    RETURN_LAST_ERROR_IF(hMonitor == INVALID_HANDLE_VALUE);
+
+    MONITORINFO mi = { sizeof(mi) };
+    RETURN_IF_WIN32_BOOL_FALSE(GetMonitorInfoW(hMonitor, &mi));
+    *prcOutWorkArea = mi.rcWork;
+
+    UINT dpiY;
+    RETURN_IF_FAILED(GetDpiForMonitor(hMonitor, MDT_EFFECTIVE_DPI, outDpi, &dpiY)); // 884
+
+    ComPtr<IServiceProvider> spImmersiveShellServiceProvider;
+    RETURN_IF_FAILED(CoCreateInstance(CLSID_ImmersiveShell, nullptr, CLSCTX_LOCAL_SERVER, IID_PPV_ARGS(&spImmersiveShellServiceProvider)));
+
+    ComPtr<IImmersiveMonitorManager> spImmersiveMonitorManager;
+    RETURN_IF_FAILED(spImmersiveShellServiceProvider->QueryService(SID_IImmersiveMonitorService, IID_PPV_ARGS(&spImmersiveMonitorManager))); // 886
+
+    ComPtr<IEdgeUiManager> spEdgeUiManager;
+    RETURN_IF_FAILED(spImmersiveMonitorManager->QueryService(hMonitor, SID_EdgeUi, IID_PPV_ARGS(&spEdgeUiManager))); // 887
+    RETURN_IF_FAILED(spEdgeUiManager->GetTrayStuckPlace(outStuckPlace)); // 888
+
+    return S_OK;
+}
+
+HRESULT(*CJumpViewExperienceManager_EnsureWindowPositionFunc)(void* _this, CSingleViewShellExperience* experience);
+HRESULT CJumpViewExperienceManager_EnsureWindowPositionHook(void* _this, CSingleViewShellExperience* experience)
+{
+    if (!experience->_viewWrapper)
+        return S_OK;
+
+    ComPtr<ABI::Windows::Foundation::Collections::IMap<HSTRING, IInspectable*>> properties;
+    RETURN_IF_FAILED(experience->_propertySet.As(&properties)); // 813
+
+    POINT ptAnchor;
+    {
+        RoVariant variant;
+        RETURN_IF_FAILED(properties->Lookup(Wrappers::HStringReference(L"Position").Get(), &variant)); // 816
+
+        ABI::Windows::Foundation::Point value;
+        RETURN_IF_FAILED(variant->GetPoint(&value)); // 819
+
+        ptAnchor.x = (int)value.X;
+        ptAnchor.y = (int)value.Y;
+    }
+
+    ABI::Windows::UI::Xaml::HorizontalAlignment hAlign;
+    {
+        RoVariant variant;
+        RETURN_IF_FAILED(properties->Lookup(Wrappers::HStringReference(L"HorizontalAlign").Get(), &variant)); // 828
+
+        int value;
+        RETURN_IF_FAILED(variant->GetInt32(&value)); // 831
+        hAlign = (ABI::Windows::UI::Xaml::HorizontalAlignment)value;
+    }
+
+    ABI::Windows::UI::Xaml::VerticalAlignment vAlign;
+    {
+        RoVariant variant;
+        RETURN_IF_FAILED(properties->Lookup(Wrappers::HStringReference(L"VerticalAlign").Get(), &variant)); // 838
+
+        int value;
+        RETURN_IF_FAILED(variant->GetInt32(&value)); // 841
+        vAlign = (ABI::Windows::UI::Xaml::VerticalAlignment)value;
+    }
+
+    RECT rcWorkArea;
+    UINT dpi;
+    RETURN_IF_FAILED(CJumpViewExperienceManager_GetMonitorInformation(
+        _this, ptAnchor, &rcWorkArea, &dpi,
+        (EDGEUI_TRAYSTUCKPLACE*)((PBYTE)_this + 0x1F0))); // 850
+    *((RECT*)((PBYTE)_this + 0x200)) = rcWorkArea;
+
+    int width, height;
+    ExperienceManagerUtils::ScaleByDPI(&experience->_desiredSize, dpi, &width, &height);
+    RETURN_HR_IF(E_INVALIDARG, width <= 0 || height <= 0); // 860
+
+    RECT rcPosition;
+    RETURN_IF_FAILED(CJumpViewExperienceManager_CalcWindowPosition(rcWorkArea, ptAnchor, width, height, hAlign, vAlign, rcPosition));
+    RETURN_IF_FAILED(experience->SetPosition(&rcPosition));
+
+    return S_OK;
+}
+
+BOOL FixJumpViewPositioning(MODULEINFO* mi)
+{
+    // Offset sanity checks
+
+    // EDGEUI_TRAYSTUCKPLACE CJumpViewExperienceManager::m_trayStuckPlace
+#if defined(_M_X64)
+    // 8B 8B B0 01 00 00 BF 5C 00 00 00 85 C9
+    //       ^^^^^^^^^^^
+    // Ref: CJumpViewExperienceManager::OnViewUncloaking()
+    PBYTE matchOffsetTrayStuckPlace = (PBYTE)FindPattern(
+        mi->lpBaseOfDll,
+        mi->SizeOfImage,
+        "\x8B\x8B\xB0\x01\x00\x00\xBF\x5C\x00\x00\x00\x85\xC9",
+        "xxxxxxxxxxxxx"
+    );
+#elif defined(_M_ARM64)
+    // 08 B0 41 B9 89 0B 80 52
+    // ^^^^^^^^^^^
+    // Ref: CJumpViewExperienceManager::OnViewCloaking()
+    PBYTE matchOffsetTrayStuckPlace = (PBYTE)FindPattern(
+        mi->lpBaseOfDll,
+        mi->SizeOfImage,
+        "\x08\xB0\x41\xB9\x89\x0B\x80\x52",
+        "xxxxxxxx"
+    );
+#endif
+    if (matchOffsetTrayStuckPlace)
+    {
+        printf("[JVP] matchOffsetTrayStuckPlace = %llX\n", matchOffsetTrayStuckPlace - (PBYTE)mi->lpBaseOfDll);
+    }
+
+    // RECT CJumpViewExperienceManager::m_rcWorkArea
+    PBYTE matchOffsetRcWorkArea = nullptr;
+#if defined(_M_X64)
+    // 48 8B 53 70 48 8D 83 C0 01 00 00
+    //          --          ^^^^^^^^^^^
+    // Ref: CJumpViewExperienceManager::OnViewUncloaking()
+    if (matchOffsetTrayStuckPlace)
+    {
+        matchOffsetRcWorkArea = (PBYTE)FindPattern(
+           matchOffsetTrayStuckPlace + 13,
+           256,
+           "\x48\x8B\x53\x70\x48\x8D\x83\xC0\x01\x00\x00",
+           "xxxxxxxxxxx"
+        );
+    }
+#elif defined(_M_ARM64)
+    // 01 38 40 F9 07 00 07 91
+    // ----------- ^^^^^^^^^^^
+    // Ref: CJumpViewExperienceManager::OnViewCloaking()
+    if (matchOffsetTrayStuckPlace)
+    {
+        matchOffsetRcWorkArea = (PBYTE)FindPattern(
+            matchOffsetTrayStuckPlace + 8,
+            128,
+            "\x01\x38\x40\xF9\x07\x00\x07\x91",
+            "xxxxxxxx"
+        );
+    }
+#endif
+    if (matchOffsetRcWorkArea)
+    {
+        printf("[JVP] matchOffsetRcWorkArea = %llX\n", matchOffsetRcWorkArea - (PBYTE)mi->lpBaseOfDll);
+    }
+
+    // CJumpViewExperienceManager::EnsureWindowPosition()
+#if defined(_M_X64)
+    // 8D 4E C0 48 8B ?? E8 ?? ?? ?? ?? 8B
+    //                      ^^^^^^^^^^^
+    // Ref: CJumpViewExperienceManager::OnViewPropertiesChanging()
+    PBYTE matchEnsureWindowPosition = (PBYTE)FindPattern(
+        mi->lpBaseOfDll,
+        mi->SizeOfImage,
+        "\x8D\x4E\xC0\x48\x8B\x00\xE8\x00\x00\x00\x00\x8B",
+        "xxxxx?x????x"
+    );
+    if (matchEnsureWindowPosition)
+    {
+        matchEnsureWindowPosition += 6;
+        matchEnsureWindowPosition += 5 + *(int*)(matchEnsureWindowPosition + 1);
+    }
+#elif defined(_M_ARM64)
+    // E1 03 15 AA 80 02 01 D1 ?? ?? ?? ?? F3 03 00 2A
+    //                         ^^^^^^^^^^^
+    // Ref: CJumpViewExperienceManager::OnViewPropertiesChanging()
+    PBYTE matchEnsureWindowPosition = (PBYTE)FindPattern(
+        mi->lpBaseOfDll,
+        mi->SizeOfImage,
+        "\xE1\x03\x15\xAA\x80\x02\x01\xD1\x00\x00\x00\x00\xF3\x03\x00\x2A",
+        "xxxxxxxx????xxxx"
+    );
+    if (matchEnsureWindowPosition)
+    {
+        matchEnsureWindowPosition += 8;
+        matchEnsureWindowPosition = (PBYTE)ARM64_FollowBL((DWORD*)matchEnsureWindowPosition);
+    }
+#endif
+    if (matchEnsureWindowPosition)
+    {
+        printf("[JVP] matchEnsureWindowPosition = %llX\n", matchEnsureWindowPosition - (PBYTE)mi->lpBaseOfDll);
+    }
+
+    if (!matchOffsetTrayStuckPlace
+        || !matchOffsetRcWorkArea
+        || !matchEnsureWindowPosition)
+    {
+        printf("[JVP] Not all offsets were found, cannot perform patch\n");
+        return FALSE;
+    }
+
+    CJumpViewExperienceManager_EnsureWindowPositionFunc = (decltype(CJumpViewExperienceManager_EnsureWindowPositionFunc))matchEnsureWindowPosition;
+    funchook_prepare(
+        funchook,
+        (void**)&CJumpViewExperienceManager_EnsureWindowPositionFunc,
+        CJumpViewExperienceManager_EnsureWindowPositionHook
+    );
 
     return TRUE;
 }
@@ -2614,7 +3250,7 @@ extern "C" void RunTwinUIPCShellPatches(symbols_addr* symbols_PTRS)
     }
 
     if ((global_rovi.dwBuildNumber > 22000 || global_rovi.dwBuildNumber == 22000 && global_ubr >= 65) // Allow on 22000.65+
-        && dwStartShowClassicMode)
+        && (bOldTaskbar || dwStartShowClassicMode))
     {
         // Make sure crash counter is enabled. If one of the patches make Explorer crash while the start menu is open,
         // we don't want to softlock the user. The system reopens the start menu if Explorer terminates while it's open.
@@ -2625,6 +3261,12 @@ extern "C" void RunTwinUIPCShellPatches(symbols_addr* symbols_PTRS)
                 ReportSuccessfulAnimationPatching();
             }
         }
+    }
+
+    if (IsWindows11Version22H2OrHigher() && bOldTaskbar)
+    {
+        // Fix broken taskbar jump list positioning caused by 40874676
+        FixJumpViewPositioning(&miTwinuiPcshell);
     }
 
     VnPatchIAT_NonInline(hTwinuiPcshell, "API-MS-WIN-CORE-REGISTRY-L1-1-0.DLL", "RegGetValueW", (uintptr_t)twinuipcshell_RegGetValueW);
