@@ -406,7 +406,7 @@ inline RM_UNIQUE_PROCESS GetExplorerApplication()
     DWORD pid = 0;
     GetWindowThreadProcessId(hwnd, &pid);
 
-    RM_UNIQUE_PROCESS out = { 0, { -1, -1 } };
+    RM_UNIQUE_PROCESS out = { 0, { (DWORD)-1, (DWORD)-1 } };
     DWORD bytesReturned;
     WCHAR imageName[MAX_PATH]; // process image name buffer
     DWORD processIds[2048]; // max 2048 processes (more than enough)
@@ -604,6 +604,27 @@ inline BOOL IncrementDLLReferenceCount(HINSTANCE hinst)
 
 PVOID FindPattern(PVOID pBase, SIZE_T dwSize, LPCSTR lpPattern, LPCSTR lpMask);
 
+#if _M_X64
+inline BOOL FollowJnz(PBYTE pJnz, PBYTE* pTarget, DWORD* pJnzSize)
+{
+    // Check big jnz
+    if (pJnz[0] == 0x0F && pJnz[1] == 0x85)
+    {
+        *pTarget = pJnz + 6 + *(int*)(pJnz + 2);
+        *pJnzSize = 6;
+        return TRUE;
+    }
+    // Check small jnz
+    if (pJnz[0] == 0x75)
+    {
+        *pTarget = pJnz + 2 + *(char*)(pJnz + 1);
+        *pJnzSize = 2;
+        return TRUE;
+    }
+    return FALSE;
+}
+#endif
+
 #if _M_ARM64
 // https://github.com/CAS-Atlantic/AArch64-Encoding
 
@@ -700,7 +721,7 @@ __forceinline DWORD ARM64_DecodeLDRBIMM(DWORD insnLDRBIMM)
 inline UINT_PTR ARM64_DecodeADRL(UINT_PTR offset, DWORD insnADRP, DWORD insnADD)
 {
     if (!ARM64_IsADRP(insnADRP))
-        return NULL;
+        return 0;
 
     UINT_PTR page = ARM64_Align(offset, 0x1000);
 
@@ -855,6 +876,32 @@ inline PVOID FindPattern(PVOID pBase, SIZE_T dwSize, LPCSTR lpPattern, LPCSTR lp
 {
     dwSize -= strlen(lpMask);
     return FindPatternHelper(pBase, dwSize, lpPattern, lpMask);
+}
+
+inline UINT_PTR FileOffsetToRVA(PBYTE pBase, UINT_PTR offset)
+{
+    PIMAGE_DOS_HEADER pDosHeader = (PIMAGE_DOS_HEADER)pBase;
+    PIMAGE_NT_HEADERS pNtHeaders = (PIMAGE_NT_HEADERS)(pBase + pDosHeader->e_lfanew);
+    PIMAGE_SECTION_HEADER pSection = IMAGE_FIRST_SECTION(pNtHeaders);
+    for (int i = 0; i < pNtHeaders->FileHeader.NumberOfSections; i++, pSection++)
+    {
+        if (offset >= pSection->PointerToRawData && offset < pSection->PointerToRawData + pSection->SizeOfRawData)
+            return offset - pSection->PointerToRawData + pSection->VirtualAddress;
+    }
+    return 0;
+}
+
+inline UINT_PTR RVAToFileOffset(PBYTE pBase, UINT_PTR rva)
+{
+    PIMAGE_DOS_HEADER pDosHeader = (PIMAGE_DOS_HEADER)pBase;
+    PIMAGE_NT_HEADERS pNtHeaders = (PIMAGE_NT_HEADERS)(pBase + pDosHeader->e_lfanew);
+    PIMAGE_SECTION_HEADER pSection = IMAGE_FIRST_SECTION(pNtHeaders);
+    for (int i = 0; i < pNtHeaders->FileHeader.NumberOfSections; i++, pSection++)
+    {
+        if (rva >= pSection->VirtualAddress && rva < pSection->VirtualAddress + pSection->Misc.VirtualSize)
+            return rva - pSection->VirtualAddress + pSection->PointerToRawData;
+    }
+    return 0;
 }
 
 inline HMODULE LoadGuiModule()

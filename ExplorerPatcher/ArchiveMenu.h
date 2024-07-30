@@ -4,6 +4,10 @@
 #include <Windows.h>
 #include <Shlobj_core.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define OPEN_NAME L"&Open archive"
 #define EXTRACT_NAME L"&Extract to \"%s\\\""
 #define OPEN_CMD L"\"C:\\Program Files\\7-Zip\\7zFM.exe\" %s"
@@ -50,5 +54,9 @@ LRESULT CALLBACK ArchiveMenuWndProc(
     HRESULT(*ImmersiveContextMenuHelper_ApplyOwnerDrawToMenuFunc)(HMENU hMenu, HWND hWnd, POINT* pPt, unsigned int options, void* data),
     void(*ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc)(HMENU hMenu, HWND hWnd)
 );
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

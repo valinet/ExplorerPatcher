@@ -179,42 +179,6 @@ interface IImmersiveLauncher10RS
     CONST_VTBL struct IImmersiveLauncher10RSVtbl* lpVtbl;
 };
 
-DEFINE_GUID(IID_ILauncherTipContextMenu,
-    0xb8c1db5f,
-    0xcbb3, 0x48bc, 0xaf, 0xd9,
-    0xce, 0x6b, 0x88, 0x0c, 0x79, 0xed
-);
-
-typedef interface ILauncherTipContextMenu ILauncherTipContextMenu;
-
-typedef struct ILauncherTipContextMenuVtbl
-{
-    BEGIN_INTERFACE
-
-        HRESULT(STDMETHODCALLTYPE* QueryInterface)(
-            ILauncherTipContextMenu* This,
-            /* [in] */ REFIID riid,
-            /* [annotation][iid_is][out] */
-            _COM_Outptr_  void** ppvObject);
-
-    ULONG(STDMETHODCALLTYPE* AddRef)(
-        ILauncherTipContextMenu* This);
-
-    ULONG(STDMETHODCALLTYPE* Release)(
-        ILauncherTipContextMenu* This);
-
-    HRESULT(STDMETHODCALLTYPE* ShowLauncherTipContextMenu)(
-        ILauncherTipContextMenu* This,
-        /* [in] */ POINT* pt);
-
-    END_INTERFACE
-} ILauncherTipContextMenuVtbl;
-
-interface ILauncherTipContextMenu
-{
-    CONST_VTBL struct ILauncherTipContextMenuVtbl* lpVtbl;
-};
-
 void OpenStartOnMonitor(HMONITOR monitor);
 
 // Slightly tweaked version of function available in Open Shell 

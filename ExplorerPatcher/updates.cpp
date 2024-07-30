@@ -275,7 +275,7 @@ BOOL IsUpdateAvailableHelper(
                     jsonStr.c_str(),
                     -1,
                     pszJsonStr,
-                    jsonStr.size() + 1
+                    (int)(jsonStr.size() + 1)
                 );
             }
         }
