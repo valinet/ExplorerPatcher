@@ -2005,7 +2005,11 @@ INT64 Shell_TrayWndSubclassProc(
         pt.x = GET_X_LPARAM(lParam);
         pt.y = GET_Y_LPARAM(lParam);
 
-        HMENU hMenu = LoadMenuW(GetModuleHandle(NULL), MAKEINTRESOURCEW(205));
+        HMENU hMenu = LoadMenuW(GetModuleHandleW(NULL), MAKEINTRESOURCEW(205));
+        if (!hMenu)
+        {
+            hMenu = LoadMenuW(g_hMyTaskbar, MAKEINTRESOURCEW(205));
+        }
         if (hMenu)
         {
             HMENU hSubMenu = GetSubMenu(hMenu, 0);
@@ -9940,7 +9944,7 @@ BOOL CheckExplorerSymbols(symbols_addr* symbols_PTRS)
 
 const WCHAR* GetTaskbarDllChecked(symbols_addr* symbols_PTRS)
 {
-    if (bOldTaskbar < 2 || !IsWindows11Version22H2OrHigher())
+    if (!IsWindows11Version22H2OrHigher())
     {
         return NULL;
     }
@@ -9958,9 +9962,13 @@ const WCHAR* GetTaskbarDllChecked(symbols_addr* symbols_PTRS)
     return pszTaskbarDll;
 }
 
+// Behavior based on selected Taskbar style:
+// - Windows 11: Load our taskbar DLL with LOAD_LIBRARY_AS_DATAFILE for the old context menu
+// - Windows 10: Skip loading
+// - Windows 10 (ExplorerPatcher): Load it fully
 HMODULE PrepareAlternateTaskbarImplementation(symbols_addr* symbols_PTRS, const WCHAR* pszTaskbarDll)
 {
-    if (!symbols_PTRS || !pszTaskbarDll)
+    if (bOldTaskbar == 1 || !symbols_PTRS || !pszTaskbarDll)
     {
         return NULL;
     }
@@ -9970,13 +9978,18 @@ HMODULE PrepareAlternateTaskbarImplementation(symbols_addr* symbols_PTRS, const 
     SHGetFolderPathW(NULL, SPECIAL_FOLDER, NULL, SHGFP_TYPE_CURRENT, szPath);
     wcscat_s(szPath, MAX_PATH, _T(APP_RELATIVE_PATH) L"\\");
     wcscat_s(szPath, MAX_PATH, pszTaskbarDll);
-    HMODULE hMyTaskbar = LoadLibraryW(szPath);
+    HMODULE hMyTaskbar = bOldTaskbar >= 2 ? LoadLibraryW(szPath) : LoadLibraryExW(szPath, NULL, LOAD_LIBRARY_AS_DATAFILE);
     if (!hMyTaskbar)
     {
         wprintf(L"[TB] '%s' not found\n", pszTaskbarDll);
         return NULL;
     }
     g_hMyTaskbar = hMyTaskbar;
+
+    if (!bOldTaskbar)
+    {
+        return NULL;
+    }
 
     typedef DWORD (*GetVersion_t)();
     GetVersion_t GetVersion = (GetVersion_t)GetProcAddress(hMyTaskbar, "GetVersion");
