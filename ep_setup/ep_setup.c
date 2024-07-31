@@ -657,7 +657,7 @@ typedef enum LanguageCodeTreatment
 
 __declspec(noinline) BOOL ExtractDirectory(unzFile zipFile, const char* dirNameInZip, LPCWSTR pwszDirectory, const WCHAR* languages, LanguageCodeTreatment langCodeTreatment)
 {
-    if (!zipFile || !dirNameInZip)
+    if (!zipFile)
     {
         return FALSE;
     }
@@ -668,7 +668,7 @@ __declspec(noinline) BOOL ExtractDirectory(unzFile zipFile, const char* dirNameI
     }
 
     BOOL bRet = TRUE;
-    size_t dirNameLen = strlen(dirNameInZip);
+    size_t dirNameLen = dirNameInZip ? strlen(dirNameInZip) : 0;
 
     do
     {
@@ -685,7 +685,7 @@ __declspec(noinline) BOOL ExtractDirectory(unzFile zipFile, const char* dirNameI
             continue;
         }
 
-        if (strncmp(szFileNameInZip, dirNameInZip, dirNameLen) != 0)
+        if (dirNameInZip && strncmp(szFileNameInZip, dirNameInZip, dirNameLen) != 0)
         {
             continue;
         }
@@ -752,7 +752,14 @@ __declspec(noinline) BOOL ExtractDirectory(unzFile zipFile, const char* dirNameI
         wcscpy_s(wszPath, MAX_PATH, pwszDirectory);
         wcscat_s(wszPath, MAX_PATH, L"\\");
         WCHAR* pwszPathInDir = wszPath + wcslen(wszPath);
-        wcscat_s(wszPath, MAX_PATH, wcschr(wszFileNameInZip, '\\') + 1); // Skip the directory name in the zip file
+        if (dirNameInZip)
+        {
+            wcscat_s(wszPath, MAX_PATH, wcschr(wszFileNameInZip, '\\') + 1); // Skip the directory name in the zip file
+        }
+        else
+        {
+            wcscat_s(wszPath, MAX_PATH, wszFileNameInZip);
+        }
 
         for (WCHAR* p = pwszPathInDir; *p; p++)
         {
@@ -781,7 +788,7 @@ BOOL DeleteResource(LPCWSTR pwszDirectory, LPCWSTR pwszFileName)
     return InstallResourceHelper(FALSE, NULL, NULL, wszPath);
 }
 
-BOOL ShouldDownloadOrDelete(BOOL bInstall, WCHAR* wszPath, LPCSTR chash)
+/*BOOL ShouldDownloadOrDelete(BOOL bInstall, WCHAR* wszPath, LPCSTR chash)
 {
     if (FileExistsW(wszPath))
     {
@@ -813,7 +820,7 @@ BOOL DownloadResource(BOOL bInstall, LPCWSTR pwszURL, DWORD dwSize, LPCSTR chash
         bOk = DownloadFile(pwszURL, dwSize, wszPath);
     }
     return bOk;
-}
+}*/
 
 void ProcessTaskbarDlls(BOOL* bInOutOk, BOOL bInstall, BOOL bExtractMode, HINSTANCE hInstance, unzFile zipFile, WCHAR wszPath[260])
 {
@@ -915,19 +922,10 @@ int WINAPI wWinMain(
         MemoryBuffer* pMem;
         unzFile zipFile = LoadZipFileFromResources(&pMem);
         bOk = zipFile != NULL;
-        if (bOk) bOk = InstallResource(bInstall, hInstance, zipFile, PRODUCT_NAME ".IA-32.dll", wszPath, _T(PRODUCT_NAME) L".IA-32.dll");
-#if defined(_M_X64)
-        if (bOk) bOk = InstallResource(bInstall, hInstance, zipFile, PRODUCT_NAME ".amd64.dll", wszPath, _T(PRODUCT_NAME) L".amd64.dll");
-#elif defined(_M_ARM64)
-        if (bOk) bOk = InstallResource(bInstall, hInstance, zipFile, PRODUCT_NAME ".arm64.dll", wszPath, _T(PRODUCT_NAME) L".arm64.dll");
-#endif
-        if (bOk) bOk = InstallResource(bInstall, hInstance, zipFile, "ep_dwm.exe", wszPath, L"ep_dwm.exe");
-        if (bOk) bOk = InstallResource(bInstall, hInstance, zipFile, "ep_weather_host.dll", wszPath, L"ep_weather_host.dll");
-        if (bOk) bOk = InstallResource(bInstall, hInstance, zipFile, "ep_weather_host_stub.dll", wszPath, L"ep_weather_host_stub.dll");
-        if (bOk) bOk = InstallResource(bInstall, hInstance, zipFile, "WebView2Loader.dll", wszPath, L"WebView2Loader.dll");
-        if (bOk) bOk = InstallResource(bInstall, hInstance, zipFile, "wincorlib.dll", wszPath, L"wincorlib.dll");
-        if (bOk) bOk = InstallResource(bInstall, hInstance, zipFile, "ep_gui.dll", wszPath, L"ep_gui.dll");
-        ProcessTaskbarDlls(&bOk, bInstall, TRUE, hInstance, zipFile, wszPath);
+        if (bOk)
+        {
+            bOk = ExtractDirectory(zipFile, NULL, wszPath, NULL, LCT_None);
+        }
         if (zipFile)
             unzClose(zipFile);
         if (pMem)
@@ -1131,22 +1129,6 @@ int WINAPI wWinMain(
         sei.lpVerb = NULL;
         sei.lpFile = wszPath;
         sei.lpParameters = L"/f /im explorer.exe";
-        sei.hwnd = NULL;
-        sei.nShow = SW_SHOWMINIMIZED;
-        if (ShellExecuteExW(&sei) && sei.hProcess)
-        {
-            WaitForSingleObject(sei.hProcess, INFINITE);
-            CloseHandle(sei.hProcess);
-        }
-
-        ZeroMemory(&sei, sizeof(SHELLEXECUTEINFOW));
-        sei.cbSize = sizeof(sei);
-        sei.fMask = SEE_MASK_NOCLOSEPROCESS;
-        sei.hwnd = NULL;
-        sei.hInstApp = NULL;
-        sei.lpVerb = NULL;
-        sei.lpFile = wszPath;
-        sei.lpParameters = L"/f /im StartMenuExperienceHost.exe";
         sei.hwnd = NULL;
         sei.nShow = SW_SHOWMINIMIZED;
         if (ShellExecuteExW(&sei) && sei.hProcess)
@@ -1361,10 +1343,11 @@ int WINAPI wWinMain(
             }
         }
         DeleteResource(wszPath, L"Windows.UI.ShellCommon.pri");
+        BOOL bNoPniduiInThisBuild = global_rovi.dwBuildNumber >= 25236;
         if (bInstall)
         {
             const WCHAR* languages = GetSystemLanguages();
-            if (global_rovi.dwBuildNumber >= 25236)
+            if (bNoPniduiInThisBuild)
             {
                 if (bOk) bOk = ExtractDirectory(zipFile, "pnidui/", wszPath, languages, LCT_MUI);
             }
@@ -1374,13 +1357,43 @@ int WINAPI wWinMain(
             }
         }
 
-#if defined(_M_X64)
-        // Version 22621.3810
-        if (bOk) bOk = DownloadResource(bInstall && global_rovi.dwBuildNumber >= 25236, L"https://msdl.microsoft.com/download/symbols/pnidui.dll/F717CABC20B000/pnidui.dll", 2138112 + 1, "2f913bfdcf1fa8dc441aa48b508b3a09", wszPath, L"pnidui.dll");
-#elif defined(_M_ARM64)
-        // Version 22621.3958
-        if (bOk) bOk = DownloadResource(bInstall && global_rovi.dwBuildNumber >= 25236, L"https://msdl.microsoft.com/download/symbols/pnidui.dll/63AF842D210000/pnidui.dll", 2139648 + 1, "43bb6bb72d2529045f913fb5b055b521", wszPath, L"pnidui.dll");
-#endif
+        if (bOk) bOk = InstallResource(bInstall && bNoPniduiInThisBuild, hInstance, zipFile, "pnidui/pnidui.dll", wszPath, L"pnidui.dll");
+
+        if (bOk && bNoPniduiInThisBuild)
+        {
+            // Windows Registry Editor Version 5.00
+            //
+            // [HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\ShellServiceObjects\{C2796011-81BA-4148-8FCA-C6643245113F}]
+            // "AutoStart"=""
+            if (bInstall)
+            {
+                HKEY hKey;
+                RegCreateKeyExW(
+                    HKEY_LOCAL_MACHINE,
+                    L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\ShellServiceObjects\\{C2796011-81BA-4148-8FCA-C6643245113F}",
+                    0,
+                    NULL,
+                    REG_OPTION_NON_VOLATILE,
+                    KEY_READ | KEY_WRITE,
+                    NULL,
+                    &hKey,
+                    NULL
+                );
+                if (hKey == NULL || hKey == INVALID_HANDLE_VALUE)
+                {
+                    hKey = NULL;
+                }
+                if (hKey)
+                {
+                    RegSetValueExW(hKey, L"AutoStart", 0, REG_SZ, (const BYTE*)L"", 1 * sizeof(WCHAR));
+                    RegCloseKey(hKey);
+                }
+            }
+            else
+            {
+                RegDeleteKeyW(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\ShellServiceObjects\\{C2796011-81BA-4148-8FCA-C6643245113F}");
+            }
+        }
 
         // --------------------------------------------------------------------------------
 
@@ -1428,13 +1441,7 @@ int WINAPI wWinMain(
         }
 
         BOOL bNoStartUIInThisBuild = ((global_rovi.dwBuildNumber >= 22621 && global_rovi.dwBuildNumber <= 22635) && global_ubr >= 3930) || global_rovi.dwBuildNumber >= 25169;
-#if defined(_M_X64)
-        // Version 22621.3733
-        if (bOk) bOk = DownloadResource(bInstall && bNoStartUIInThisBuild, L"https://msdl.microsoft.com/download/symbols/startui.dll/C1AEED44852000/startui.dll", 8694272 + 1, "20b55d5c6dce22f8011906281e4e6999", wszPath, L"StartUI_.dll");
-#elif defined(_M_ARM64)
-        // Version 22621.3733
-        if (bOk) bOk = DownloadResource(bInstall && bNoStartUIInThisBuild, L"https://msdl.microsoft.com/download/symbols/startui.dll/122A50F3AB9000/startui.dll", 11214336 + 1, "44ab29fba796bb6977dc050eb2fa7397", wszPath, L"StartUI_.dll");
-#endif
+        if (bOk) bOk = InstallResource(bInstall && bNoStartUIInThisBuild, hInstance, zipFile, "StartUI/StartUI.dll", wszPath, L"StartUI_.dll");
 
         // Delete remnants from earlier versions
         if (bOk) bOk = DeleteResource(wszPath, L"AppResolverLegacy.dll");
