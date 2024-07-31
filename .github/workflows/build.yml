@@ -91,32 +91,32 @@ jobs:
         run: |
           BuildDependencies%BUILD_CONFIGURATION%.bat
 
-      # - name: Download ep_taskbar
-      #   uses: robinraju/release-downloader@v1
-      #   with:
-      #     repository: ExplorerPatcher/ep_taskbar_releases
-      #     fileName: ep_taskbar.*.dll
-      #     latest: true
-      #     out-file-path: build/Release
+      - name: Download ep_taskbar
+        uses: robinraju/release-downloader@v1
+        with:
+          repository: ExplorerPatcher/ep_taskbar_releases
+          fileName: ep_taskbar.*.dll
+          latest: true
+          out-file-path: build/Release
 
       # build/Release/ep_taskbar.*.amd64.dll -> build/Release/x64/ep_taskbar.*.dll
       # build/Release/ep_taskbar.*.arm64.dll -> build/Release/ARM64/ep_taskbar.*.dll
-      # - name: Move ep_taskbar
-      #   shell: bash
-      #   run: |
-      #     if ls build/Release/ep_taskbar.*.amd64.dll 1> /dev/null 2>&1; then
-      #       mkdir -p build/Release/x64
-      #       for file in build/Release/ep_taskbar.*.amd64.dll; do
-      #         mv "$file" "build/Release/x64/$(basename "$file" .amd64.dll).dll"
-      #       done
-      #     fi
-      #     
-      #     if ls build/Release/ep_taskbar.*.arm64.dll 1> /dev/null 2>&1; then
-      #       mkdir -p build/Release/ARM64
-      #       for file in build/Release/ep_taskbar.*.arm64.dll; do
-      #         mv "$file" "build/Release/ARM64/$(basename "$file" .arm64.dll).dll"
-      #       done
-      #     fi
+      - name: Move ep_taskbar
+        shell: bash
+        run: |
+          if ls build/Release/ep_taskbar.*.amd64.dll 1> /dev/null 2>&1; then
+            mkdir -p build/Release/x64
+            for file in build/Release/ep_taskbar.*.amd64.dll; do
+              mv "$file" "build/Release/x64/$(basename "$file" .amd64.dll).dll"
+            done
+          fi
+          
+          if ls build/Release/ep_taskbar.*.arm64.dll 1> /dev/null 2>&1; then
+            mkdir -p build/Release/ARM64
+            for file in build/Release/ep_taskbar.*.arm64.dll; do
+              mv "$file" "build/Release/ARM64/$(basename "$file" .arm64.dll).dll"
+            done
+          fi
 
       - name: Build EP IA-32
         if: github.event.inputs.config == ''
