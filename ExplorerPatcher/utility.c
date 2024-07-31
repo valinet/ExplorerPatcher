@@ -1330,8 +1330,7 @@ BOOL DownloadFile(LPCWSTR wszURL, DWORD dwSize, LPCWSTR wszPath)
             exe_buffer = calloc(dwSize, sizeof(char));
             if (exe_buffer)
             {
-                BOOL bRet = FALSE;
-                if (bRet = InternetReadFile(
+                if (InternetReadFile(
                     hConnect,
                     exe_buffer,
                     dwSize - 1,
@@ -1342,7 +1341,7 @@ BOOL DownloadFile(LPCWSTR wszURL, DWORD dwSize, LPCWSTR wszPath)
                     _wfopen_s(&f, wszPath, L"wb");
                     if (f)
                     {
-                        fwrite(exe_buffer, 1, dwRead, f);
+                        bOK = fwrite(exe_buffer, 1, dwRead, f) == dwRead;
                         fclose(f);
                     }
                 }

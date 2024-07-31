@@ -12295,8 +12295,9 @@ DWORD InjectStartMenu()
 
     if (dwStartShowClassicMode || !IsWindows11())
     {
-        LoadLibraryW(L"StartUI.dll");
-        hStartUI = GetModuleHandleW(L"StartUI.dll");
+        hStartUI = LoadLibraryW(L"StartUI.dll");
+        if (!hStartUI)
+            hStartUI = LoadLibraryW(L"StartUI_.dll");
 
         // Fixes hang when Start menu closes
         VnPatchDelayIAT(hStartUI, "ext-ms-win-ntuser-draw-l1-1-0.dll", "SetWindowRgn", Start_SetWindowRgn);

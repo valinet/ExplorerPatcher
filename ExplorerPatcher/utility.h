@@ -921,7 +921,15 @@ inline BOOL DoesWindows10StartMenuExist()
     wchar_t szPath[MAX_PATH];
     GetWindowsDirectoryW(szPath, MAX_PATH);
     wcscat_s(szPath, MAX_PATH, L"\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\StartUI.dll");
-    return FileExistsW(szPath);
+    if (FileExistsW(szPath))
+        return TRUE;
+
+    GetWindowsDirectoryW(szPath, MAX_PATH);
+    wcscat_s(szPath, MAX_PATH, L"\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\StartUI_.dll");
+    if (FileExistsW(szPath))
+        return TRUE;
+
+    return FALSE;
 }
 
 inline BOOL IsStockWindows10TaskbarAvailable()

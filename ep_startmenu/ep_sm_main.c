@@ -1,6 +1,6 @@
 #include <Windows.h>
 #include <initguid.h>
-#include <valinet/hooking/iatpatch.h>
+// #include <valinet/hooking/iatpatch.h>
 #include <valinet/utility/memmem.h>
 #include "../ExplorerPatcher/utility.h"
 #include "ep_sm_forwards.h"
@@ -22,6 +22,33 @@ DEFINE_GUID(IID_StartUI_XamlMetaDataProvider, 0xF2777C41, 0xD2CC, 0x34B6, 0xA7, 
     return TRUE;
 }*/
 
+BOOL GetStartUIName(WCHAR* out, int cch)
+{
+    if (out && cch)
+        out[0] = 0;
+
+    WCHAR szPath[MAX_PATH];
+    wcscpy_s(szPath, MAX_PATH, L"StartUI.dll");
+    if (FileExistsW(szPath))
+    {
+        if (out && cch)
+            wcscpy_s(out, cch, szPath);
+        return TRUE;
+    }
+
+    wcscpy_s(szPath, MAX_PATH, L"StartUI_.dll");
+    if (FileExistsW(szPath))
+    {
+        if (out && cch)
+            wcscpy_s(out, cch, szPath);
+        return TRUE;
+    }
+
+    return FALSE;
+}
+
+WCHAR g_szStartUIName[MAX_PATH];
+
 BOOL GetStartShowClassicMode()
 {
     DWORD dwStartShowClassicMode = 0;
@@ -30,7 +57,7 @@ BOOL GetStartShowClassicMode()
     if (dwStartShowClassicMode == 0)
         return FALSE;
 
-    if (!FileExistsW(L"StartUI.dll"))
+    if (!GetStartUIName(g_szStartUIName, ARRAYSIZE(g_szStartUIName)))
         return FALSE;
 
     return TRUE;
@@ -55,9 +82,10 @@ void PatchXamlMetaDataProviderGuid()
         PIMAGE_NT_HEADERS64 ntHeader = (PIMAGE_NT_HEADERS64)((u_char*)dosHeader + dosHeader->e_lfanew);
         if (ntHeader->Signature == IMAGE_NT_SIGNATURE)
         {
+			PIMAGE_SECTION_HEADER firstSection = IMAGE_FIRST_SECTION(ntHeader);
             for (unsigned int i = 0; i < ntHeader->FileHeader.NumberOfSections; ++i)
             {
-                PIMAGE_SECTION_HEADER section = IMAGE_FIRST_SECTION(ntHeader) + i;
+                PIMAGE_SECTION_HEADER section = firstSection + i;
                 if (!strncmp(section->Name, ".rdata", 6))
                 {
                     beginRData = (PBYTE)dosHeader + section->VirtualAddress;
@@ -72,7 +100,7 @@ void PatchXamlMetaDataProviderGuid()
         return;
     }
 
-    GUID* pguidTarget = memmem(beginRData, sizeRData, &IID_StartDocked_XamlMetaDataProvider, sizeof(GUID));
+    GUID* pguidTarget = memmem(beginRData, sizeRData, (void*)&IID_StartDocked_XamlMetaDataProvider, sizeof(GUID));
     if (!pguidTarget)
     {
         return;
@@ -122,14 +150,17 @@ wchar_t* GetCmdArguments(int* a1)
     return pGetCmdArguments(a1);
 }
 
+extern HRESULT LoadOurShellCommonPri();
+extern HRESULT GetActivationFactoryByPCWSTR_InStartUI(PCWSTR activatableClassId, REFIID riid, void** ppv);
+
 #pragma comment(linker, "/export:?GetActivationFactoryByPCWSTR@@YAJPEAXAEAVGuid@Platform@@PEAPEAX@Z=GetActivationFactoryByPCWSTR,@129")
-HRESULT GetActivationFactoryByPCWSTR(PCWSTR activatableClassId, const GUID* iid, void** ppv)
+HRESULT GetActivationFactoryByPCWSTR(PCWSTR activatableClassId, REFIID riid, void** ppv)
 {
     if (!hOrig)
     {
         hOrig = LoadLibraryW(L"wincorlib_orig.dll");
     }
-    static HRESULT (*pGetActivationFactoryByPCWSTR)(PCWSTR, const GUID*, void**) = NULL;
+    static HRESULT (*pGetActivationFactoryByPCWSTR)(PCWSTR, REFIID, void**) = NULL;
     if (!pGetActivationFactoryByPCWSTR && hOrig)
     {
         pGetActivationFactoryByPCWSTR = GetProcAddress(hOrig, "?GetActivationFactoryByPCWSTR@@YAJPEAXAEAVGuid@Platform@@PEAPEAX@Z");
@@ -139,22 +170,28 @@ HRESULT GetActivationFactoryByPCWSTR(PCWSTR activatableClassId, const GUID* iid,
         return E_FAIL;
     }
 
-    if (!wcscmp(activatableClassId, L"StartDocked.App") && IsEqualGUID(iid, &IID_StartDocked_App))
+    if (!wcscmp(activatableClassId, L"StartDocked.App") && IsEqualGUID(riid, &IID_StartDocked_App))
     {
         if (GetStartShowClassicMode())
         {
-            return pGetActivationFactoryByPCWSTR(L"StartUI.App", &IID_StartUI_App, ppv);
+            LoadOurShellCommonPri();
+            return GetActivationFactoryByPCWSTR_InStartUI(L"StartUI.App", &IID_StartUI_App, ppv);
         }
     }
     else if (!wcscmp(activatableClassId, L"StartDocked.startdocked_XamlTypeInfo.XamlMetaDataProvider"))
     {
         if (GetStartShowClassicMode())
         {
-            return pGetActivationFactoryByPCWSTR(L"StartUI.startui_XamlTypeInfo.XamlMetaDataProvider", iid, ppv);
+            return GetActivationFactoryByPCWSTR_InStartUI(L"StartUI.startui_XamlTypeInfo.XamlMetaDataProvider", riid, ppv);
         }
     }
 
-    return pGetActivationFactoryByPCWSTR(activatableClassId, iid, ppv);
+    if (wcsncmp(activatableClassId, L"StartUI.", 8) == 0)
+    {
+        return GetActivationFactoryByPCWSTR_InStartUI(activatableClassId, riid, ppv);
+    }
+
+    return pGetActivationFactoryByPCWSTR(activatableClassId, riid, ppv);
 }
 
 BOOL WINAPI DllMain(
