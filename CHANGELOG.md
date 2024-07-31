@@ -15,18 +15,44 @@ Tested on OS builds 19045.4598, 22621.3296, 22621.3810, 26120.961, and 26244.500
 
 ##### 2
 
+<details>
+
 * Taskbar10: Due to false positive antivirus detections, the new taskbar implementation is no longer bundled in the setup program. (48c2a75)
   * If you want to use the new taskbar implementation, you can download the appropriate DLL for your system from the [Releases](https://github.com/ExplorerPatcher/ep_taskbar_releases/releases/latest) page of its releases repository, and then manually putting it in `C:\Program Files\ExplorerPatcher` without the architecture specifier.
   * For example, for 226xx builds on x64-based systems, download `ep_taskbar.2.amd64.dll`, rename to `ep_taskbar.2.dll`, and lastly put it in `C:\Program Files\ExplorerPatcher`.
+
+</details>
 
 ##### 3
 
 * Introduced support for ARM64 devices. (992b3a6, 2e4e4f5, b76c0e4, c9884b2, 57f63ad, 78788ec, 4799b4b, 5d0d218)
   * These builds are only tested on and made to work with 24H2 ARM64 builds. Older ARM64 Windows versions than 24H2 may not work as expected.
-  * An ARM64 device to support the making and testing of ARM64 builds is not cheap, so please consider [donating @Amrsatrio via Ko-fi](https://ko-fi.com/amrsatrio) to recoup the costs.
 * Added an "Update now" button into update notifications for easier updating. (2b9c747, 8c16a9a)
 * Revised how files are packed in ep_setup for smaller size and easier maintenance. (30579b0, b253625, 04fd2b7, db54ce9, 126c024, c0201ff)
 * EP's taskbar implementation for 24H2 is now available in [its releases repository](https://github.com/ExplorerPatcher/ep_taskbar_releases/releases/latest), as `ep_taskbar.5.dll`. If you want to try this out, follow the steps explained above.
+
+##### 4
+
+With this update, ExplorerPatcher is now officially compatible and supported on Windows 11 24H2 🥳🎉
+
+* Start10: Now works again on 24H2 and 226xx.3930+. (755f101, 7e0f7eb, b473114)
+* Taskbar10: EP's taskbar DLLs are now included again in the setup files. (d9595fc)
+* Taskbar10: Network icon now shows again on 24H2. (7e0f7eb, b473114)
+* Start10: Fixed positioning when the taskbar is not placed at the bottom, on 24H2 and latest 22H2/23H2 builds. (de2532d, ea5881f)
+* Taskbar10: Fixed taskbar jump list flyout positioning when the taskbar is not placed at the bottom, on latest 22H2/23H2/24H2 builds. (39609e4)
+* Setup: Updated the code for dealing with locked files, this should reduce the chances of getting setup failures due to locked files. (7e0f7eb)
+
+ℹ️ **Important note:** Please include the following folders in your antivirus' exclusion list to prevent issues due to false positive detections:
+* `C:\Program Files\ExplorerPatcher`
+* `%APPDATA%\ExplorerPatcher`
+
+For Defender, you can run the following script in PowerShell as an administrator:
+```ps1
+Add-MpPreference -ExclusionPath "C:\Program Files\ExplorerPatcher"
+Add-MpPreference -ExclusionPath "$env:APPDATA\ExplorerPatcher"
+```
+
+**A little request from us:** Because the development of EP's taskbar implementation took a lot of effort for 8 consecutive months, and that an ARM64 device to support the making and testing of ARM64 builds is not cheap, it would be really, really appreciated if you can [donate @Amrsatrio via Ko-fi](https://ko-fi.com/amrsatrio) 🙏
 
 ## 22621.3527.65
 
