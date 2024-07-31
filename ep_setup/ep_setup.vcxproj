@@ -287,6 +287,7 @@
     <None Include="applicat.bin" />
   </ItemGroup>
   <ItemGroup>
+    <PackFile Include="resources\files\**" />
     <PackFile Include="..\build\$(Configuration)\Win32\ExplorerPatcher.IA-32.dll" Condition="Exists('$(SolutionDir)\build\$(Configuration)\Win32\ExplorerPatcher.IA-32.dll')" />
     <PackFile Include="..\build\$(Configuration)\x64\ExplorerPatcher.amd64.dll" Condition="Exists('$(SolutionDir)\build\$(Configuration)\x64\ExplorerPatcher.amd64.dll')" />
     <PackFile Include="..\build\$(Configuration)\ARM64\ExplorerPatcher.arm64.dll" Condition="Exists('$(SolutionDir)\build\$(Configuration)\ARM64\ExplorerPatcher.arm64.dll')" />
@@ -376,7 +377,7 @@
   </UsingTask>
   <Target Name="CreateZip" BeforeTargets="ResourceCompile">
     <MakeDir Directories="..\build\$(Configuration)\$(Platform)\ep_setup_files" />
-    <Copy SourceFiles="@(PackFile)" DestinationFolder="..\build\$(Configuration)\$(Platform)\ep_setup_files" />
+    <Copy SourceFiles="@(PackFile)" DestinationFolder="..\build\$(Configuration)\$(Platform)\ep_setup_files\%(RecursiveDir)" />
     <ZipDirectory SourceDirectory="..\build\$(Configuration)\$(Platform)\ep_setup_files" DestinationFile="..\build\$(Configuration)\$(Platform)\ep_setup_files.zip" Overwrite="true" />
     <EncryptFile OutputFile="..\build\$(Configuration)\$(Platform)\ep_setup_files.zip" EncryptionKey="$(ZipEncryptionKey)" Condition="'$(WithEncryption)' == 'true'" />
     <Copy SourceFiles="..\build\$(Configuration)\$(Platform)\ep_setup_files.zip" DestinationFiles="..\build\$(Configuration)\$(Platform)\ep_setup_files.zip.bin" Condition="'$(WithEncryption)' != 'true'" />

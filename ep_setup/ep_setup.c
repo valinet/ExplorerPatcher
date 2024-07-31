@@ -480,7 +480,30 @@ unzFile LoadZipFileFromResources(MemoryBuffer** outMem)
     return unzOpen2_64(NULL, &fileFunc);
 }
 
-BOOL InstallResourceHelper(BOOL bInstall, HMODULE hModule, unzFile zipFile, const WCHAR* wszPath)
+int g_cleanupFileCounter = 1;
+
+// %APPDATA%\ExplorerPatcher\cleanup\<PID>_<counter>.tmp
+BOOL StageFileForCleanup(const WCHAR* wszProblematicFilePath)
+{
+    WCHAR wszPath[MAX_PATH];
+    SHGetFolderPathW(NULL, CSIDL_APPDATA, NULL, SHGFP_TYPE_CURRENT, wszPath);
+    wcscat_s(wszPath, MAX_PATH, L"\\ExplorerPatcher\\cleanup");
+    CreateDirectoryW(wszPath, NULL);
+
+    wcscat_s(wszPath, MAX_PATH, L"\\");
+    WCHAR wszPID[10];
+    _itow_s(GetCurrentProcessId(), wszPID, ARRAYSIZE(wszPID), 10);
+    wcscat_s(wszPath, MAX_PATH, wszPID);
+    wcscat_s(wszPath, MAX_PATH, L"_");
+    WCHAR wszCounter[10];
+    _itow_s(g_cleanupFileCounter++, wszCounter, ARRAYSIZE(wszCounter), 10);
+    wcscat_s(wszPath, MAX_PATH, wszCounter);
+    wcscat_s(wszPath, MAX_PATH, L".tmp");
+
+    return MoveFileW(wszProblematicFilePath, wszPath);
+}
+
+__declspec(noinline) BOOL InstallResourceHelper(BOOL bInstall, HMODULE hModule, unzFile zipFile, const WCHAR* wszPath)
 {
     WCHAR wszReplace[MAX_PATH];
     wcscpy_s(wszReplace, MAX_PATH, wszPath);
@@ -493,7 +516,7 @@ BOOL InstallResourceHelper(BOOL bInstall, HMODULE hModule, unzFile zipFile, cons
         BOOL bRet = !bPrevExists || DeleteFileW(wszReplace);
         if (bRet || (!bRet && GetLastError() == ERROR_FILE_NOT_FOUND))
         {
-            if (bFileExists && !DeleteFileW(wszPath) && !MoveFileW(wszPath, wszReplace))
+            if (bFileExists && !DeleteFileW(wszPath) && !StageFileForCleanup(wszPath))
             {
                 return FALSE;
             }
@@ -590,6 +613,165 @@ __declspec(noinline) BOOL InstallResource(BOOL bInstall, HMODULE hInstance, unzF
     return bRet;
 }
 
+const WCHAR* GetSystemLanguages()
+{
+    wchar_t* wszLanguagesBuffer = NULL;
+    ULONG ulNumLanguages = 0;
+    ULONG cchLanguagesBuffer = 0;
+    if (GetUserPreferredUILanguages(MUI_LANGUAGE_NAME, &ulNumLanguages, NULL, &cchLanguagesBuffer))
+    {
+        wszLanguagesBuffer = (wchar_t*)malloc(cchLanguagesBuffer * sizeof(wchar_t));
+        if (wszLanguagesBuffer)
+        {
+            if (!GetUserPreferredUILanguages(MUI_LANGUAGE_NAME, &ulNumLanguages, wszLanguagesBuffer, &cchLanguagesBuffer))
+            {
+                free(wszLanguagesBuffer);
+                wszLanguagesBuffer = NULL;
+            }
+        }
+    }
+    return wszLanguagesBuffer ? wszLanguagesBuffer : L"en-US";
+}
+
+BOOL SystemHasLanguageInstalled(const WCHAR* languages, const char* langCode, int cchLangCode)
+{
+    WCHAR szLangCode[100];
+    MultiByteToWideChar(CP_UTF8, 0, langCode, cchLangCode, szLangCode, ARRAYSIZE(szLangCode));
+    szLangCode[cchLangCode] = 0;
+    for (const WCHAR* wszLang = languages; *wszLang; wszLang += wcslen(wszLang) + 1)
+    {
+        if (!_wcsicmp(wszLang, szLangCode))
+        {
+            return TRUE;
+        }
+    }
+    return FALSE;
+}
+
+typedef enum LanguageCodeTreatment
+{
+    LCT_None,
+    LCT_MUI, // module\en-US\module.dll.pri
+    LCT_PRI, // resource\pris\resource.en-US.pri
+} LanguageCodeTreatment;
+
+__declspec(noinline) BOOL ExtractDirectory(unzFile zipFile, const char* dirNameInZip, LPCWSTR pwszDirectory, const WCHAR* languages, LanguageCodeTreatment langCodeTreatment)
+{
+    if (!zipFile || !dirNameInZip)
+    {
+        return FALSE;
+    }
+
+    if (unzGoToFirstFile(zipFile) != UNZ_OK)
+    {
+        return FALSE;
+    }
+
+    BOOL bRet = TRUE;
+    size_t dirNameLen = strlen(dirNameInZip);
+
+    do
+    {
+        char szFileNameInZip[260];
+        unz_file_info64 fileInfo = { 0 };
+        if (unzGetCurrentFileInfo64(zipFile, &fileInfo, szFileNameInZip, ARRAYSIZE(szFileNameInZip), NULL, 0, NULL, 0) != UNZ_OK)
+        {
+            return FALSE;
+        }
+        szFileNameInZip[fileInfo.size_filename] = 0;
+
+        if (fileInfo.uncompressed_size == 0 || (fileInfo.external_fa & FILE_ATTRIBUTE_DIRECTORY) != 0)
+        {
+            continue;
+        }
+
+        if (strncmp(szFileNameInZip, dirNameInZip, dirNameLen) != 0)
+        {
+            continue;
+        }
+
+        // Examples:
+        // - "module/en-US/module.dll.mui" -> "en-US/module.dll.mui"
+        // - "resource/pris/resource.en-US.pri" -> "pris/resource.en-US.pri"
+        const char* filePathInDir = szFileNameInZip + dirNameLen;
+        const char* lastSlash = strrchr(filePathInDir, '/');
+        const char* fileName = lastSlash ? filePathInDir + (lastSlash - filePathInDir) + 1 : filePathInDir;
+        const char* lastDot = strrchr(fileName, '.');
+        const char* fileExt = lastDot ? fileName + (lastDot - fileName) + 1 : NULL;
+        if (langCodeTreatment == LCT_MUI)
+        {
+            if (fileExt && !_stricmp(fileExt, "mui"))
+            {
+                if (!SystemHasLanguageInstalled(languages, filePathInDir, strchr(filePathInDir, '/') - filePathInDir))
+                {
+                    continue;
+                }
+            }
+        }
+        else if (langCodeTreatment == LCT_PRI)
+        {
+            if (fileExt && !_stricmp(fileExt, "pri") && strchr(fileName, '-') != NULL)
+            {
+                // Check if we're a language pri
+                const char* secondLastDot = NULL;
+                for (const char* p = lastDot - 1; p >= fileName; p--)
+                {
+                    if (*p == '.')
+                    {
+                        secondLastDot = p;
+                        break;
+                    }
+                }
+                if (secondLastDot != lastDot)
+                {
+                    const char* langCode = secondLastDot + 1;
+                    if (!SystemHasLanguageInstalled(languages, langCode, lastDot - langCode))
+                    {
+                        continue;
+                    }
+                }
+            }
+        }
+
+        if (unzOpenCurrentFile(zipFile) != UNZ_OK)
+        {
+            return FALSE;
+        }
+
+        WCHAR wszFileNameInZip[MAX_PATH];
+        MultiByteToWideChar(CP_UTF8, 0, szFileNameInZip, -1, wszFileNameInZip, MAX_PATH);
+        for (size_t i = 0; i < MAX_PATH && wszFileNameInZip[i] != 0; i++)
+        {
+            if (wszFileNameInZip[i] == '/')
+            {
+                wszFileNameInZip[i] = '\\';
+            }
+        }
+
+        WCHAR wszPath[MAX_PATH];
+        wcscpy_s(wszPath, MAX_PATH, pwszDirectory);
+        wcscat_s(wszPath, MAX_PATH, L"\\");
+        WCHAR* pwszPathInDir = wszPath + wcslen(wszPath);
+        wcscat_s(wszPath, MAX_PATH, wcschr(wszFileNameInZip, '\\') + 1); // Skip the directory name in the zip file
+
+        for (WCHAR* p = pwszPathInDir; *p; p++)
+        {
+            if (*p == '\\')
+            {
+                *p = 0;
+                CreateDirectoryW(wszPath, NULL);
+                *p = '\\';
+            }
+        }
+
+        bRet = InstallResourceHelper(TRUE, NULL, zipFile, wszPath);
+
+        unzCloseCurrentFile(zipFile);
+    } while (bRet && unzGoToNextFile(zipFile) == UNZ_OK);
+
+    return bRet;
+}
+
 BOOL DeleteResource(LPCWSTR pwszDirectory, LPCWSTR pwszFileName)
 {
     WCHAR wszPath[MAX_PATH];
@@ -603,32 +785,20 @@ BOOL ShouldDownloadOrDelete(BOOL bInstall, WCHAR* wszPath, LPCSTR chash)
 {
     if (FileExistsW(wszPath))
     {
-        char hash[100];
-        ZeroMemory(hash, sizeof(char) * 100);
-        ComputeFileHash(wszPath, hash, 100);
-        if (_stricmp(hash, chash) != 0)
+        if (bInstall)
         {
-            if (bInstall)
-            {
-                return TRUE;
-            }
+            char hash[100];
+            ZeroMemory(hash, sizeof(char) * 100);
+            ComputeFileHash(wszPath, hash, 100);
+            bInstall = _stricmp(hash, chash) != 0;
         }
         else
         {
-            if (!bInstall)
-            {
-                return InstallResourceHelper(FALSE, NULL, NULL, wszPath); // Delete
-            }
+            InstallResourceHelper(FALSE, NULL, NULL, wszPath); // Delete
         }
     }
-    else
-    {
-        if (bInstall)
-        {
-            return TRUE;
-        }
-    }
-    return FALSE;
+
+    return bInstall;
 }
 
 BOOL DownloadResource(BOOL bInstall, LPCWSTR pwszURL, DWORD dwSize, LPCSTR chash, LPCWSTR pwszDirectory, LPCWSTR pwszFileName)
@@ -653,6 +823,61 @@ void ProcessTaskbarDlls(BOOL* bInOutOk, BOOL bInstall, BOOL bExtractMode, HINSTA
     if (*bInOutOk) *bInOutOk = InstallResource(bInstall && (bExtractMode || pwszTaskbarDllName && !wcscmp(pwszTaskbarDllName, L"ep_taskbar.4.dll")), hInstance, zipFile, "ep_taskbar.4.dll", wszPath, L"ep_taskbar.4.dll");
     if (*bInOutOk) *bInOutOk = InstallResource(bInstall && (bExtractMode || pwszTaskbarDllName && !wcscmp(pwszTaskbarDllName, L"ep_taskbar.5.dll")), hInstance, zipFile, "ep_taskbar.5.dll", wszPath, L"ep_taskbar.5.dll");
 }
+
+BOOL RemoveDirectoryRecursive(const WCHAR* wszDirectoryPath)
+{
+    WCHAR szDir[MAX_PATH];
+    wcscpy_s(szDir, MAX_PATH, wszDirectoryPath);
+    wcscat_s(szDir, MAX_PATH, L"\\*");
+
+    WIN32_FIND_DATA findFileData;
+    HANDLE hFind = FindFirstFileW(szDir, &findFileData);
+
+    if (hFind == INVALID_HANDLE_VALUE)
+    {
+        return TRUE;
+    }
+
+    do
+    {
+        if (lstrcmpW(findFileData.cFileName, L".") != 0 && lstrcmpW(findFileData.cFileName, L"..") != 0)
+        {
+            WCHAR szFilePath[MAX_PATH];
+            wcscpy_s(szFilePath, MAX_PATH, wszDirectoryPath);
+            wcscat_s(szFilePath, MAX_PATH, L"\\");
+            wcscat_s(szFilePath, MAX_PATH, findFileData.cFileName);
+
+            if ((findFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0)
+            {
+                if (!RemoveDirectoryRecursive(szFilePath))
+                {
+                    FindClose(hFind);
+                    return FALSE;
+                }
+            }
+            else
+            {
+                if (!DeleteFileW(szFilePath) && !StageFileForCleanup(szFilePath))
+                {
+                    FindClose(hFind);
+                    return FALSE;
+                }
+            }
+        }
+    }
+    while (FindNextFileW(hFind, &findFileData));
+
+    DWORD dwError = GetLastError();
+    FindClose(hFind);
+
+    if (dwError != ERROR_NO_MORE_FILES)
+    {
+        return FALSE;
+    }
+
+    return RemoveDirectoryW(wszDirectoryPath);
+}
+
 
 int WINAPI wWinMain(
     _In_ HINSTANCE hInstance,
@@ -914,6 +1139,22 @@ int WINAPI wWinMain(
             CloseHandle(sei.hProcess);
         }
 
+        ZeroMemory(&sei, sizeof(SHELLEXECUTEINFOW));
+        sei.cbSize = sizeof(sei);
+        sei.fMask = SEE_MASK_NOCLOSEPROCESS;
+        sei.hwnd = NULL;
+        sei.hInstApp = NULL;
+        sei.lpVerb = NULL;
+        sei.lpFile = wszPath;
+        sei.lpParameters = L"/f /im StartMenuExperienceHost.exe";
+        sei.hwnd = NULL;
+        sei.nShow = SW_SHOWMINIMIZED;
+        if (ShellExecuteExW(&sei) && sei.hProcess)
+        {
+            WaitForSingleObject(sei.hProcess, INFINITE);
+            CloseHandle(sei.hProcess);
+        }
+
         Sleep(500);
 
         BOOL bAreRoundedCornersDisabled = FALSE;
@@ -1100,6 +1341,46 @@ int WINAPI wWinMain(
             if (bOk) bOk = InstallResource(bInstall, hInstance, zipFile, "WebView2Loader.dll", wszPath, L"WebView2Loader.dll");
         }
         ProcessTaskbarDlls(&bOk, bInstall, FALSE, hInstance, zipFile, wszPath);
+        const WCHAR* possibleDirs[] =
+        {
+            L"ar-SA", L"bg-BG", L"ca-ES", L"cs-CZ", L"da-DK", L"de-DE", L"el-GR", L"en-GB", L"en-US", L"es-ES",
+            L"es-MX", L"et-EE", L"eu-ES", L"fi-FI", L"fr-CA", L"fr-FR", L"gl-ES", L"he-IL", L"hr-HR", L"hu-HU",
+            L"id-ID", L"it-IT", L"ja-JP", L"ko-KR", L"lt-LT", L"lv-LV", L"nb-NO", L"nl-NL", L"pl-PL", L"pt-BR",
+            L"pt-PT", L"ro-RO", L"ru-RU", L"sk-SK", L"sl-SI", L"sr-Latn-RS", L"sv-SE", L"th-TH", L"tr-TR", L"uk-UA",
+            L"vi-VN", L"zh-CN", L"zh-TW", L"pris", L"StartUI",
+        };
+        for (size_t i = 0; bOk && i < ARRAYSIZE(possibleDirs); i++)
+        {
+            WCHAR wszDirectoryPath[MAX_PATH];
+            wcscpy_s(wszDirectoryPath, MAX_PATH, wszPath);
+            wcscat_s(wszDirectoryPath, MAX_PATH, L"\\");
+            wcscat_s(wszDirectoryPath, MAX_PATH, possibleDirs[i]);
+            if (FileExistsW(wszDirectoryPath))
+            {
+                bOk = RemoveDirectoryRecursive(wszDirectoryPath);
+            }
+        }
+        DeleteResource(wszPath, L"Windows.UI.ShellCommon.pri");
+        if (bInstall)
+        {
+            const WCHAR* languages = GetSystemLanguages();
+            if (global_rovi.dwBuildNumber >= 25236)
+            {
+                if (bOk) bOk = ExtractDirectory(zipFile, "pnidui/", wszPath, languages, LCT_MUI);
+            }
+            if (IsWindows11Version22H2OrHigher())
+            {
+                if (bOk) bOk = ExtractDirectory(zipFile, "Windows.UI.ShellCommon/", wszPath, languages, LCT_PRI);
+            }
+        }
+
+#if defined(_M_X64)
+        // Version 22621.3810
+        if (bOk) bOk = DownloadResource(bInstall && global_rovi.dwBuildNumber >= 25236, L"https://msdl.microsoft.com/download/symbols/pnidui.dll/F717CABC20B000/pnidui.dll", 2138112 + 1, "2f913bfdcf1fa8dc441aa48b508b3a09", wszPath, L"pnidui.dll");
+#elif defined(_M_ARM64)
+        // Version 22621.3958
+        if (bOk) bOk = DownloadResource(bInstall && global_rovi.dwBuildNumber >= 25236, L"https://msdl.microsoft.com/download/symbols/pnidui.dll/63AF842D210000/pnidui.dll", 2139648 + 1, "43bb6bb72d2529045f913fb5b055b521", wszPath, L"pnidui.dll");
+#endif
 
         // --------------------------------------------------------------------------------
 
@@ -1116,6 +1397,7 @@ int WINAPI wWinMain(
 
         // C:\Windows\SystemApps\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy
         // + dxgi.dll
+        // + StartUI_.dll (download, optional)
         // + wincorlib.dll
         // + wincorlib_orig.dll (symlink)
         // - AppResolverLegacy.dll
@@ -1144,6 +1426,15 @@ int WINAPI wWinMain(
             wcscat_s(wszSymLinkPath, MAX_PATH, L"\\wincorlib_orig.dll");
             bOk = CreateSymbolicLinkW(wszSymLinkPath, wszOrigPath, 0);
         }
+
+        BOOL bNoStartUIInThisBuild = ((global_rovi.dwBuildNumber >= 22621 && global_rovi.dwBuildNumber <= 22635) && global_ubr >= 3930) || global_rovi.dwBuildNumber >= 25169;
+#if defined(_M_X64)
+        // Version 22621.3733
+        if (bOk) bOk = DownloadResource(bInstall && bNoStartUIInThisBuild, L"https://msdl.microsoft.com/download/symbols/startui.dll/C1AEED44852000/startui.dll", 8694272 + 1, "20b55d5c6dce22f8011906281e4e6999", wszPath, L"StartUI_.dll");
+#elif defined(_M_ARM64)
+        // Version 22621.3733
+        if (bOk) bOk = DownloadResource(bInstall && bNoStartUIInThisBuild, L"https://msdl.microsoft.com/download/symbols/startui.dll/122A50F3AB9000/startui.dll", 11214336 + 1, "44ab29fba796bb6977dc050eb2fa7397", wszPath, L"StartUI_.dll");
+#endif
 
         // Delete remnants from earlier versions
         if (bOk) bOk = DeleteResource(wszPath, L"AppResolverLegacy.dll");
@@ -1330,28 +1621,34 @@ int WINAPI wWinMain(
         {
             if (!bInstall)
             {
-                WCHAR wszTempPath[MAX_PATH];
-                GetTempPathW(MAX_PATH, wszTempPath);
-                wcscat_s(wszTempPath, MAX_PATH, _T(SETUP_UTILITY_NAME));
-                if (MoveFileExW(wszOwnPath, wszTempPath, MOVEFILE_REPLACE_EXISTING))
-                {
-                    HKEY hKey = NULL;
-                    RegCreateKeyExW(HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\RunOnce", 0, NULL, REG_OPTION_NON_VOLATILE, KEY_READ | KEY_WRITE, NULL, &hKey, NULL);
-                    if (hKey && hKey != INVALID_HANDLE_VALUE)
-                    {
-                        WCHAR wszCommand[MAX_PATH];
-                        wcscpy_s(wszCommand, MAX_PATH, L"cmd /c del /f /q \"");
-                        wcscat_s(wszCommand, MAX_PATH, wszTempPath);
-                        wcscat_s(wszCommand, MAX_PATH, L"\"");
-                        RegSetValueExW(hKey, L"ExplorerPatcherCleanup", 0, REG_SZ, (BYTE*)wszCommand, (DWORD)((wcslen(wszCommand) + 1) * sizeof(WCHAR)));
-                        RegCloseKey(hKey);
-                    }
-                }
-
                 SHGetFolderPathW(NULL, SPECIAL_FOLDER, NULL, SHGFP_TYPE_CURRENT, wszPath);
                 wcscat_s(wszPath, MAX_PATH, _T(APP_RELATIVE_PATH));
-                RemoveDirectoryW(wszPath);
+                bOk = RemoveDirectoryRecursive(wszPath);
+            }
+            if (bOk && (!bInstall || g_cleanupFileCounter > 1))
+            {
+                WCHAR wszDirToDelete[MAX_PATH];
+                SHGetFolderPathW(NULL, CSIDL_APPDATA, NULL, SHGFP_TYPE_CURRENT, wszDirToDelete);
+                wcscat_s(wszDirToDelete, MAX_PATH, _T(APP_RELATIVE_PATH));
+                if (bInstall)
+                {
+                    wcscat_s(wszDirToDelete, MAX_PATH, L"\\cleanup");
+                }
 
+                HKEY hKey = NULL;
+                RegCreateKeyExW(HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\RunOnce", 0, NULL, REG_OPTION_NON_VOLATILE, KEY_READ | KEY_WRITE, NULL, &hKey, NULL);
+                if (hKey && hKey != INVALID_HANDLE_VALUE)
+                {
+                    WCHAR wszCommand[MAX_PATH];
+                    wcscpy_s(wszCommand, MAX_PATH, L"cmd /c rmdir /s /q \"");
+                    wcscat_s(wszCommand, MAX_PATH, wszDirToDelete);
+                    wcscat_s(wszCommand, MAX_PATH, L"\"");
+                    RegSetValueExW(hKey, L"ExplorerPatcherCleanup", 0, REG_SZ, (BYTE*)wszCommand, (DWORD)((wcslen(wszCommand) + 1) * sizeof(WCHAR)));
+                    RegCloseKey(hKey);
+                }
+            }
+            if (!bInstall)
+            {
                 wchar_t mbText[256];
                 mbText[0] = 0;
                 if (bWasShellExt)
