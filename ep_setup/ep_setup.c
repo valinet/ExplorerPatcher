@@ -471,7 +471,7 @@ unzFile LoadZipFileFromResources(MemoryBuffer** outMem)
         rijndaelDecrypt(rk, nrounds, pRsrc + offset, pMem->base + offset);
     }
 #else
-    memcpy(mem->base, pRsrc, cbRsrc);
+    memcpy(pMem->base, pRsrc, cbRsrc);
 #endif
 
     zlib_filefunc64_def fileFunc = { 0 };
