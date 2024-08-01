@@ -41,6 +41,8 @@ With this update, ExplorerPatcher is now officially compatible and supported on 
 * Start10: Fixed positioning when the taskbar is not placed at the bottom, on 24H2 and latest 22H2/23H2 builds. (de2532d, ea5881f)
 * Taskbar10: Fixed taskbar jump list flyout positioning when the taskbar is not placed at the bottom, on latest 22H2/23H2/24H2 builds. (39609e4)
 * Setup: Updated the code for dealing with locked files, this should reduce the chances of getting setup failures due to locked files. (7e0f7eb)
+* ep_taskbar: Fixed tray icons not being saved.
+* ep_taskbar: Removed the Copilot button on 22H2.
 
 ℹ️ **Important note:** Please include the following folders in your antivirus' exclusion list to prevent issues due to false positive detections:
 * `C:\Program Files\ExplorerPatcher`
