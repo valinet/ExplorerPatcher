@@ -339,21 +339,31 @@ static BOOL ProcessStartUISymbols(const char* pszSettingsPath, DWORD* pOffsets)
         return FALSE;
     }
 
-    CHAR szHash[100];
     WCHAR wszPath[MAX_PATH];
-
-    ZeroMemory(szHash, sizeof(szHash));
     ZeroMemory(wszPath, sizeof(wszPath));
+    GetWindowsDirectoryW(wszPath, MAX_PATH);
+    wcscat_s(wszPath, MAX_PATH, L"\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\" _T(STARTUI_SB_NAME) L".dll");
+
+    BOOL bCustomStartUI = FALSE;
+    if (!FileExistsW(wszPath))
+    {
+        GetWindowsDirectoryW(wszPath, MAX_PATH);
+        wcscat_s(wszPath, MAX_PATH, L"\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\StartUI_.dll");
+        if (!FileExistsW(wszPath))
+        {
+            return TRUE; // StartUI.dll or StartUI_.dll is not present in the current Windows installation, treat this as success
+        }
+        bCustomStartUI = TRUE;
+    }
 
     char startui_sb_dll[MAX_PATH];
     ZeroMemory(startui_sb_dll, sizeof(startui_sb_dll));
     GetWindowsDirectoryA(startui_sb_dll, MAX_PATH);
     strcat_s(startui_sb_dll, MAX_PATH, "\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\");
-    strcat_s(startui_sb_dll, MAX_PATH, STARTUI_SB_NAME);
-    strcat_s(startui_sb_dll, MAX_PATH, ".dll");
+    strcat_s(startui_sb_dll, MAX_PATH, bCustomStartUI ? "StartUI_.dll" : STARTUI_SB_NAME ".dll");
 
-    GetWindowsDirectoryW(wszPath, MAX_PATH);
-    wcscat_s(wszPath, MAX_PATH, L"\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\" _T(STARTUI_SB_NAME) L".dll");
+    CHAR szHash[100];
+    ZeroMemory(szHash, sizeof(szHash));
     ComputeFileHash(wszPath, szHash, ARRAYSIZE(szHash));
 
     printf("[Symbols] Downloading symbols for \"%s\" (\"%s\")...\n", startui_sb_dll, szHash);
@@ -815,6 +825,11 @@ LoadSymbolsResult LoadSymbols(symbols_addr* symbols_PTRS)
 
         GetWindowsDirectoryW(wszPath, MAX_PATH);
         wcscat_s(wszPath, MAX_PATH, L"\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\" TEXT(STARTUI_SB_NAME) L".dll");
+        if (!FileExistsW(wszPath))
+        {
+            GetWindowsDirectoryW(wszPath, MAX_PATH);
+            wcscat_s(wszPath, MAX_PATH, L"\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\StartUI_.dll");
+        }
         if (ComputeFileHash(wszPath, szHash, ARRAYSIZE(szHash)) == ERROR_SUCCESS)
         {
             szStoredHash[0] = 0;
