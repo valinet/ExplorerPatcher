@@ -13,6 +13,7 @@ void printf_guid(GUID guid)
         guid.Data4[4], guid.Data4[5], guid.Data4[6], guid.Data4[7]);
 }
 
+#ifdef _DEBUG
 LRESULT CALLBACK BalloonWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) 
 {
     if (msg == WM_CREATE)
@@ -82,7 +83,6 @@ __declspec(dllexport) int CALLBACK ZZTestBalloon(HWND hWnd, HINSTANCE hInstance,
     return 0;
 }
 
-#ifdef _DEBUG
 const wchar_t TestToastXML[] =
 L"<toast scenario=\"reminder\" "
 L"activationType=\"protocol\" launch=\"https://github.com/valinet/ExplorerPatcher\" duration=\"%s\">\r\n"
@@ -138,7 +138,7 @@ __declspec(dllexport) int CALLBACK ZZTestToast(HWND hWnd, HINSTANCE hInstance, L
 }
 #endif
 
-__declspec(dllexport) int CALLBACK ZZLaunchExplorer(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLine, int nCmdShow)
+/*__declspec(dllexport)*/ int CALLBACK ZZLaunchExplorer(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLine, int nCmdShow)
 {
     Sleep(100);
     TCHAR wszExplorerPath[MAX_PATH + 1];
@@ -170,14 +170,14 @@ __declspec(dllexport) int CALLBACK ZZLaunchExplorer(HWND hWnd, HINSTANCE hInstan
     return 0;
 }
 
-__declspec(dllexport) int CALLBACK ZZLaunchExplorerDelayed(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLine, int nCmdShow)
+/*__declspec(dllexport)*/ int CALLBACK ZZLaunchExplorerDelayed(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLine, int nCmdShow)
 {
     Sleep(2000);
     ZZLaunchExplorer(hWnd, hInstance, lpszCmdLine, nCmdShow);
     return 0;
 }
 
-__declspec(dllexport) int CALLBACK ZZRestartExplorer(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLine, int nCmdShow)
+/*__declspec(dllexport)*/ int CALLBACK ZZRestartExplorer(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLine, int nCmdShow)
 {
     BeginExplorerRestart(NULL);
     FinishExplorerRestart();

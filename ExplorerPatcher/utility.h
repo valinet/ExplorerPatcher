@@ -104,7 +104,8 @@ DEFINE_GUID(IID_ITrayUIComponent,
     0x64, 0xb4, 0xc0, 0x9b, 0x21, 0x1b
 );
 
-EP_INLINE HRESULT(*explorer_TrayUI_CreateInstanceFunc)(ITrayUIHost* host, REFIID riid, void** ppv);
+typedef HRESULT(*TrayUI_CreateInstance_t)(ITrayUIHost* host, REFIID riid, void** ppv);
+EP_INLINE TrayUI_CreateInstance_t explorer_TrayUI_CreateInstanceFunc;
 #pragma endregion
 
 inline int FileExistsW(wchar_t* file)
@@ -122,19 +123,19 @@ inline int FileExistsW(wchar_t* file)
 // https://stackoverflow.com/questions/1672677/print-a-guid-variable
 void printf_guid(GUID guid);
 
+#ifdef _DEBUG
 LRESULT CALLBACK BalloonWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 __declspec(dllexport) int CALLBACK ZZTestBalloon(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLine, int nCmdShow);
 
-#ifdef _DEBUG
 __declspec(dllexport) int CALLBACK ZZTestToast(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLine, int nCmdShow);
 #endif
 
-__declspec(dllexport) int CALLBACK ZZLaunchExplorer(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLine, int nCmdShow);
+/*__declspec(dllexport)*/ int CALLBACK ZZLaunchExplorer(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLine, int nCmdShow);
 
-__declspec(dllexport) int CALLBACK ZZLaunchExplorerDelayed(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLine, int nCmdShow);
+/*__declspec(dllexport)*/ int CALLBACK ZZLaunchExplorerDelayed(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLine, int nCmdShow);
 
-__declspec(dllexport) int CALLBACK ZZRestartExplorer(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLine, int nCmdShow);
+/*__declspec(dllexport)*/ int CALLBACK ZZRestartExplorer(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLine, int nCmdShow);
 
 #define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
 #define MAX(X, Y) (((X) > (Y)) ? (X) : (Y))
@@ -940,6 +941,16 @@ inline BOOL IsStockWindows10TaskbarAvailable()
 inline const WCHAR* PickTaskbarDll()
 {
     DWORD b = global_rovi.dwBuildNumber;
+
+    if (b >= 19041 && b <= 19045) // Windows 10 20H2, 21H2, 22H2
+    {
+        return L"ep_taskbar.0.dll";
+    }
+
+    if (b >= 21343 && b <= 22000) // Windows 11 21H2
+    {
+        return L"ep_taskbar.1.dll";
+    }
 
     if ((b >= 22621 && b <= 22635)  // 22H2-23H2 Release, Release Preview, and Beta channels
      || (b >= 23403 && b <= 25197)) // Early pre-reboot Dev channel until post-reboot Dev channel

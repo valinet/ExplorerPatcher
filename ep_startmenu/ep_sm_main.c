@@ -82,7 +82,7 @@ void PatchXamlMetaDataProviderGuid()
         PIMAGE_NT_HEADERS64 ntHeader = (PIMAGE_NT_HEADERS64)((u_char*)dosHeader + dosHeader->e_lfanew);
         if (ntHeader->Signature == IMAGE_NT_SIGNATURE)
         {
-			PIMAGE_SECTION_HEADER firstSection = IMAGE_FIRST_SECTION(ntHeader);
+            PIMAGE_SECTION_HEADER firstSection = IMAGE_FIRST_SECTION(ntHeader);
             for (unsigned int i = 0; i < ntHeader->FileHeader.NumberOfSections; ++i)
             {
                 PIMAGE_SECTION_HEADER section = firstSection + i;
