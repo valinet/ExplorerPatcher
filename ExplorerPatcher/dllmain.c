@@ -2128,6 +2128,16 @@ INT64 Shell_TrayWndSubclassProc(
                 {
                     LaunchPropertiesGUI(hModule);
                 }
+                else if (res == 420)
+                {
+                    // Restore Task Manager context menu item action on 24H2+
+                    SHELLEXECUTEINFOW sei = { sizeof(sei) };
+                    sei.fMask = SEE_MASK_DOENVSUBST;
+                    sei.lpFile = L"%SystemRoot%\\system32\\taskmgr.exe";
+                    sei.lpParameters = L"/4";
+                    sei.nShow = SW_SHOWNORMAL;
+                    ShellExecuteExW(&sei);
+                }
                 else
                 {
                     PostMessageW(hWnd, WM_COMMAND, res, 0);
