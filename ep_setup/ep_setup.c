@@ -1344,7 +1344,7 @@ int WINAPI wWinMain(
             }
         }
         DeleteResource(wszPath, L"Windows.UI.ShellCommon.pri");
-        BOOL bNoStartUIInThisBuild = ((global_rovi.dwBuildNumber >= 22621 && global_rovi.dwBuildNumber <= 22635) && global_ubr >= 3930) || global_rovi.dwBuildNumber >= 25169;
+        BOOL bUnpackCustomStartUI = (global_rovi.dwBuildNumber >= 22621 && global_rovi.dwBuildNumber <= 22635) || global_rovi.dwBuildNumber >= 25169;
         BOOL bNoPniduiInThisBuild = global_rovi.dwBuildNumber >= 25236;
         if (bInstall)
         {
@@ -1353,7 +1353,7 @@ int WINAPI wWinMain(
             {
                 if (bOk) bOk = ExtractDirectory(zipFile, "pnidui/", wszPath, languages, LCT_MUI);
             }
-            if (bNoStartUIInThisBuild)
+            if (bUnpackCustomStartUI)
             {
                 if (bOk) bOk = ExtractDirectory(zipFile, "Windows.UI.ShellCommon/", wszPath, languages, LCT_PRI);
             }
@@ -1442,7 +1442,7 @@ int WINAPI wWinMain(
             bOk = CreateSymbolicLinkW(wszSymLinkPath, wszOrigPath, 0);
         }
 
-        if (bOk) bOk = InstallResource(bInstall && bNoStartUIInThisBuild, hInstance, zipFile, "StartUI/StartUI.dll", wszPath, L"StartUI_.dll");
+        if (bOk) bOk = InstallResource(bInstall && bUnpackCustomStartUI, hInstance, zipFile, "StartUI/StartUI.dll", wszPath, L"StartUI_.dll");
 
         // Delete remnants from earlier versions
         if (bOk) bOk = DeleteResource(wszPath, L"AppResolverLegacy.dll");
