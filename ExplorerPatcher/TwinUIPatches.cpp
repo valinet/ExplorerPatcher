@@ -1623,19 +1623,42 @@ BOOL FixStartMenuAnimation(LPMODULEINFO mi)
         matchVtable += 7 + *(int*)(matchVtable + 3);
     }
 #elif defined(_M_ARM64)
-    // ```
-    // 69 22 04 A9 ?? ?? 00 ?? 08 81 ?? 91 60 A2 01 91 68 32 00 F9
-    //             ^^^^^^^^^^^+^^^^^^^^^^^
+    // * Pattern for Nickel
+    //   ```
+    //   69 A2 03 A9 ?? ?? 00 ?? 08 ?? ?? 91 ?? ?? 00 ?? 29 ?? ?? 91 68 32 00 F9
+    //               ^^^^^^^^^^^+^^^^^^^^^^^
+    //   ```
+    // Ref: CStartExperienceManager::CStartExperienceManager()
     PBYTE matchVtable = (PBYTE)FindPattern(
         mi->lpBaseOfDll,
         mi->SizeOfImage,
-        "\x69\x22\x04\xA9\x00\x00\x00\x00\x08\x81\x00\x91\x60\xA2\x01\x91\x68\x32\x00\xF9",
-        "xxxx??x?xx?xxxxxxxxx"
+        "\x69\xA2\x03\xA9\x00\x00\x00\x00\x08\x00\x00\x91\x00\x00\x00\x00\x29\x00\x00\x91\x68\x32\x00\xF9",
+        "xxxx??x?x??x??x?x??xxxxx"
     );
     if (matchVtable)
     {
         matchVtable += 4;
         matchVtable = (PBYTE)ARM64_DecodeADRL((UINT_PTR)matchVtable, *(DWORD*)matchVtable, *(DWORD*)(matchVtable + 4));
+    }
+    else
+    {
+        // * Pattern for Germanium
+        //   ```
+        //   69 22 04 A9 ?? ?? 00 ?? 08 ?? ?? 91 60 A2 01 91 68 32 00 F9
+        //               ^^^^^^^^^^^+^^^^^^^^^^^
+        //   ```
+        // Ref: CStartExperienceManager::CStartExperienceManager()
+        matchVtable = (PBYTE)FindPattern(
+            mi->lpBaseOfDll,
+            mi->SizeOfImage,
+            "\x69\x22\x04\xA9\x00\x00\x00\x00\x08\x00\x00\x91\x60\xA2\x01\x91\x68\x32\x00\xF9",
+            "xxxx??x?x??xxxxxxxxx"
+        );
+        if (matchVtable)
+        {
+            matchVtable += 4;
+            matchVtable = (PBYTE)ARM64_DecodeADRL((UINT_PTR)matchVtable, *(DWORD*)matchVtable, *(DWORD*)(matchVtable + 4));
+        }
     }
 #endif
     if (matchVtable)
@@ -1811,23 +1834,62 @@ BOOL FixStartMenuAnimation(LPMODULEINFO mi)
         matchGetMonitorInformation += 5 + *(int*)(matchGetMonitorInformation + 1);
     }
 #elif defined(_M_ARM64)
-    // * Pattern for 261xx:
+    // * Pattern for 226xx
     //   ```
-    //   E2 82 00 91 E1 03 13 AA E0 03 14 AA ?? ?? ?? ??
+    //   E3 ?? 00 91 E2 ?? 00 91 E0 03 13 AA ?? ?? ?? ?? F4 03 00 2A
     //                                       ^^^^^^^^^^^
     //   ```
-    // * Different patterns needed for 226xx and 262xx+
     // Ref: CStartExperienceManager::PositionMenu()
     PBYTE matchGetMonitorInformation = (PBYTE)FindPattern(
         mi->lpBaseOfDll,
         mi->SizeOfImage,
-        "\xE2\x82\x00\x91\xE1\x03\x13\xAA\xE0\x03\x14\xAA",
-        "xxxxxxxxxxxx"
+        "\xE3\x00\x00\x91\xE2\x00\x00\x91\xE0\x03\x13\xAA\x00\x00\x00\x00\xF4\x03\x00\x2A",
+        "x?xxx?xxxxxx????xxxx"
     );
     if (matchGetMonitorInformation)
     {
         matchGetMonitorInformation += 12;
         matchGetMonitorInformation = (PBYTE)ARM64_FollowBL((DWORD*)matchGetMonitorInformation);
+    }
+    if (!matchGetMonitorInformation)
+    {
+        // * Pattern for 26100.1, 265, 470, 560, 670, 712, 751, 863, 1000, 1150
+        //   ```
+        //   E2 82 00 91 E1 03 13 AA E0 03 14 AA ?? ?? ?? ??
+        //                                       ^^^^^^^^^^^
+        //   ```
+        // Ref: CStartExperienceManager::PositionMenu()
+        matchGetMonitorInformation = (PBYTE)FindPattern(
+            mi->lpBaseOfDll,
+            mi->SizeOfImage,
+            "\xE2\x82\x00\x91\xE1\x03\x13\xAA\xE0\x03\x14\xAA",
+            "xxxxxxxxxxxx"
+        );
+        if (matchGetMonitorInformation)
+        {
+            matchGetMonitorInformation += 12;
+            matchGetMonitorInformation = (PBYTE)ARM64_FollowBL((DWORD*)matchGetMonitorInformation);
+        }
+    }
+    if (!matchGetMonitorInformation)
+    {
+        // * Pattern for 26100.961, 1252, 1301, 1330, 1340, 1350, 1591, ...
+        //   ```
+        //   FF 02 00 39 E2 82 00 91 E0 03 13 AA ?? ?? ?? ??
+        //                                       ^^^^^^^^^^^
+        //   ```
+        // Ref: CStartExperienceManager::PositionMenu()
+        matchGetMonitorInformation = (PBYTE)FindPattern(
+            mi->lpBaseOfDll,
+            mi->SizeOfImage,
+            "\xFF\x02\x00\x39\xE2\x82\x00\x91\xE0\x03\x13\xAA",
+            "xxxxxxxxxxx"
+        );
+        if (matchGetMonitorInformation)
+        {
+            matchGetMonitorInformation += 12;
+            matchGetMonitorInformation = (PBYTE)ARM64_FollowBL((DWORD*)matchGetMonitorInformation);
+        }
     }
 #endif
     if (matchGetMonitorInformation)
@@ -1877,25 +1939,40 @@ BOOL FixStartMenuAnimation(LPMODULEINFO mi)
 #elif defined(_M_ARM64)
     // * Pattern 1, used when all arguments are available:
     //   ```
-    //   Not implemented
-    //
-    //   ```
-    // * Pattern 2, used when a4, a5, and a6 are optimized out (e.g. 26020, 26058):
-    //   ```
-    //   82 02 0B 32 67 ?? ?? 91 60 ?? ?? 91 ?? ?? ?? ?? E3 03 00 2A
+    //   04 00 80 D2 03 00 80 D2 60 C2 05 91 ?? ?? ?? ?? E3 03 00 2A
     //                                       ^^^^^^^^^^^
     //   ```
     // Ref: CJumpViewExperienceManager::OnViewUncloaking()
     PBYTE matchAnimationBegin = (PBYTE)FindPattern(
         mi->lpBaseOfDll,
         mi->SizeOfImage,
-        "\x82\x02\x0B\x32\x67\x00\x00\x91\x60\x00\x00\x91\x00\x00\x00\x00\xE3\x03\x00\x2A",
-        "xxxxx??xx??x????xxxx"
+        "\x04\x00\x80\xD2\x03\x00\x80\xD2\x60\xC2\x05\x91\x00\x00\x00\x00\xE3\x03\x00\x2A",
+        "xxxxxxxxxxxx????xxxx"
     );
     if (matchAnimationBegin)
     {
         matchAnimationBegin += 12;
         matchAnimationBegin = (PBYTE)ARM64_FollowBL((DWORD*)matchAnimationBegin);
+    }
+    else
+    {
+        // * Pattern 2, used when a4, a5, and a6 are optimized out (e.g. 26020, 26058):
+        //   ```
+        //   82 02 0B 32 67 ?? ?? 91 60 ?? ?? 91 ?? ?? ?? ?? E3 03 00 2A
+        //                                       ^^^^^^^^^^^
+        //   ```
+        // Ref: CJumpViewExperienceManager::OnViewUncloaking()
+        matchAnimationBegin = (PBYTE)FindPattern(
+            mi->lpBaseOfDll,
+            mi->SizeOfImage,
+            "\x82\x02\x0B\x32\x67\x00\x00\x91\x60\x00\x00\x91\x00\x00\x00\x00\xE3\x03\x00\x2A",
+            "xxxxx??xx??x????xxxx"
+        );
+        if (matchAnimationBegin)
+        {
+            matchAnimationBegin += 12;
+            matchAnimationBegin = (PBYTE)ARM64_FollowBL((DWORD*)matchAnimationBegin);
+        }
     }
 #endif
     if (matchAnimationBegin)
