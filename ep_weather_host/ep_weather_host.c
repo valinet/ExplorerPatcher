@@ -46,7 +46,7 @@ static void epw_Weather_SetTextScaleFactorFromRegistry(EPWeather* _this, HKEY hK
     }
     else if (hKey == HKEY_LOCAL_MACHINE)
     {
-        if (RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Accessibility", 0, KEY_READ | KEY_WOW64_64KEY | KEY_WRITE, NULL, &_this->hKLMAccessibility))
+        if (RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Accessibility", REG_OPTION_NON_VOLATILE, KEY_READ | KEY_WOW64_64KEY | KEY_WRITE, &_this->hKLMAccessibility))
         {
             RegNotifyChangeKeyValue(_this->hKLMAccessibility, FALSE, REG_NOTIFY_CHANGE_LAST_SET, _this->hSignalOnAccessibilitySettingsChangedFromHKLM, TRUE);
         }
