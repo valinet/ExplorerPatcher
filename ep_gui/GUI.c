@@ -2542,8 +2542,8 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                             }
                         }
                         HKEY hKey = NULL;
-                        wchar_t* bIsHKLM = wcsstr(section, L"HKEY_LOCAL_MACHINE");
-                        bIsHKLM = !bIsHKLM ? NULL : ((bIsHKLM - section) < 3);
+                        wchar_t* matchHKLM = wcsstr(section, L"HKEY_LOCAL_MACHINE");
+                        BOOL bIsHKLM = matchHKLM && (matchHKLM - section) < 3;
                         DWORD dwDisposition;
                         DWORD dwSize = sizeof(DWORD);
                         DWORD value = FALSE;
