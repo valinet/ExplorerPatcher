@@ -44,15 +44,31 @@ With this update, ExplorerPatcher is now officially compatible and supported on 
 * ep_taskbar: Fixed tray icons not being saved.
 * ep_taskbar: Removed the Copilot button on 22H2.
 
-ℹ️ **Important note:** Please include the following folders in your antivirus' exclusion list to prevent issues due to false positive detections:
-* `C:\Program Files\ExplorerPatcher`
-* `%APPDATA%\ExplorerPatcher`
+##### 5
 
-For Defender, you can run the following script in PowerShell as an administrator:
-```ps1
-Add-MpPreference -ExclusionPath "C:\Program Files\ExplorerPatcher"
-Add-MpPreference -ExclusionPath "$env:APPDATA\ExplorerPatcher"
-```
+* Taskbar10: Fixed jump list positioning patch on latest builds with `TaskbarJumplistOnHover` feature flag. (#3615) (351a020)
+* Taskbar11: Fixed Task Manager menu entry doing nothing on 24H2+. (#3021, #3556) (060066c)
+* Start10: Fixed symbols mechanism when custom `StartUI_.dll` is used. (0f38628)
+* Start10: Increased reliability of ARM64 patterns for restoring the animations and fixing positioning. (#3566) (2ea3894)
+* ep_taskbar: Fixed the task band not having a handle when the taskbar is unlocked.
+* ep_taskbar: Fixed scroll arrows in window list popups (`ExtendedUI`) having weird appearance and behavior.
+
+> [!WARNING]
+> Please include the following folders in your antivirus' exclusion list to prevent issues due to false positive detections:
+> * `C:\Program Files\ExplorerPatcher`
+> * `%APPDATA%\ExplorerPatcher`
+> * `C:\Windows\dxgi.dll`
+> * `C:\Windows\SystemApps\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy`
+> * `C:\Windows\SystemApps\ShellExperienceHost_cw5n1h2txyewy`
+>
+> For Defender, you can run the following script in PowerShell as an administrator:
+> ```ps1
+> Add-MpPreference -ExclusionPath "C:\Program Files\ExplorerPatcher"
+> Add-MpPreference -ExclusionPath "$env:APPDATA\ExplorerPatcher"
+> Add-MpPreference -ExclusionPath "C:\Windows\dxgi.dll"
+> Add-MpPreference -ExclusionPath "C:\Windows\SystemApps\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy"
+> Add-MpPreference -ExclusionPath "C:\Windows\SystemApps\ShellExperienceHost_cw5n1h2txyewy"
+> ```
 
 **A little request from us:** Because the development of EP's taskbar implementation took a lot of effort for 8 consecutive months, and that an ARM64 device to support the making and testing of ARM64 builds is not cheap, it would be really, really appreciated if you can [donate @Amrsatrio via Ko-fi](https://ko-fi.com/amrsatrio) 🙏
 
