@@ -4,9 +4,10 @@ This project aims to enhance the working environment on Windows.
 
 ## How to?
 
-1. Download the latest version of the setup program [for x64](https://github.com/valinet/ExplorerPatcher/releases/latest/download/ep_setup.exe) or [for ARM64](https://github.com/valinet/ExplorerPatcher/releases/latest/download/ep_setup_arm64.exe).
-2. Run the installer. It will automatically prompt for elevation, after which it will install the necessary files.
-3. When done, you will be greeted with the familiar Windows 10 taskbar. To customize the options offered by the program, right click the taskbar and choose "Properties".
+1. Follow the antivirus configuration instructions and download the latest version of the setup program in [here](https://github.com/valinet/ExplorerPatcher/releases/latest).
+   * Choose `ep_setup.exe` if your device uses an Intel or AMD processor, or `ep_setup_arm64.exe` if your device uses a Snapdragon processor.
+1. Run the installer. It will automatically prompt for elevation, after which it will install the necessary files.
+1. When done, you will be greeted with the familiar Windows 10 taskbar. To customize the options offered by the program, right click the taskbar and choose "Properties".
 
 That's it. It's that simple.
 
