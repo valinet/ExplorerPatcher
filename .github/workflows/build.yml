@@ -171,6 +171,14 @@ jobs:
           )
           exit /b 0
 
+      - name: Delete intermediate files
+        shell: bash
+        run: |
+          rm -rf build/Release/x64/ep_setup_files
+          rm -f build/Release/x64/ep_setup_files.zip.bin
+          rm -rf build/Release/ARM64/ep_setup_files
+          rm -f build/Release/ARM64/ep_setup_files.zip.bin
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:

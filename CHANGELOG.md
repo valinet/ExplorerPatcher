@@ -53,8 +53,16 @@ With this update, ExplorerPatcher is now officially compatible and supported on 
 * ep_taskbar: Fixed the task band not having a handle when the taskbar is unlocked.
 * ep_taskbar: Fixed scroll arrows in window list popups (`ExtendedUI`) having weird appearance and behavior.
 
+##### 6
+
+* Updates: Fixed a bug where empty UpdateURL registry values would break the updates system. (#3668) (ac14c75)
+* Setup: Cleaned some unneeded stuff in the setup binary. (9811810)
+* Misc: Restored exported functions for launching/restarting Explorer: `ZZLaunchExplorer`, `ZZLaunchExplorerDelayed`, and `ZZRestartExplorer`. (9811810)
+
 > [!WARNING]
-> Please include the following folders in your antivirus' exclusion list to prevent issues due to false positive detections:
+> <ins>**You are downloading a file flagged as malware by Microsoft and very likely by other major antivirus vendors.**</ins> We believe that this false flag indicates Microsoft's hatred against this software, not because this contains a virus or such.
+>
+> Please include the following files and folders in your antivirus' exclusion list to prevent issues due to antivirus detections:
 > * `C:\Program Files\ExplorerPatcher`
 > * `%APPDATA%\ExplorerPatcher`
 > * `C:\Windows\dxgi.dll`
@@ -69,6 +77,9 @@ With this update, ExplorerPatcher is now officially compatible and supported on 
 > Add-MpPreference -ExclusionPath "C:\Windows\SystemApps\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy"
 > Add-MpPreference -ExclusionPath "C:\Windows\SystemApps\ShellExperienceHost_cw5n1h2txyewy"
 > ```
+> If you are downloading from this page, please temporarily disable real-time protection or save to a folder excluded from antivirus scans.
+>
+> Issues related to antivirus detections **will be closed immediately**. Discuss this in #3228.
 
 **A little request from us:** Because the development of EP's taskbar implementation took a lot of effort for 8 consecutive months, and that an ARM64 device to support the making and testing of ARM64 builds is not cheap, it would be really, really appreciated if you can [donate @Amrsatrio via Ko-fi](https://ko-fi.com/amrsatrio) 🙏
 
