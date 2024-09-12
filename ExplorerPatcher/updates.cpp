@@ -857,7 +857,7 @@ BOOL IsUpdateAvailable(LPCWSTR wszDataStore, char* szCheckAgainst, BOOL* lpFail,
             (LPBYTE)szUpdateURL,
             &dwSize
         );
-        if (dwSize == 1 && szUpdateURL[0] == 0)
+        if (dwSize == sizeof(WCHAR) && szUpdateURL[0] == 0)
         {
             wcscat_s(szUpdateURL, MAX_PATH, _T(UPDATES_RELEASE_INFO_URL_STABLE));
         }
@@ -874,7 +874,7 @@ BOOL IsUpdateAvailable(LPCWSTR wszDataStore, char* szCheckAgainst, BOOL* lpFail,
                 (LPBYTE)wszInfoURL,
                 &dwSize
             );
-            if (dwSize == 1 && wszInfoURL[0] == 0)
+            if (dwSize == sizeof(WCHAR) && wszInfoURL[0] == 0)
             {
                 wcscat_s(wszInfoURL, cchInfoURL, _T(UPDATES_RELEASE_INFO_URL_STABLE));
             }
@@ -910,7 +910,7 @@ BOOL IsUpdateAvailable(LPCWSTR wszDataStore, char* szCheckAgainst, BOOL* lpFail,
                 (LPBYTE)szUpdateURL,
                 &dwSize
             );
-            if (dwSize == 1 && szUpdateURL[0] == 0)
+            if (dwSize == sizeof(WCHAR) && szUpdateURL[0] == 0)
             {
                 wcscat_s(szUpdateURL, MAX_PATH, _T(UPDATES_RELEASE_INFO_URL_STAGING));
             }
@@ -973,7 +973,7 @@ BOOL UpdateProduct(LPCWSTR wszDataStore, CToastData* toastData, BOOL bNoConfirma
             (LPBYTE)szUpdateURL,
             &dwSize
         );
-        if (dwSize == 1 && szUpdateURL[0] == 0)
+        if (dwSize == sizeof(WCHAR) && szUpdateURL[0] == 0)
         {
             wcscat_s(szUpdateURL, MAX_PATH, _T(UPDATES_RELEASE_INFO_URL_STABLE));
         }
@@ -1010,7 +1010,7 @@ BOOL UpdateProduct(LPCWSTR wszDataStore, CToastData* toastData, BOOL bNoConfirma
                 (LPBYTE)szUpdateURL,
                 &dwSize
             );
-            if (dwSize == 1 && szUpdateURL[0] == 0)
+            if (dwSize == sizeof(WCHAR) && szUpdateURL[0] == 0)
             {
                 wcscat_s(szUpdateURL, MAX_PATH, _T(UPDATES_RELEASE_INFO_URL_STAGING));
             }
