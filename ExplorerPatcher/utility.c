@@ -138,7 +138,8 @@ __declspec(dllexport) int CALLBACK ZZTestToast(HWND hWnd, HINSTANCE hInstance, L
 }
 #endif
 
-/*__declspec(dllexport)*/ int CALLBACK ZZLaunchExplorer(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLine, int nCmdShow)
+#ifndef EP_BUILD_SETUP
+__declspec(dllexport) int CALLBACK ZZLaunchExplorer(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLine, int nCmdShow)
 {
     Sleep(100);
     TCHAR wszExplorerPath[MAX_PATH + 1];
@@ -170,19 +171,20 @@ __declspec(dllexport) int CALLBACK ZZTestToast(HWND hWnd, HINSTANCE hInstance, L
     return 0;
 }
 
-/*__declspec(dllexport)*/ int CALLBACK ZZLaunchExplorerDelayed(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLine, int nCmdShow)
+__declspec(dllexport) int CALLBACK ZZLaunchExplorerDelayed(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLine, int nCmdShow)
 {
     Sleep(2000);
     ZZLaunchExplorer(hWnd, hInstance, lpszCmdLine, nCmdShow);
     return 0;
 }
 
-/*__declspec(dllexport)*/ int CALLBACK ZZRestartExplorer(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLine, int nCmdShow)
+__declspec(dllexport) int CALLBACK ZZRestartExplorer(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLine, int nCmdShow)
 {
     BeginExplorerRestart(NULL);
     FinishExplorerRestart();
     return 0;
 }
+#endif
 
 void* ReadFromFile(wchar_t* wszFileName, DWORD* dwSize)
 {
@@ -719,6 +721,7 @@ LSTATUS RegisterDWMService(DWORD dwDesiredState, DWORD dwOverride)
     return TRUE;
 }
 
+#ifndef EP_BUILD_SETUP
 char* StrReplaceAllA(const char* s, const char* oldW, const char* newW, int* dwNewSize)
 {
     char* result;
@@ -1140,6 +1143,7 @@ HRESULT InputBox(BOOL bPassword, HWND hWnd, LPCWSTR wszPrompt, LPCWSTR wszTitle,
 
     return hr;
 }
+#endif
 
 UINT PleaseWaitTimeout = 0;
 HHOOK PleaseWaitHook = NULL;

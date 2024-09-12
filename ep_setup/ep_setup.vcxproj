@@ -225,6 +225,11 @@
       <AdditionalLibraryDirectories>$(SolutionDir)libs\zlib\build-$(Platform)\$(Configuration)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <PreprocessorDefinitions>EP_BUILD_SETUP;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(WithEncryption)' == 'true'">
     <ClCompile>
       <PreprocessorDefinitions>WITH_ENCRYPTION;%(PreprocessorDefinitions)</PreprocessorDefinitions>
