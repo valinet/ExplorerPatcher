@@ -91,16 +91,19 @@
 ;x 3 %R:1034%
 ;x 7 %R:1035%
 "MMOldTaskbarAl"=dword:00000000
+;g Taskbar_Windows10Section
+[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
 ;c 3 %R:1037%
-;x 0 %R:1039%
+;x 0 %R:1038%
 ;x 1 %R:1040%
-;x 2 %R:1041%
-"TaskbarGlomLevel"=dword:00000002
+;x 2 %R:1042%
+"TaskbarGlomLevel"=dword:00000000
 ;c 3 %R:1043%
-;x 0 %R:1039%
+;x 0 %R:1038%
 ;x 1 %R:1040%
-;x 2 %R:1041%
-"MMTaskbarGlomLevel"=dword:00000002
+;x 2 %R:1042%
+"MMTaskbarGlomLevel"=dword:00000000
+;s Taskbar_Windows10Section IsOldTaskbar
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
 ;c 2 %R:1044%
 ;x 1 %R:1045%

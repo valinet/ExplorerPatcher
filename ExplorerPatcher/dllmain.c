@@ -118,13 +118,9 @@ BOOL bDoNotRedirectNotificationIconsToSettingsApp = FALSE;
 BOOL bDisableOfficeHotkeys = FALSE;
 BOOL bDisableWinFHotkey = FALSE;
 DWORD bNoPropertiesInContextMenu = FALSE;
-#define TASKBARGLOMLEVEL_DEFAULT 2
-#define MMTASKBARGLOMLEVEL_DEFAULT 2
-DWORD dwTaskbarGlomLevel = TASKBARGLOMLEVEL_DEFAULT;
-DWORD dwMMTaskbarGlomLevel = MMTASKBARGLOMLEVEL_DEFAULT;
 HMODULE hModule = NULL;
 HANDLE hShell32 = NULL;
-HANDLE hDelayedInjectionThread = NULL;
+// HANDLE hDelayedInjectionThread = NULL;
 HANDLE hSwsSettingsChanged = NULL;
 HANDLE hSwsOpacityMaybeChanged = NULL;
 HANDLE hWin11AltTabInitialized = NULL;
@@ -4991,7 +4987,7 @@ __declspec(dllexport) BOOL explorer_SetChildWindowNoActivateHook(HWND hWnd)
                     VirtualProtect(PeopleButton_Instance + 32, sizeof(uintptr_t), dwOldProtect, &dwOldProtect);
 
                     uintptr_t off_PeopleButton_ShowTooltip = 0;
-                    if (IsWindows11())
+                    if (bOldTaskbar >= 2 || IsWindows11())
                     {
                         off_PeopleButton_ShowTooltip = 224;
                     }
@@ -5005,7 +5001,7 @@ __declspec(dllexport) BOOL explorer_SetChildWindowNoActivateHook(HWND hWnd)
                     VirtualProtect(Instance + off_PeopleButton_ShowTooltip, sizeof(uintptr_t), dwOldProtect, &dwOldProtect);
 
                     uintptr_t off_PeopleButton_OnClick = 0;
-                    if (IsWindows11())
+                    if (bOldTaskbar >= 2 || IsWindows11())
                     {
                         off_PeopleButton_OnClick = 160;
                     }
@@ -5579,43 +5575,6 @@ void WINAPI LoadSettings(LPARAM lParam)
                         sizeof(DWORD)
                     );
                     RegDeleteKeyExW(hKey, TEXT(STARTDOCKED_SB_NAME), KEY_WOW64_64KEY, 0);
-                    DWORD dwTaskbarGlomLevel = 0, dwMMTaskbarGlomLevel = 0;
-                    dwSize = sizeof(DWORD);
-                    RegGetValueW(
-                        HKEY_CURRENT_USER,
-                        L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
-                        L"TaskbarGlomLevel",
-                        REG_DWORD,
-                        NULL,
-                        &dwTaskbarGlomLevel,
-                        &dwSize
-                    );
-                    RegSetValueExW(
-                        hKey,
-                        TEXT("TaskbarGlomLevel"),
-                        0,
-                        REG_DWORD,
-                        &dwTaskbarGlomLevel,
-                        sizeof(DWORD)
-                    );
-                    dwSize = sizeof(DWORD);
-                    RegGetValueW(
-                        HKEY_CURRENT_USER,
-                        L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
-                        L"MMTaskbarGlomLevel",
-                        REG_DWORD,
-                        NULL,
-                        &dwMMTaskbarGlomLevel,
-                        &dwSize
-                    );
-                    RegSetValueExW(
-                        hKey,
-                        TEXT("MMTaskbarGlomLevel"),
-                        0,
-                        REG_DWORD,
-                        &dwMMTaskbarGlomLevel,
-                        sizeof(DWORD)
-                    );
                 }
             }
             dwTemp = TRUE;
@@ -6494,45 +6453,6 @@ void WINAPI LoadSettings(LPARAM lParam)
 
         LeaveCriticalSection(&lock_epw);
 #endif
-
-        dwTemp = TASKBARGLOMLEVEL_DEFAULT;
-        dwSize = sizeof(DWORD);
-        RegQueryValueExW(
-            hKey,
-            TEXT("TaskbarGlomLevel"),
-            0,
-            NULL,
-            &dwTemp,
-            &dwSize
-        );
-        if (bOldTaskbar && (dwTemp != dwTaskbarGlomLevel))
-        {
-            dwRefreshUIMask = REFRESHUI_GLOM;
-            if (dwOldTaskbarAl)
-            {
-                dwRefreshUIMask |= REFRESHUI_CENTER;
-            }
-        }
-        dwTaskbarGlomLevel = dwTemp;
-        dwTemp = MMTASKBARGLOMLEVEL_DEFAULT;
-        dwSize = sizeof(DWORD);
-        RegQueryValueExW(
-            hKey,
-            TEXT("MMTaskbarGlomLevel"),
-            0,
-            NULL,
-            &dwTemp,
-            &dwSize
-        );
-        if (bOldTaskbar && (dwTemp != dwMMTaskbarGlomLevel))
-        {
-            dwRefreshUIMask = REFRESHUI_GLOM;
-            if (dwMMOldTaskbarAl)
-            {
-                dwRefreshUIMask |= REFRESHUI_CENTER;
-            }
-        }
-        dwMMTaskbarGlomLevel = dwTemp;
         RegCloseKey(hKey);
     }
 
@@ -6748,20 +6668,6 @@ void WINAPI LoadSettings(LPARAM lParam)
         }
         if (dwRefreshUIMask & REFRESHUI_TASKBAR)
         {
-            // this is mostly a hack...
-            /*DWORD dwGlomLevel = 2, dwSize = sizeof(DWORD), dwNewGlomLevel;
-            RegGetValueW(HKEY_CURRENT_USER, IsWindows11() ? TEXT(REGPATH) : L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", L"TaskbarGlomLevel", RRF_RT_DWORD, NULL, &dwGlomLevel, &dwSize);
-            Sleep(100);
-            dwNewGlomLevel = 0;
-            RegSetKeyValueW(HKEY_CURRENT_USER, IsWindows11() ? TEXT(REGPATH) : L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", L"TaskbarGlomLevel", REG_DWORD, &dwNewGlomLevel, sizeof(DWORD));
-            Explorer_RefreshUI(0);
-            Sleep(100);
-            dwNewGlomLevel = 2;
-            RegSetKeyValueW(HKEY_CURRENT_USER, IsWindows11() ? TEXT(REGPATH) : L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", L"TaskbarGlomLevel", REG_DWORD, &dwNewGlomLevel, sizeof(DWORD));
-            Explorer_RefreshUI(0);
-            Sleep(100);
-            RegSetKeyValueW(HKEY_CURRENT_USER, IsWindows11() ? TEXT(REGPATH) : L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", L"TaskbarGlomLevel", REG_DWORD, &dwGlomLevel, sizeof(DWORD));
-            Explorer_RefreshUI(0);*/
         }
         if (dwRefreshUIMask & REFRESHUI_CENTER)
         {
@@ -8374,16 +8280,6 @@ LSTATUS explorer_RegGetValueW(
         if (*(DWORD*)pvData == 2)
         {
             *(DWORD*)pvData = 1;
-        }
-    }
-    else if (IsWindows11() && (!lstrcmpW(lpValue, L"TaskbarGlomLevel") || !lstrcmpW(lpValue, L"MMTaskbarGlomLevel")))
-    {
-        lRes = RegGetValueW(HKEY_CURRENT_USER, _T(REGPATH), lpValue, dwFlags, pdwType, pvData, pcbData);
-        if (lRes != ERROR_SUCCESS)
-        {
-            *(DWORD*)pvData = (lpValue[0] == L'T' ? TASKBARGLOMLEVEL_DEFAULT : MMTASKBARGLOMLEVEL_DEFAULT);
-            *(DWORD*)pcbData = sizeof(DWORD32);
-            lRes = ERROR_SUCCESS;
         }
     }
     /*else if (!lstrcmpW(lpValue, L"PeopleBand"))
@@ -11005,11 +10901,6 @@ DWORD Inject(BOOL bIsExplorer)
         else
         {
             CreateThread(0, 0, FixTaskbarAutohide, 0, 0, 0);
-            if (!IsWindows11Version22H2Build2361OrHigher())
-            {
-                RegDeleteKeyValueW(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", L"TaskbarGlomLevel");
-                RegDeleteKeyValueW(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", L"MMTaskbarGlomLevel");
-            }
         }
     }
 
