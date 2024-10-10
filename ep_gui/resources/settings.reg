@@ -501,7 +501,7 @@
 
 
 
-;s Weather_Windows10 IsStockWin10Taskbar
+;s Weather_Windows10 IsOldTaskbar
 ;T %R:1501%
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;b %R:1502%

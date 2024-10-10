@@ -4313,35 +4313,35 @@ WCHAR* epw_wszTemperature = NULL;
 WCHAR* epw_wszUnit = NULL;
 WCHAR* epw_wszCondition = NULL;
 char* epw_pImage = NULL;
-__int64 (*PeopleBand_DrawTextWithGlowFunc)(
+HRESULT (STDAPICALLTYPE *PeopleBand_DrawTextWithGlowFunc)(
     HDC hdc,
-    const unsigned __int16* a2,
-    int a3,
-    struct tagRECT* a4,
-    unsigned int a5,
-    unsigned int a6,
-    unsigned int a7,
-    unsigned int dy,
-    unsigned int a9,
-    int a10,
-    int(__stdcall* a11)(HDC, unsigned __int16*, int, struct tagRECT*, unsigned int, __int64),
-    __int64 a12);
-__int64 __fastcall PeopleBand_DrawTextWithGlowHook(
+    LPCWSTR pszText,
+    UINT cch,
+    LPRECT prc,
+    DWORD dwFlags,
+    COLORREF crText,
+    COLORREF crGlow,
+    UINT nGlowRadius,
+    UINT nGlowIntensity,
+    BOOL fPreMultiply,
+    DTT_CALLBACK_PROC pfnDrawTextCallback,
+    LPARAM lParam);
+__declspec(dllexport) HRESULT STDAPICALLTYPE PeopleBand_DrawTextWithGlowHook(
     HDC hdc,
-    const unsigned __int16* a2,
-    int a3,
-    struct tagRECT* a4,
-    unsigned int a5,
-    unsigned int a6,
-    unsigned int a7,
-    unsigned int dy,
-    unsigned int a9,
-    int a10,
-    int(__stdcall* a11)(HDC, unsigned __int16*, int, struct tagRECT*, unsigned int, __int64),
-    __int64 a12)
+    LPCWSTR pszText,
+    UINT cch,
+    LPRECT prc,
+    DWORD dwFlags,
+    COLORREF crText,
+    COLORREF crGlow,
+    UINT nGlowRadius,
+    UINT nGlowIntensity,
+    BOOL fPreMultiply,
+    DTT_CALLBACK_PROC pfnDrawTextCallback,
+    LPARAM lParam)
 {
     BOOL bHasLocked = FALSE;
-    if (a5 == 0x21 && (bHasLocked = TryEnterCriticalSection(&lock_epw)) && epw)
+    if (cch == 1 && pszText[0] == L'\uE716' && dwFlags == (DT_CENTER | DT_SINGLELINE) && (bHasLocked = TryEnterCriticalSection(&lock_epw)) && epw)
     {
         people_has_ellipsed = FALSE;
 
@@ -4476,7 +4476,7 @@ __int64 __fastcall PeopleBand_DrawTextWithGlowHook(
                             if (bEmptyData)
                             {
                                 RECT rcText;
-                                SetRect(&rcText, 0, 0, a4->right, a4->bottom);
+                                SetRect(&rcText, 0, 0, prc->right, prc->bottom);
                                 SIZE size;
                                 size.cx = rcText.right - rcText.left;
                                 size.cy = rcText.bottom - rcText.top;
@@ -4508,15 +4508,15 @@ __int64 __fastcall PeopleBand_DrawTextWithGlowHook(
                                 WCHAR wszText1[MAX_PATH];
                                 swprintf_s(wszText1, MAX_PATH, L"%s%s %s", bIsThemeActive ? L"" : L" ", epw_wszTemperature, dwWeatherTemperatureUnit == EP_WEATHER_TUNIT_FAHRENHEIT ? L"\u00B0F" : L"\u00B0C");// epw_wszUnit);
                                 RECT rcText1;
-                                SetRect(&rcText1, 0, 0, a4->right, dwWeatherSplit ? (a4->bottom / 2) : a4->bottom);
+                                SetRect(&rcText1, 0, 0, prc->right, dwWeatherSplit ? (prc->bottom / 2) : prc->bottom);
                                 DrawTextW(hDC, wszText1, -1, &rcText1, dwTextFlags | DT_CALCRECT | (dwWeatherSplit ? DT_BOTTOM : DT_VCENTER));
-                                rcText1.bottom = dwWeatherSplit ? (a4->bottom / 2) : a4->bottom;
+                                rcText1.bottom = dwWeatherSplit ? (prc->bottom / 2) : prc->bottom;
                                 WCHAR wszText2[MAX_PATH];
                                 swprintf_s(wszText2, MAX_PATH, L"%s%s", bIsThemeActive ? L"" : L" ", epw_wszCondition);
                                 RECT rcText2;
-                                SetRect(&rcText2, 0, 0, a4->right, dwWeatherSplit ? (a4->bottom / 2) : a4->bottom);
+                                SetRect(&rcText2, 0, 0, prc->right, dwWeatherSplit ? (prc->bottom / 2) : prc->bottom);
                                 DrawTextW(hDC, wszText2, -1, &rcText2, dwTextFlags | DT_CALCRECT | (dwWeatherSplit ? DT_TOP : DT_VCENTER));
-                                rcText2.bottom = dwWeatherSplit ? (a4->bottom / 2) : a4->bottom;
+                                rcText2.bottom = dwWeatherSplit ? (prc->bottom / 2) : prc->bottom;
 
                                 if (bWeatherFixedSize)
                                 {
@@ -4550,13 +4550,13 @@ __int64 __fastcall PeopleBand_DrawTextWithGlowHook(
                                     addend = 0;
                                     break;
                                 }
-                                int margin_v = (a4->bottom - rt) / 2;
+                                int margin_v = (prc->bottom - rt) / 2;
                                 int total_h = (bIsIconMode ? ((margin_h - p) + rt + (margin_h - p)) : margin_h) + addend;
                                 if (bWeatherFixedSize == 1)
                                 {
-                                    if (total_h > a4->right)
+                                    if (total_h > prc->right)
                                     {
-                                        int diff = total_h - a4->right;
+                                        int diff = total_h - prc->right;
                                         rcText2.right -= diff - 2;
                                         people_has_ellipsed = TRUE;
                                         switch (dwWeatherViewMode)
@@ -4582,7 +4582,7 @@ __int64 __fastcall PeopleBand_DrawTextWithGlowHook(
                                 int start_x = 0; // prev_total_h - total_h;
                                 if (bWeatherFixedSize == 1)
                                 {
-                                    start_x = (a4->right - total_h) / 2;
+                                    start_x = (prc->right - total_h) / 2;
                                 }
                                 if (bWeatherFixedSize == 2 && (total_h > MulDiv(192, dpiX, 96)))
                                 {
@@ -4669,7 +4669,7 @@ __int64 __fastcall PeopleBand_DrawTextWithGlowHook(
                                         bf.BlendFlags = 0;
                                         bf.SourceConstantAlpha = 0xFF;
                                         bf.AlphaFormat = AC_SRC_ALPHA;
-                                        GdiAlphaBlend(hdc, start_x + (bIsIconMode ? ((margin_h - p) + rt + (margin_h - p)) : margin_h) + (dwWeatherSplit ? -1 : (rcText1.right - rcText1.left) + margin_h), dwWeatherSplit ? (a4->bottom / 2 - 1) : 0, BMInf.bmWidth, BMInf.bmHeight, hDC, 0, 0, BMInf.bmWidth, BMInf.bmHeight, bf);
+                                        GdiAlphaBlend(hdc, start_x + (bIsIconMode ? ((margin_h - p) + rt + (margin_h - p)) : margin_h) + (dwWeatherSplit ? -1 : (rcText1.right - rcText1.left) + margin_h), dwWeatherSplit ? (prc->bottom / 2 - 1) : 0, BMInf.bmWidth, BMInf.bmHeight, hDC, 0, 0, BMInf.bmWidth, BMInf.bmHeight, bf);
 
                                         SelectBitmap(hDC, hOldBMP);
                                         DeleteBitmap(hBitmap);
@@ -4761,7 +4761,7 @@ __int64 __fastcall PeopleBand_DrawTextWithGlowHook(
         {
             LeaveCriticalSection(&lock_epw);
         }
-        return PeopleBand_DrawTextWithGlowFunc(hdc, a2, a3, a4, a5, a6, a7, dy, a9, a10, a11, a12);
+        return PeopleBand_DrawTextWithGlowFunc(hdc, pszText, cch, prc, dwFlags, crText, crGlow, nGlowRadius, nGlowIntensity, fPreMultiply, pfnDrawTextCallback, lParam);
     }
 }
 
@@ -4908,17 +4908,20 @@ INT64 PeopleButton_SubclassProc(
 }
 
 static BOOL(*SetChildWindowNoActivateFunc)(HWND);
-BOOL explorer_SetChildWindowNoActivateHook(HWND hWnd)
+__declspec(dllexport) BOOL explorer_SetChildWindowNoActivateHook(HWND hWnd)
 {
     TCHAR className[100];
     ZeroMemory(className, 100);
     GetClassNameW(hWnd, className, 100);
     if (!wcscmp(className, L"ControlCenterButton"))
     {
-        lpShouldDisplayCCButton = (BYTE*)(GetWindowLongPtrW(hWnd, 0) + 120);
-        if (*lpShouldDisplayCCButton)
+        if (bOldTaskbar < 2)
         {
-            *lpShouldDisplayCCButton = !bHideControlCenterButton;
+            lpShouldDisplayCCButton = (BYTE*)(GetWindowLongPtrW(hWnd, 0) + 120);
+            if (*lpShouldDisplayCCButton)
+            {
+                *lpShouldDisplayCCButton = !bHideControlCenterButton;
+            }
         }
     }
     // get a look at vtable by searching for v_IsEnabled
@@ -4953,22 +4956,28 @@ BOOL explorer_SetChildWindowNoActivateHook(HWND hWnd)
             {
                 if (!wcscmp(wszComponentName, L"CortanaButton"))
                 {
-                    DWORD dwOldProtect;
-                    VirtualProtect(Instance + 160, sizeof(uintptr_t), PAGE_READWRITE, &dwOldProtect);
-                    if (!Widgets_OnClickFunc) Widgets_OnClickFunc = *(uintptr_t*)(Instance + 160);
-                    *(uintptr_t*)(Instance + 160) = Widgets_OnClickHook;    // OnClick
-                    VirtualProtect(Instance + 160, sizeof(uintptr_t), dwOldProtect, &dwOldProtect);
-                    VirtualProtect(Instance + 216, sizeof(uintptr_t), PAGE_READWRITE, &dwOldProtect);
-                    if (!Widgets_GetTooltipTextFunc) Widgets_GetTooltipTextFunc = *(uintptr_t*)(Instance + 216);
-                    *(uintptr_t*)(Instance + 216) = Widgets_GetTooltipTextHook; // OnTooltipShow
-                    VirtualProtect(Instance + 216, sizeof(uintptr_t), dwOldProtect, &dwOldProtect);
+                    if (bOldTaskbar < 2)
+                    {
+                        DWORD dwOldProtect;
+                        VirtualProtect(Instance + 160, sizeof(uintptr_t), PAGE_READWRITE, &dwOldProtect);
+                        if (!Widgets_OnClickFunc) Widgets_OnClickFunc = *(uintptr_t*)(Instance + 160);
+                        *(uintptr_t*)(Instance + 160) = Widgets_OnClickHook;    // OnClick
+                        VirtualProtect(Instance + 160, sizeof(uintptr_t), dwOldProtect, &dwOldProtect);
+                        VirtualProtect(Instance + 216, sizeof(uintptr_t), PAGE_READWRITE, &dwOldProtect);
+                        if (!Widgets_GetTooltipTextFunc) Widgets_GetTooltipTextFunc = *(uintptr_t*)(Instance + 216);
+                        *(uintptr_t*)(Instance + 216) = Widgets_GetTooltipTextHook; // OnTooltipShow
+                        VirtualProtect(Instance + 216, sizeof(uintptr_t), dwOldProtect, &dwOldProtect);
+                    }
                 }
                 else if (!wcscmp(wszComponentName, L"MultitaskingButton"))
                 {
-                    DWORD dwOldProtect;
-                    VirtualProtect(Instance + 160, sizeof(uintptr_t), PAGE_READWRITE, &dwOldProtect);
-                    *(uintptr_t*)(Instance + 160) = ToggleTaskView;    // OnClick
-                    VirtualProtect(Instance + 160, sizeof(uintptr_t), dwOldProtect, &dwOldProtect);
+                    if (bOldTaskbar < 2)
+                    {
+                        DWORD dwOldProtect;
+                        VirtualProtect(Instance + 160, sizeof(uintptr_t), PAGE_READWRITE, &dwOldProtect);
+                        *(uintptr_t*)(Instance + 160) = ToggleTaskView;    // OnClick
+                        VirtualProtect(Instance + 160, sizeof(uintptr_t), dwOldProtect, &dwOldProtect);
+                    }
                 }
                 else if (!wcscmp(wszComponentName, L"PeopleButton"))
                 {
@@ -10748,8 +10757,10 @@ DWORD Inject(BOOL bIsExplorer)
     HMODULE hMyTaskbar = PrepareAlternateTaskbarImplementation(&symbols_PTRS, pszTaskbarDll);
     if (hMyTaskbar)
     {
+        VnPatchIAT(hMyTaskbar, "user32.dll", "DeleteMenu", explorer_DeleteMenu);
         VnPatchIAT(hMyTaskbar, "user32.dll", "LoadMenuW", explorer_LoadMenuW);
         VnPatchIAT(hMyTaskbar, "user32.dll", "TrackPopupMenuEx", explorer_TrackPopupMenuExHook);
+        VnPatchIAT(hMyTaskbar, "API-MS-WIN-NTUSER-RECTANGLE-L1-1-0.DLL", "SetRect", explorer_SetRect);
     }
 
     HANDLE hCombase = LoadLibraryW(L"combase.dll");

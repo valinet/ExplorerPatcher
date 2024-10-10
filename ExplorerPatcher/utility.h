@@ -937,7 +937,11 @@ inline BOOL DoesWindows10StartMenuExist()
 
 inline BOOL IsStockWindows10TaskbarAvailable()
 {
+#if _M_X64
     return global_rovi.dwBuildNumber < 26002;
+#else
+    return !IsWindows11();
+#endif
 }
 
 inline const WCHAR* PickTaskbarDll()
