@@ -59,29 +59,20 @@ With this update, ExplorerPatcher is now officially compatible and supported on 
 * Setup: Cleaned some unneeded stuff in the setup binary. (9811810)
 * Misc: Restored exported functions for launching/restarting Explorer: `ZZLaunchExplorer`, `ZZLaunchExplorerDelayed`, and `ZZRestartExplorer`. (9811810)
 
-> [!WARNING]
-> <ins>**You are downloading a file flagged as malware by Microsoft and very likely by other major antivirus vendors.**</ins> We believe that this false flag indicates Microsoft's hatred against this software, not because this contains a virus or such.
->
-> Please include the following files and folders in your antivirus' exclusion list to prevent issues due to antivirus detections:
-> * `C:\Program Files\ExplorerPatcher`
-> * `%APPDATA%\ExplorerPatcher`
-> * `C:\Windows\dxgi.dll`
-> * `C:\Windows\SystemApps\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy`
-> * `C:\Windows\SystemApps\ShellExperienceHost_cw5n1h2txyewy`
->
-> For Defender, you can run the following script in PowerShell as an administrator:
-> ```ps1
-> Add-MpPreference -ExclusionPath "C:\Program Files\ExplorerPatcher"
-> Add-MpPreference -ExclusionPath "$env:APPDATA\ExplorerPatcher"
-> Add-MpPreference -ExclusionPath "C:\Windows\dxgi.dll"
-> Add-MpPreference -ExclusionPath "C:\Windows\SystemApps\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy"
-> Add-MpPreference -ExclusionPath "C:\Windows\SystemApps\ShellExperienceHost_cw5n1h2txyewy"
-> ```
-> If you are downloading from this page, please temporarily disable real-time protection or save to a folder excluded from antivirus scans.
->
-> Issues related to antivirus detections **will be closed immediately**. Discuss this in #3228.
+##### 7
 
-**A little request from us:** Because the development of EP's taskbar implementation took a lot of effort for 8 consecutive months, and that an ARM64 device to support the making and testing of ARM64 builds is not cheap, it would be really, really appreciated if you can [donate @Amrsatrio via Ko-fi](https://ko-fi.com/amrsatrio) 🙏
+* Taskbar10: The registry key for the "Combine taskbar labels" setting is no longer redirected. (eb1f1ec, 2a6fb15)
+  * This means you can now configure this reliably both from EP's Properties dialog and the Settings app.
+  * If you are using EP with Windows 11 taskbar on Windows 11 builds before 226x1.2361 (builds without the Never Combine option on the Windows 11 taskbar), please make sure that this is set to "Always" to prevent issues.
+* ep_taskbar: Now supports EP Weather. (#3546)
+* ep_taskbar: Disabled app icon animations in the notification center button due to crashes when receiving a large number of notifications. (#3605)
+* ep_taskbar: Fixed an issue where fallback UWP app icons do not show up, such as [Okular](https://okular.kde.org)'s. (#3754)
+* ep_taskbar: Functions of major Taskbar-related classes are now exported to enable support for [Windhawk](https://windhawk.net) mods. (#3769)
+  * The mods themselves need to be manually updated to support ep_taskbar. Please contact the respective mod authors for this.
+* ep_taskbar: Fixed an issue where the primary taskbar's monitor location is not remembered. (#3719)
+* ep_taskbar: Implemented Win+X hotkey. (#3671)
+* ep_taskbar: Initial support for Windhawk mods. The following classes are now exported: `ClockButton`, `CTaskListThumbnailWnd`, `CTaskBand`, `CTaskBand::CLauncherTask`, `CTaskBtnGroup`, `CWindowTaskItem`, `CImmersiveTaskItem`, `CTaskGroup`, `TaskItemFilter`, `CTaskListWnd`, and `CTaskThumbnail`. (#3769)
+  * Check [this list](https://github.com/valinet/ExplorerPatcher/wiki/ExplorerPatcher's-taskbar-implementation#windhawk-mods-support) for compatibility info.
 
 ## 22621.3527.65
 
