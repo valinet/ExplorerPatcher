@@ -18,7 +18,7 @@ BEGIN
     IDS_UPDATES_DOWNLOADING_0   "Preparing…"
     IDS_UPDATES_SUCCESS_T       "Update successful"
     IDS_UPDATES_DLFAILED_T      "Update failed"
-    IDS_UPDATES_DLFAILED_B      "The has cancelled the process or an error has occured when attempting to install this update."
+    IDS_UPDATES_DLFAILED_B      "The user has cancelled the process or an error has occured when attempting to install this update."
     IDS_UPDATES_INSTALLEDVER    "Installed version: %d.%d.%d.%d"
     IDS_UPDATES_PROMPT          "Would you like to install an update for ExplorerPatcher?\n\nDownloaded from:\n%s"
 
