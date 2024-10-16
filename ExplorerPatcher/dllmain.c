@@ -10655,8 +10655,9 @@ DWORD Inject(BOOL bIsExplorer)
     {
         VnPatchIAT(hMyTaskbar, "user32.dll", "DeleteMenu", explorer_DeleteMenu);
         VnPatchIAT(hMyTaskbar, "user32.dll", "LoadMenuW", explorer_LoadMenuW);
+        VnPatchIAT(hMyTaskbar, "user32.dll", "SendMessageW", explorer_SendMessageW);
+        VnPatchIAT(hMyTaskbar, "user32.dll", "SetRect", explorer_SetRect);
         VnPatchIAT(hMyTaskbar, "user32.dll", "TrackPopupMenuEx", explorer_TrackPopupMenuExHook);
-        VnPatchIAT(hMyTaskbar, "API-MS-WIN-NTUSER-RECTANGLE-L1-1-0.DLL", "SetRect", explorer_SetRect);
     }
 
     HANDLE hCombase = LoadLibraryW(L"combase.dll");
