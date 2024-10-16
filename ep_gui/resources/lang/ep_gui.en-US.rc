@@ -80,7 +80,6 @@ BEGIN
     IDS_TB_GLOM_0_D             "Always combine (default)"
     IDS_TB_GLOM_0               "Always combine"
     IDS_TB_GLOM_1               "Combine when taskbar is full"
-    IDS_TB_GLOM_2_D             "Never combine (default)"
     IDS_TB_GLOM_2               "Never combine"
     IDS_TB_SECONDARYTBGLOM      "Combine taskbar icons on secondary taskbar(s)"
     IDS_TB_ICONSIZE             "Taskbar icon size"
