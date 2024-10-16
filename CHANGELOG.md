@@ -67,12 +67,11 @@ With this update, ExplorerPatcher is now officially compatible and supported on 
 * ep_taskbar: Now supports EP Weather. (#3546)
 * ep_taskbar: Disabled app icon animations in the notification center button due to crashes when receiving a large number of notifications. (#3605)
 * ep_taskbar: Fixed an issue where fallback UWP app icons do not show up, such as [Okular](https://okular.kde.org)'s. (#3754)
-* ep_taskbar: Functions of major Taskbar-related classes are now exported to enable support for [Windhawk](https://windhawk.net) mods. (#3769)
-  * The mods themselves need to be manually updated to support ep_taskbar. Please contact the respective mod authors for this.
 * ep_taskbar: Fixed an issue where the primary taskbar's monitor location is not remembered. (#3719)
 * ep_taskbar: Implemented Win+X hotkey. (#3671)
-* ep_taskbar: Initial support for Windhawk mods. The following classes are now exported: `ClockButton`, `CTaskListThumbnailWnd`, `CTaskBand`, `CTaskBand::CLauncherTask`, `CTaskBtnGroup`, `CWindowTaskItem`, `CImmersiveTaskItem`, `CTaskGroup`, `TaskItemFilter`, `CTaskListWnd`, and `CTaskThumbnail`. (#3769)
+* ep_taskbar: Initial support for [Windhawk](https://windhawk.net) mods. The following classes are now exported: `ClockButton`, `CTaskListThumbnailWnd`, `CTaskBand`, `CTaskBand::CLauncherTask`, `CTaskBtnGroup`, `CWindowTaskItem`, `CImmersiveTaskItem`, `CTaskGroup`, `TaskItemFilter`, `CTaskListWnd`, and `CTaskThumbnail`. (#3769)
   * Check [this list](https://github.com/valinet/ExplorerPatcher/wiki/ExplorerPatcher's-taskbar-implementation#windhawk-mods-support) for compatibility info.
+  * The mods themselves need to be manually updated to support ep_taskbar. Please contact the respective mod authors for this.
 
 ## 22621.3527.65
 
