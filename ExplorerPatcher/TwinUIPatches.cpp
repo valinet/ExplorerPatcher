@@ -278,6 +278,22 @@ namespace ExperienceManagerUtils
     }
 }
 
+// Before using this, please make sure that the vtable is in the real module not a stub.
+#define REPLACE_VTABLE_ENTRY(vtable, index, name) \
+    { \
+        auto ppfn = (decltype(&name##Func))&vtable[index]; \
+        if (*ppfn != name##Hook) \
+        { \
+            name##Func = *ppfn; \
+            DWORD dwOldProtectLocal; \
+            if (VirtualProtect(ppfn, sizeof(void*), PAGE_EXECUTE_READWRITE, &dwOldProtectLocal)) \
+            { \
+                *ppfn = name##Hook; \
+                VirtualProtect(ppfn, sizeof(void*), dwOldProtectLocal, &dwOldProtectLocal); \
+            } \
+        } \
+    }
+
 #pragma endregion
 
 
@@ -322,11 +338,12 @@ BOOL IsCrashCounterEnabled();
 #define WINX_ADJUST_X 5
 #define WINX_ADJUST_Y 5
 
-static INT64(*winrt_Windows_Internal_Shell_implementation_MeetAndChatManager_OnMessageFunc)(void* _this, INT64 a2, INT a3 ) = nullptr;
-static INT64(*CLauncherTipContextMenu_ShowLauncherTipContextMenuFunc)(void* _this, POINT* pt) = nullptr;
+static HRESULT(*winrt_Windows_Internal_Shell_implementation_MeetAndChatManager_OnMessageFunc)(void* _this, UINT uMsg, WPARAM wParam, LPARAM lParam) = nullptr;
+static HRESULT(*CLauncherTipContextMenu_ShowLauncherTipContextMenuFunc)(void* _this, POINT* pt) = nullptr;
 static void(*CLauncherTipContextMenu_ExecuteCommandFunc)(void* _this, void* a2) = nullptr;
 static void(*CLauncherTipContextMenu_ExecuteShutdownCommandFunc)(void* _this, void* a2) = nullptr;
-static INT64(*CLauncherTipContextMenu_GetMenuItemsAsyncFunc)(void* _this, RECT rect, IUnknown** iunk) = nullptr;
+static HRESULT(*CLauncherTipContextMenu_GetMenuItemsAsyncFunc)(void* _this, RECT rect, IUnknown** iunk) = nullptr;
+static DWORD g_rvaILauncherTipContextMenuVtbl;
 
 HWND hWinXWnd;
 HANDLE hIsWinXShown;
@@ -589,10 +606,7 @@ DWORD ShowLauncherTipContextMenu(LPVOID lpParams)
     return 0;
 }
 
-INT64 CLauncherTipContextMenu_ShowLauncherTipContextMenuHook(
-    void* _this,
-    POINT* pt
-)
+HRESULT CLauncherTipContextMenu_ShowLauncherTipContextMenuHook(void* _this, POINT* pt)
 {
     if (hWinXThread)
     {
@@ -714,7 +728,7 @@ INT64 CLauncherTipContextMenu_ShowLauncherTipContextMenuHook(
     {
         return CLauncherTipContextMenu_ShowLauncherTipContextMenuFunc(_this, pt);
     }
-    return 0;
+    return S_OK;
 }
 
 extern "C" void ToggleLauncherTipContextMenu()
@@ -793,25 +807,21 @@ LSTATUS twinuipcshell_RegGetValueW(
     return lRes;
 }
 
-INT64 winrt_Windows_Internal_Shell_implementation_MeetAndChatManager_OnMessageHook(
-    void* _this,
-    INT64 a2,
-    INT a3
-)
+HRESULT winrt_Windows_Internal_Shell_implementation_MeetAndChatManager_OnMessageHook(void* _this, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     if (!bClockFlyoutOnWinC)
     {
         if (winrt_Windows_Internal_Shell_implementation_MeetAndChatManager_OnMessageFunc)
         {
-            return winrt_Windows_Internal_Shell_implementation_MeetAndChatManager_OnMessageFunc(_this, a2, a3);
+            return winrt_Windows_Internal_Shell_implementation_MeetAndChatManager_OnMessageFunc(_this, uMsg, wParam, lParam);
         }
-        return 0;
+        return S_OK;
     }
-    if (a2 == 786 && a3 == 107)
+    if (uMsg == 0x2C2 && wParam == 107)
     {
         InvokeClockFlyout();
     }
-    return 0;
+    return S_OK;
 }
 
 #pragma endregion
@@ -2118,60 +2128,15 @@ BOOL FixStartMenuAnimation(LPMODULEINFO mi)
         return FALSE;
     }
 
-    DWORD dwOldProtect = 0;
-
     void** vtable = (void**)matchVtable;
-    void** p_OnViewUncloaking = &vtable[4];
-    void** p_OnViewUncloaked = &vtable[5];
-    void** p_OnViewCloaking = &vtable[6];
-    void** p_OnViewHidden = &vtable[10];
-
-    // OnViewUncloaking
-    if (*p_OnViewUncloaking != CStartExperienceManager_OnViewUncloakingHook)
-    {
-        CStartExperienceManager_OnViewUncloakingFunc = (decltype(CStartExperienceManager_OnViewUncloakingFunc))*p_OnViewUncloaking;
-        if (VirtualProtect(p_OnViewUncloaking, sizeof(void*), PAGE_EXECUTE_READWRITE, &dwOldProtect))
-        {
-            *p_OnViewUncloaking = CStartExperienceManager_OnViewUncloakingHook;
-            VirtualProtect(p_OnViewUncloaking, sizeof(void*), dwOldProtect, &dwOldProtect);
-        }
-    }
-
-    // OnViewUncloaked
-    if (*p_OnViewUncloaked != CStartExperienceManager_OnViewUncloakedHook)
-    {
-        CStartExperienceManager_OnViewUncloakedFunc = (decltype(CStartExperienceManager_OnViewUncloakedFunc))*p_OnViewUncloaked;
-        if (VirtualProtect(p_OnViewUncloaked, sizeof(void*), PAGE_EXECUTE_READWRITE, &dwOldProtect))
-        {
-            *p_OnViewUncloaked = CStartExperienceManager_OnViewUncloakedHook;
-            VirtualProtect(p_OnViewUncloaked, sizeof(void*), dwOldProtect, &dwOldProtect);
-        }
-    }
-
-    // OnViewCloaking
-    if (*p_OnViewCloaking != CStartExperienceManager_OnViewCloakingHook)
-    {
-        CStartExperienceManager_OnViewCloakingFunc = (decltype(CStartExperienceManager_OnViewCloakingFunc))*p_OnViewCloaking;
-        if (VirtualProtect(p_OnViewCloaking, sizeof(void*), PAGE_EXECUTE_READWRITE, &dwOldProtect))
-        {
-            *p_OnViewCloaking = CStartExperienceManager_OnViewCloakingHook;
-            VirtualProtect(p_OnViewCloaking, sizeof(void*), dwOldProtect, &dwOldProtect);
-        }
-    }
-
-    // OnViewHidden
-    if (*p_OnViewHidden != CStartExperienceManager_OnViewHiddenHook)
-    {
-        CStartExperienceManager_OnViewHiddenFunc = (decltype(CStartExperienceManager_OnViewHiddenFunc))*p_OnViewHidden;
-        if (VirtualProtect(p_OnViewHidden, sizeof(void*), PAGE_EXECUTE_READWRITE, &dwOldProtect))
-        {
-            *p_OnViewHidden = CStartExperienceManager_OnViewHiddenHook;
-            VirtualProtect(p_OnViewHidden, sizeof(void*), dwOldProtect, &dwOldProtect);
-        }
-    }
+    REPLACE_VTABLE_ENTRY(vtable, 4, CStartExperienceManager_OnViewUncloaking);
+    REPLACE_VTABLE_ENTRY(vtable, 5, CStartExperienceManager_OnViewUncloaked);
+    REPLACE_VTABLE_ENTRY(vtable, 6, CStartExperienceManager_OnViewCloaking);
+    REPLACE_VTABLE_ENTRY(vtable, 10, CStartExperienceManager_OnViewHidden);
 
     if (dwStartShowClassicMode)
     {
+        DWORD dwOldProtect = 0;
 #if defined(_M_X64)
         if (VirtualProtect(matchHideA, 1, PAGE_EXECUTE_READWRITE, &dwOldProtect))
         {
@@ -2924,9 +2889,10 @@ void TryToFindTwinuiPCShellOffsets(DWORD* pOffsets)
                 printf("CImmersiveContextMenuOwnerDrawHelper::s_ContextMenuWndProc() = %lX\n", pOffsets[0]);
             }
         }
-        if ((!pOffsets[1] || pOffsets[1] == 0xFFFFFFFF) || (!pOffsets[6] || pOffsets[6] == 0xFFFFFFFF))
+        // if ((!pOffsets[1] || pOffsets[1] == 0xFFFFFFFF) || (!pOffsets[6] || pOffsets[6] == 0xFFFFFFFF))
         {
             UINT_PTR* vtable = nullptr;
+            UINT_PTR vtableRVA = 0;
 #if defined(_M_X64)
             // 48 8D 05 ?? ?? ?? ?? 48 8B D9 48 89 01 48 8D 05 ?? ?? ?? ?? 48 89 41 18 48 8D 05 ?? ?? ?? ?? 48 89 41 20 48 8D 05 ?? ?? ?? ?? 48 89 41 58 48 8D 05 ?? ?? ?? ?? 48 89 41 60
             //                                                                                                                   ^^^^^^^^^^^
@@ -2939,6 +2905,7 @@ void TryToFindTwinuiPCShellOffsets(DWORD* pOffsets)
             {
                 match += 35; // Point to 48
                 vtable = (UINT_PTR*)(match + 7 + *(int*)(match + 3));
+                vtableRVA = (PBYTE)vtable - pFile;
             }
 #elif defined(_M_ARM64)
             // * Pattern 1 (for 24H2):
@@ -2953,7 +2920,7 @@ void TryToFindTwinuiPCShellOffsets(DWORD* pOffsets)
             if (match)
             {
                 match += 4; // Point to ADRP
-                UINT_PTR vtableRVA = ARM64_DecodeADRL(FileOffsetToRVA(pFile, match - pFile), *(DWORD*)match, *(DWORD*)(match + 4));
+                vtableRVA = ARM64_DecodeADRL(FileOffsetToRVA(pFile, match - pFile), *(DWORD*)match, *(DWORD*)(match + 4));
                 vtable = (UINT_PTR*)((UINT_PTR)pFile + RVAToFileOffset(pFile, vtableRVA));
             }
 #endif
@@ -2967,6 +2934,8 @@ void TryToFindTwinuiPCShellOffsets(DWORD* pOffsets)
                 {
                     pOffsets[1] = (DWORD)(vtable[4] - 0x180000000);
                 }
+                g_rvaILauncherTipContextMenuVtbl = (DWORD)vtableRVA;
+                printf("ILauncherTipContextMenuVtbl = %lX\n", g_rvaILauncherTipContextMenuVtbl);
             }
             if (pOffsets[6] && pOffsets[6] != 0xFFFFFFFF)
             {
@@ -3288,24 +3257,16 @@ extern "C" void RunTwinUIPCShellPatches(symbols_addr* symbols_PTRS)
             ((uintptr_t)hTwinuiPcshell + symbols_PTRS->twinui_pcshell_PTRS[5]);
     }
 
-    int rv = -1;
-    if (symbols_PTRS->twinui_pcshell_PTRS[6] && symbols_PTRS->twinui_pcshell_PTRS[6] != 0xFFFFFFFF)
-    {
-        CLauncherTipContextMenu_ShowLauncherTipContextMenuFunc = (decltype(CLauncherTipContextMenu_ShowLauncherTipContextMenuFunc))
-            ((uintptr_t)hTwinuiPcshell + symbols_PTRS->twinui_pcshell_PTRS[6]);
-        rv = funchook_prepare(
-            funchook,
-            (void**)&CLauncherTipContextMenu_ShowLauncherTipContextMenuFunc,
-            CLauncherTipContextMenu_ShowLauncherTipContextMenuHook
-        );
-    }
-    if (rv != 0)
-    {
-        printf("Failed to hook CLauncherTipContextMenu::ShowLauncherTipContextMenu(). rv = %d\n", rv);
-    }
+    int rv;
 
     if (IsWindows11())
     {
+        if (g_rvaILauncherTipContextMenuVtbl)
+        {
+            void** vtable = (void**)((PBYTE)hTwinuiPcshell + g_rvaILauncherTipContextMenuVtbl);
+            REPLACE_VTABLE_ENTRY(vtable, 3, CLauncherTipContextMenu_ShowLauncherTipContextMenu);
+        }
+
         rv = -1;
         if (symbols_PTRS->twinui_pcshell_PTRS[7] && symbols_PTRS->twinui_pcshell_PTRS[7] != 0xFFFFFFFF)
         {
