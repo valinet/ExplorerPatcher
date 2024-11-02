@@ -15,6 +15,7 @@ Tested on OS builds 22621.3296, 22631.4391, 26120.961, 26100.1150, and 26100.216
 * ep_taskbar: Flashing taskbar items are now animated.
 * ep_taskbar: Narrator now describes the "Show desktop" button.
 * ep_taskbar: `TrayUI` class is now exported.
+* Localization: Added translations for Portuguese (Brazil). Thanks @thiagojramos!
 
 ## 22621.3880.66
 
