@@ -2,6 +2,17 @@
 
 This document includes the same release notes as in the [Releases](https://github.com/valinet/ExplorerPatcher/releases) section on GitHub.
 
+## 22621.4317.67
+
+##### 1
+
+* Taskbar10: Win+X now works again on 226xx.4317+. (cc9b6b3)
+* Start10: Fixed an issue where the resource loader failed when the drive letter of the boot drive is other than C:. Thanks @ittrgrey for pointing out! (fc25c25)
+* ep_taskbar: Fixed an issue where "Not responding" windows are not handled properly.
+* ep_taskbar: Flashing taskbar items are now animated.
+* ep_taskbar: Narrator now describes the "Show desktop" button.
+* ep_taskbar: `TrayUI` class is now exported.
+
 ## 22621.3880.66
 
 Tested on OS builds 19045.4598, 22621.3296, 22621.3810, 26120.961, and 26244.5000. (Note: 22621 and 22631 share the same OS files)
