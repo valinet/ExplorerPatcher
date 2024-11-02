@@ -93,3 +93,27 @@ extern "C" HRESULT GetActivationFactoryByPCWSTR_InStartUI(PCWSTR activatableClas
 
     return activationFactory.CopyTo(riid, ppv);
 }
+
+extern "C" HRESULT GetActivationFactoryByPCWSTR_InJumpViewUI(PCWSTR activatableClassId, REFIID riid, void** ppv)
+{
+    typedef HRESULT (WINAPI* DllGetActivationFactory_t)(HSTRING, IActivationFactory**);
+    static DllGetActivationFactory_t pfnGetActivationFactory;
+    if (!pfnGetActivationFactory)
+    {
+        HMODULE hModule = GetModuleHandleW(L"JumpViewUI_.dll");
+        if (hModule)
+        {
+            pfnGetActivationFactory = (DllGetActivationFactory_t)GetProcAddress(hModule, "DllGetActivationFactory");
+        }
+    }
+
+    if (!pfnGetActivationFactory)
+        return E_FAIL;
+
+    ComPtr<IActivationFactory> activationFactory;
+    HRESULT hr = pfnGetActivationFactory(Wrappers::HStringReference(activatableClassId).Get(), &activationFactory);
+    if (FAILED(hr))
+        return hr;
+
+    return activationFactory.CopyTo(riid, ppv);
+}

@@ -10,6 +10,8 @@ HMODULE hModule = NULL;
 HMODULE hOrig = NULL;
 SRWLOCK lockInstanced = { .Ptr = SRWLOCK_INIT };
 BOOL bInstanced = FALSE;
+BOOL g_bIsUsingOwnJumpViewUI = FALSE;
+BOOL g_bIsUsingOwnStartUI = FALSE;
 
 DEFINE_GUID(IID_StartDocked_App, 0x4C2CAEAD, 0x9DA8, 0x30EC, 0xB6, 0xD3, 0xCB, 0xD5, 0x74, 0xED, 0xCB, 0x35); // 4C2CAEAD-9DA8-30EC-B6D3-CBD574EDCB35
 DEFINE_GUID(IID_StartUI_App, 0x1ECDC9E0, 0xBDB1, 0x3551, 0x8C, 0xEE, 0x4B, 0x77, 0x54, 0x0C, 0x44, 0xB3); // 1ECDC9E0-BDB1-3551-8CEE-4B77540C44B3
@@ -39,6 +41,7 @@ BOOL GetStartUIName(WCHAR* out, int cch)
     wcscpy_s(szPath, MAX_PATH, L"StartUI_.dll");
     if (FileExistsW(szPath))
     {
+        g_bIsUsingOwnStartUI = TRUE;
         if (out && cch)
             wcscpy_s(out, cch, szPath);
         return TRUE;
@@ -120,6 +123,15 @@ void Init()
     {
         // VnPatchIAT(GetModuleHandleW(NULL), "api-ms-win-core-sysinfo-l1-2-0.dll", "GetProductInfo", start_GetProductInfo);
         PatchXamlMetaDataProviderGuid();
+        if (g_bIsUsingOwnStartUI)
+        {
+            LoadLibraryW(g_szStartUIName);
+        }
+        if (FileExistsW(L"JumpViewUI_.dll"))
+        {
+            LoadLibraryW(L"JumpViewUI_.dll");
+            g_bIsUsingOwnJumpViewUI = TRUE;
+        }
     }
     HMODULE hMod;
     GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS, hModule, &hMod);
@@ -152,6 +164,7 @@ wchar_t* GetCmdArguments(int* a1)
 
 extern HRESULT LoadOurShellCommonPri();
 extern HRESULT GetActivationFactoryByPCWSTR_InStartUI(PCWSTR activatableClassId, REFIID riid, void** ppv);
+extern HRESULT GetActivationFactoryByPCWSTR_InJumpViewUI(PCWSTR activatableClassId, REFIID riid, void** ppv);
 
 #pragma comment(linker, "/export:?GetActivationFactoryByPCWSTR@@YAJPEAXAEAVGuid@Platform@@PEAPEAX@Z=GetActivationFactoryByPCWSTR,@129")
 HRESULT GetActivationFactoryByPCWSTR(PCWSTR activatableClassId, REFIID riid, void** ppv)
@@ -185,10 +198,16 @@ HRESULT GetActivationFactoryByPCWSTR(PCWSTR activatableClassId, REFIID riid, voi
             return GetActivationFactoryByPCWSTR_InStartUI(L"StartUI.startui_XamlTypeInfo.XamlMetaDataProvider", riid, ppv);
         }
     }
-
-    if (wcsncmp(activatableClassId, L"StartUI.", 8) == 0)
+    else if (wcsncmp(activatableClassId, L"StartUI.", 8) == 0)
     {
         return GetActivationFactoryByPCWSTR_InStartUI(activatableClassId, riid, ppv);
+    }
+    else if (wcsncmp(activatableClassId, L"JumpViewUI.", 11) == 0)
+    {
+        if (g_bIsUsingOwnJumpViewUI)
+        {
+            return GetActivationFactoryByPCWSTR_InJumpViewUI(activatableClassId, riid, ppv);
+        }
     }
 
     return pGetActivationFactoryByPCWSTR(activatableClassId, riid, ppv);

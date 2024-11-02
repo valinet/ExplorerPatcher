@@ -1412,6 +1412,7 @@ int WINAPI wWinMain(
 
         // C:\Windows\SystemApps\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy
         // + dxgi.dll
+        // + JumpViewUI_.dll (download, optional)
         // + StartUI_.dll (download, optional)
         // + wincorlib.dll
         // + wincorlib_orig.dll (symlink)
@@ -1442,6 +1443,7 @@ int WINAPI wWinMain(
             bOk = CreateSymbolicLinkW(wszSymLinkPath, wszOrigPath, 0);
         }
 
+        if (bOk) bOk = InstallResource(bInstall && bUnpackCustomStartUI, hInstance, zipFile, "JumpViewUI/JumpViewUI.dll", wszPath, L"JumpViewUI_.dll");
         if (bOk) bOk = InstallResource(bInstall && bUnpackCustomStartUI, hInstance, zipFile, "StartUI/StartUI.dll", wszPath, L"StartUI_.dll");
 
         // Delete remnants from earlier versions
