@@ -1,4 +1,5 @@
 #include <Windows.h>
+#include <ShlObj_core.h>
 #include <windows.foundation.h>
 #include <windows.applicationmodel.resources.core.h>
 
@@ -55,8 +56,13 @@ extern "C" HRESULT LoadOurShellCommonPri()
 
     ComPtr<ABI::Windows::ApplicationModel::Resources::Core::Internal::ISystemResourceManagerExtensions2> pSystemResourceManagerExtensions2;
     pResourceManager.As(&pSystemResourceManagerExtensions2);
+
     WCHAR wszPath[MAX_PATH] = {};
-    wcscat_s(wszPath, MAX_PATH, L"C:\\Program Files\\ExplorerPatcher\\Windows.UI.ShellCommon.pri");
+    hr = SHGetFolderPathW(nullptr, CSIDL_PROGRAM_FILES, nullptr, SHGFP_TYPE_CURRENT, wszPath);
+    if (FAILED(hr))
+        return hr;
+
+    wcscat_s(wszPath, MAX_PATH, L"\\ExplorerPatcher\\Windows.UI.ShellCommon.pri");
     hr = pSystemResourceManagerExtensions2->LoadPriFileForSystemUse(wszPath);
 
     return hr;
