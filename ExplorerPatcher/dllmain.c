@@ -9969,6 +9969,9 @@ typedef struct SSOEntry
 
 void PatchStobject(HANDLE hStobject)
 {
+    if (!hStobject)
+        return;
+
     PBYTE beginRData = NULL;
     DWORD sizeRData = 0;
 
@@ -10689,21 +10692,24 @@ DWORD Inject(BOOL bIsExplorer)
 
 
     HANDLE hStobject = LoadLibraryW(L"stobject.dll");
-    VnPatchIAT(hStobject, "api-ms-win-core-registry-l1-1-0.dll", "RegGetValueW", stobject_RegGetValueW);
-    VnPatchIAT(hStobject, "api-ms-win-core-com-l1-1-0.dll", "CoCreateInstance", stobject_CoCreateInstanceHook);
-    if (IsWindows11())
+    if (hStobject)
     {
-        VnPatchDelayIAT(hStobject, "user32.dll", "TrackPopupMenu", stobject_TrackPopupMenuHook);
-        VnPatchDelayIAT(hStobject, "user32.dll", "TrackPopupMenuEx", stobject_TrackPopupMenuExHook);
-    }
-    else
-    {
-        VnPatchIAT(hStobject, "user32.dll", "TrackPopupMenu", stobject_TrackPopupMenuHook);
-        VnPatchIAT(hStobject, "user32.dll", "TrackPopupMenuEx", stobject_TrackPopupMenuExHook);
-    }
-    if (global_rovi.dwBuildNumber >= 25236 && bOldTaskbar)
-    {
-        PatchStobject(hStobject);
+        VnPatchIAT(hStobject, "api-ms-win-core-registry-l1-1-0.dll", "RegGetValueW", stobject_RegGetValueW);
+        VnPatchIAT(hStobject, "api-ms-win-core-com-l1-1-0.dll", "CoCreateInstance", stobject_CoCreateInstanceHook);
+        if (IsWindows11())
+        {
+            VnPatchDelayIAT(hStobject, "user32.dll", "TrackPopupMenu", stobject_TrackPopupMenuHook);
+            VnPatchDelayIAT(hStobject, "user32.dll", "TrackPopupMenuEx", stobject_TrackPopupMenuExHook);
+        }
+        else
+        {
+            VnPatchIAT(hStobject, "user32.dll", "TrackPopupMenu", stobject_TrackPopupMenuHook);
+            VnPatchIAT(hStobject, "user32.dll", "TrackPopupMenuEx", stobject_TrackPopupMenuExHook);
+        }
+        if (global_rovi.dwBuildNumber >= 25236 && bOldTaskbar)
+        {
+            PatchStobject(hStobject);
+        }
     }
 #ifdef USE_PRIVATE_INTERFACES
     if (bSkinIcons)
