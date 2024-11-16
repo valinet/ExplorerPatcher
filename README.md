@@ -1,6 +1,6 @@
 # ExplorerPatcher
 
-This project aims to enhance the working environment on Windows.
+This project aims to enhance the working environment on Windows. Link for more help: https://github.com/valinet/ExplorerPatcher/releases/latest .
 
 ## How to?
 
