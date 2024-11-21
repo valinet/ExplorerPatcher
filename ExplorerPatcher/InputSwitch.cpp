@@ -11,7 +11,7 @@
 #define TB_POS_RIGHT 4
 extern "C" UINT GetTaskbarLocationAndSize(POINT ptCursor, RECT* rc);
 
-extern "C" __MIDL___MIDL_itf_inputswitchserver_0000_0000_0001 dwIMEStyle;
+extern "C" INPUT_SWITCH_IDL_CLIENT_TYPE dwIMEStyle;
 extern "C" HRESULT CInputSwitchControl_ModifyAnchor(UINT dwNumberOfProfiles, RECT* lpRect);
 
 HRESULT CInputSwitchControl_ModifyAnchor(UINT dwNumberOfProfiles, RECT* lpRect)
@@ -84,7 +84,7 @@ class CInputSwitchControlProxy : public Microsoft::WRL::RuntimeClass<Microsoft::
 {
 public:
     CInputSwitchControlProxy()
-        : m_type((__MIDL___MIDL_itf_inputswitchserver_0000_0000_0001)-1)
+        : m_type((INPUT_SWITCH_IDL_CLIENT_TYPE)-1)
     {
     }
 
@@ -94,7 +94,7 @@ public:
         return S_OK;
     }
 
-    STDMETHODIMP Init(__MIDL___MIDL_itf_inputswitchserver_0000_0000_0001 type) override
+    STDMETHODIMP Init(INPUT_SWITCH_IDL_CLIENT_TYPE type) override
     {
         m_type = type;
         return m_original->Init(type == ISCT_IDL_DESKTOP && dwIMEStyle != ISCT_IDL_DESKTOP ? dwIMEStyle : type);
@@ -115,20 +115,20 @@ public:
 
     STDMETHODIMP SetCallback(IInputSwitchCallback* callback) override { return m_original->SetCallback(callback); }
     STDMETHODIMP GetProfileCount(UINT* count, BOOL* bOutImePresent) override { return m_original->GetProfileCount(count, bOutImePresent); }
-    STDMETHODIMP GetCurrentProfile(__MIDL___MIDL_itf_inputswitchserver_0000_0000_0002* data) override { return m_original->GetCurrentProfile(data); }
+    STDMETHODIMP GetCurrentProfile(INPUT_SWITCH_IDL_PROFILE_DATA* data) override { return m_original->GetCurrentProfile(data); }
     STDMETHODIMP RegisterHotkeys() override { return m_original->RegisterHotkeys(); }
-    STDMETHODIMP ClickImeModeItem(__MIDL___MIDL_itf_inputswitchserver_0000_0000_0004 type, POINT point, const RECT* rect) override { return m_original->ClickImeModeItem(type, point, rect); }
+    STDMETHODIMP ClickImeModeItem(INPUT_SWITCH_IDL_IME_CLICK_TYPE type, POINT point, const RECT* rect) override { return m_original->ClickImeModeItem(type, point, rect); }
     STDMETHODIMP ForceHide() override { return m_original->ForceHide(); }
-    STDMETHODIMP ShowTouchKeyboardInputSwitch(const RECT* rect, __MIDL___MIDL_itf_inputswitchserver_0000_0000_0006 align, int a3, DWORD a4, __MIDL___MIDL_itf_inputswitchserver_0000_0000_0005 a5) override { return m_original->ShowTouchKeyboardInputSwitch(rect, align, a3, a4, a5); }
+    STDMETHODIMP ShowTouchKeyboardInputSwitch(const RECT* rect, INPUT_SWITCH_IDL_ALIGNMENT align, int a3, DWORD a4, INPUT_SWITCH_IDL_MODALITY a5) override { return m_original->ShowTouchKeyboardInputSwitch(rect, align, a3, a4, a5); }
     STDMETHODIMP GetContextFlags(DWORD* flags) override { return m_original->GetContextFlags(flags); }
-    STDMETHODIMP SetContextOverrideMode(__MIDL___MIDL_itf_inputswitchserver_0000_0000_0008 mode) override { return m_original->SetContextOverrideMode(mode); }
-    STDMETHODIMP GetCurrentImeModeItem(__MIDL___MIDL_itf_inputswitchserver_0000_0000_0003* data) override { return m_original->GetCurrentImeModeItem(data); }
+    STDMETHODIMP SetContextOverrideMode(INPUT_SWITCH_IDL_CFOM mode) override { return m_original->SetContextOverrideMode(mode); }
+    STDMETHODIMP GetCurrentImeModeItem(INPUT_SWITCH_IDL_IME_MODE_ITEM_DATA* data) override { return m_original->GetCurrentImeModeItem(data); }
     STDMETHODIMP ActivateInputProfile(const WCHAR* profile) override { return m_original->ActivateInputProfile(profile); }
     STDMETHODIMP SetUserSid(const WCHAR* sid) override { return m_original->SetUserSid(sid); }
 
 private:
     Microsoft::WRL::ComPtr<IInputSwitchControl> m_original;
-    __MIDL___MIDL_itf_inputswitchserver_0000_0000_0001 m_type;
+    INPUT_SWITCH_IDL_CLIENT_TYPE m_type;
 };
 
 HRESULT CInputSwitchControlProxy_CreateInstance(IInputSwitchControl* original, REFIID riid, void** ppvObject)
@@ -142,7 +142,7 @@ class CInputSwitchControlProxySV2 : public Microsoft::WRL::RuntimeClass<Microsof
 {
 public:
     CInputSwitchControlProxySV2()
-        : m_type((__MIDL___MIDL_itf_inputswitchserver_0000_0000_0001)-1)
+        : m_type((INPUT_SWITCH_IDL_CLIENT_TYPE)-1)
     {
     }
 
@@ -152,7 +152,7 @@ public:
         return S_OK;
     }
 
-    STDMETHODIMP Init(__MIDL___MIDL_itf_inputswitchserver_0000_0000_0001 type) override
+    STDMETHODIMP Init(INPUT_SWITCH_IDL_CLIENT_TYPE type) override
     {
         m_type = type;
         return m_original->Init(type == ISCT_IDL_DESKTOP && dwIMEStyle != ISCT_IDL_DESKTOP ? dwIMEStyle : type);
@@ -173,21 +173,21 @@ public:
 
     STDMETHODIMP SetCallback(IInputSwitchCallback* callback) override { return m_original->SetCallback(callback); }
     STDMETHODIMP GetProfileCount(UINT* count, BOOL* bOutImePresent) override { return m_original->GetProfileCount(count, bOutImePresent); }
-    STDMETHODIMP GetCurrentProfile(__MIDL___MIDL_itf_inputswitchserver_0000_0000_0002* data) override { return m_original->GetCurrentProfile(data); }
+    STDMETHODIMP GetCurrentProfile(INPUT_SWITCH_IDL_PROFILE_DATA* data) override { return m_original->GetCurrentProfile(data); }
     STDMETHODIMP RegisterHotkeys() override { return m_original->RegisterHotkeys(); }
-    STDMETHODIMP ClickImeModeItem(__MIDL___MIDL_itf_inputswitchserver_0000_0000_0004 type, POINT point, const RECT* rect) override { return m_original->ClickImeModeItem(type, point, rect); }
-    STDMETHODIMP ClickImeModeItemWithAnchor(__MIDL___MIDL_itf_inputswitchserver_0000_0000_0004 type, IUnknown* anchor) override { return m_original->ClickImeModeItemWithAnchor(type, anchor); }
+    STDMETHODIMP ClickImeModeItem(INPUT_SWITCH_IDL_IME_CLICK_TYPE type, POINT point, const RECT* rect) override { return m_original->ClickImeModeItem(type, point, rect); }
+    STDMETHODIMP ClickImeModeItemWithAnchor(INPUT_SWITCH_IDL_IME_CLICK_TYPE type, IUnknown* anchor) override { return m_original->ClickImeModeItemWithAnchor(type, anchor); }
     STDMETHODIMP ForceHide() override { return m_original->ForceHide(); }
-    STDMETHODIMP ShowTouchKeyboardInputSwitch(const RECT* rect, __MIDL___MIDL_itf_inputswitchserver_0000_0000_0006 align, int a3, DWORD a4, __MIDL___MIDL_itf_inputswitchserver_0000_0000_0005 a5) override { return m_original->ShowTouchKeyboardInputSwitch(rect, align, a3, a4, a5); }
+    STDMETHODIMP ShowTouchKeyboardInputSwitch(const RECT* rect, INPUT_SWITCH_IDL_ALIGNMENT align, int a3, DWORD a4, INPUT_SWITCH_IDL_MODALITY a5) override { return m_original->ShowTouchKeyboardInputSwitch(rect, align, a3, a4, a5); }
     STDMETHODIMP GetContextFlags(DWORD* flags) override { return m_original->GetContextFlags(flags); }
-    STDMETHODIMP SetContextOverrideMode(__MIDL___MIDL_itf_inputswitchserver_0000_0000_0008 mode) override { return m_original->SetContextOverrideMode(mode); }
-    STDMETHODIMP GetCurrentImeModeItem(__MIDL___MIDL_itf_inputswitchserver_0000_0000_0003* data) override { return m_original->GetCurrentImeModeItem(data); }
+    STDMETHODIMP SetContextOverrideMode(INPUT_SWITCH_IDL_CFOM mode) override { return m_original->SetContextOverrideMode(mode); }
+    STDMETHODIMP GetCurrentImeModeItem(INPUT_SWITCH_IDL_IME_MODE_ITEM_DATA* data) override { return m_original->GetCurrentImeModeItem(data); }
     STDMETHODIMP ActivateInputProfile(const WCHAR* profile) override { return m_original->ActivateInputProfile(profile); }
     STDMETHODIMP SetUserSid(const WCHAR* sid) override { return m_original->SetUserSid(sid); }
 
 private:
     Microsoft::WRL::ComPtr<IInputSwitchControlSV2> m_original;
-    __MIDL___MIDL_itf_inputswitchserver_0000_0000_0001 m_type;
+    INPUT_SWITCH_IDL_CLIENT_TYPE m_type;
 };
 
 HRESULT CInputSwitchControlProxySV2_CreateInstance(IInputSwitchControlSV2* original, REFIID riid, void** ppvObject)
