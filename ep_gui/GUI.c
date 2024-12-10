@@ -2710,6 +2710,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                             menuInfo.fMask = MIIM_STATE;
                             menuInfo.fState = MFS_CHECKED;
                             SetMenuItemInfoW(hMenu, vvv, FALSE, &menuInfo);
+                            wcscat_s(text, MAX_LINE_LENGTH, L" \u25BE");
                         }
                         if (hDC && !bInvert && !bBool && !bJustCheck)
                         {
