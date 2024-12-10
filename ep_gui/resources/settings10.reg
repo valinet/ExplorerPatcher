@@ -6,6 +6,10 @@
 
 ;T %R:1001%
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
+;z 2 %R:1002% *
+;x 0 %R:1404%
+;x 2 %R:1047%
+"OldTaskbar"=dword:00000000
 ;y %R:1005% 🡕
 ;ms-settings:taskbar
 ;y %R:1006% 🡕
@@ -74,6 +78,10 @@
 ;x 1 %R:1045%
 ;x 0 %R:1046%
 "TaskbarSmallIcons"=dword:00000000
+;s Taskbar_AltImplSection IsAltImplTaskbar
+;y %R:1048%
+;https://github.com/valinet/ExplorerPatcher/wiki/ExplorerPatcher's-taskbar-implementation
+;g Taskbar_AltImplSection
 
 ;T %R:1101%
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]

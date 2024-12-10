@@ -5,21 +5,12 @@
 ;q
 
 ;T %R:1001%
-;s Taskbar_StyleSection1 DoesTaskbarDllExist
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;z 3 %R:1002% *
 ;x 0 %R:1003%
 ;x 1 %R:1004%
 ;x 2 %R:1047%
 "OldTaskbar"=dword:00000001
-;g Taskbar_StyleSection1
-;s Taskbar_StyleSection2 !DoesTaskbarDllExist
-[HKEY_CURRENT_USER\Software\ExplorerPatcher]
-;z 2 %R:1002% *
-;x 0 %R:1003%
-;x 1 %R:1004%
-"OldTaskbar"=dword:00000001
-;g Taskbar_StyleSection2
 ;s Taskbar_StockWin10Unavailable !IsStockWindows10TaskbarAvailable
 ;t ⚠ %R:1049%
 ;g Taskbar_StockWin10Unavailable

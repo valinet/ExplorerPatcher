@@ -1171,8 +1171,6 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                 else if (!_stricmp(funcName, "!IsOldTaskbar") && GUI_GetTaskbarStyle(TRUE) != 0) bSkipLines = TRUE;
                 else if (!_stricmp(funcName, "IsStockWin10Taskbar") && GUI_GetTaskbarStyle(TRUE) != 1) bSkipLines = TRUE;
                 else if (!_stricmp(funcName, "IsAltImplTaskbar") && GUI_GetTaskbarStyle(TRUE) <= 1) bSkipLines = TRUE;
-                else if (!_stricmp(funcName, "DoesTaskbarDllExist") && !DoesTaskbarDllExist()) bSkipLines = TRUE;
-                else if (!_stricmp(funcName, "!DoesTaskbarDllExist") && DoesTaskbarDllExist()) bSkipLines = TRUE;
                 else if (!_stricmp(funcName, "!IsStockWindows10TaskbarAvailable") && !(!IsStockWindows10TaskbarAvailable() && GUI_GetTaskbarStyle(FALSE) == 1)) bSkipLines = TRUE;
                 else if (!_stricmp(funcName, "IsWindows10StartMenu") && (!DoesWindows10StartMenuExist() || (dwRes = 0, RegGetValueW(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", L"Start_ShowClassicMode", RRF_RT_DWORD, NULL, &dwRes, &dwSize), (dwRes != 1)))) bSkipLines = TRUE;
                 else if (!_stricmp(funcName, "!IsWindows10StartMenu") && (DoesWindows10StartMenuExist() && (dwRes = 0, RegGetValueW(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", L"Start_ShowClassicMode", RRF_RT_DWORD, NULL, &dwRes, &dwSize), (dwRes == 1)))) bSkipLines = TRUE;
@@ -2516,7 +2514,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                 bShouldAlterTaskbarDa = TRUE;
                             }
                         }
-                        if (!wcscmp(name, L"Virtualized_" _T(EP_CLSID) L"_TaskbarPosition") || !wcscmp(name, L"Virtualized_" _T(EP_CLSID) L"_MMTaskbarPosition"))
+                        else if (!wcscmp(name, L"Virtualized_" _T(EP_CLSID) L"_TaskbarPosition") || !wcscmp(name, L"Virtualized_" _T(EP_CLSID) L"_MMTaskbarPosition"))
                         {
                             if (GUI_TaskbarStyle == 0)
                             {
@@ -2530,6 +2528,22 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                     free(menuInfo.dwItemData);
                                 }
                                 RemoveMenu(hMenu, 1, MF_BYCOMMAND);
+                                ZeroMemory(&menuInfo, sizeof(MENUITEMINFOA));
+                                menuInfo.cbSize = sizeof(MENUITEMINFOA);
+                                menuInfo.fMask = MIIM_DATA;
+                                GetMenuItemInfoA(hMenu, 3, FALSE, &menuInfo);
+                                if (menuInfo.dwItemData)
+                                {
+                                    free(menuInfo.dwItemData);
+                                }
+                                RemoveMenu(hMenu, 3, MF_BYCOMMAND);
+                            }
+                        }
+                        else if (!wcscmp(name, L"OldTaskbar"))
+                        {
+                            if (!DoesTaskbarDllExist())
+                            {
+                                MENUITEMINFOA menuInfo;
                                 ZeroMemory(&menuInfo, sizeof(MENUITEMINFOA));
                                 menuInfo.cbSize = sizeof(MENUITEMINFOA);
                                 menuInfo.fMask = MIIM_DATA;
@@ -2618,6 +2632,10 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                             {
                                 GUI_TaskbarStyle = value;
                                 AdjustTaskbarStyleValue(&GUI_TaskbarStyle);
+                                if (value >= 2 && !DoesTaskbarDllExist())
+                                {
+                                    value = 0;
+                                }
                             }
                             if (hDC && bInvert)
                             {
