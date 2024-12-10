@@ -5047,6 +5047,23 @@ __declspec(dllexport) BOOL explorer_SetChildWindowNoActivateHook(HWND hWnd)
 
 #pragma region "Hide Show desktop button"
 #if WITH_MAIN_PATCHER
+DWORD GetTaskbarSd()
+{
+    DWORD dwVal = 1, dwSize = sizeof(DWORD);
+    if (SHRegGetValueFromHKCUHKLMFunc && SHRegGetValueFromHKCUHKLMFunc(
+        TEXT("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced"),
+        TEXT("TaskbarSd"),
+        SRRF_RT_REG_DWORD,
+        NULL,
+        &dwVal,
+        &dwSize
+    ) == ERROR_SUCCESS)
+    {
+        return dwVal;
+    }
+    return 1; // Visible
+}
+
 INT64 ShowDesktopSubclassProc(
     _In_ HWND   hWnd,
     _In_ UINT   uMsg,
@@ -5056,31 +5073,60 @@ INT64 ShowDesktopSubclassProc(
     DWORD_PTR   dwRefData
 )
 {
-    if (uMsg == WM_NCDESTROY)
+    switch (uMsg)
     {
-        RemoveWindowSubclass(hWnd, ShowDesktopSubclassProc, ShowDesktopSubclassProc);
-    }
-    else if (uMsg == WM_USER + 100)
-    {
-        LRESULT lRes = DefSubclassProc(hWnd, uMsg, wParam, lParam);
-        if (lRes > 0)
+        case WM_NCDESTROY:
         {
-            DWORD dwVal = 0, dwSize = sizeof(DWORD);
-            if (SHRegGetValueFromHKCUHKLMFunc && SHRegGetValueFromHKCUHKLMFunc(
-                TEXT("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced"),
-                TEXT("TaskbarSd"),
-                SRRF_RT_REG_DWORD,
-                NULL,
-                &dwVal,
-                (LPDWORD)(&dwSize)
-            ) == ERROR_SUCCESS && !dwVal)
-            {
-                lRes = 0;
-            }
-            else if (dwVal) PostMessageW(hWnd, 794, 0, 0);
+            RemoveWindowSubclass(hWnd, ShowDesktopSubclassProc, ShowDesktopSubclassProc);
+            break;
         }
-        return lRes;
+        case WM_PAINT:
+        case WM_PRINTCLIENT:
+        {
+            HANDLE h_dwTaskbarSd = GetPropW(hWnd, L"EP_TaskbarSd");
+            if (h_dwTaskbarSd)
+            {
+                DWORD dwTaskbarSd = (DWORD)h_dwTaskbarSd - 1;
+                if (dwTaskbarSd == 2) // Invisible
+                {
+                    PAINTSTRUCT ps;
+                    HDC hdc = BeginPaint(hWnd, &ps);
+                    if (hdc)
+                    {
+                        HDC hdcPaint;
+                        HPAINTBUFFER hBufferedPaint = BeginBufferedPaint(hdc, &ps.rcPaint, BPBF_TOPDOWNDIB, NULL, &hdcPaint);
+                        if (hBufferedPaint)
+                        {
+                            if (IsThemeActive())
+                            {
+                                DrawThemeParentBackground(hWnd, hdcPaint, NULL);
+                            }
+                            else
+                            {
+                                RECT rc;
+                                GetClientRect(hWnd, &rc);
+                                FillRect(hdc, &rc, (HBRUSH)(COLOR_BTNFACE + 1));
+                            }
+                            EndBufferedPaint(hBufferedPaint, TRUE);
+                        }
+                        EndPaint(hWnd, &ps);
+                    }
+                    return 0;
+                }
+            }
+            break;
+        }
+        case WM_THEMECHANGED:
+        case WM_SETTINGCHANGE:
+        {
+            LRESULT lRes = DefSubclassProc(hWnd, uMsg, wParam, lParam);
+            DWORD dwTaskbarSd = GetTaskbarSd();
+            SetPropW(hWnd, L"EP_TaskbarSd", (HANDLE)(dwTaskbarSd + 1));
+            ShowWindow(hWnd, dwTaskbarSd != 0 ? SW_SHOW : SW_HIDE);
+            return lRes;
+        }
     }
+
     return DefSubclassProc(hWnd, uMsg, wParam, lParam);
 }
 #endif
@@ -7294,13 +7340,6 @@ HTHEME explorer_OpenThemeDataForDpi(
             }
         }
         return hTheme;
-    }
-    else if ((*((WORD*)&(pszClassList)+1)) && !wcscmp(pszClassList, L"TaskbarShowDesktop"))
-    {
-        DWORD dwVal = 0, dwSize = sizeof(DWORD);
-        RegGetValueW(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", L"TaskbarSD", RRF_RT_REG_DWORD, NULL, &dwVal, &dwSize);
-        if (dwVal == 2) return NULL;
-        return OpenThemeDataForDpi(hwnd, pszClassList, dpi);
     }
 
     // task list - Taskband2 from CTaskListWnd::_HandleThemeChanged
