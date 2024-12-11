@@ -1178,13 +1178,19 @@ HRESULT PatchUnifiedTilePinUnpinProvider(HMODULE hModule)
     RETURN_IF_WIN32_BOOL_FALSE(GetModuleInformation(GetCurrentProcess(), hModule, &mi, sizeof(mi)));
 
 #if defined(_M_X64)
-    // 40 55 53 56 57 41 54 41 55 41 56 41 57 48 8D 6C 24 ?? 48 81 EC ?? ?? ?? ?? 48 8B 05 ?? ?? ?? ?? 48 33 C4 48 89 45 ?? 49 8B ?? 4D 8B ?? 48 8B ?? 4C 8B ?? 4C 89 4D
+    // 48 89 ?? 24 ?? 4C 8B ?? 4C 8B 44 24 ?? 49 8B ?? ?? 8B ?? E8 ?? ?? ?? ??
+    //                                                             ^^^^^^^^^^^
     PBYTE match = (PBYTE)FindPattern(
         hModule,
         mi.SizeOfImage,
-        "\x40\x55\x53\x56\x57\x41\x54\x41\x55\x41\x56\x41\x57\x48\x8D\x6C\x24\x00\x48\x81\xEC\x00\x00\x00\x00\x48\x8B\x05\x00\x00\x00\x00\x48\x33\xC4\x48\x89\x45\x00\x49\x8B\x00\x4D\x8B\x00\x48\x8B\x00\x4C\x8B\x00\x4C\x89\x4D",
-        "xxxxxxxxxxxxxxxxx?xxx????xxx????xxxxxx?xx?xx?xx?xx?xxx"
+        "\x48\x89\x00\x24\x00\x4C\x8B\x00\x4C\x8B\x44\x24\x00\x49\x8B\x00\x00\x8B\x00\xE8",
+        "xx?x?xx?xxxx?xx??x?x"
     );
+    if (match)
+    {
+        match += 19;
+        match += 5 + *(int*)(match + 1);
+    }
 #elif defined(_M_ARM64)
     // E4 06 40 F9 E3 03 15 AA E2 0E 40 F9 E1 03 19 AA E0 03 16 AA ?? ?? ?? ?? E3 03 00 2A
     //                                                             ^^^^^^^^^^^
