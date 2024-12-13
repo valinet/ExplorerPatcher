@@ -1178,18 +1178,44 @@ HRESULT PatchUnifiedTilePinUnpinProvider(HMODULE hModule)
     RETURN_IF_WIN32_BOOL_FALSE(GetModuleInformation(GetCurrentProcess(), hModule, &mi, sizeof(mi)));
 
 #if defined(_M_X64)
-    // 48 89 ?? 24 ?? 4C 8B ?? 4C 8B 44 24 ?? 49 8B ?? ?? 8B ?? E8 ?? ?? ?? ??
-    //                                                             ^^^^^^^^^^^
-    PBYTE match = (PBYTE)FindPattern(
-        hModule,
-        mi.SizeOfImage,
-        "\x48\x89\x00\x24\x00\x4C\x8B\x00\x4C\x8B\x44\x24\x00\x49\x8B\x00\x00\x8B\x00\xE8",
-        "xx?x?xx?xxxx?xx??x?x"
-    );
-    if (match)
+    PBYTE match;
+    SIZE_T offset = (SIZE_T)hModule;
+    while (true)
     {
+        // 48 89 ?? 24 ?? 4C 8B ?? 4C 8B 44 24 ?? 49 8B ?? ?? 8B ?? E8 ?? ?? ?? ??
+        //                                                             ^^^^^^^^^^^
+        match = (PBYTE)FindPattern(
+            (PVOID)offset,
+            mi.SizeOfImage - (DWORD)(offset - (SIZE_T)hModule),
+            "\x48\x89\x00\x24\x00\x4C\x8B\x00\x4C\x8B\x44\x24\x00\x49\x8B\x00\x00\x8B\x00\xE8",
+            "xx?x?xx?xxxx?xx??x?x"
+        );
+        if (!match)
+        {
+            // We tried our best, but we found nothing...
+            break;
+        }
+
+        // Possible match, prepare the start offset for the next search
+        offset += ((SIZE_T)match - offset) + 24 /*first pattern size*/;
+
+        // Check the referred function's preamble to see if this is what we're looking for
         match += 19;
         match += 5 + *(int*)(match + 1);
+
+        // 41 54 41 55 41 56 41 57 48
+        PBYTE matchPreambleTest = (PBYTE)FindPattern(
+            match,
+            9 /*second pattern size*/ + 8 /*should start within these first bytes*/,
+            "\x41\x54\x41\x55\x41\x56\x41\x57\x48",
+            "xxxxxxxxx"
+        );
+
+        if (matchPreambleTest)
+        {
+            // Got it!
+            break;
+        }
     }
 #elif defined(_M_ARM64)
     // E4 06 40 F9 E3 03 15 AA E2 0E 40 F9 E1 03 19 AA E0 03 16 AA ?? ?? ?? ?? E3 03 00 2A
