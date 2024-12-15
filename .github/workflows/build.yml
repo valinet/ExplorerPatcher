@@ -50,6 +50,7 @@ jobs:
         if: github.event.inputs.ref == ''
         with:
           submodules: recursive
+          persist-credentials: false
 
       - name: Checkout specific build and submodules
         uses: actions/checkout@v4
@@ -57,6 +58,7 @@ jobs:
         with:
           ref: ${{ github.event.inputs.ref }}
           submodules: recursive
+          persist-credentials: false
 
       - name: Add MSBuild to PATH
         uses: microsoft/setup-msbuild@v2
