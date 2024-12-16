@@ -43,70 +43,13 @@ jobs:
           ISSUE_NUMBER="${{ github.event.issue.number }}"
 
           # Define the body of the comment with Markdown formatting
-          COMMENT_BODY="[Verse 1]
-They told him, "Dont you ever come around here
-Dont wanna see your face, you better disappear"
-The fires in their eyes and their words are really clear
-So beat it, just beat it (Ooh!)
-You better run, you better do what you can (Ooh!)
-Dont wanna see no blood, dont be a macho man (Ooh!)
-You wanna be tough, better do what you can
-So beat it, but you wanna be bad
+          COMMENT_BODY="This thing
+          - is so
+          - annoying
+          - why don't you work
+          - very smart thing
 
-[Chorus]
-Just beat it (Beat it), beat it (beat it)
-No one wants to be defeated
-Show them how funky and strong is your fight
-It doesnt matter whos wrong or right
-Just beat it (Beat it)
-Just beat it (Beat it)
-Just beat it (Beat it)
-Just beat it (Beat it, ooh)
-
-[Verse 2]
-Theyre out to get you, better leave while you can
-Dont wanna be a boy, you wanna be a man
-You wanna stay alive, better do what you can
-So beat it, just beat it (Ooh!)
-You have to show them that youre really not scared (Ooh!)
-Youre playin with your life, this aint no truth or dare (Ooh!)
-Theyll kick you, then theyll beat you, then theyll tell you its fair
-So beat it, but you wanna be bad
-[Chorus]
-Just beat it (Beat it), beat it (beat it)
-No one wants to be defeated
-Show them how funky and strong is your fight
-It doesnt matter whos wrong or right
-Just beat it (Beat it), beat it (beat it)
-No one wants to be defeated
-Showin how funky and strong is your fight
-It doesnt matter whos wrong or right
-Just beat it (Beat it, beat it, beat it)
-Beat it (Beat it, beat it)
-Beat it (Beat it, beat it)
-Beat it (Beat it, beat it)
-
-[Guitar Solo]
-
-[Chorus]
-Beat it (Beat it), beat it (beat it)
-No one wants to be defeated
-Show them how funky and strong is your fight
-It doesnt matter whos wrong or right (Whos right)
-Just beat it (Beat it), beat it (beat it) (hoo, hoo!)
-No one wants to be defeated (Oh, Lord)
-Show them how funky (Hee-hee!) and strong is your fight (Hee-hee-hee!)
-It doesnt matter whos wrong or right
-Just beat it (Beat it), beat it (beat it)
-No one wants to be defeated (Oh, no)
-Show them how funky (Hoo-hoo!) and strong is your fight (Hee-hee! Hoo!)
-It doesnt matter whos wrong or right
-Just beat it (Beat it), beat it (beat it)
-No one wants to be defeated
-Show them how funky and strong is your fight
-It doesnt matter whos wrong or right (Whos right)
-Just beat it (Beat it), beat it (beat it, hoo-hoo!)
-No one wants to be defeated"
+          please work."
 
           # Post a comment on the issue with formatted text
           curl -X POST \
