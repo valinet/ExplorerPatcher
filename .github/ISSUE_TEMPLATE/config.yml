@@ -1,0 +1,14 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Questions
+    about: Ask questions and receive support
+    url: https://github.com/valinet/ExplorerPatcher/discussions/categories/q-a
+  - name: Feature requests
+    about: Suggestions for new features and enhancements
+    url: https://github.com/valinet/ExplorerPatcher/discussions/categories/ideas
+  - name: Wiki
+    about: Useful documentation on ExplorerPatcher
+    url: https://github.com/valinet/ExplorerPatcher/wiki
+  - name: Showcase
+    about: Show off your system or give tips and tricks 
+    url: https://github.com/valinet/ExplorerPatcher/discussions/categories/show-and-tell

@@ -1,0 +1,28 @@
+name: Bug report
+description: Report an issue
+labels:
+  - bug
+body:
+  - type: textarea
+    attributes:
+      label: Describe the bug
+      description: A clear and concise description of what the bug is. Please try to isolate the issue to ExplorerPatcher by disabling other
+        customization software.
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: Windows OS Build number
+      description: Find your Windows build number in the About tab of
+        ExplorerPatcher's properties window, or by running `winver`
+      placeholder: "22621.2283"
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: ExplorerPatcher version
+      description: Find your ExplorerPatcher version in the About tab of ExplorerPatcher's
+        properties window, or by going to Installed Apps in Windows Settings
+      placeholder: 22621.2283.57.2
+    validations:
+      required: true
