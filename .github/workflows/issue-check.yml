@@ -12,12 +12,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Log Custom Message with Issue Information
-        run: |
-          # Log the custom message with issue title and number for context
-          echo "Checking Issue #${{ github.event.issue.number }}: ${{ github.event.issue.title }}"
-          echo "Check if issue is a known issue"
-
       - name: Check for keywords in issue title and body
         id: check_keywords
         run: |
@@ -27,6 +21,9 @@ jobs:
           # Get the issue title and body from the event context
           ISSUE_TITLE="${{ github.event.issue.title }}"
           ISSUE_BODY="${{ github.event.issue.body }}"
+          
+          # Log the custom message
+          echo "Checking Issue #${{ github.event.issue.number }}: ${{ github.event.issue.title }}"
           
           # Check if any of the keywords are present in the title or body
           for keyword in "${keywords[@]}"; do
@@ -45,7 +42,7 @@ jobs:
           # Post a comment on the issue
           curl -X POST \
             -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            -d '{"body": "Bum behavior. Closed"}' \
+            -d '{"body": "Checking Issue #${{ github.event.issue.number }}: ${{ github.event.issue.title }}\n\nBum behavior. Closed"}' \
             "https://api.github.com/repos/${{ github.repository }}/issues/$ISSUE_NUMBER/comments"
           
           # Close the issue
