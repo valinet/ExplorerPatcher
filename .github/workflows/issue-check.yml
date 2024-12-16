@@ -1,4 +1,4 @@
-name: Check Issue for Keywords
+name: MSHUWAP Issue Handler
 
 on:
   issues:
@@ -6,7 +6,7 @@ on:
 
 jobs:
   check_keywords:
-    runs-on: ubuntu-latest  # You can use any runner; Ubuntu is the most common
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -15,7 +15,7 @@ jobs:
         id: check_keywords
         run: |
           # Define the list of keywords
-          keywords=("Virus" "Malware" "Windows Defender" "Antivirus")
+          keywords=("Virus" "Malware" "Windows Defender" "Antivirus" "bitdefender" "defender" "kaspersky" "unwanted" "unwanted" "harmful")
           
           # Get the issue title and body from the event context
           ISSUE_TITLE="${{ github.event.issue.title }}"
@@ -24,7 +24,7 @@ jobs:
           # Check if any of the keywords are present in the title or body
           for keyword in "${keywords[@]}"; do
             if [[ "$ISSUE_TITLE" == *"$keyword"* ]] || [[ "$ISSUE_BODY" == *"$keyword"* ]]; then
-              echo "Keyword '$keyword' found in the issue"
+              echo "'$keyword'"
               echo "contains_keyword=true" >> $GITHUB_ENV
               break
             fi
@@ -44,5 +44,6 @@ jobs:
           # Close the issue
           curl -X PATCH \
             -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            -d '{"state": "closed"}' \
+            -d '{"state": "closed"
+            "reason":"not planned"}' \
             "https://api.github.com/repos/${{ github.repository }}/issues/$ISSUE_NUMBER"
