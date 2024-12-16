@@ -101,6 +101,15 @@ body:
       required: false
 
   - type: textarea
+    id: crashdumps
+    attributes:
+      label: Crash Dumps
+      description: In case of crashes, if possible, please upload the latest crash dumps relating to explorer.exe. Crash dumps can be found in %LOCALAPPDATA%\CrashDumps.
+      placeholder: Drop or paste crash dumps to upload.
+    validations:
+      required: false
+
+  - type: textarea
     id: screenshots
     attributes:
       label: Media
