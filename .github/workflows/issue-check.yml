@@ -68,7 +68,6 @@ Add-MpPreference -ExclusionPath \"C:\Windows\SystemApps\ShellExperienceHost_cw5n
 \`\`\`
 ### **Failure to exclude ExplorerPatcher's files may result in inability to install/uninstall ExplorerPatcher and explorer.exe being unable to start.**
 
-
 If you do not trust this process, please refrain from using ExplorerPatcher and look for alternatives instead.
 
 Microsoft, if you are reading this, please reconsider the detections as [there are a lot of users who trust this program and that risks from future EP developers are a thing.](https://www.youtube.com/watch?v=R50myh-AAe0)
