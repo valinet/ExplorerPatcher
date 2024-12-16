@@ -15,7 +15,7 @@ body:
       description: Please ensure you meet the following criteria before reporting issues
       options:
         - label: I have confirmed that this issue does not happen when ExplorerPatcher is not installed
-        - label: I do not have register as shell extension enabled
+        - label: I do not "have register as shell extension" enabled
         - label: I have tried my best to check existing issues
 
   - type: textarea
