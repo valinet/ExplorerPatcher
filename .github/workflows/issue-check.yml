@@ -1,8 +1,8 @@
-name: MSHUWAP Issue Handler
+name: Duplicate malware/virus flags issues handler
 
 on:
   issues:
-    types: [opened]  # Triggers when an issue is opened
+    types: [opened]
 
 jobs:
   check_keywords:
