@@ -43,18 +43,19 @@ jobs:
           ISSUE_NUMBER="${{ github.event.issue.number }}"
 
           # Define the body of the comment with Markdown formatting
-          COMMENT_BODY="This thing
-          - is so
-          - annoying
-          - why don't you work
-          - very smart thing
+          COMMENT_BODY="Beat me to basketball
+          
+          thanks
 
-          please work."
+          I hope ."
+
+          # Use printf to properly escape the string and handle special characters (e.g., newlines, apostrophes)
+          COMMENT_BODY_ESCAPED=$(printf "%s" "$COMMENT_BODY" | jq -Rs .)
 
           # Post a comment on the issue with formatted text
           curl -X POST \
             -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            -d "{\"body\": \"$COMMENT_BODY\"}" \
+            -d "{\"body\": $COMMENT_BODY_ESCAPED}" \
             "https://api.github.com/repos/${{ github.repository }}/issues/$ISSUE_NUMBER/comments"
 
           # Close the issue
