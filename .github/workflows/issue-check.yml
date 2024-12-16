@@ -37,17 +37,77 @@ jobs:
             fi
           done
 
-      - name: Comment and close issue if keyword found
+      - name: Comment, label, and close issue if keyword found
         if: env.contains_keyword == 'true'  # Only run if a keyword was found
         run: |
           ISSUE_NUMBER="${{ github.event.issue.number }}"
+          REPO="${{ github.repository }}"
 
           # Define the body of the comment with Markdown formatting
-          COMMENT_BODY="Beat me to basketball
-          
-          thanks
+          COMMENT_BODY="[Verse 1]
+They told him, "Don't you ever come around here
+Don't wanna see your face, you better disappear"
+The fire's in their eyes and their words are really clear
+So beat it, just beat it (Ooh!)
+You better run, you better do what you can (Ooh!)
+Don't wanna see no blood, don't be a macho man (Ooh!)
+You wanna be tough, better do what you can
+So beat it, but you wanna be bad
 
-          I hope ."
+[Chorus]
+Just beat it (Beat it), beat it (beat it)
+No one wants to be defeated
+Show them how funky and strong is your fight
+It doesn't matter who's wrong or right
+Just beat it (Beat it)
+Just beat it (Beat it)
+Just beat it (Beat it)
+Just beat it (Beat it, ooh)
+
+[Verse 2]
+They're out to get you, better leave while you can
+Don't wanna be a boy, you wanna be a man
+You wanna stay alive, better do what you can
+So beat it, just beat it (Ooh!)
+You have to show them that you're really not scared (Ooh!)
+You're playin' with your life, this ain't no truth or dare (Ooh!)
+They'll kick you, then they'll beat you, then they'll tell you it's fair
+So beat it, but you wanna be bad
+[Chorus]
+Just beat it (Beat it), beat it (beat it)
+No one wants to be defeated
+Show them how funky and strong is your fight
+It doesn't matter who's wrong or right
+Just beat it (Beat it), beat it (beat it)
+No one wants to be defeated
+Showin' how funky and strong is your fight
+It doesn't matter who's wrong or right
+Just beat it (Beat it, beat it, beat it)
+Beat it (Beat it, beat it)
+Beat it (Beat it, beat it)
+Beat it (Beat it, beat it)
+
+[Guitar Solo]
+
+[Chorus]
+Beat it (Beat it), beat it (beat it)
+No one wants to be defeated
+Show them how funky and strong is your fight
+It doesn't matter who's wrong or right (Who's right)
+Just beat it (Beat it), beat it (beat it) (hoo, hoo!)
+No one wants to be defeated (Oh, Lord)
+Show them how funky (Hee-hee!) and strong is your fight (Hee-hee-hee!)
+It doesn't matter who's wrong or right
+Just beat it (Beat it), beat it (beat it)
+No one wants to be defeated (Oh, no)
+Show them how funky (Hoo-hoo!) and strong is your fight (Hee-hee! Hoo!)
+It doesn't matter who's wrong or right
+Just beat it (Beat it), beat it (beat it)
+No one wants to be defeated
+Show them how funky and strong is your fight
+It doesn't matter who's wrong or right (Who's right)
+Just beat it (Beat it), beat it (beat it, hoo-hoo!)
+No one wants to be defeated"
 
           # Use printf to properly escape the string and handle special characters (e.g., newlines, apostrophes)
           COMMENT_BODY_ESCAPED=$(printf "%s" "$COMMENT_BODY" | jq -Rs .)
@@ -56,10 +116,16 @@ jobs:
           curl -X POST \
             -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             -d "{\"body\": $COMMENT_BODY_ESCAPED}" \
-            "https://api.github.com/repos/${{ github.repository }}/issues/$ISSUE_NUMBER/comments"
+            "https://api.github.com/repos/$REPO/issues/$ISSUE_NUMBER/comments"
+
+          # Add the "duplicate" label to the issue
+          curl -X POST \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -d '{"labels":["duplicate"]}' \
+            "https://api.github.com/repos/$REPO/issues/$ISSUE_NUMBER/labels"
 
           # Close the issue
           curl -X PATCH \
             -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             -d '{"state": "closed"}' \
-            "https://api.github.com/repos/${{ github.repository }}/issues/$ISSUE_NUMBER"
+            "https://api.github.com/repos/$REPO/issues/$ISSUE_NUMBER"
