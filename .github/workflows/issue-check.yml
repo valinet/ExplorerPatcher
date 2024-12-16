@@ -15,16 +15,23 @@ jobs:
         id: check_keywords
         run: |
           # Define the list of keywords
-          keywords=("Virus" "Malware" "Windows Defender" "Antivirus" "bitdefender" "defender" "kaspersky" "unwanted" "unwanted" "harmful")
+          keywords=("Virus" "Malware" "Windows Defender" "Antivirus" "bitdefender" "defender" "kaspersky" "unwanted" "harmful")
           
           # Get the issue title and body from the event context
           ISSUE_TITLE="${{ github.event.issue.title }}"
           ISSUE_BODY="${{ github.event.issue.body }}"
           
+          # Convert both title and body to lowercase for case-insensitive comparison
+          ISSUE_TITLE_LOWER=$(echo "$ISSUE_TITLE" | tr '[:upper:]' '[:lower:]')
+          ISSUE_BODY_LOWER=$(echo "$ISSUE_BODY" | tr '[:upper:]' '[:lower:]')
+          
           # Check if any of the keywords are present in the title or body
           for keyword in "${keywords[@]}"; do
-            if [[ "$ISSUE_TITLE" == *"$keyword"* ]] || [[ "$ISSUE_BODY" == *"$keyword"* ]]; then
-              echo "'$keyword'"
+            # Convert the keyword to lowercase as well
+            KEYWORD_LOWER=$(echo "$keyword" | tr '[:upper:]' '[:lower:]')
+
+            if [[ "$ISSUE_TITLE_LOWER" == *"$KEYWORD_LOWER"* ]] || [[ "$ISSUE_BODY_LOWER" == *"$KEYWORD_LOWER"* ]]; then
+              echo "'$keyword' found"
               echo "contains_keyword=true" >> $GITHUB_ENV
               break
             fi
@@ -38,10 +45,7 @@ jobs:
           # Post a comment on the issue
           curl -X POST \
             -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            -d '{"body": "Bum behavior. Closed
-            i want to know
-            if these will be separate
-            or not"}' \
+            -d '{"body": "Bum behavior. Closed"}' \
             "https://api.github.com/repos/${{ github.repository }}/issues/$ISSUE_NUMBER/comments"
           
           # Close the issue
