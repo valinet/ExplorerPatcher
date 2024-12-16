@@ -39,7 +39,7 @@ body:
     validations:
       required: true
       
-        - type: textarea
+  - type: textarea
     attributes:
       label: Describe the bug
       description: A clear and concise description of what the bug is. Please try to isolate the issue to ExplorerPatcher by disabling other customization software.
