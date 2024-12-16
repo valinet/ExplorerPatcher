@@ -44,55 +44,36 @@ jobs:
           REPO="${{ github.repository }}"
 
           # Define the body of the comment with Markdown formatting
-          COMMENT_BODY="I wish I was a little bit taller, I wish I was a baller
-I wish I had a girl who looked good, I would call her
-I wish I had a rabbit in a hat with a bat
-And a six-four Impala
+          COMMENT_BODY="> [!CAUTION]
+><ins>**Microsoft and other major antivirus vendors have flagged ExplorerPatcher as "malware".**</ins> This is likely due to Microsoft's hatred against ExplorerPatcher, not because it contains a virus or such. Flags from Microsoft usually spread to other antivirus vendors.
 
-I wish I was a little bit taller, I wish I was a baller
-I wish I had a girl who looked good, I would call her
-I wish I had a rabbit in a hat with a bat
-And a six-four Impala
+Please include the following files and folders in your antivirus' exclusion list to prevent issues due to antivirus detections:
 
-I wish I was a little bit taller, I wish I was a baller
-I wish I had a girl who looked good, I would call her
-I wish I had a rabbit in a hat with a bat
-And a six-four Impala
+```
+    C:\Program Files\ExplorerPatcher
+    %APPDATA%\ExplorerPatcher
+    C:\Windows\dxgi.dll
+    C:\Windows\SystemApps\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy
+    C:\Windows\SystemApps\ShellExperienceHost_cw5n1h2txyewy
+```
 
-I wish I was a little bit taller, I wish I was a baller
-I wish I had a girl who looked good, I would call her
-I wish I had a rabbit in a hat with a bat
-And a six-four Impala
+For Defender, you can run the following script in PowerShell as an administrator:
 
-I wish I was a little bit taller, I wish I was a baller
-I wish I had a girl who looked good, I would call her
-I wish I had a rabbit in a hat with a bat
-And a six-four Impala
+```
+Add-MpPreference -ExclusionPath "C:\Program Files\ExplorerPatcher"
+Add-MpPreference -ExclusionPath "$env:APPDATA\ExplorerPatcher"
+Add-MpPreference -ExclusionPath "C:\Windows\dxgi.dll"
+Add-MpPreference -ExclusionPath "C:\Windows\SystemApps\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy"
+Add-MpPreference -ExclusionPath "C:\Windows\SystemApps\ShellExperienceHost_cw5n1h2txyewy"
+```
+### **Failure to exclude ExplorerPatcher's files may result in inability to install/uninstall ExplorerPatcher and explorer.exe being unable to start.**
 
-I wish I was a little bit taller, I wish I was a baller
-I wish I had a girl who looked good, I would call her
-I wish I had a rabbit in a hat with a bat
-And a six-four Impala
 
-I wish I was a little bit taller, I wish I was a baller
-I wish I had a girl who looked good, I would call her
-I wish I had a rabbit in a hat with a bat
-And a six-four Impala
+If you do not trust this process, please refrain from using ExplorerPatcher and look for alternatives instead.
 
-I wish I was a little bit taller, I wish I was a baller
-I wish I had a girl who looked good, I would call her
-I wish I had a rabbit in a hat with a bat
-And a six-four Impala
+Microsoft, if you are reading this, please reconsider the detections as [there are a lot of users who trust this program and that risks from future EP developers are a thing.](https://www.youtube.com/watch?v=R50myh-AAe0)
 
-I wish I was a little bit taller, I wish I was a baller
-I wish I had a girl who looked good, I would call her
-I wish I had a rabbit in a hat with a bat
-And a six-four Impala
-
-I wish I was a little bit taller, I wish I was a baller
-I wish I had a girl who looked good, I would call her
-I wish I had a rabbit in a hat with a bat
-And a six-four Impala"
+Issues related to antivirus detections are closed immediately. Discuss this in https://github.com/valinet/ExplorerPatcher/issues/3670 or https://github.com/valinet/ExplorerPatcher/issues/3228.]"
 
           # Use printf to properly escape the string and handle special characters (e.g., newlines, apostrophes)
           COMMENT_BODY_ESCAPED=$(printf "%s" "$COMMENT_BODY" | jq -Rs .)
