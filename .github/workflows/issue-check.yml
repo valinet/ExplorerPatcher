@@ -19,11 +19,9 @@ jobs:
           
           # Get the issue title and body from the event context
           ISSUE_TITLE="${{ github.event.issue.title }}"
-          ISSUE_BODY="${{ github.event.issue.body }}"
           
           # Convert both title and body to lowercase for case-insensitive comparison
           ISSUE_TITLE_LOWER=$(echo "$ISSUE_TITLE" | tr '[:upper:]' '[:lower:]')
-          ISSUE_BODY_LOWER=$(echo "$ISSUE_BODY" | tr '[:upper:]' '[:lower:]')
           
           # Check if any of the keywords are present in the title or body
           for keyword in "${keywords[@]}"; do
@@ -73,7 +71,7 @@ jobs:
 
           Microsoft, if you are reading this, please reconsider the detections as [there are a lot of users who trust this program and that risks from future EP developers are a thing.](https://www.youtube.com/watch?v=R50myh-AAe0)
 
-          Issues related to antivirus detections are closed immediately. Discuss this in https://github.com/valinet/ExplorerPatcher/issues/3670 or https://github.com/valinet/ExplorerPatcher/issues/3228."
+          This issue was closed automatically. You want to discuss this in https://github.com/valinet/ExplorerPatcher/issues/3670 or https://github.com/valinet/ExplorerPatcher/issues/3228."
 
           # Escape the Markdown content for proper JSON formatting
           COMMENT_BODY_ESCAPED=$(printf "%s" "$COMMENT_BODY" | jq -Rs .)
