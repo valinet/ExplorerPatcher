@@ -1,4 +1,4 @@
-name: MSHUWAP Issue Handler
+name: Check if issue is a known issue
 
 on:
   issues:
@@ -7,14 +7,13 @@ on:
 jobs:
   check_keywords:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Log check message
+      - name: Log dynamic message with issue title
         run: |
-          echo "Check if issue is a known issue"
+          echo "Checking issue: ${{ github.event.issue.title }} for known keywords..."
 
       - name: Check for keywords in issue title and body
         id: check_keywords
@@ -49,5 +48,5 @@ jobs:
           # Close the issue
           curl -X PATCH \
             -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            -d '{"state": "closed", "reason": "not planned"}' \
+            -d '{"state": "closed", "reason": "notplanned"}' \
             "https://api.github.com/repos/${{ github.repository }}/issues/$ISSUE_NUMBER"
