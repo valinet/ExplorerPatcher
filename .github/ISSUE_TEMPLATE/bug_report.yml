@@ -1,0 +1,120 @@
+name: Bug report
+description: Report the issue you have with ExplorerPatcher here
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        > [!WARNING]
+        > Issues regarding virus detections will be closed automatically. Discuss it in [Issue #3670](https://github.com/valinet/ExplorerPatcher/issues/3670) or [Issue #3228](https://github.com/valinet/ExplorerPatcher/issues/3228)
+
+  - type: checkboxes
+    attributes:
+      label: Before reporting your issue
+      description: Please ensure you meet the following criteria before reporting issues
+      options:
+        - label: I have confirmed that this issue does not happen when ExplorerPatcher is not installed
+        - label: I do not have "register as shell extension" enabled
+        - label: I have tried my best to check existing issues
+
+  - type: textarea
+    attributes:
+      label: Repro ExplorerPatcher versions
+      description: Provide the relevant versions of ExplorerPatcher for reproduction of the issue.
+      placeholder: |
+        Example:
+        ExplorerPatcher 67.1
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Repro Windows Versions
+      description: Provide the relevant versions for reproduction of the issue. For example, Windows version, and architecture (e.g. x64 or ARM64).
+      placeholder: |
+        Example:
+        Windows 11 24H2 26100.1150 ARM64
+        Windows 11 24H2 26100.2314 ARM64
+    validations:
+      required: true
+      
+  - type: textarea
+    attributes:
+      label: 3rd party tweak software installed
+      description: A list of 3rd Party software that may modify the shell in someway.
+      placeholder: |
+        Example:
+        TranslucentTB
+        Windhawk (with disable grouping and vertical taskbar mods)
+        OpenShell
+        Nilesoft Shell
+        Wallpaper Engine
+    validations:
+      required: true
+      
+  - type: textarea
+    attributes:
+      label: Describe the bug
+      description: A clear and concise description of what the bug is. Please try to isolate the issue to ExplorerPatcher by disabling other customization software.
+      placeholder: |
+        Example:
+        1. Install EP 67.1.
+        2. Enable Windows 10 (ExplorerPatcher) taskbar and restart Explorer.
+        3. Make sure Ethernet (if available) is disconnected, and then disconnect Wi-Fi.
+        4. Turn on Personal Hotspot (iPhone) or Mobile Hotspot (Android).
+        5. Connect to the Personal Hotspot.
+        6. Observe icon changing from No Internet to Wi-Fi signal bars.
+        7. Turn off Personal Hotspot.
+        8. Observe icon staying in Wi-Fi signal bars state instead of changing to No Internet (globe icon).
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Expected outcome
+      description: Describe what you expected to happen when performing the steps above.
+      placeholder: |
+        Example:
+        The icon of the Network tray icon changes from Wi-Fi signal bars to globe (no Internet) icon like it was on 11 23H2, 11 22H2, and previous versions.
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Actual outcome
+      description: Describe what actually happens after performing the steps above.
+      placeholder: |
+        Example:
+        The icon is stuck in the Wi-Fi icon state, giving false impressions that the device is still connected to Wi-Fi. The icon will stay this way until Wi-Fi/Airplane Mode is toggled, or until the device is reconnected to a Wi-Fi router.
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Additional info
+      description: Provide any additional information that may help in diagnosing the issue, such as logs, error messages, or links to related issues.
+      placeholder: |
+        Example:
+        Windows 11 build 25236 removed pnidui.dll, leaving the restoration-from-22621 method being the only option to have this icon. However, there may be interface mismatches or API updates that caused the 22621 (22H2) pnidui.dll to behave this way on 24H2. Patches to pnidui.dll may be needed in order to fix this.
+    validations:
+      required: false
+
+  - type: textarea
+    id: crashdumps
+    attributes:
+      label: Crash Dumps
+      description: In case of crashes, if possible, please upload the latest crash dumps relating to explorer.exe. Crash dumps can be found in %LOCALAPPDATA%\CrashDumps.
+      placeholder: Drop or paste crash dumps to upload.
+    validations:
+      required: false
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Media
+      description: Add screenshots/videos to help illustrate the issue
+      placeholder: Drop or paste images or videos to upload.
+    validations:
+      required: false
+
