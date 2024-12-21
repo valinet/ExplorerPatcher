@@ -31,7 +31,7 @@ BOOL AreLogonLogoffShutdownSoundsEnabled();
 HRESULT HookLogonSound();
 BOOL InitSoundWindow();
 void TermSoundWindow();
-HRESULT SHPlaySound(LPCWSTR pszSound, DWORD dwFlags);
+__declspec(dllexport) HRESULT SHPlaySound(LPCWSTR pszSound, DWORD dwFlags);
 
 #ifdef __cplusplus
 }

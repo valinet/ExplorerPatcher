@@ -244,9 +244,7 @@
     <ClCompile Include="StartMenuSettings.cpp">
       <ExcludedFromBuild Condition="'$(WithMainPatcher)'!='true'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="StartupSound.cpp">
-      <ExcludedFromBuild Condition="'$(WithMainPatcher)'!='true'">true</ExcludedFromBuild>
-    </ClCompile>
+    <ClCompile Include="StartupSound.cpp" />
     <ClCompile Include="symbols.c">
       <ExcludedFromBuild Condition="'$(WithMainPatcher)'!='true'">true</ExcludedFromBuild>
     </ClCompile>
