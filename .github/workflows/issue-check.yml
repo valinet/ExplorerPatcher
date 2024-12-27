@@ -6,10 +6,12 @@ on:
 
 jobs:
   check_keywords:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Check for keywords in issue title and body
         id: check_keywords
