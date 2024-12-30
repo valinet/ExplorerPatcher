@@ -1,0 +1,15 @@
+#include "resources/resource.h"
+#include "winres.h"
+
+LANGUAGE LANGUAGE LANG_CZECH, SUBLANG_CZECH_CS
+
+STRINGTABLE
+BEGIN
+    IDS_SETUP_UNSUPPORTED_ARCH  "Na %1$s zařízeních prosím spusťte %1$s verzi instalátoru. Tento instalátor je pouze pro %2$s zařízení."
+    IDS_SETUP_UNINSTALL_PROMPT  "Jste si jistí, že chcete odstranit ExplorerPatcher z vašeho PC?"
+    IDS_SETUP_INSTALL_LOGOFF    "Kvůli instalaci budete automaticky odhlášení z Windows. ExplorerPatcher bude připraven k použití, až se znovu přihlásíte.\n\nPřejete si pokračovat?"
+    IDS_SETUP_UNINSTALL_LOGOFF  "Pro dokončení odinstalace budete automaticky odhlášení z Windows.\n\nPřejete si pokračovat?"
+    IDS_SETUP_UNINSTALL_RESTART "Pro dokončení odinstalace prosím restartujte PC.\n\nPřejete si restart provést teď?"
+    IDS_SETUP_UNINSTALL_FINISH  "Odinstalace byla dokončena. Děkujeme za používání ExplorerPatcheru."
+    IDS_SETUP_FAILED            "Při servisování ExplorerPatcheru se vyskytla chyba. \nNejspíše k tomu došlo proto, že zůstal používán jeden nebo více záložních souborů předchozí aktualizace. Odemčení těchto souborů by problém mělo vyřešit.\n\nKroky k odstranění problému:\n• Zavřete a znovu otevřete dialog „Vlastnosti“, pokud je momentálně otevřený.\n• Ukončete a restartujte všechny procesy""explorer.exe"".\n• Pokud jste ExplorerPatcher zaregistrovali jako rozšíření prostředí Windows, tak problém pravděpodobně vyřeší restart PC.\n• Nakonec restartujte PC a zkuste to znovu."
+END
