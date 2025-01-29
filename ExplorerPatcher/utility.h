@@ -948,7 +948,12 @@ inline const WCHAR* PickTaskbarDll()
 {
     DWORD b = global_rovi.dwBuildNumber;
 
-    if (b >= 19041 && b <= 19045) // Windows 10 20H2, 21H2, 22H2
+    if (b == 15063 // Windows 10 1703
+     || b == 16299 // Windows 10 1709
+     || b == 17134 // Windows 10 1803
+     || b == 17763 // Windows 10 1809
+     || b >= 18362 && b <= 18363 // Windows 10 1903, 1909
+     || b >= 19041 && b <= 19045) // Windows 10 20H2, 21H2, 22H2
     {
         return L"ep_taskbar.0.dll";
     }
