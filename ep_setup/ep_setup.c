@@ -15,6 +15,10 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #endif
 #pragma comment(lib, "zlibstatic.lib")
 
+static UINT g_uFailureLine;
+
+#define CHECK_OK(x) ((!x && !g_uFailureLine) ? (g_uFailureLine = __LINE__) : (void)0, (x))
+
 BOOL SetupShortcut(BOOL bInstall, WCHAR* wszPath, WCHAR* wszArguments)
 {
     WCHAR wszTitle[MAX_PATH];
@@ -150,7 +154,7 @@ BOOL SetupUninstallEntry(BOOL bInstall, WCHAR* wszPath)
                         0,
                         REG_SZ,
                         (const BYTE*)wszPath,
-                        (wcslen(wszPath) + 1) * sizeof(wchar_t)
+                        (DWORD)(wcslen(wszPath) + 1) * sizeof(wchar_t)
                     );
                 }
                 if (!dwLastError)
@@ -161,7 +165,7 @@ BOOL SetupUninstallEntry(BOOL bInstall, WCHAR* wszPath)
                         0,
                         REG_SZ,
                         (const BYTE*)_T(PRODUCT_NAME),
-                        (wcslen(_T(PRODUCT_NAME)) + 1) * sizeof(wchar_t)
+                        (DWORD)(wcslen(_T(PRODUCT_NAME)) + 1) * sizeof(wchar_t)
                     );
                 }
                 if (!dwLastError)
@@ -172,7 +176,7 @@ BOOL SetupUninstallEntry(BOOL bInstall, WCHAR* wszPath)
                         0,
                         REG_SZ,
                         (const BYTE*)_T(PRODUCT_PUBLISHER),
-                        (wcslen(_T(PRODUCT_PUBLISHER)) + 1) * sizeof(wchar_t)
+                        (DWORD)(wcslen(_T(PRODUCT_PUBLISHER)) + 1) * sizeof(wchar_t)
                     );
                 }
                 if (!dwLastError)
@@ -228,7 +232,7 @@ BOOL SetupUninstallEntry(BOOL bInstall, WCHAR* wszPath)
                                 0,
                                 REG_SZ,
                                 (const BYTE*)wszBuf,
-                                (wcslen(wszBuf) + 1) * sizeof(wchar_t)
+                                (DWORD)(wcslen(wszBuf) + 1) * sizeof(wchar_t)
                             );
                             if (!dwLastError)
                             {
@@ -532,7 +536,10 @@ __declspec(noinline) BOOL InstallResourceHelper(BOOL bInstall, HMODULE hModule, 
         {
             wchar_t path[MAX_PATH];
             GetModuleFileNameW(hModule, path, MAX_PATH);
-            return CopyFileW(path, wszPath, FALSE);
+            if (_wcsicmp(path, wszPath) != 0)
+            {
+                return CopyFileW(path, wszPath, FALSE);
+            }
         }
         return TRUE;
     }
@@ -702,7 +709,7 @@ __declspec(noinline) BOOL ExtractDirectory(unzFile zipFile, const char* dirNameI
         {
             if (fileExt && !_stricmp(fileExt, "mui"))
             {
-                if (!SystemHasLanguageInstalled(languages, filePathInDir, strchr(filePathInDir, '/') - filePathInDir))
+                if (!SystemHasLanguageInstalled(languages, filePathInDir, (int)(strchr(filePathInDir, '/') - filePathInDir)))
                 {
                     continue;
                 }
@@ -725,7 +732,7 @@ __declspec(noinline) BOOL ExtractDirectory(unzFile zipFile, const char* dirNameI
                 if (secondLastDot != lastDot)
                 {
                     const char* langCode = secondLastDot + 1;
-                    if (!SystemHasLanguageInstalled(languages, langCode, lastDot - langCode))
+                    if (!SystemHasLanguageInstalled(languages, langCode, (int)(lastDot - langCode)))
                     {
                         continue;
                     }
@@ -826,6 +833,7 @@ void ProcessTaskbarDlls(BOOL* bInOutOk, BOOL bInstall, BOOL bExtractMode, HINSTA
 {
     LPCWSTR pwszTaskbarDllName = bExtractMode ? NULL : PickTaskbarDll();
     if (*bInOutOk) *bInOutOk = InstallResource(bInstall && (bExtractMode || pwszTaskbarDllName && !wcscmp(pwszTaskbarDllName, L"ep_taskbar.0.dll")), hInstance, zipFile, "ep_taskbar.0.dll", wszPath, L"ep_taskbar.0.dll");
+    if (*bInOutOk) *bInOutOk = InstallResource(bInstall && (bExtractMode || pwszTaskbarDllName && !wcscmp(pwszTaskbarDllName, L"ep_taskbar.1.dll")), hInstance, zipFile, "ep_taskbar.1.dll", wszPath, L"ep_taskbar.1.dll");
     if (*bInOutOk) *bInOutOk = InstallResource(bInstall && (bExtractMode || pwszTaskbarDllName && !wcscmp(pwszTaskbarDllName, L"ep_taskbar.2.dll")), hInstance, zipFile, "ep_taskbar.2.dll", wszPath, L"ep_taskbar.2.dll");
     if (*bInOutOk) *bInOutOk = InstallResource(bInstall && (bExtractMode || pwszTaskbarDllName && !wcscmp(pwszTaskbarDllName, L"ep_taskbar.3.dll")), hInstance, zipFile, "ep_taskbar.3.dll", wszPath, L"ep_taskbar.3.dll");
     if (*bInOutOk) *bInOutOk = InstallResource(bInstall && (bExtractMode || pwszTaskbarDllName && !wcscmp(pwszTaskbarDllName, L"ep_taskbar.4.dll")), hInstance, zipFile, "ep_taskbar.4.dll", wszPath, L"ep_taskbar.4.dll");
@@ -1043,9 +1051,12 @@ int WINAPI wWinMain(
     SHGetFolderPathW(NULL, SPECIAL_FOLDER, NULL, SHGFP_TYPE_CURRENT, wszPath);
     wcscat_s(wszPath, MAX_PATH, _T(APP_RELATIVE_PATH));
     bOk = CreateDirectoryW(wszPath, NULL);
-    if (bOk || (!bOk && GetLastError() == ERROR_ALREADY_EXISTS))
+    if (!bOk && GetLastError() == ERROR_ALREADY_EXISTS)
     {
         bOk = TRUE;
+    }
+    if (bOk)
+    {
         HANDLE userToken = INVALID_HANDLE_VALUE;
 
         HWND hShellTrayWnd = FindWindowW(L"Shell_TrayWnd", NULL);
@@ -1247,8 +1258,8 @@ int WINAPI wWinMain(
         // C:\Program Files\ExplorerPatcher
         SHGetFolderPathW(NULL, SPECIAL_FOLDER, NULL, SHGFP_TYPE_CURRENT, wszPath);
         wcscat_s(wszPath, MAX_PATH, _T(APP_RELATIVE_PATH));
-        if (bOk && bInstall) bOk = InstallResource(bInstall, hInstance, NULL, NULL, wszPath, _T(SETUP_UTILITY_NAME));
-        if (bOk)
+        if (CHECK_OK(bOk) && bInstall) bOk = InstallResource(bInstall, hInstance, NULL, NULL, wszPath, _T(SETUP_UTILITY_NAME));
+        if (CHECK_OK(bOk))
         {
             if (!bInstall)
             {
@@ -1309,19 +1320,19 @@ int WINAPI wWinMain(
                 }
             }
         }
-        if (bOk) bOk = InstallResource(bInstall, hInstance, zipFile, PRODUCT_NAME ".IA-32.dll", wszPath, _T(PRODUCT_NAME) L".IA-32.dll");
+        if (CHECK_OK(bOk)) bOk = InstallResource(bInstall, hInstance, zipFile, PRODUCT_NAME ".IA-32.dll", wszPath, _T(PRODUCT_NAME) L".IA-32.dll");
 #if defined(_M_X64)
-        if (bOk) bOk = InstallResource(bInstall, hInstance, zipFile, PRODUCT_NAME ".amd64.dll", wszPath, _T(PRODUCT_NAME) L".amd64.dll");
+        if (CHECK_OK(bOk)) bOk = InstallResource(bInstall, hInstance, zipFile, PRODUCT_NAME ".amd64.dll", wszPath, _T(PRODUCT_NAME) L".amd64.dll");
 #elif defined(_M_ARM64)
-        if (bOk) bOk = InstallResource(bInstall, hInstance, zipFile, PRODUCT_NAME ".arm64.dll", wszPath, _T(PRODUCT_NAME) L".arm64.dll");
+        if (CHECK_OK(bOk)) bOk = InstallResource(bInstall, hInstance, zipFile, PRODUCT_NAME ".arm64.dll", wszPath, _T(PRODUCT_NAME) L".arm64.dll");
 #endif
-        if (bOk) bOk = InstallResource(bInstall, hInstance, zipFile, "ep_gui.dll", wszPath, L"ep_gui.dll");
-        if (bOk) bOk = InstallResource(bInstall, hInstance, zipFile, "ep_dwm.exe", wszPath, L"ep_dwm.exe");
+        if (CHECK_OK(bOk)) bOk = InstallResource(bInstall, hInstance, zipFile, "ep_gui.dll", wszPath, L"ep_gui.dll");
+        if (CHECK_OK(bOk)) bOk = InstallResource(bInstall, hInstance, zipFile, "ep_dwm.exe", wszPath, L"ep_dwm.exe");
         if (bInstall)
         {
-            if (bOk) bOk = InstallResource(bInstall, hInstance, zipFile, "ep_weather_host.dll", wszPath, L"ep_weather_host.dll");
-            if (bOk) bOk = InstallResource(bInstall, hInstance, zipFile, "ep_weather_host_stub.dll", wszPath, L"ep_weather_host_stub.dll");
-            if (bOk) bOk = InstallResource(bInstall, hInstance, zipFile, "WebView2Loader.dll", wszPath, L"WebView2Loader.dll");
+            if (CHECK_OK(bOk)) bOk = InstallResource(bInstall, hInstance, zipFile, "ep_weather_host.dll", wszPath, L"ep_weather_host.dll");
+            if (CHECK_OK(bOk)) bOk = InstallResource(bInstall, hInstance, zipFile, "ep_weather_host_stub.dll", wszPath, L"ep_weather_host_stub.dll");
+            if (CHECK_OK(bOk)) bOk = InstallResource(bInstall, hInstance, zipFile, "WebView2Loader.dll", wszPath, L"WebView2Loader.dll");
         }
         ProcessTaskbarDlls(&bOk, bInstall, FALSE, hInstance, zipFile, wszPath);
         const WCHAR* possibleDirs[] =
@@ -1332,7 +1343,7 @@ int WINAPI wWinMain(
             L"pt-PT", L"ro-RO", L"ru-RU", L"sk-SK", L"sl-SI", L"sr-Latn-RS", L"sv-SE", L"th-TH", L"tr-TR", L"uk-UA",
             L"vi-VN", L"zh-CN", L"zh-TW", L"pris", L"StartUI",
         };
-        for (size_t i = 0; bOk && i < ARRAYSIZE(possibleDirs); i++)
+        for (size_t i = 0; CHECK_OK(bOk) && i < ARRAYSIZE(possibleDirs); i++)
         {
             WCHAR wszDirectoryPath[MAX_PATH];
             wcscpy_s(wszDirectoryPath, MAX_PATH, wszPath);
@@ -1351,17 +1362,17 @@ int WINAPI wWinMain(
             const WCHAR* languages = GetSystemLanguages();
             if (bNoPniduiInThisBuild)
             {
-                if (bOk) bOk = ExtractDirectory(zipFile, "pnidui/", wszPath, languages, LCT_MUI);
+                if (CHECK_OK(bOk)) bOk = ExtractDirectory(zipFile, "pnidui/", wszPath, languages, LCT_MUI);
             }
             if (bUnpackCustomStartUI)
             {
-                if (bOk) bOk = ExtractDirectory(zipFile, "Windows.UI.ShellCommon/", wszPath, languages, LCT_PRI);
+                if (CHECK_OK(bOk)) bOk = ExtractDirectory(zipFile, "Windows.UI.ShellCommon/", wszPath, languages, LCT_PRI);
             }
         }
 
-        if (bOk) bOk = InstallResource(bInstall && bNoPniduiInThisBuild, hInstance, zipFile, "pnidui/pnidui.dll", wszPath, L"pnidui.dll");
+        if (CHECK_OK(bOk)) bOk = InstallResource(bInstall && bNoPniduiInThisBuild, hInstance, zipFile, "pnidui/pnidui.dll", wszPath, L"pnidui.dll");
 
-        if (bOk && bNoPniduiInThisBuild)
+        if (CHECK_OK(bOk) && bNoPniduiInThisBuild)
         {
             // Windows Registry Editor Version 5.00
             //
@@ -1401,11 +1412,11 @@ int WINAPI wWinMain(
 
         // C:\Windows
         // + dxgi.dll
-        if (bOk) GetWindowsDirectoryW(wszPath, MAX_PATH);
+        if (CHECK_OK(bOk)) GetWindowsDirectoryW(wszPath, MAX_PATH);
 #if defined(_M_X64)
-        if (bOk) bOk = InstallResource(bInstall, hInstance, zipFile, PRODUCT_NAME ".amd64.dll", wszPath, L"dxgi.dll");
+        if (CHECK_OK(bOk)) bOk = InstallResource(bInstall, hInstance, zipFile, PRODUCT_NAME ".amd64.dll", wszPath, L"dxgi.dll");
 #elif defined(_M_ARM64)
-        if (bOk) bOk = InstallResource(bInstall, hInstance, zipFile, PRODUCT_NAME ".arm64.dll", wszPath, L"dxgi.dll");
+        if (CHECK_OK(bOk)) bOk = InstallResource(bInstall, hInstance, zipFile, PRODUCT_NAME ".arm64.dll", wszPath, L"dxgi.dll");
 #endif
 
         // --------------------------------------------------------------------------------
@@ -1421,79 +1432,85 @@ int WINAPI wWinMain(
         // - Windows.UI.ShellCommon.pri
         // - en-US\StartTileDataLegacy.dll.mui
         // - pris2\Windows.UI.ShellCommon.en-US.pri
-        if (bOk) GetWindowsDirectoryW(wszPath, MAX_PATH);
-        if (bOk) wcscat_s(wszPath, MAX_PATH, L"\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy");
+        if (CHECK_OK(bOk)) GetWindowsDirectoryW(wszPath, MAX_PATH);
+        if (CHECK_OK(bOk)) wcscat_s(wszPath, MAX_PATH, L"\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy");
+        if (CHECK_OK(bOk) && FileExistsW(wszPath))
+        {
 #if defined(_M_X64)
-        if (bOk) bOk = InstallResource(bInstall, hInstance, zipFile, PRODUCT_NAME ".amd64.dll", wszPath, L"dxgi.dll");
+            if (CHECK_OK(bOk)) bOk = InstallResource(bInstall, hInstance, zipFile, PRODUCT_NAME ".amd64.dll", wszPath, L"dxgi.dll");
 #elif defined(_M_ARM64)
-        if (bOk) bOk = InstallResource(bInstall, hInstance, zipFile, PRODUCT_NAME ".arm64.dll", wszPath, L"dxgi.dll");
+            if (CHECK_OK(bOk)) bOk = InstallResource(bInstall, hInstance, zipFile, PRODUCT_NAME ".arm64.dll", wszPath, L"dxgi.dll");
 #endif
-        if (bOk) bOk = InstallResource(bInstall && IsWindows11(), hInstance, zipFile, "ep_startmenu.dll", wszPath, L"wincorlib.dll");
-        if (bOk) bOk = DeleteResource(wszPath, L"wincorlib_orig.dll");
-        if (bOk && IsWindows11() && bInstall)
-        {
-            // Symlink wincorlib_orig.dll to wincorlib.dll in System32
-            WCHAR wszOrigPath[MAX_PATH];
-            GetSystemDirectoryW(wszOrigPath, MAX_PATH);
-            wcscat_s(wszOrigPath, MAX_PATH, L"\\wincorlib.dll");
-
-            WCHAR wszSymLinkPath[MAX_PATH];
-            wcscpy_s(wszSymLinkPath, MAX_PATH, wszPath);
-            wcscat_s(wszSymLinkPath, MAX_PATH, L"\\wincorlib_orig.dll");
-            bOk = CreateSymbolicLinkW(wszSymLinkPath, wszOrigPath, 0);
-        }
-
-        if (bOk) bOk = InstallResource(bInstall && bUnpackCustomStartUI, hInstance, zipFile, "JumpViewUI/JumpViewUI.dll", wszPath, L"JumpViewUI_.dll");
-        if (bOk) bOk = InstallResource(bInstall && bUnpackCustomStartUI, hInstance, zipFile, "StartUI/StartUI.dll", wszPath, L"StartUI_.dll");
-
-        // Delete remnants from earlier versions
-        if (bOk) bOk = DeleteResource(wszPath, L"AppResolverLegacy.dll");
-        if (bOk) bOk = DeleteResource(wszPath, L"StartTileDataLegacy.dll");
-        if (bOk && IsWindows11()) bOk = DeleteResource(wszPath, L"Windows.UI.ShellCommon.pri");
-
-        // .\en-US
-        if (bOk && IsWindows11())
-        {
-            WCHAR wszSubPath[MAX_PATH];
-            wcscpy_s(wszSubPath, MAX_PATH, wszPath);
-            wcscat_s(wszSubPath, MAX_PATH, L"\\en-US");
-            if (FileExistsW(wszSubPath))
+            if (CHECK_OK(bOk)) bOk = InstallResource(bInstall && IsWindows11(), hInstance, zipFile, "ep_startmenu.dll", wszPath, L"wincorlib.dll");
+            if (CHECK_OK(bOk)) bOk = DeleteResource(wszPath, L"wincorlib_orig.dll");
+            if (CHECK_OK(bOk) && IsWindows11() && bInstall)
             {
-                bOk = DeleteResource(wszSubPath, L"StartTileDataLegacy.dll.mui");
-                if (bOk) bOk = RemoveDirectoryW(wszSubPath);
-            }
-        }
+                // Symlink wincorlib_orig.dll to wincorlib.dll in System32
+                WCHAR wszOrigPath[MAX_PATH];
+                GetSystemDirectoryW(wszOrigPath, MAX_PATH);
+                wcscat_s(wszOrigPath, MAX_PATH, L"\\wincorlib.dll");
 
-        // .\pris2
-        if (bOk && IsWindows11())
-        {
-            WCHAR wszSubPath[MAX_PATH];
-            wcscpy_s(wszSubPath, MAX_PATH, wszPath);
-            wcscat_s(wszSubPath, MAX_PATH, L"\\pris2");
-            if (FileExistsW(wszSubPath))
+                WCHAR wszSymLinkPath[MAX_PATH];
+                wcscpy_s(wszSymLinkPath, MAX_PATH, wszPath);
+                wcscat_s(wszSymLinkPath, MAX_PATH, L"\\wincorlib_orig.dll");
+                bOk = CreateSymbolicLinkW(wszSymLinkPath, wszOrigPath, 0);
+            }
+
+            if (CHECK_OK(bOk)) bOk = InstallResource(bInstall && bUnpackCustomStartUI, hInstance, zipFile, "JumpViewUI/JumpViewUI.dll", wszPath, L"JumpViewUI_.dll");
+            if (CHECK_OK(bOk)) bOk = InstallResource(bInstall && bUnpackCustomStartUI, hInstance, zipFile, "StartUI/StartUI.dll", wszPath, L"StartUI_.dll");
+
+            // Delete remnants from earlier versions
+            if (CHECK_OK(bOk)) bOk = DeleteResource(wszPath, L"AppResolverLegacy.dll");
+            if (CHECK_OK(bOk)) bOk = DeleteResource(wszPath, L"StartTileDataLegacy.dll");
+            if (CHECK_OK(bOk) && IsWindows11()) bOk = DeleteResource(wszPath, L"Windows.UI.ShellCommon.pri");
+
+            // .\en-US
+            if (CHECK_OK(bOk) && IsWindows11())
             {
-                bOk = DeleteResource(wszSubPath, L"Windows.UI.ShellCommon.en-US.pri");
-                if (bOk) bOk = RemoveDirectoryW(wszSubPath);
+                WCHAR wszSubPath[MAX_PATH];
+                wcscpy_s(wszSubPath, MAX_PATH, wszPath);
+                wcscat_s(wszSubPath, MAX_PATH, L"\\en-US");
+                if (FileExistsW(wszSubPath))
+                {
+                    bOk = DeleteResource(wszSubPath, L"StartTileDataLegacy.dll.mui");
+                    if (CHECK_OK(bOk)) bOk = RemoveDirectoryW(wszSubPath);
+                }
             }
-        }
 
-        // End remnant deletion
+            // .\pris2
+            if (CHECK_OK(bOk) && IsWindows11())
+            {
+                WCHAR wszSubPath[MAX_PATH];
+                wcscpy_s(wszSubPath, MAX_PATH, wszPath);
+                wcscat_s(wszSubPath, MAX_PATH, L"\\pris2");
+                if (FileExistsW(wszSubPath))
+                {
+                    bOk = DeleteResource(wszSubPath, L"Windows.UI.ShellCommon.en-US.pri");
+                    if (CHECK_OK(bOk)) bOk = RemoveDirectoryW(wszSubPath);
+                }
+            }
+
+            // End remnant deletion
+        }
 
         // --------------------------------------------------------------------------------
 
         // C:\Windows\SystemApps\ShellExperienceHost_cw5n1h2txyewy
         // + dxgi.dll
-        if (bOk) GetWindowsDirectoryW(wszPath, MAX_PATH);
-        if (bOk) wcscat_s(wszPath, MAX_PATH, L"\\SystemApps\\ShellExperienceHost_cw5n1h2txyewy");
+        if (CHECK_OK(bOk)) GetWindowsDirectoryW(wszPath, MAX_PATH);
+        if (CHECK_OK(bOk)) wcscat_s(wszPath, MAX_PATH, L"\\SystemApps\\ShellExperienceHost_cw5n1h2txyewy");
+        if (CHECK_OK(bOk) && FileExistsW(wszPath))
+        {
 #if defined(_M_X64)
-        if (bOk && IsWindows11()) bOk = InstallResource(bInstall, hInstance, zipFile, PRODUCT_NAME ".amd64.dll", wszPath, L"dxgi.dll");
+            if (CHECK_OK(bOk) && IsWindows11()) bOk = InstallResource(bInstall, hInstance, zipFile, PRODUCT_NAME ".amd64.dll", wszPath, L"dxgi.dll");
 #elif defined(_M_ARM64)
-        if (bOk && IsWindows11()) bOk = InstallResource(bInstall, hInstance, zipFile, PRODUCT_NAME ".arm64.dll", wszPath, L"dxgi.dll");
+            if (CHECK_OK(bOk) && IsWindows11()) bOk = InstallResource(bInstall, hInstance, zipFile, PRODUCT_NAME ".arm64.dll", wszPath, L"dxgi.dll");
 #endif
+        }
 
         // --------------------------------------------------------------------------------
 
-        if (bOk)
+        if (CHECK_OK(bOk))
         {
             GetSystemDirectoryW(wszPath, MAX_PATH);
             WCHAR* pArgs = NULL;
@@ -1507,7 +1524,7 @@ int WINAPI wWinMain(
             bOk = SetupShortcut(bInstall, wszPath, pArgs + 1);
             ZeroMemory(wszPath, MAX_PATH);
         }
-        if (bOk)
+        if (CHECK_OK(bOk))
         {
             wszPath[0] = L'"';
             SHGetFolderPathW(NULL, SPECIAL_FOLDER, NULL, SHGFP_TYPE_CURRENT, wszPath + 1);
@@ -1522,7 +1539,7 @@ int WINAPI wWinMain(
             GetExitCodeProcess(ShExecInfo.hProcess, &dwExitCode);
             CloseHandle(ShExecInfo.hProcess);
         }
-        if (bOk)
+        if (CHECK_OK(bOk))
         {
             WCHAR wszArgs[MAX_PATH];
             wszArgs[0] = L'/';
@@ -1563,7 +1580,7 @@ int WINAPI wWinMain(
                 CloseHandle(sei.hProcess);
             }
         }
-        if (bOk)
+        if (CHECK_OK(bOk))
         {
             WCHAR wszArgs[MAX_PATH];
             wszArgs[0] = L'/';
@@ -1604,7 +1621,7 @@ int WINAPI wWinMain(
                 CloseHandle(sei.hProcess);
             }
         }
-        if (bOk && bInstall)
+        if (CHECK_OK(bOk) && bInstall)
         {
             HKEY hKey = NULL;
             RegCreateKeyExW(HKEY_CURRENT_USER, L"SOFTWARE\\Policies\\Microsoft\\Windows\\Explorer", 0, NULL, REG_OPTION_NON_VOLATILE, KEY_READ, NULL, &hKey, NULL);
@@ -1622,12 +1639,12 @@ int WINAPI wWinMain(
         {
             SHGetFolderPathW(NULL, SPECIAL_FOLDER, NULL, SHGFP_TYPE_CURRENT, wszPath);
             wcscat_s(wszPath, MAX_PATH, _T(APP_RELATIVE_PATH));
-            if (bOk) bOk = DeleteResource(wszPath, L"ep_weather_host.dll");
-            if (bOk) bOk = DeleteResource(wszPath, L"ep_weather_host_stub.dll");
-            if (bOk) bOk = DeleteResource(wszPath, L"WebView2Loader.dll");
+            if (CHECK_OK(bOk)) bOk = DeleteResource(wszPath, L"ep_weather_host.dll");
+            if (CHECK_OK(bOk)) bOk = DeleteResource(wszPath, L"ep_weather_host_stub.dll");
+            if (CHECK_OK(bOk)) bOk = DeleteResource(wszPath, L"WebView2Loader.dll");
         }
 
-        if (bOk)
+        if (CHECK_OK(bOk))
         {
             if (!bInstall)
             {
@@ -1635,7 +1652,7 @@ int WINAPI wWinMain(
                 wcscat_s(wszPath, MAX_PATH, _T(APP_RELATIVE_PATH));
                 bOk = RemoveDirectoryRecursive(wszPath);
             }
-            if (bOk && (!bInstall || g_cleanupFileCounter > 1))
+            if (CHECK_OK(bOk) && (!bInstall || g_cleanupFileCounter > 1))
             {
                 WCHAR wszDirToDelete[MAX_PATH];
                 SHGetFolderPathW(NULL, CSIDL_APPDATA, NULL, SHGFP_TYPE_CURRENT, wszDirToDelete);
@@ -1719,6 +1736,9 @@ int WINAPI wWinMain(
             wchar_t mbText[1024];
             mbText[0] = 0;
             LoadStringW(hInstance, IDS_SETUP_FAILED, mbText, ARRAYSIZE(mbText));
+            wchar_t szDblNewlineAndLineNumber[32];
+            swprintf_s(szDblNewlineAndLineNumber, ARRAYSIZE(szDblNewlineAndLineNumber), L"\n\n%d", g_uFailureLine);
+            wcscat_s(mbText, ARRAYSIZE(mbText), szDblNewlineAndLineNumber);
             MessageBoxW(NULL, mbText, _T(PRODUCT_NAME), MB_ICONERROR | MB_OK | MB_DEFBUTTON1);
         }
         if (bOk && bIsUndockingDisabled)

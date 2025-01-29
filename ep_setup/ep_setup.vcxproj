@@ -235,26 +235,6 @@
       <PreprocessorDefinitions>WITH_ENCRYPTION;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
   </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="Exists('..\build\$(Configuration)\$(Platform)\ep_taskbar.2.dll')">
-    <ResourceCompile>
-      <PreprocessorDefinitions>EP_TASKBAR_2_EXISTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-    </ResourceCompile>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="Exists('..\build\$(Configuration)\$(Platform)\ep_taskbar.3.dll')">
-    <ResourceCompile>
-      <PreprocessorDefinitions>EP_TASKBAR_3_EXISTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-    </ResourceCompile>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="Exists('..\build\$(Configuration)\$(Platform)\ep_taskbar.4.dll')">
-    <ResourceCompile>
-      <PreprocessorDefinitions>EP_TASKBAR_4_EXISTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-    </ResourceCompile>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="Exists('..\build\$(Configuration)\$(Platform)\ep_taskbar.5.dll')">
-    <ResourceCompile>
-      <PreprocessorDefinitions>EP_TASKBAR_5_EXISTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-    </ResourceCompile>
-  </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Platform)'=='x64'">
     <ResourceCompile>
       <PreprocessorDefinitions>PLATFORM_AMD64;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -300,6 +280,8 @@
     <PackFile Include="..\build\$(Configuration)\$(Platform)\ep_dwm.exe" Condition="Exists('$(SolutionDir)\build\$(Configuration)\$(Platform)\ep_dwm.exe')" />
     <PackFile Include="..\build\$(Configuration)\$(Platform)\ep_gui.dll" Condition="Exists('$(SolutionDir)\build\$(Configuration)\$(Platform)\ep_gui.dll')" />
     <PackFile Include="..\build\$(Configuration)\$(Platform)\ep_startmenu.dll" Condition="Exists('$(SolutionDir)\build\$(Configuration)\$(Platform)\ep_startmenu.dll')" />
+    <PackFile Include="..\build\$(Configuration)\$(Platform)\ep_taskbar.0.dll" Condition="Exists('$(SolutionDir)\build\$(Configuration)\$(Platform)\ep_taskbar.0.dll')" />
+    <PackFile Include="..\build\$(Configuration)\$(Platform)\ep_taskbar.1.dll" Condition="Exists('$(SolutionDir)\build\$(Configuration)\$(Platform)\ep_taskbar.1.dll')" />
     <PackFile Include="..\build\$(Configuration)\$(Platform)\ep_taskbar.2.dll" Condition="Exists('$(SolutionDir)\build\$(Configuration)\$(Platform)\ep_taskbar.2.dll')" />
     <PackFile Include="..\build\$(Configuration)\$(Platform)\ep_taskbar.3.dll" Condition="Exists('$(SolutionDir)\build\$(Configuration)\$(Platform)\ep_taskbar.3.dll')" />
     <PackFile Include="..\build\$(Configuration)\$(Platform)\ep_taskbar.4.dll" Condition="Exists('$(SolutionDir)\build\$(Configuration)\$(Platform)\ep_taskbar.4.dll')" />
