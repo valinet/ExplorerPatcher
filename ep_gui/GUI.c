@@ -1239,7 +1239,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                     ZeroMemory(section, MAX_LINE_LENGTH * sizeof(wchar_t));
                     MultiByteToWideChar(
                         CP_UTF8,
-                        MB_PRECOMPOSED,
+                        0,
                         line[1] == '-' ? line + 2 : line + 1,
                         numChRd - (line[1] == '-' ? 5 : 4),
                         section,
@@ -1279,7 +1279,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                     ZeroMemory(text, (MAX_LINE_LENGTH + 3) * sizeof(wchar_t));
                     MultiByteToWideChar(
                         CP_UTF8,
-                        MB_PRECOMPOSED,
+                        0,
                         line + 3,
                         numChRd - 3,
                         text,
@@ -1362,7 +1362,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                     ZeroMemory(text, (MAX_LINE_LENGTH + 3) * sizeof(wchar_t));
                     MultiByteToWideChar(
                         CP_UTF8,
-                        MB_PRECOMPOSED,
+                        0,
                         line + 3,
                         numChRd - 3,
                         text,
@@ -1912,7 +1912,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                                             ZeroMemory(wszName, MAX_PATH * sizeof(wchar_t));
                                                             MultiByteToWideChar(
                                                                 CP_UTF8,
-                                                                MB_PRECOMPOSED,
+                                                                0,
                                                                 line2 + 2,
                                                                 numChRd2 - 2,
                                                                 wszName,
@@ -2190,7 +2190,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                                         ZeroMemory(wszName, MAX_PATH * sizeof(wchar_t));
                                                         MultiByteToWideChar(
                                                             CP_UTF8,
-                                                            MB_PRECOMPOSED,
+                                                            0,
                                                             line2 + 2,
                                                             numChRd2 - 2,
                                                             wszName,
@@ -2339,7 +2339,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                     text[2] = L' ';
                     MultiByteToWideChar(
                         CP_UTF8,
-                        MB_PRECOMPOSED,
+                        0,
                         !strncmp(line, ";c ", 3) || !strncmp(line, ";z ", 3) ? strchr(line + 3, ' ') + 1 : line + 3,
                         numChRd - 3,
                         text + 3,
@@ -2399,7 +2399,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                     wchar_t* miText = malloc(MAX_PATH * sizeof(wchar_t));
                                     MultiByteToWideChar(
                                         CP_UTF8,
-                                        MB_PRECOMPOSED,
+                                        0,
                                         ln,
                                         MAX_PATH,
                                         miText,
@@ -2442,7 +2442,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                             if (p) *p = 0;
                             MultiByteToWideChar(
                                 CP_UTF8,
-                                MB_PRECOMPOSED,
+                                0,
                                 l + 1,
                                 numChRd - 1,
                                 wszPrompt,
@@ -2457,7 +2457,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                             if (p) *p = 0;
                             MultiByteToWideChar(
                                 CP_UTF8,
-                                MB_PRECOMPOSED,
+                                0,
                                 l + 1,
                                 numChRd - 1,
                                 wszFallbackDefault,
@@ -2486,7 +2486,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                         ZeroMemory(name, MAX_LINE_LENGTH * sizeof(wchar_t));
                         MultiByteToWideChar(
                             CP_UTF8,
-                            MB_PRECOMPOSED,
+                            0,
                             line[0] == '"' ? line + 1 : line,
                             numChRd,
                             name,

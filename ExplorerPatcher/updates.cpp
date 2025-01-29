@@ -271,7 +271,7 @@ BOOL IsUpdateAvailableHelper(
             {
                 MultiByteToWideChar(
                     CP_UTF8,
-                    MB_PRECOMPOSED,
+                    0,
                     jsonStr.c_str(),
                     -1,
                     pszJsonStr,
