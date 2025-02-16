@@ -2430,12 +2430,28 @@ static void HookImmersiveMenuFunctions(
     MODULEINFO mi;
     GetModuleInformation(GetCurrentProcess(), module, &mi, sizeof(MODULEINFO));
 
+#if defined(_M_X64)
     // 40 55 53 56 57 41 54 41 55 41 56 41 57 48 8D AC 24 ? ? ? ? 48 81 EC ? ? ? ? 48 8B 05 ? ? ? ? 48 33 C4 48 89 85 ? ? ? ? 4C 8B B5 ? ? ? ? 41 8B C1
-    PBYTE match = FindPattern(
+    PBYTE match = (PBYTE)FindPattern(
         mi.lpBaseOfDll, mi.SizeOfImage,
         "\x40\x55\x53\x56\x57\x41\x54\x41\x55\x41\x56\x41\x57\x48\x8D\xAC\x24\x00\x00\x00\x00\x48\x81\xEC\x00\x00\x00\x00\x48\x8B\x05\x00\x00\x00\x00\x48\x33\xC4\x48\x89\x85\x00\x00\x00\x00\x4C\x8B\xB5\x00\x00\x00\x00\x41\x8B\xC1",
         "xxxxxxxxxxxxxxxxx????xxx????xxx????xxxxxx????xxx????xxx"
     );
+#elif defined(_M_ARM64)
+    // 40 F9 43 03 1C 32 E4 03 15 AA ?? ?? FF 97
+    //                               ^^^^^^^^^^^
+    // Ref: ImmersiveContextMenuHelper::ApplyOwnerDrawToMenu()
+    PBYTE match = (PBYTE)FindPattern(
+        mi.lpBaseOfDll, mi.SizeOfImage,
+        "\x40\xF9\x43\x03\x1C\x32\xE4\x03\x15\xAA\x00\x00\xFF\x97",
+        "xxxxxxxxxx??xx"
+    );
+    if (match)
+    {
+        match += 10;
+        match = (PBYTE)ARM64_FollowBL((DWORD*)match);
+    }
+#endif
     if (match)
     {
         *applyFunc = match;
