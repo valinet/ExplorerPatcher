@@ -626,15 +626,7 @@ LSTATUS RegisterDWMService(DWORD dwDesiredState, DWORD dwOverride)
     WCHAR wszRundll32[MAX_PATH];
     SHGetFolderPathW(NULL, SPECIAL_FOLDER, NULL, SHGFP_TYPE_CURRENT, wszRundll32);
     wcscat_s(wszRundll32, MAX_PATH, _T(APP_RELATIVE_PATH));
-    wcscat_s(wszRundll32, MAX_PATH, L"\\ep_dwm.exe");
-
-    WCHAR wszEP[MAX_PATH];
-    GetWindowsDirectoryW(wszEP, MAX_PATH);
-    wcscat_s(wszEP, MAX_PATH, L"\\dxgi.dll");
-
-    WCHAR wszTaskkill[MAX_PATH];
-    GetSystemDirectoryW(wszTaskkill, MAX_PATH);
-    wcscat_s(wszTaskkill, MAX_PATH, L"\\taskkill.exe");
+    wcscat_s(wszRundll32, MAX_PATH, L"\\ep_dwm_svc.exe");
 
     WCHAR wszArgumentsRegister[MAX_PATH * 10];
     swprintf_s(
@@ -675,34 +667,20 @@ LSTATUS RegisterDWMService(DWORD dwDesiredState, DWORD dwOverride)
         HANDLE h_exists = CreateEventW(NULL, FALSE, FALSE, _T(EP_DWM_EVENTNAME));
         if (h_exists)
         {
-            if (GetLastError() == ERROR_ALREADY_EXISTS)
-            {
-                bAreRoundedCornersDisabled = TRUE;
-            }
-            else
-            {
-                bAreRoundedCornersDisabled = FALSE;
-            }
+            bAreRoundedCornersDisabled = GetLastError() == ERROR_ALREADY_EXISTS;
             CloseHandle(h_exists);
         }
         else
         {
-            if (GetLastError() == ERROR_ACCESS_DENIED)
-            {
-                bAreRoundedCornersDisabled = TRUE;
-            }
-            else
-            {
-                bAreRoundedCornersDisabled = FALSE;
-            }
+            bAreRoundedCornersDisabled = GetLastError() == ERROR_ACCESS_DENIED;
         }
         if ((bAreRoundedCornersDisabled && dwDesiredState) || (!bAreRoundedCornersDisabled && !dwDesiredState))
         {
             return FALSE;
         }
     }
-    SHELLEXECUTEINFO ShExecInfo = { 0 };
-    ShExecInfo.cbSize = sizeof(SHELLEXECUTEINFO);
+    SHELLEXECUTEINFOW ShExecInfo = { 0 };
+    ShExecInfo.cbSize = sizeof(ShExecInfo);
     ShExecInfo.fMask = SEE_MASK_NOCLOSEPROCESS;
     ShExecInfo.hwnd = NULL;
     ShExecInfo.lpVerb = L"runas";

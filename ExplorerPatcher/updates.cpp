@@ -752,8 +752,8 @@ BOOL IsUpdateAvailableHelper(
                                 }
                             }
 
-                            SHELLEXECUTEINFO ShExecInfo = { 0 };
-                            ShExecInfo.cbSize = sizeof(SHELLEXECUTEINFO);
+                            SHELLEXECUTEINFOW ShExecInfo = { 0 };
+                            ShExecInfo.cbSize = sizeof(ShExecInfo);
                             ShExecInfo.fMask = SEE_MASK_NOCLOSEPROCESS;
                             ShExecInfo.hwnd = nullptr;
                             ShExecInfo.lpVerb = bIsUsingEpMake ? L"open" : L"runas";

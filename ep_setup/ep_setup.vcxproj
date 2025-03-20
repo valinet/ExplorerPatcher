@@ -277,7 +277,7 @@
     <PackFile Include="..\build\$(Configuration)\x64\ExplorerPatcher.amd64.dll" Condition="Exists('$(SolutionDir)\build\$(Configuration)\x64\ExplorerPatcher.amd64.dll')" />
     <PackFile Include="..\build\$(Configuration)\ARM64\ExplorerPatcher.arm64.dll" Condition="Exists('$(SolutionDir)\build\$(Configuration)\ARM64\ExplorerPatcher.arm64.dll')" />
     <PackFile Include="..\build\$(Configuration)\$(Platform)\WebView2Loader.dll" Condition="Exists('$(SolutionDir)\build\$(Configuration)\$(Platform)\WebView2Loader.dll')" />
-    <PackFile Include="..\build\$(Configuration)\$(Platform)\ep_dwm.exe" Condition="Exists('$(SolutionDir)\build\$(Configuration)\$(Platform)\ep_dwm.exe')" />
+    <PackFile Include="..\build\$(Configuration)\$(Platform)\ep_dwm_svc.exe" Condition="Exists('$(SolutionDir)\build\$(Configuration)\$(Platform)\ep_dwm_svc.exe')" />
     <PackFile Include="..\build\$(Configuration)\$(Platform)\ep_gui.dll" Condition="Exists('$(SolutionDir)\build\$(Configuration)\$(Platform)\ep_gui.dll')" />
     <PackFile Include="..\build\$(Configuration)\$(Platform)\ep_startmenu.dll" Condition="Exists('$(SolutionDir)\build\$(Configuration)\$(Platform)\ep_startmenu.dll')" />
     <PackFile Include="..\build\$(Configuration)\$(Platform)\ep_taskbar.0.dll" Condition="Exists('$(SolutionDir)\build\$(Configuration)\$(Platform)\ep_taskbar.0.dll')" />
@@ -290,7 +290,7 @@
     <PackFile Include="..\build\$(Configuration)\$(Platform)\ep_weather_host_stub.dll" Condition="Exists('$(SolutionDir)\build\$(Configuration)\$(Platform)\ep_weather_host_stub.dll')" />
   </ItemGroup>
   <Target Name="GetCommitHash" AfterTargets="PrepareForBuild">
-    <Exec Command="git rev-parse --short HEAD" ConsoleToMSBuild="true" Condition="'$(GitCommitHashShort)' == '0000000'">
+    <Exec Command="git rev-parse --short HEAD" Condition="'$(GitCommitHashShort)' == '0000000'">
       <Output TaskParameter="ConsoleOutput" PropertyName="GitCommitHashShort" />
     </Exec>
     <Message Text="Git commit hash: $(GitCommitHashShort)" />
