@@ -163,17 +163,20 @@ struct TaskbarTheme
     }
 };
 
-struct struct_b
+enum D3D_FEATURE_LEVEL : int;
+
+struct COMPOSITION_CAPABILITY_INFO
 {
-    int a;
-    int b;
-    int c;
-    int d;
+    D3D_FEATURE_LEVEL minSafeFeatureLevel;
+    D3D_FEATURE_LEVEL maxHardwareFeatureLevel;
+    int usingSoftwareDevice;
+    int areEffectsSupported;
+    int boostCompositorClockSupported; // Valid on 11 21H2+
 };
 
-typedef HRESULT (*NtDCompositionGetFrameStatistics_t)(DCOMPOSITION_FRAME_STATISTICS*, struct_b*);
+typedef NTSTATUS (*NtDCompositionGetFrameStatistics_t)(DCOMPOSITION_FRAME_STATISTICS*, COMPOSITION_CAPABILITY_INFO*);
 
-inline HRESULT NtDCompositionGetFrameStatistics(DCOMPOSITION_FRAME_STATISTICS* a, struct_b* b)
+inline NTSTATUS NtDCompositionGetFrameStatistics(DCOMPOSITION_FRAME_STATISTICS* pStatistics, COMPOSITION_CAPABILITY_INFO* pCapabilities)
 {
     static NtDCompositionGetFrameStatistics_t f = nullptr;
     if (!f)
@@ -182,14 +185,14 @@ inline HRESULT NtDCompositionGetFrameStatistics(DCOMPOSITION_FRAME_STATISTICS* a
         if (h)
             f = (NtDCompositionGetFrameStatistics_t)GetProcAddress(h, MAKEINTRESOURCEA(1046));
     }
-    return f ? f(a, b) : E_NOTIMPL;
+    return f ? f(pStatistics, pCapabilities) : (NTSTATUS)0xC0000002L; // STATUS_NOT_IMPLEMENTED
 }
 
 bool ShouldApplyBlur()
 {
-    DCOMPOSITION_FRAME_STATISTICS v7;
-    struct_b v6;
-    return SUCCEEDED(NtDCompositionGetFrameStatistics(&v7, &v6)) && v6.d && !v6.c;
+    DCOMPOSITION_FRAME_STATISTICS statistics;
+    COMPOSITION_CAPABILITY_INFO capabilities;
+    return NtDCompositionGetFrameStatistics(&statistics, &capabilities) >= 0 && capabilities.areEffectsSupported && !capabilities.usingSoftwareDevice;
 }
 
 TaskbarTheme GetTaskbarTheme()
