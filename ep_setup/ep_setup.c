@@ -13,7 +13,7 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #ifdef WITH_ENCRYPTION
 #include "rijndael-alg-fst.c" // Include the C file for __forceinline to work
 #endif
-#pragma comment(lib, "zlibstatic.lib")
+#pragma comment(lib, "zs.lib")
 
 static UINT g_uFailureLine;
 

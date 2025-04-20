@@ -9932,9 +9932,48 @@ const WCHAR* GetTaskbarDllChecked(symbols_addr* symbols_PTRS)
 // - Windows 11: Load our taskbar DLL with LOAD_LIBRARY_AS_DATAFILE for the old context menu
 // - Windows 10: Skip loading
 // - Windows 10 (ExplorerPatcher): Load it fully
+typedef enum _EP_TASKBAR_FEATURES
+{
+    EPTF_None,
+    EPTF_Taskbar = 0x1,
+    EPTF_ClassicContextMenu = 0x2,
+    EPTF_WinBlueLauncher = 0x4,
+
+    EPTF_FullLoad = EPTF_Taskbar | EPTF_WinBlueLauncher
+} EP_TASKBAR_FEATURES;
+
+EP_TASKBAR_FEATURES GetEPTaskbarFeatures()
+{
+    EP_TASKBAR_FEATURES eptf = EPTF_None;
+
+    if (IsWindows11() && bOldTaskbar == 0)
+    {
+        eptf |= EPTF_ClassicContextMenu;
+    }
+    if (bOldTaskbar >= 2)
+    {
+        eptf |= EPTF_Taskbar;
+    }
+
+    BOOL fValue = FALSE;
+    BOOL fUseImmersiveLauncher = SUCCEEDED(SHRegGetBOOLWithREGSAM(HKEY_CURRENT_USER, L"Software\\ExplorerPatcher", L"UseImmersiveLauncher", 0, &fValue)) && fValue;
+    if (fUseImmersiveLauncher)
+    {
+        eptf |= EPTF_WinBlueLauncher;
+    }
+
+    return eptf;
+}
+
 HMODULE PrepareAlternateTaskbarImplementation(symbols_addr* symbols_PTRS, const WCHAR* pszTaskbarDll)
 {
-    if (bOldTaskbar == 1 || !symbols_PTRS || !pszTaskbarDll)
+    if (!symbols_PTRS || !pszTaskbarDll)
+    {
+        return NULL;
+    }
+
+    EP_TASKBAR_FEATURES eptf = GetEPTaskbarFeatures();
+    if (eptf == EPTF_None)
     {
         return NULL;
     }
@@ -9944,7 +9983,8 @@ HMODULE PrepareAlternateTaskbarImplementation(symbols_addr* symbols_PTRS, const 
     SHGetFolderPathW(NULL, SPECIAL_FOLDER, NULL, SHGFP_TYPE_CURRENT, szPath);
     wcscat_s(szPath, MAX_PATH, _T(APP_RELATIVE_PATH) L"\\");
     wcscat_s(szPath, MAX_PATH, pszTaskbarDll);
-    HMODULE hMyTaskbar = bOldTaskbar >= 2 ? LoadLibraryW(szPath) : LoadLibraryExW(szPath, NULL, LOAD_LIBRARY_AS_DATAFILE);
+    BOOL bFullLoad = (eptf & EPTF_FullLoad) != 0;
+    HMODULE hMyTaskbar = bFullLoad ? LoadLibraryW(szPath) : LoadLibraryExW(szPath, NULL, LOAD_LIBRARY_AS_DATAFILE);
     if (!hMyTaskbar)
     {
         wprintf(L"[TB] '%s' not found\n", pszTaskbarDll);
@@ -9952,9 +9992,9 @@ HMODULE PrepareAlternateTaskbarImplementation(symbols_addr* symbols_PTRS, const 
     }
     g_hMyTaskbar = hMyTaskbar;
 
-    if (!bOldTaskbar)
+    if (!bFullLoad)
     {
-        return NULL;
+        return NULL; // Prevent IAT hooks from being carried out
     }
 
     typedef DWORD (*GetVersion_t)();
@@ -9967,24 +10007,44 @@ HMODULE PrepareAlternateTaskbarImplementation(symbols_addr* symbols_PTRS, const 
         return NULL;
     }
 
-    TrayUI_CreateInstance_t pfnMyTrayUICreateInstance = (TrayUI_CreateInstance_t)GetProcAddress(hMyTaskbar, "EP_TrayUI_CreateInstance");
-    if (IsWindows11())
+    if ((eptf & EPTF_Taskbar) != 0)
     {
-        explorer_TrayUI_CreateInstanceFunc = pfnMyTrayUICreateInstance;
+        TrayUI_CreateInstance_t pfnMyTrayUICreateInstance = (TrayUI_CreateInstance_t)GetProcAddress(hMyTaskbar, "EP_TrayUI_CreateInstance");
+        if (pfnMyTrayUICreateInstance)
+        {
+            if (IsWindows11())
+            {
+                explorer_TrayUI_CreateInstanceFunc = pfnMyTrayUICreateInstance;
+            }
+            else if (explorer_TrayUI_CreateInstanceFunc)
+            {
+                funchook_prepare(
+                    funchook,
+                    (void**)&explorer_TrayUI_CreateInstanceFunc,
+                    pfnMyTrayUICreateInstance
+                );
+            }
+            else
+            {
+                printf("[TB] Failed to hook TrayUI_CreateInstance()\n");
+                FreeLibrary(hMyTaskbar);
+                return NULL;
+            }
+        }
     }
-    else if (explorer_TrayUI_CreateInstanceFunc)
+
+    if ((eptf & EPTF_WinBlueLauncher) != 0)
     {
-        funchook_prepare(
-            funchook,
-            (void**)&explorer_TrayUI_CreateInstanceFunc,
-            pfnMyTrayUICreateInstance
-        );
-    }
-    else
-    {
-        printf("[TB] Failed to hook TrayUI_CreateInstance()\n");
-        FreeLibrary(hMyTaskbar);
-        return NULL;
+        typedef HRESULT (WINAPI *EP_Launcher_PatchTwinUIPCShell_t)();
+        EP_Launcher_PatchTwinUIPCShell_t pfnEP_Launcher_PatchTwinUIPCShell = (EP_Launcher_PatchTwinUIPCShell_t)GetProcAddress(hMyTaskbar, "EP_Launcher_PatchTwinUIPCShell");
+        if (pfnEP_Launcher_PatchTwinUIPCShell)
+        {
+            HRESULT hr = pfnEP_Launcher_PatchTwinUIPCShell();
+            if (FAILED(hr))
+            {
+                printf("[TB] Failed to perform immersive shell component patches\n");
+            }
+        }
     }
 
     typedef void (*CopyExplorerSymbols_t)(symbols_addr* symbols);
