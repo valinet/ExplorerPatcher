@@ -28,6 +28,7 @@ typedef struct __MIDL___MIDL_itf_inputswitchserver_0000_0000_0003
     BOOL fDisabled;
     BOOL fHidden;
     WCHAR* pszIconGlyph;
+    void* pUnk1; // @Note: Added in 22621.4974
 } INPUT_SWITCH_IDL_IME_MODE_ITEM_DATA;
 
 typedef enum __MIDL___MIDL_itf_inputswitchserver_0000_0000_0004

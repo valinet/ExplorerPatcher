@@ -1162,9 +1162,9 @@ int WINAPI wWinMain(
         {
             bAreRoundedCornersDisabled = GetLastError() == ERROR_ACCESS_DENIED;
         }
-        if (bAreRoundedCornersDisabled)
+        RegisterDWMService(0, 1);
+        if (bInstall && bAreRoundedCornersDisabled)
         {
-            RegisterDWMService(0, 1);
             RegisterDWMService(0, 3);
         }
 
