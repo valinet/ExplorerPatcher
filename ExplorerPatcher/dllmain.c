@@ -9938,8 +9938,12 @@ typedef enum _EP_TASKBAR_FEATURES
     EPTF_Taskbar = 0x1,
     EPTF_ClassicContextMenu = 0x2,
     EPTF_WinBlueLauncher = 0x4,
+    EPTF_AudioFlyout = 0x8,
 
-    EPTF_FullLoad = EPTF_Taskbar | EPTF_WinBlueLauncher
+    EPTF_FullLoad =
+        EPTF_Taskbar
+      | EPTF_WinBlueLauncher
+      | EPTF_AudioFlyout
 } EP_TASKBAR_FEATURES;
 
 EP_TASKBAR_FEATURES GetEPTaskbarFeatures()
@@ -9956,10 +9960,15 @@ EP_TASKBAR_FEATURES GetEPTaskbarFeatures()
     }
 
     BOOL fValue = FALSE;
-    BOOL fUseImmersiveLauncher = SUCCEEDED(SHRegGetBOOLWithREGSAM(HKEY_CURRENT_USER, L"Software\\ExplorerPatcher", L"UseImmersiveLauncher", 0, &fValue)) && fValue;
-    if (fUseImmersiveLauncher)
+    if (SUCCEEDED(SHRegGetBOOLWithREGSAM(HKEY_CURRENT_USER, L"Software\\ExplorerPatcher", L"UseImmersiveLauncher", 0, &fValue)) && fValue)
     {
         eptf |= EPTF_WinBlueLauncher;
+    }
+
+    DWORD dwValue = 0;
+    if (SUCCEEDED(SHRegGetDWORD(HKEY_CURRENT_USER, L"Software\\ExplorerPatcher", L"AudioFlyoutStyle", &dwValue)) && dwValue == 1)
+    {
+        eptf |= EPTF_AudioFlyout;
     }
 
     return eptf;
@@ -10042,7 +10051,21 @@ HMODULE PrepareAlternateTaskbarImplementation(symbols_addr* symbols_PTRS, const 
             HRESULT hr = pfnEP_Launcher_PatchTwinUIPCShell();
             if (FAILED(hr))
             {
-                printf("[TB] Failed to perform immersive shell component patches\n");
+                printf("[TB] EP_Launcher_PatchTwinUIPCShell failed\n");
+            }
+        }
+    }
+
+    if ((eptf & EPTF_AudioFlyout) != 0)
+    {
+        typedef HRESULT (WINAPI *EP_AudioFlyout_PatchTwinUI_t)();
+        EP_AudioFlyout_PatchTwinUI_t pfnEP_AudioFlyout_PatchTwinUI = (EP_AudioFlyout_PatchTwinUI_t)GetProcAddress(hMyTaskbar, "EP_AudioFlyout_PatchTwinUI");
+        if (pfnEP_AudioFlyout_PatchTwinUI)
+        {
+            HRESULT hr = pfnEP_AudioFlyout_PatchTwinUI();
+            if (FAILED(hr))
+            {
+                printf("[TB] EP_AudioFlyout_PatchTwinUI failed\n");
             }
         }
     }
