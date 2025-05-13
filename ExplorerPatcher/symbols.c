@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include "symbols.h"
 
 const char* explorer_SN[EXPLORER_SB_CNT] = {
@@ -6,7 +7,7 @@ const char* explorer_SN[EXPLORER_SB_CNT] = {
     EXPLORER_SB_2,
     EXPLORER_SB_3,
     EXPLORER_SB_4,
-    EXPLORER_SB_5
+    EXPLORER_SB_5,
 };
 const char* explorer_SN_26244[1] = {
     EXPLORER_SB_4,
@@ -19,18 +20,16 @@ const char* twinui_pcshell_SN[TWINUI_PCSHELL_SB_CNT] = {
     TWINUI_PCSHELL_SB_4,
     TWINUI_PCSHELL_SB_5,
     TWINUI_PCSHELL_SB_6,
-    TWINUI_PCSHELL_SB_7,
-    TWINUI_PCSHELL_SB_8
 };
 const char* startdocked_SN[STARTDOCKED_SB_CNT] = {
     STARTDOCKED_SB_0,
     STARTDOCKED_SB_1,
     STARTDOCKED_SB_2,
     STARTDOCKED_SB_3,
-    STARTDOCKED_SB_4
+    STARTDOCKED_SB_4,
 };
 const char* startui_SN[STARTUI_SB_CNT] = {
-    STARTUI_SB_0
+    STARTUI_SB_0,
 };
 
 const wchar_t DownloadNotificationXML[] =
@@ -53,7 +52,7 @@ BOOL CheckVersion(HKEY hKey, DWORD dwVersion)
 {
     DWORD dwSize = sizeof(DWORD);
     DWORD dwStoredVersion = 0;
-    if (RegQueryValueExW(hKey, TEXT("Version"), 0, NULL, &dwStoredVersion, &dwSize) == ERROR_SUCCESS)
+    if (RegQueryValueExW(hKey, TEXT("Version"), 0, NULL, (LPBYTE)&dwStoredVersion, &dwSize) == ERROR_SUCCESS)
     {
         return dwStoredVersion == dwVersion;
     }
@@ -62,10 +61,10 @@ BOOL CheckVersion(HKEY hKey, DWORD dwVersion)
 
 void SaveVersion(HKEY hKey, DWORD dwVersion)
 {
-    RegSetValueExW(hKey, TEXT("Version"), 0, REG_DWORD, &dwVersion, sizeof(DWORD));
+    RegSetValueExW(hKey, TEXT("Version"), 0, REG_DWORD, (const BYTE*)&dwVersion, sizeof(DWORD));
 }
 
-static BOOL ProcessExplorerSymbols(const char* pszSettingsPath, DWORD* pOffsets)
+static BOOL ProcessExplorerSymbols(char* pszSettingsPath, DWORD* pOffsets)
 {
     HKEY hKey = NULL;
     DWORD dwDisposition;
@@ -116,10 +115,10 @@ static BOOL ProcessExplorerSymbols(const char* pszSettingsPath, DWORD* pOffsets)
     }
 
     printf("[Symbols] Reading symbols...\n");
-    if (VnGetSymbols(pszSettingsPath, pOffsets, explorer_SN, ARRAYSIZE(explorer_SN)) != 0)
+    if (VnGetSymbols(pszSettingsPath, pOffsets, (char**)explorer_SN, ARRAYSIZE(explorer_SN)) != 0)
     {
         DWORD offsets26244[ARRAYSIZE(explorer_SN_26244)];
-        if (VnGetSymbols(pszSettingsPath, offsets26244, explorer_SN_26244, ARRAYSIZE(explorer_SN_26244)) == 0)
+        if (VnGetSymbols(pszSettingsPath, offsets26244, (char**)explorer_SN_26244, ARRAYSIZE(explorer_SN_26244)) == 0)
         {
             pOffsets[4] = offsets26244[0];
         }
@@ -131,21 +130,21 @@ static BOOL ProcessExplorerSymbols(const char* pszSettingsPath, DWORD* pOffsets)
         }
     }
 
-    RegSetValueExW(hKey, TEXT(EXPLORER_SB_0), 0, REG_DWORD, &pOffsets[0], sizeof(DWORD));
-    RegSetValueExW(hKey, TEXT(EXPLORER_SB_1), 0, REG_DWORD, &pOffsets[1], sizeof(DWORD));
-    RegSetValueExW(hKey, TEXT(EXPLORER_SB_2), 0, REG_DWORD, &pOffsets[2], sizeof(DWORD));
-    RegSetValueExW(hKey, TEXT(EXPLORER_SB_3), 0, REG_DWORD, &pOffsets[3], sizeof(DWORD));
-    RegSetValueExW(hKey, TEXT(EXPLORER_SB_4), 0, REG_DWORD, &pOffsets[4], sizeof(DWORD));
-    RegSetValueExW(hKey, TEXT(EXPLORER_SB_5), 0, REG_DWORD, &pOffsets[5], sizeof(DWORD));
+    RegSetValueExW(hKey, TEXT(EXPLORER_SB_0), 0, REG_DWORD, (const BYTE*)&pOffsets[0], sizeof(DWORD));
+    RegSetValueExW(hKey, TEXT(EXPLORER_SB_1), 0, REG_DWORD, (const BYTE*)&pOffsets[1], sizeof(DWORD));
+    RegSetValueExW(hKey, TEXT(EXPLORER_SB_2), 0, REG_DWORD, (const BYTE*)&pOffsets[2], sizeof(DWORD));
+    RegSetValueExW(hKey, TEXT(EXPLORER_SB_3), 0, REG_DWORD, (const BYTE*)&pOffsets[3], sizeof(DWORD));
+    RegSetValueExW(hKey, TEXT(EXPLORER_SB_4), 0, REG_DWORD, (const BYTE*)&pOffsets[4], sizeof(DWORD));
+    RegSetValueExW(hKey, TEXT(EXPLORER_SB_5), 0, REG_DWORD, (const BYTE*)&pOffsets[5], sizeof(DWORD));
 
-    RegSetValueExA(hKey, "Hash", 0, REG_SZ, szHash, strlen(szHash) + 1);
+    RegSetValueExA(hKey, "Hash", 0, REG_SZ, szHash, (DWORD)(strlen(szHash) + 1));
     SaveVersion(hKey, EXPLORER_SB_VERSION);
 
     if (hKey) RegCloseKey(hKey);
     return TRUE;
 }
 
-static BOOL ProcessTwinuiPcshellSymbols(const char* pszSettingsPath, DWORD* pOffsets)
+static BOOL ProcessTwinuiPcshellSymbols(char* pszSettingsPath, DWORD* pOffsets)
 {
     HKEY hKey = NULL;
     DWORD dwDisposition;
@@ -198,20 +197,11 @@ static BOOL ProcessTwinuiPcshellSymbols(const char* pszSettingsPath, DWORD* pOff
     }
 
     printf("[Symbols] Reading symbols...\n");
-    if (!IsWindows11())
-    {
-        DWORD flOldProtect = 0;
-        if (VirtualProtect(twinui_pcshell_SN, sizeof(twinui_pcshell_SN), PAGE_EXECUTE_READWRITE, &flOldProtect))
-        {
-            twinui_pcshell_SN[1] = twinui_pcshell_SN[0];
-            VirtualProtect(twinui_pcshell_SN, sizeof(twinui_pcshell_SN), flOldProtect, &flOldProtect);
-        }
-    }
     if (VnGetSymbols(
         pszSettingsPath,
         pOffsets,
-        twinui_pcshell_SN,
-        IsWindows11() ? TWINUI_PCSHELL_SB_CNT : 4
+        (char**)twinui_pcshell_SN,
+        IsWindows11() ? TWINUI_PCSHELL_SB_CNT : 3
     ))
     {
         printf("[Symbols] Failure in reading symbols for \"%s\".\n", twinui_pcshell_sb_dll);
@@ -223,24 +213,22 @@ static BOOL ProcessTwinuiPcshellSymbols(const char* pszSettingsPath, DWORD* pOff
     {
         pOffsets[1] = 0;
     }
-    RegSetValueExW(hKey, TEXT(TWINUI_PCSHELL_SB_0), 0, REG_DWORD, &pOffsets[0], sizeof(DWORD));
-    RegSetValueExW(hKey, TEXT(TWINUI_PCSHELL_SB_1), 0, REG_DWORD, &pOffsets[1], sizeof(DWORD));
-    RegSetValueExW(hKey, TEXT(TWINUI_PCSHELL_SB_2), 0, REG_DWORD, &pOffsets[2], sizeof(DWORD));
-    RegSetValueExW(hKey, TEXT(TWINUI_PCSHELL_SB_3), 0, REG_DWORD, &pOffsets[3], sizeof(DWORD));
-    RegSetValueExW(hKey, TEXT(TWINUI_PCSHELL_SB_4), 0, REG_DWORD, &pOffsets[4], sizeof(DWORD));
-    RegSetValueExW(hKey, TEXT(TWINUI_PCSHELL_SB_5), 0, REG_DWORD, &pOffsets[5], sizeof(DWORD));
-    RegSetValueExW(hKey, TEXT(TWINUI_PCSHELL_SB_6), 0, REG_DWORD, &pOffsets[6], sizeof(DWORD));
-    RegSetValueExW(hKey, TEXT(TWINUI_PCSHELL_SB_7), 0, REG_DWORD, &pOffsets[7], sizeof(DWORD));
-    RegSetValueExW(hKey, TEXT(TWINUI_PCSHELL_SB_8), 0, REG_DWORD, &pOffsets[8], sizeof(DWORD));
+    RegSetValueExW(hKey, TEXT(TWINUI_PCSHELL_SB_0), 0, REG_DWORD, (const BYTE*)&pOffsets[0], sizeof(DWORD));
+    RegSetValueExW(hKey, TEXT(TWINUI_PCSHELL_SB_1), 0, REG_DWORD, (const BYTE*)&pOffsets[1], sizeof(DWORD));
+    RegSetValueExW(hKey, TEXT(TWINUI_PCSHELL_SB_2), 0, REG_DWORD, (const BYTE*)&pOffsets[2], sizeof(DWORD));
+    RegSetValueExW(hKey, TEXT(TWINUI_PCSHELL_SB_3), 0, REG_DWORD, (const BYTE*)&pOffsets[3], sizeof(DWORD));
+    RegSetValueExW(hKey, TEXT(TWINUI_PCSHELL_SB_4), 0, REG_DWORD, (const BYTE*)&pOffsets[4], sizeof(DWORD));
+    RegSetValueExW(hKey, TEXT(TWINUI_PCSHELL_SB_5), 0, REG_DWORD, (const BYTE*)&pOffsets[5], sizeof(DWORD));
+    RegSetValueExW(hKey, TEXT(TWINUI_PCSHELL_SB_6), 0, REG_DWORD, (const BYTE*)&pOffsets[6], sizeof(DWORD));
 
-    RegSetValueExA(hKey, "Hash", 0, REG_SZ, szHash, strlen(szHash) + 1);
+    RegSetValueExA(hKey, "Hash", 0, REG_SZ, szHash, (DWORD)(strlen(szHash) + 1));
     SaveVersion(hKey, TWINUI_PCSHELL_SB_VERSION);
 
     if (hKey) RegCloseKey(hKey);
     return TRUE;
 }
 
-static BOOL ProcessStartDockedSymbols(const char* pszSettingsPath, DWORD* pOffsets)
+static BOOL ProcessStartDockedSymbols(char* pszSettingsPath, DWORD* pOffsets)
 {
     HKEY hKey = NULL;
     DWORD dwDisposition;
@@ -296,7 +284,7 @@ static BOOL ProcessStartDockedSymbols(const char* pszSettingsPath, DWORD* pOffse
     if (VnGetSymbols(
         pszSettingsPath,
         pOffsets,
-        startdocked_SN,
+        (char**)startdocked_SN,
         STARTDOCKED_SB_CNT
     ))
     {
@@ -305,20 +293,20 @@ static BOOL ProcessStartDockedSymbols(const char* pszSettingsPath, DWORD* pOffse
         return FALSE;
     }
 
-    RegSetValueExW(hKey, TEXT(STARTDOCKED_SB_0), 0, REG_DWORD, &pOffsets[0], sizeof(DWORD));
-    RegSetValueExW(hKey, TEXT(STARTDOCKED_SB_1), 0, REG_DWORD, &pOffsets[1], sizeof(DWORD));
-    RegSetValueExW(hKey, TEXT(STARTDOCKED_SB_2), 0, REG_DWORD, &pOffsets[2], sizeof(DWORD));
-    RegSetValueExW(hKey, TEXT(STARTDOCKED_SB_3), 0, REG_DWORD, &pOffsets[3], sizeof(DWORD));
-    RegSetValueExW(hKey, TEXT(STARTDOCKED_SB_4), 0, REG_DWORD, &pOffsets[4], sizeof(DWORD));
+    RegSetValueExW(hKey, TEXT(STARTDOCKED_SB_0), 0, REG_DWORD, (const BYTE*)&pOffsets[0], sizeof(DWORD));
+    RegSetValueExW(hKey, TEXT(STARTDOCKED_SB_1), 0, REG_DWORD, (const BYTE*)&pOffsets[1], sizeof(DWORD));
+    RegSetValueExW(hKey, TEXT(STARTDOCKED_SB_2), 0, REG_DWORD, (const BYTE*)&pOffsets[2], sizeof(DWORD));
+    RegSetValueExW(hKey, TEXT(STARTDOCKED_SB_3), 0, REG_DWORD, (const BYTE*)&pOffsets[3], sizeof(DWORD));
+    RegSetValueExW(hKey, TEXT(STARTDOCKED_SB_4), 0, REG_DWORD, (const BYTE*)&pOffsets[4], sizeof(DWORD));
 
-    RegSetValueExA(hKey, "Hash", 0, REG_SZ, szHash, strlen(szHash) + 1);
+    RegSetValueExA(hKey, "Hash", 0, REG_SZ, szHash, (DWORD)(strlen(szHash) + 1));
     SaveVersion(hKey, STARTDOCKED_SB_VERSION);
 
     if (hKey) RegCloseKey(hKey);
     return TRUE;
 }
 
-static BOOL ProcessStartUISymbols(const char* pszSettingsPath, DWORD* pOffsets)
+static BOOL ProcessStartUISymbols(char* pszSettingsPath, DWORD* pOffsets)
 {
     HKEY hKey = NULL;
     DWORD dwDisposition;
@@ -384,7 +372,7 @@ static BOOL ProcessStartUISymbols(const char* pszSettingsPath, DWORD* pOffsets)
     if (VnGetSymbols(
         pszSettingsPath,
         pOffsets,
-        startui_SN,
+        (char**)startui_SN,
         STARTUI_SB_CNT
     ))
     {
@@ -393,9 +381,9 @@ static BOOL ProcessStartUISymbols(const char* pszSettingsPath, DWORD* pOffsets)
         return FALSE;
     }
 
-    RegSetValueExW(hKey, TEXT(STARTUI_SB_0), 0, REG_DWORD, &pOffsets[0], sizeof(DWORD));
+    RegSetValueExW(hKey, TEXT(STARTUI_SB_0), 0, REG_DWORD, (const BYTE*)&pOffsets[0], sizeof(DWORD));
 
-    RegSetValueExA(hKey, "Hash", 0, REG_SZ, szHash, strlen(szHash) + 1);
+    RegSetValueExA(hKey, "Hash", 0, REG_SZ, szHash, (DWORD)(strlen(szHash) + 1));
     SaveVersion(hKey, STARTUI_SB_VERSION);
 
     if (hKey) RegCloseKey(hKey);
@@ -452,7 +440,7 @@ DWORD DownloadSymbols(DownloadSymbolsParams* params)
         TEXT("SymbolsLastNotifiedOSBuild"),
         0,
         NULL,
-        szLastNotifiedBuild,
+        (LPBYTE)szLastNotifiedBuild,
         &dwSize
     );
 
@@ -472,7 +460,7 @@ DWORD DownloadSymbols(DownloadSymbolsParams* params)
         __x_ABI_CWindows_CData_CXml_CDom_CIXmlDocument* inputXml = NULL;
         hr = String2IXMLDocument(
             buffer,
-            wcslen(buffer),
+            (DWORD)wcslen(buffer),
             &inputXml,
 #ifdef DEBUG
             stdout
@@ -496,8 +484,8 @@ DWORD DownloadSymbols(DownloadSymbolsParams* params)
             TEXT("SymbolsLastNotifiedOSBuild"),
             0,
             REG_SZ,
-            szReportedVersion,
-            wcslen(szReportedVersion) * sizeof(wchar_t)
+            (const BYTE*)szReportedVersion,
+            (DWORD)(wcslen(szReportedVersion) * sizeof(wchar_t))
         );
     }
 
@@ -600,7 +588,7 @@ DWORD DownloadSymbols(DownloadSymbolsParams* params)
         __x_ABI_CWindows_CData_CXml_CDom_CIXmlDocument* inputXml2 = NULL;
         HRESULT hr = String2IXMLDocument(
             buffer,
-            wcslen(buffer),
+            (DWORD)wcslen(buffer),
             &inputXml2,
 #ifdef DEBUG
             stdout
@@ -676,12 +664,12 @@ LoadSymbolsResult LoadSymbols(symbols_addr* symbols_PTRS)
                 && !_stricmp(szHash, szStoredHash) && CheckVersion(hKey, EXPLORER_SB_VERSION))
             {
                 dwSize = sizeof(DWORD);
-                RegQueryValueExW(hKey, TEXT(EXPLORER_SB_0), 0, NULL, &symbols_PTRS->explorer_PTRS[0], &dwSize);
-                RegQueryValueExW(hKey, TEXT(EXPLORER_SB_1), 0, NULL, &symbols_PTRS->explorer_PTRS[1], &dwSize);
-                RegQueryValueExW(hKey, TEXT(EXPLORER_SB_2), 0, NULL, &symbols_PTRS->explorer_PTRS[2], &dwSize);
-                RegQueryValueExW(hKey, TEXT(EXPLORER_SB_3), 0, NULL, &symbols_PTRS->explorer_PTRS[3], &dwSize);
-                RegQueryValueExW(hKey, TEXT(EXPLORER_SB_4), 0, NULL, &symbols_PTRS->explorer_PTRS[4], &dwSize);
-                RegQueryValueExW(hKey, TEXT(EXPLORER_SB_5), 0, NULL, &symbols_PTRS->explorer_PTRS[5], &dwSize);
+                RegQueryValueExW(hKey, TEXT(EXPLORER_SB_0), 0, NULL, (LPBYTE)&symbols_PTRS->explorer_PTRS[0], &dwSize);
+                RegQueryValueExW(hKey, TEXT(EXPLORER_SB_1), 0, NULL, (LPBYTE)&symbols_PTRS->explorer_PTRS[1], &dwSize);
+                RegQueryValueExW(hKey, TEXT(EXPLORER_SB_2), 0, NULL, (LPBYTE)&symbols_PTRS->explorer_PTRS[2], &dwSize);
+                RegQueryValueExW(hKey, TEXT(EXPLORER_SB_3), 0, NULL, (LPBYTE)&symbols_PTRS->explorer_PTRS[3], &dwSize);
+                RegQueryValueExW(hKey, TEXT(EXPLORER_SB_4), 0, NULL, (LPBYTE)&symbols_PTRS->explorer_PTRS[4], &dwSize);
+                RegQueryValueExW(hKey, TEXT(EXPLORER_SB_5), 0, NULL, (LPBYTE)&symbols_PTRS->explorer_PTRS[5], &dwSize);
                 bOffsetsValid = TRUE;
             }
             else
@@ -729,15 +717,13 @@ LoadSymbolsResult LoadSymbols(symbols_addr* symbols_PTRS)
             && !_stricmp(szHash, szStoredHash) && CheckVersion(hKey, TWINUI_PCSHELL_SB_VERSION))
         {
             dwSize = sizeof(DWORD);
-            RegQueryValueExW(hKey, TEXT(TWINUI_PCSHELL_SB_0), 0, NULL, &symbols_PTRS->twinui_pcshell_PTRS[0], &dwSize);
-            RegQueryValueExW(hKey, TEXT(TWINUI_PCSHELL_SB_1), 0, NULL, &symbols_PTRS->twinui_pcshell_PTRS[1], &dwSize);
-            RegQueryValueExW(hKey, TEXT(TWINUI_PCSHELL_SB_2), 0, NULL, &symbols_PTRS->twinui_pcshell_PTRS[2], &dwSize);
-            RegQueryValueExW(hKey, TEXT(TWINUI_PCSHELL_SB_3), 0, NULL, &symbols_PTRS->twinui_pcshell_PTRS[3], &dwSize);
-            RegQueryValueExW(hKey, TEXT(TWINUI_PCSHELL_SB_4), 0, NULL, &symbols_PTRS->twinui_pcshell_PTRS[4], &dwSize);
-            RegQueryValueExW(hKey, TEXT(TWINUI_PCSHELL_SB_5), 0, NULL, &symbols_PTRS->twinui_pcshell_PTRS[5], &dwSize);
-            RegQueryValueExW(hKey, TEXT(TWINUI_PCSHELL_SB_6), 0, NULL, &symbols_PTRS->twinui_pcshell_PTRS[6], &dwSize);
-            RegQueryValueExW(hKey, TEXT(TWINUI_PCSHELL_SB_7), 0, NULL, &symbols_PTRS->twinui_pcshell_PTRS[7], &dwSize);
-            RegQueryValueExW(hKey, TEXT(TWINUI_PCSHELL_SB_8), 0, NULL, &symbols_PTRS->twinui_pcshell_PTRS[8], &dwSize);
+            RegQueryValueExW(hKey, TEXT(TWINUI_PCSHELL_SB_0), 0, NULL, (LPBYTE)&symbols_PTRS->twinui_pcshell_PTRS[0], &dwSize);
+            RegQueryValueExW(hKey, TEXT(TWINUI_PCSHELL_SB_1), 0, NULL, (LPBYTE)&symbols_PTRS->twinui_pcshell_PTRS[1], &dwSize);
+            RegQueryValueExW(hKey, TEXT(TWINUI_PCSHELL_SB_2), 0, NULL, (LPBYTE)&symbols_PTRS->twinui_pcshell_PTRS[2], &dwSize);
+            RegQueryValueExW(hKey, TEXT(TWINUI_PCSHELL_SB_3), 0, NULL, (LPBYTE)&symbols_PTRS->twinui_pcshell_PTRS[3], &dwSize);
+            RegQueryValueExW(hKey, TEXT(TWINUI_PCSHELL_SB_4), 0, NULL, (LPBYTE)&symbols_PTRS->twinui_pcshell_PTRS[4], &dwSize);
+            RegQueryValueExW(hKey, TEXT(TWINUI_PCSHELL_SB_5), 0, NULL, (LPBYTE)&symbols_PTRS->twinui_pcshell_PTRS[5], &dwSize);
+            RegQueryValueExW(hKey, TEXT(TWINUI_PCSHELL_SB_6), 0, NULL, (LPBYTE)&symbols_PTRS->twinui_pcshell_PTRS[6], &dwSize);
             bOffsetsValid = TRUE;
         }
         else
@@ -784,11 +770,11 @@ LoadSymbolsResult LoadSymbols(symbols_addr* symbols_PTRS)
                 && !_stricmp(szHash, szStoredHash) && CheckVersion(hKey, STARTDOCKED_SB_VERSION))
             {
                 dwSize = sizeof(DWORD);
-                RegQueryValueExW(hKey, TEXT(STARTDOCKED_SB_0), 0, NULL, &symbols_PTRS->startdocked_PTRS[0], &dwSize);
-                RegQueryValueExW(hKey, TEXT(STARTDOCKED_SB_1), 0, NULL, &symbols_PTRS->startdocked_PTRS[1], &dwSize);
-                RegQueryValueExW(hKey, TEXT(STARTDOCKED_SB_2), 0, NULL, &symbols_PTRS->startdocked_PTRS[2], &dwSize);
-                RegQueryValueExW(hKey, TEXT(STARTDOCKED_SB_3), 0, NULL, &symbols_PTRS->startdocked_PTRS[3], &dwSize);
-                RegQueryValueExW(hKey, TEXT(STARTDOCKED_SB_4), 0, NULL, &symbols_PTRS->startdocked_PTRS[4], &dwSize);
+                RegQueryValueExW(hKey, TEXT(STARTDOCKED_SB_0), 0, NULL, (LPBYTE)&symbols_PTRS->startdocked_PTRS[0], &dwSize);
+                RegQueryValueExW(hKey, TEXT(STARTDOCKED_SB_1), 0, NULL, (LPBYTE)&symbols_PTRS->startdocked_PTRS[1], &dwSize);
+                RegQueryValueExW(hKey, TEXT(STARTDOCKED_SB_2), 0, NULL, (LPBYTE)&symbols_PTRS->startdocked_PTRS[2], &dwSize);
+                RegQueryValueExW(hKey, TEXT(STARTDOCKED_SB_3), 0, NULL, (LPBYTE)&symbols_PTRS->startdocked_PTRS[3], &dwSize);
+                RegQueryValueExW(hKey, TEXT(STARTDOCKED_SB_4), 0, NULL, (LPBYTE)&symbols_PTRS->startdocked_PTRS[4], &dwSize);
                 bOffsetsValid = TRUE;
             }
             else
@@ -838,7 +824,7 @@ LoadSymbolsResult LoadSymbols(symbols_addr* symbols_PTRS)
                 && !_stricmp(szHash, szStoredHash) && CheckVersion(hKey, STARTUI_SB_VERSION))
             {
                 dwSize = sizeof(DWORD);
-                RegQueryValueExW(hKey, TEXT(STARTUI_SB_0), 0, NULL, &symbols_PTRS->startui_PTRS[0], &dwSize);
+                RegQueryValueExW(hKey, TEXT(STARTUI_SB_0), 0, NULL, (LPBYTE)&symbols_PTRS->startui_PTRS[0], &dwSize);
                 bOffsetsValid = TRUE;
             }
             else

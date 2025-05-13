@@ -132,7 +132,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)libs\funchook\include;$(SolutionDir)libs\libvalinet;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>inc;$(SolutionDir)libs\funchook\include;$(SolutionDir)libs\libvalinet;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <UseFullPaths>false</UseFullPaths>
     </ClCompile>
@@ -301,6 +301,12 @@
     <ClInclude Include="TaskbarCenter.h" />
     <ClInclude Include="updates.h" />
     <ClInclude Include="utility.h" />
+    <ClInclude Include="inc\ContainerPolicies.h" />
+    <ClInclude Include="inc\memsafe.h" />
+    <ClInclude Include="inc\NativeString.h" />
+    <ClInclude Include="inc\RefCountedObject.h" />
+    <ClInclude Include="inc\ResultUtils.h" />
+    <ClInclude Include="inc\SimpleArray.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="ExplorerPatcher.rc" />

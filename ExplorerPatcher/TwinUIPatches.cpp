@@ -2,6 +2,7 @@
 #include <Shlwapi.h>
 #include <ShellScalingApi.h>
 #include <initguid.h>
+#include <knownfolders.h>
 
 #include <wrl/client.h>
 #include <wil/resource.h>
@@ -14,11 +15,94 @@
 #include "utility.h"
 #include "hooking.h"
 #include "symbols.h"
+#include "NativeString.h"
+#include "RefCountedObject.h"
+#include "SimpleArray.h"
+
+// #define USE_REIMPLEMENTED_CLauncherTipContextMenu
 
 using namespace Microsoft::WRL;
 
 
 #pragma region "Types and utilities"
+
+enum ContextMenuPaddingType
+{
+    CMPT_NONE = 0x0,
+    CMPT_TOP_PADDING = 0x1,
+    CMPT_BOTTOM_PADDING = 0x2,
+    CMPT_TOUCH_INPUT = 0x4,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(ContextMenuPaddingType);
+
+namespace DPIToPPIHelpers
+{
+enum class ScaleType
+{
+    DPI,
+    PPI
+};
+
+enum class ScaleModifier
+{
+    None,
+    CorrectBadDPI
+};
+}
+
+struct ContextMenuRenderingData
+{
+    CoTaskMemNativeString spszText;
+    DWORD uMenuFlags;
+    SHSTOCKICONID siid = SIID_MAX_ICONS;
+    HBITMAP hbmpItem;
+    HBITMAP hbmpChecked;
+    HBITMAP hbmpUnchecked;
+    ContextMenuPaddingType cmpt;
+    DPIToPPIHelpers::ScaleType scaletype;
+    UINT xDpi;
+    bool fUseDarkTheme;
+    bool fUseSystemPadding;
+    BOOL fForceAccelerators;
+    CSimplePointerArrayNewMem<ContextMenuRenderingData>* prgParentArray;
+
+#ifdef _DEBUG
+private:
+    void* operator new(size_t stAllocateBlock) = delete;
+
+public:
+    void* operator new(size_t stAllocateBlock, const std::nothrow_t&)
+    {
+        return HeapAlloc(GetProcessHeap(), 0, stAllocateBlock);
+    }
+
+    void operator delete(void* pvMem)
+    {
+        operator delete(pvMem, std::nothrow);
+    }
+
+    void operator delete(void* pvMem, const std::nothrow_t&)
+    {
+        if (pvMem)
+        {
+            HeapFree(GetProcessHeap(), 0, pvMem);
+        }
+    }
+#endif
+};
+
+enum ImmersiveContextMenuOptions
+{
+    ICMO_NONE = 0x0,
+    ICMO_USEPPI = 0x1,
+    ICMO_OVERRIDECOMPATCHECK = 0x2,
+    ICMO_FORCEMOUSESTYLING = 0x4,
+    ICMO_USESYSTEMTHEME = 0x8,
+    ICMO_ICMBRUSHAPPLIED = 0x10,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(ImmersiveContextMenuOptions);
 
 DEFINE_GUID(SID_EdgeUi, 0x0D189B30, 0xF12B, 0x4B13, 0x94, 0xCF, 0x53, 0xCB, 0x0E, 0x0E, 0x24, 0x0D); // 0d189b30-f12b-4b13-94cf-53cb0e0e240d
 
@@ -187,7 +271,7 @@ MIDL_INTERFACE("b8c1db5f-cbb3-48bc-afd9-ce6b880c79ed")
 ILauncherTipContextMenu : IUnknown
 {
     virtual HRESULT STDMETHODCALLTYPE ShowLauncherTipContextMenu(POINT*) = 0;
-    virtual HRESULT STDMETHODCALLTYPE GetMenuItemsAsync(RECT, IUnknown**) = 0;
+    virtual HRESULT STDMETHODCALLTYPE GetMenuItemsAsync(RECT, IUnknown**) = 0; // New in 11 21H2, no GUID change
 };
 
 inline BOOL IsBiDiLocale(LCID locale)
@@ -338,16 +422,85 @@ BOOL IsCrashCounterEnabled();
 #define WINX_ADJUST_X 5
 #define WINX_ADJUST_Y 5
 
+class DECLSPEC_UUID("51d1268c-d0a5-47cc-a514-547f346f45e8")
+CLauncherTipContextMenu;
+
+enum LTCMITEMFLAGS
+{
+    LTCMIF_DEFAULT = 0x0,
+    LTCMIF_RUNAS = 0x1,
+    LTCMIF_SWITCHTODESKTOP = 0x2,
+    LTCMIF_INVOKEARGS = 0x4,
+    LTCMIF_SHOWDESKTOPCOMMAND = 0x8,
+    LTCMIF_MOBILITYCENTER = 0x10,
+    LTCMIF_SEARCHCOMMAND = 0x20,
+    LTCMIF_PRIMARY_CMD = 0x40,
+    LTCMIF_SECONDARY_CMD = 0x80,
+    LTCMIF_POWERSHELLCOMMAND = 0x100,
+    LTCMIF_SUPPRESSONCLOUD = 0x200,
+    LTCMIF_ACTIVITIESCOMMAND = 0x400,
+    LTCMIF_TERMINALCOMMAND = 0x800, // Cobalt
+};
+
+struct LauncherTipMenuCommand
+{
+    LauncherTipMenuCommand();
+
+    bool fSeparator;
+    CoTaskMemNativeString spszCommandName;
+    CoTaskMemNativeString spszCommandPath;
+    CoTaskMemNativeString spszCommandTargetArguments;
+    CoTaskMemNativeString spszVerb;
+    DWORD ltcmif;
+};
+
+struct LauncherTipShutdownMenuCommand
+{
+    DWORD choice;
+    CoTaskMemNativeString spszCommandName;
+};
+
 static HRESULT(*winrt_Windows_Internal_Shell_implementation_MeetAndChatManager_OnMessageFunc)(void* _this, UINT uMsg, WPARAM wParam, LPARAM lParam) = nullptr;
-static HRESULT(*CLauncherTipContextMenu_ShowLauncherTipContextMenuFunc)(void* _this, POINT* pt) = nullptr;
-static void(*CLauncherTipContextMenu_ExecuteCommandFunc)(void* _this, void* a2) = nullptr;
-static void(*CLauncherTipContextMenu_ExecuteShutdownCommandFunc)(void* _this, void* a2) = nullptr;
-static HRESULT(*CLauncherTipContextMenu_GetMenuItemsAsyncFunc)(void* _this, RECT rect, IUnknown** iunk) = nullptr;
-static DWORD g_rvaILauncherTipContextMenuVtbl;
+static HRESULT(*CLauncherTipContextMenu_ShowLauncherTipContextMenuFunc)(ILauncherTipContextMenu* _this, POINT* pptLocation) = nullptr;
+static void(*CLauncherTipContextMenu_ExecuteCommandFunc)(void* _this, ComPtr<CRefCountedObject<LauncherTipMenuCommand>> spCommand) = nullptr;
+static void(*CLauncherTipContextMenu_ExecuteShutdownCommandFunc)(void* _this, ComPtr<CRefCountedObject<LauncherTipShutdownMenuCommand>> spCommand, const RECT* prcDockTo) = nullptr;
 
 HWND hWinXWnd;
 HANDLE hIsWinXShown;
 HANDLE hWinXThread;
+
+HRESULT CLauncherTipContextMenu_ShowLauncherTipContextMenuHook(ILauncherTipContextMenu* _this, POINT* pt);
+
+HRESULT (STDMETHODCALLTYPE *CLauncherTipContextMenu_CreateInstance_IClassFactory_Func)(
+    IClassFactory* This, IUnknown* pUnkOuter, REFIID riid, void** ppvObject);
+HRESULT STDMETHODCALLTYPE CLauncherTipContextMenu_CreateInstance_IClassFactory_Hook(
+    IClassFactory* This, IUnknown* pUnkOuter, REFIID riid, void** ppvObject)
+{
+#if defined(USE_REIMPLEMENTED_CLauncherTipContextMenu)
+    *ppvObject = nullptr;
+    ComPtr<CLauncherTipContextMenu> spLTCM;
+    HRESULT hr = MakeAndInitialize<CLauncherTipContextMenu>(&spLTCM);
+    if (SUCCEEDED(hr))
+    {
+        hr = spLTCM.CopyTo(riid, ppvObject);
+    }
+    return hr;
+#else
+    HRESULT hr = CLauncherTipContextMenu_CreateInstance_IClassFactory_Func(This, pUnkOuter, riid, ppvObject);
+    if (SUCCEEDED(hr))
+    {
+        ILauncherTipContextMenu* pLTCM = nullptr;
+        hr = ((IUnknown*)*ppvObject)->QueryInterface(IID_PPV_ARGS(&pLTCM));
+        if (SUCCEEDED(hr))
+        {
+            void** vtable = *(void***)pLTCM;
+            REPLACE_VTABLE_ENTRY(vtable, 3, CLauncherTipContextMenu_ShowLauncherTipContextMenu);
+            pLTCM->Release();
+        }
+    }
+    return hr;
+#endif
+}
 
 extern "C" LRESULT CALLBACK CLauncherTipContextMenu_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
@@ -402,13 +555,21 @@ extern "C" LRESULT CALLBACK CLauncherTipContextMenu_WndProc(HWND hWnd, UINT uMsg
     return result;
 }
 
-typedef struct
+struct ShowLauncherTipContextMenuParameters
 {
-    void* _this;
+    ILauncherTipContextMenu* _this;
     POINT point;
-    IUnknown* iunk;
-    BOOL bShouldCenterWinXHorizontally;
-} ShowLauncherTipContextMenuParameters;
+    ComPtr<IUnknown> spOperation;
+    bool bShouldCenterWinXHorizontally;
+
+    ShowLauncherTipContextMenuParameters(ILauncherTipContextMenu* _this, POINT point, IUnknown* pOperation, bool bShouldCenterWinXHorizontally)
+        : _this(_this)
+        , point(point)
+        , spOperation(pOperation)
+        , bShouldCenterWinXHorizontally(bShouldCenterWinXHorizontally)
+    {
+    }
+};
 
 DWORD ShowLauncherTipContextMenu(LPVOID lpParams)
 {
@@ -431,6 +592,28 @@ DWORD ShowLauncherTipContextMenu(LPVOID lpParams)
     {
         offset_in_class = 8;
     }
+
+    char* pClassBase = (char*)params->_this - 0x58;
+
+    struct
+    {
+        // ComPtr<IShellTaskScheduler> _spScheduler;
+        // ComPtr<IImmersiveWindowMessageService> _spWindowMessageService;
+        // ComPtr<IImmersiveLauncher> _spLauncher;
+        // ComPtr<IImmersiveSystemMode> _spSystemMode;
+        // ComPtr<IImmersiveMonitorManager> _spMonitorManager;
+        CCoSimpleArray<ComPtr<CRefCountedObject<LauncherTipMenuCommand>>> _rgCommands;
+        CCoSimpleArray<ComPtr<CRefCountedObject<LauncherTipShutdownMenuCommand>>> _rgShutdownCommands;
+        RTL_CRITICAL_SECTION _csEnumeration;
+        RTL_CRITICAL_SECTION _csContextMenuDisplay;
+        bool _fAreCommandsPopulated;
+        bool _fCommandPopulationInProgress;
+        bool _fTasksCancelled;
+        HMENU _hMenu;
+        HMENU _hMenuShutdown;
+        bool _fIsRTL;
+        bool _fReplacePrimaryCommandsWithSecondary;
+    }& fields = *(std::remove_reference_t<decltype(fields)>*)(pClassBase + offset_in_class + 0xA8); // Begin at _rgCommands
 
     static ATOM windowRegistrationAtom = 0;
     if (windowRegistrationAtom == 0)
@@ -456,7 +639,7 @@ DWORD ShowLauncherTipContextMenu(LPVOID lpParams)
         0, 0, 0, 0,
         nullptr, nullptr,
         GetModuleHandle(nullptr),
-        (char*)params->_this - 0x58,
+        pClassBase,
         7 // ZBID_IMMERSIVE_EDGY
     );
     // DO NOT USE ShowWindow here; it breaks the window order
@@ -467,21 +650,96 @@ DWORD ShowLauncherTipContextMenu(LPVOID lpParams)
     // ShowWindow(hWinXWnd, SW_SHOW);
     SetForegroundWindow(hWinXWnd);
 
-    HMENU* phMenu = ((HMENU*)((char*)params->_this + 0xe8 + offset_in_class));
-    while (!*phMenu)
+    while (!fields._fAreCommandsPopulated)
     {
         Sleep(1);
     }
     auto finalize = wil::scope_exit([&]() -> void
     {
-        params->iunk->Release();
         SendMessageW(hWinXWnd, WM_CLOSE, 0, 0);
-        free(params);
         hIsWinXShown = nullptr;
+        delete params;
     });
-    if (!*phMenu)
+    if (!fields._rgCommands.GetSize())
     {
         return 0;
+    }
+
+    // Check if Windows Terminal is installed
+    bool fHasTerminal = false;
+    {
+        ComPtr<IShellItem> spLocalAppDataItem;
+        HRESULT hr = SHGetKnownFolderItem(FOLDERID_LocalAppData, KF_FLAG_DEFAULT, nullptr, IID_PPV_ARGS(&spLocalAppDataItem));
+        if (SUCCEEDED(hr))
+        {
+            ComPtr<IShellItem> spTerminalFolderItem;
+            if (SUCCEEDED(SHCreateItemFromRelativeName(spLocalAppDataItem.Get(), L"Microsoft\\WindowsApps\\wt.exe", nullptr, IID_PPV_ARGS(&spTerminalFolderItem))))
+            {
+                fHasTerminal = true;
+            }
+        }
+    }
+
+    // Do not use the _hMenu built by CLauncherTipContextMenu, it contains *both* PowerShell and Terminal entries.
+    // When Windows Terminal gets installed/uninstalled, the menu entries should be shown/hidden accordingly without
+    // restarting Explorer. Win32 does not support hiding menu entries. If we DeleteMenuW the Terminal entries in the
+    // provided menu due to Terminal not being installed, it will not reappear after Terminal is reinstalled.
+    //
+    // We build the menu ourselves to avoid those issues.
+    //
+    // Implementation based on:
+    // - CLauncherTipContextMenu::_EnumerateAndBuildMenu()
+    // - CLauncherTipContextMenu::_EnumerateAndBuildShutdownMenu()
+
+    wil::unique_hmenu hMenu(CreatePopupMenu());
+    wil::unique_hmenu hMenuShutdown;
+    HRESULT hr = ResultFromWin32Bool(hMenu.is_valid());
+    if (SUCCEEDED(hr))
+    {
+        size_t iPlusOne = fields._rgCommands.GetSize();
+        if (iPlusOne)
+        {
+            for (; iPlusOne; --iPlusOne)
+            {
+                size_t iContextMenuCommand = iPlusOne - 1;
+                ComPtr<CRefCountedObject<LauncherTipMenuCommand>>& spCommand = fields._rgCommands[iContextMenuCommand];
+
+                if ((spCommand->ltcmif & LTCMIF_POWERSHELLCOMMAND) != 0 && fHasTerminal
+                    || (spCommand->ltcmif & LTCMIF_TERMINALCOMMAND) != 0 && !fHasTerminal)
+                {
+                    // Skip if this is PowerShell and Windows Terminal is installed
+                    // or if this is Windows Terminal and Windows Terminal is not installed
+                    continue;
+                }
+
+                AppendMenuW(hMenu.get(), spCommand->fSeparator ? MF_SEPARATOR : 0, iContextMenuCommand + 1, spCommand->spszCommandName.Get());
+                if (iContextMenuCommand == 1)
+                {
+                    hMenuShutdown.reset(CreatePopupMenu());
+                    hr = ResultFromWin32Bool(hMenuShutdown != nullptr);
+                    if (SUCCEEDED(hr))
+                    {
+                        CoTaskMemNativeString spShutdownName;
+                        hr = spShutdownName.Initialize(GetModuleHandleW(L"twinui.pcshell.dll"), 10930); // Sh&ut down or sign out
+                        if (SUCCEEDED(hr))
+                        {
+                            AppendMenuW(hMenu.get(), MF_POPUP, (DWORD)(UINT_PTR)hMenuShutdown.get(), spShutdownName.Get());
+                        }
+
+                        UINT_PTR uIDNewItem = 4000;
+                        for (size_t i = 0; i < fields._rgShutdownCommands.GetSize(); ++i)
+                        {
+                            ComPtr<CRefCountedObject<LauncherTipShutdownMenuCommand>>& spShutdownCommand = fields._rgShutdownCommands[i];
+                            AppendMenuW(hMenuShutdown.get(), MF_STRING, uIDNewItem++, spShutdownCommand->spszCommandName.Get());
+                        }
+                    }
+                }
+            }
+            /*if (ShouldPowershellReplaceCmd())
+            {
+                LauncherTipContextMenuTelemetry::LauncherTipContextMenuDefaultConsole(!_fReplacePrimaryCommandsWithSecondary);
+            }*/
+        }
     }
 
     TCHAR buffer[260];
@@ -518,32 +776,28 @@ DWORD ShowLauncherTipContextMenu(LPVOID lpParams)
     if (bPropertiesInWinX)
     {
         InsertMenuItemW(
-            *phMenu,
-            GetMenuItemCount(*phMenu) - 1,
+            hMenu.get(),
+            GetMenuItemCount(hMenu.get()) - 1,
             TRUE,
             &menuInfo
         );
         bCreatedMenu = TRUE;
     }
 
-    INT64* unknown_array = nullptr;
-    if (bSkinMenus)
+    CSimplePointerArrayNewMem<ContextMenuRenderingData> srgRenderingData;
+    if (bSkinMenus && ImmersiveContextMenuHelper_ApplyOwnerDrawToMenuFunc)
     {
-        unknown_array = (INT64*)calloc(4, sizeof(INT64));
-        if (ImmersiveContextMenuHelper_ApplyOwnerDrawToMenuFunc)
-        {
-            ImmersiveContextMenuHelper_ApplyOwnerDrawToMenuFunc(
-                *phMenu,
-                hWinXWnd,
-                &(params->point),
-                0xc,
-                unknown_array
-            );
-        }
+        ImmersiveContextMenuHelper_ApplyOwnerDrawToMenuFunc(
+            hMenu.get(),
+            hWinXWnd,
+            &params->point,
+            ICMO_FORCEMOUSESTYLING | ICMO_USESYSTEMTHEME,
+            &srgRenderingData
+        );
     }
 
     BOOL res = TrackPopupMenu(
-        *phMenu,
+        hMenu.get(),
         TPM_RETURNCMD | TPM_RIGHTBUTTON | (params->bShouldCenterWinXHorizontally ? TPM_CENTERALIGN : 0),
         params->point.x,
         params->point.y,
@@ -552,25 +806,14 @@ DWORD ShowLauncherTipContextMenu(LPVOID lpParams)
         nullptr
     );
 
-    if (bSkinMenus)
+    if (bSkinMenus && ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc)
     {
-        if (ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc)
-        {
-            ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc(
-                *phMenu,
-                hWinXWnd
-            );
-        }
-        free(unknown_array);
+        ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc(hMenu.get(), hWinXWnd);
     }
 
     if (bCreatedMenu)
     {
-        RemoveMenu(
-            *phMenu,
-            3999,
-            MF_BYCOMMAND
-        );
+        RemoveMenu(hMenu.get(), 3999, MF_BYCOMMAND);
     }
 
     if (res > 0)
@@ -579,26 +822,23 @@ DWORD ShowLauncherTipContextMenu(LPVOID lpParams)
         {
             LaunchPropertiesGUI(hModule);
         }
-        else if (res < 4000)
+        else if (res >= 4000)
         {
-            INT64 info = *(INT64*)((char*)(*(INT64*)((char*)params->_this + 0xa8 + offset_in_class - 0x58)) + (INT64)res * 8 - 8);
-            if (CLauncherTipContextMenu_ExecuteCommandFunc)
+            if (CLauncherTipContextMenu_ExecuteShutdownCommandFunc)
             {
-                CLauncherTipContextMenu_ExecuteCommandFunc(
-                    (char*)params->_this - 0x58,
-                    &info
-                );
+                RECT rcAnchor;
+                rcAnchor.left   = params->point.x;
+                rcAnchor.top    = params->point.y - 1;
+                rcAnchor.right  = rcAnchor.left + 1;
+                rcAnchor.bottom = rcAnchor.top  + 1;
+                CLauncherTipContextMenu_ExecuteShutdownCommandFunc(pClassBase, fields._rgShutdownCommands[res - 4000], &rcAnchor);
             }
         }
         else
         {
-            INT64 info = *(INT64*)((char*)(*(INT64*)((char*)params->_this + 0xc8 + offset_in_class - 0x58)) + ((INT64)res - 4000) * 8);
-            if (CLauncherTipContextMenu_ExecuteShutdownCommandFunc)
+            if (CLauncherTipContextMenu_ExecuteCommandFunc)
             {
-                CLauncherTipContextMenu_ExecuteShutdownCommandFunc(
-                    (char*)params->_this - 0x58,
-                    &info
-                );
+                CLauncherTipContextMenu_ExecuteCommandFunc(pClassBase, fields._rgCommands[res - 1]);
             }
         }
     }
@@ -606,8 +846,10 @@ DWORD ShowLauncherTipContextMenu(LPVOID lpParams)
     return 0;
 }
 
-HRESULT CLauncherTipContextMenu_ShowLauncherTipContextMenuHook(void* _this, POINT* pt)
+HRESULT CLauncherTipContextMenu_ShowLauncherTipContextMenuHook(ILauncherTipContextMenu* _this, POINT* pt)
 {
+    HRESULT hr = S_OK;
+
     if (hWinXThread)
     {
         WaitForSingleObject(hWinXThread, INFINITE);
@@ -617,7 +859,7 @@ HRESULT CLauncherTipContextMenu_ShowLauncherTipContextMenuHook(void* _this, POIN
 
     if (!hIsWinXShown)
     {
-        BOOL bShouldCenterWinXHorizontally = FALSE;
+        bool bShouldCenterWinXHorizontally = false;
         POINT point;
         if (pt)
         {
@@ -637,37 +879,27 @@ HRESULT CLauncherTipContextMenu_ShowLauncherTipContextMenuHook(void* _this, POIN
                 HMONITOR hMonitor = MonitorFromPoint(point, MONITOR_DEFAULTTOPRIMARY);
                 MONITORINFO mi;
                 mi.cbSize = sizeof(MONITORINFO);
-                GetMonitorInfo(hMonitor, &mi);
+                GetMonitorInfoW(hMonitor, &mi);
                 HWND hWndUnder = WindowFromPoint(*pt);
                 TCHAR wszClassName[100];
                 ZeroMemory(wszClassName, 100);
                 GetClassNameW(hWndUnder, wszClassName, 100);
                 if (!wcscmp(wszClassName, L"Shell_TrayWnd") || !wcscmp(wszClassName, L"Shell_SecondaryTrayWnd"))
                 {
-                    hWndUnder = FindWindowEx(
-                        hWndUnder,
-                        nullptr,
-                        L"Start",
-                        nullptr
-                    );
+                    hWndUnder = FindWindowExW(hWndUnder, nullptr, L"Start", nullptr);
                 }
                 RECT rcUnder;
                 GetWindowRect(hWndUnder, &rcUnder);
                 if (mi.rcMonitor.left != rcUnder.left)
                 {
-                    bShouldCenterWinXHorizontally = TRUE;
+                    bShouldCenterWinXHorizontally = true;
                     point.x = rcUnder.left + (rcUnder.right - rcUnder.left) / 2;
                     point.y = rcUnder.top;
                 }
                 else
                 {
                     UINT dpiX, dpiY;
-                    HRESULT hr = GetDpiForMonitor(
-                        hMonitor,
-                        MDT_DEFAULT,
-                        &dpiX,
-                        &dpiY
-                    );
+                    GetDpiForMonitor(hMonitor, MDT_DEFAULT, &dpiX, &dpiY);
                     double dx = dpiX / 96.0, dy = dpiY / 96.0;
                     BOOL xo = FALSE, yo = FALSE;
                     if ((int)(point.x - WINX_ADJUST_X * dx) < mi.rcMonitor.left)
@@ -705,30 +937,23 @@ HRESULT CLauncherTipContextMenu_ShowLauncherTipContextMenuHook(void* _this, POIN
             point = GetDefaultWinXPosition(FALSE, nullptr, nullptr, TRUE, FALSE);
         }
 
-        IUnknown* iunk = nullptr;
-        if (CLauncherTipContextMenu_GetMenuItemsAsyncFunc)
+        RECT rc = {};
+        ComPtr<IUnknown> spOperation;
+        hr = _this->GetMenuItemsAsync(rc, &spOperation);
+        if (SUCCEEDED(hr))
         {
-            RECT rc = { 0 };
-            CLauncherTipContextMenu_GetMenuItemsAsyncFunc(_this, rc, &iunk);
-        }
-        if (iunk)
-        {
-            iunk->AddRef();
-
-            ShowLauncherTipContextMenuParameters* params = (ShowLauncherTipContextMenuParameters*)malloc(sizeof(ShowLauncherTipContextMenuParameters));
-            params->_this = _this;
-            params->point = point;
-            params->iunk = iunk;
-            params->bShouldCenterWinXHorizontally = bShouldCenterWinXHorizontally;
+            ShowLauncherTipContextMenuParameters* params = new(std::nothrow) ShowLauncherTipContextMenuParameters(_this, point, spOperation.Get(), bShouldCenterWinXHorizontally);
             hIsWinXShown = CreateThread(nullptr, 0, ShowLauncherTipContextMenu, params, 0, nullptr);
             hWinXThread = hIsWinXShown;
         }
     }
-    if (CLauncherTipContextMenu_ShowLauncherTipContextMenuFunc)
+
+    if (SUCCEEDED(hr) && CLauncherTipContextMenu_ShowLauncherTipContextMenuFunc)
     {
-        return CLauncherTipContextMenu_ShowLauncherTipContextMenuFunc(_this, pt);
+        hr = CLauncherTipContextMenu_ShowLauncherTipContextMenuFunc(_this, pt);
     }
-    return S_OK;
+
+    return hr;
 }
 
 extern "C" void ToggleLauncherTipContextMenu()
@@ -1654,19 +1879,19 @@ BOOL FixStartMenuAnimation(LPMODULEINFO mi)
     {
         // * Pattern for Germanium
         //   ```
-        //   69 22 04 A9 ?? ?? 00 ?? 08 ?? ?? 91 60 A2 01 91 68 32 00 F9
+        //   ?? 22 04 A9 ?? ?? 00 ?? 08 ?? ?? 91 ?? A2 01 91 ?? 32 00 F9
         //               ^^^^^^^^^^^+^^^^^^^^^^^
         //   ```
         // Ref: CStartExperienceManager::CStartExperienceManager()
         matchVtable = (PBYTE)FindPattern(
             mi->lpBaseOfDll,
             mi->SizeOfImage,
-            "\x69\x22\x04\xA9\x00\x00\x00\x00\x08\x00\x00\x91\x60\xA2\x01\x91\x68\x32\x00\xF9",
-            "xxxx??x?x??xxxxxxxxx"
+            "\x22\x04\xA9\x00\x00\x00\x00\x08\x00\x00\x91\x00\xA2\x01\x91\x00\x32\x00\xF9",
+            "xxx??x?x??x?xxx?xxx"
         );
         if (matchVtable)
         {
-            matchVtable += 4;
+            matchVtable += 3;
             matchVtable = (PBYTE)ARM64_DecodeADRL((UINT_PTR)matchVtable, *(DWORD*)matchVtable, *(DWORD*)(matchVtable + 4));
         }
     }
@@ -1695,15 +1920,15 @@ BOOL FixStartMenuAnimation(LPMODULEINFO mi)
     }
 #elif defined(_M_ARM64)
     // ```
-    // 22 08 80 52 61 82 01 91 60 ?? ?? 91 ?? ?? ?? ?? 1F 20 03 D5
+    // 22 08 80 52 ?? 82 01 91 ?? ?? ?? 91 ?? ?? ?? ?? 1F 20 03 D5
     //             ^^^SVSEEH^^ ^^^^^^^^^^^ SVSE
     // ```
     // Ref: CStartExperienceManager::CStartExperienceManager()
     PBYTE matchSingleViewShellExperienceFields = (PBYTE)FindPattern(
         mi->lpBaseOfDll,
         mi->SizeOfImage,
-        "\x22\x08\x80\x52\x61\x82\x01\x91\x60\x00\x00\x91\x00\x00\x00\x00\x1F\x20\x03\xD5",
-        "xxxxxxxxx??x????xxxx"
+        "\x22\x08\x80\x52\x00\x82\x01\x91\x00\x00\x00\x91\x00\x00\x00\x00\x1F\x20\x03\xD5",
+        "xxxx?xxx???x????xxxx"
     );
     if (matchSingleViewShellExperienceFields)
     {
@@ -1727,11 +1952,11 @@ BOOL FixStartMenuAnimation(LPMODULEINFO mi)
     if (matchSingleViewShellExperienceFields)
     {
         matchAnimationHelperFields = (PBYTE)FindPattern(
-           matchSingleViewShellExperienceFields + 16,
-           128,
-           "\x40\x88\xAE\x00\x00\x00\x00\xC7\x86\x00\x00\x00\x00\x38\x00\x00\x00",
-           "xxx????xx????xxxx"
-       );
+            matchSingleViewShellExperienceFields + 16,
+            128,
+            "\x40\x88\xAE\x00\x00\x00\x00\xC7\x86\x00\x00\x00\x00\x38\x00\x00\x00",
+            "xxx????xx????xxxx"
+        );
     }
     if (matchAnimationHelperFields)
     {
@@ -1740,7 +1965,7 @@ BOOL FixStartMenuAnimation(LPMODULEINFO mi)
     }
 #elif defined(_M_ARM64)
     // ```
-    // 08 07 80 52 7F ?? ?? 39 68 ?? ?? B9
+    // 08 07 80 52 ?? ?? ?? 39 ?? ?? ?? B9
     //             ^^^^^^^^^^^ AH1
     // ```
     // Ref: CStartExperienceManager::CStartExperienceManager()
@@ -1750,8 +1975,8 @@ BOOL FixStartMenuAnimation(LPMODULEINFO mi)
         matchAnimationHelperFields = (PBYTE)FindPattern(
             matchSingleViewShellExperienceFields + 20,
             128,
-            "\x08\x07\x80\x52\x7F\x00\x00\x39\x68\x00\x00\xB9",
-            "xxxxx??xx??x"
+            "\x08\x07\x80\x52\x00\x00\x00\x39\x00\x00\x00\xB9",
+            "xxxx???x???x"
         );
     }
     if (matchAnimationHelperFields)
@@ -2099,7 +2324,7 @@ BOOL FixStartMenuAnimation(LPMODULEINFO mi)
     if (matchHideA)
     {
         matchHideA -= 3;
-        printf("[SMA] matchHideA in CStartExperienceManager::Hide() = %llX\n", matchHideA - (PBYTE)mi->lpBaseOfDll);
+        printf("[SMA] matchHideA in CStartExperienceManager::Hide() = %llX (Pattern A)\n", matchHideA - (PBYTE)mi->lpBaseOfDll);
         matchHideB = (PBYTE)FindPattern(
             matchHideA + 12,
             mi->SizeOfImage - (matchHideA + 12 - (PBYTE)mi->lpBaseOfDll),
@@ -2109,7 +2334,37 @@ BOOL FixStartMenuAnimation(LPMODULEINFO mi)
         if (matchHideB)
         {
             matchHideB -= 3;
-            printf("[SMA] matchHideB in CStartExperienceManager::Hide() = %llX\n", matchHideB - (PBYTE)mi->lpBaseOfDll);
+            printf("[SMA] matchHideB in CStartExperienceManager::Hide() = %llX (Pattern A)\n", matchHideB - (PBYTE)mi->lpBaseOfDll);
+        }
+    }
+    else
+    {
+        // ```
+        // ?? ?? ?? 34 ?? 00 80 52 ?? 4E 0B 39
+        // ^^^^^^^^^^^ Turn CBZ into B
+        // ```
+        // Perform on exactly two matches
+        matchHideA = (PBYTE)FindPattern(
+            mi->lpBaseOfDll,
+            mi->SizeOfImage,
+            "\x34\x00\x00\x80\x52\x00\x4E\x0B\x39",
+            "x?xxx?xxx"
+        );
+        if (matchHideA)
+        {
+            matchHideA -= 3;
+            printf("[SMA] matchHideA in CStartExperienceManager::Hide() = %llX (Pattern B)\n", matchHideA - (PBYTE)mi->lpBaseOfDll);
+            matchHideB = (PBYTE)FindPattern(
+                matchHideA + 12,
+                mi->SizeOfImage - (matchHideA + 12 - (PBYTE)mi->lpBaseOfDll),
+                "\x34\x00\x00\x80\x52\x00\x4E\x0B\x39",
+                "x?xxx?xxx"
+            );
+            if (matchHideB)
+            {
+                matchHideB -= 3;
+                printf("[SMA] matchHideB in CStartExperienceManager::Hide() = %llX (Pattern B)\n", matchHideB - (PBYTE)mi->lpBaseOfDll);
+            }
         }
     }
 #endif
@@ -2889,64 +3144,7 @@ void TryToFindTwinuiPCShellOffsets(DWORD* pOffsets)
                 printf("CImmersiveContextMenuOwnerDrawHelper::s_ContextMenuWndProc() = %lX\n", pOffsets[0]);
             }
         }
-        // if ((!pOffsets[1] || pOffsets[1] == 0xFFFFFFFF) || (!pOffsets[6] || pOffsets[6] == 0xFFFFFFFF))
-        {
-            UINT_PTR* vtable = nullptr;
-            UINT_PTR vtableRVA = 0;
-#if defined(_M_X64)
-            // 48 8D 05 ?? ?? ?? ?? 48 8B D9 48 89 01 48 8D 05 ?? ?? ?? ?? 48 89 41 18 48 8D 05 ?? ?? ?? ?? 48 89 41 20 48 8D 05 ?? ?? ?? ?? 48 89 41 58 48 8D 05 ?? ?? ?? ?? 48 89 41 60
-            //                                                                                                                   ^^^^^^^^^^^
-            PBYTE match = (PBYTE)FindPattern(
-                pFile, dwSize,
-                "\x48\x8D\x05\x00\x00\x00\x00\x48\x8B\xD9\x48\x89\x01\x48\x8D\x05\x00\x00\x00\x00\x48\x89\x41\x18\x48\x8D\x05\x00\x00\x00\x00\x48\x89\x41\x20\x48\x8D\x05\x00\x00\x00\x00\x48\x89\x41\x58\x48\x8D\x05\x00\x00\x00\x00\x48\x89\x41\x60",
-                "xxx????xxxxxxxxx????xxxxxxx????xxxxxxx????xxxxxxx????xxxx"
-            );
-            if (match)
-            {
-                match += 35; // Point to 48
-                vtable = (UINT_PTR*)(match + 7 + *(int*)(match + 3));
-                vtableRVA = (PBYTE)vtable - pFile;
-            }
-#elif defined(_M_ARM64)
-            // * Pattern 1 (for 24H2):
-            //   69 A2 01 A9 ?? ?? 00 ?? 09 ?? ?? 91 ?? ?? 00 ?? 08 ?? ?? 91 69 A2 05 A9 ?? ?? 00 ?? 08 ?? ?? 91 68 36 00 F9 ?? ?? 00 ?? 08 ?? ?? 91 68 3E 00 F9
-            //               ^^^^^^^^^^^+^^^^^^^^^^^
-            PBYTE match = (PBYTE)FindPattern(
-                pFile, dwSize,
-                "\x69\xA2\x01\xA9\x00\x00\x00\x00\x09\x00\x00\x91\x00\x00\x00\x00\x08\x00\x00\x91\x69\xA2\x05\xA9\x00\x00\x00\x00\x08\x00\x00\x91\x68\x36\x00\xF9\x00\x00\x00\x00\x08\x00\x00\x91\x68\x3E\x00\xF9",
-                "xxxx??x?x??x??x?x??xxxxx??x?x??xxxxx??x?x??xxxxx"
-            );
-            // Patterns for 226xx are not implemented
-            if (match)
-            {
-                match += 4; // Point to ADRP
-                vtableRVA = ARM64_DecodeADRL(FileOffsetToRVA(pFile, match - pFile), *(DWORD*)match, *(DWORD*)(match + 4));
-                vtable = (UINT_PTR*)((UINT_PTR)pFile + RVAToFileOffset(pFile, vtableRVA));
-            }
-#endif
-            if (vtable)
-            {
-                if (!pOffsets[6] || pOffsets[6] == 0xFFFFFFFF)
-                {
-                    pOffsets[6] = (DWORD)(vtable[3] - 0x180000000);
-                }
-                if (!pOffsets[1] || pOffsets[1] == 0xFFFFFFFF)
-                {
-                    pOffsets[1] = (DWORD)(vtable[4] - 0x180000000);
-                }
-                g_rvaILauncherTipContextMenuVtbl = (DWORD)vtableRVA;
-                printf("ILauncherTipContextMenuVtbl = %lX\n", g_rvaILauncherTipContextMenuVtbl);
-            }
-            if (pOffsets[6] && pOffsets[6] != 0xFFFFFFFF)
-            {
-                printf("CLauncherTipContextMenu::ShowLauncherTipContextMenu() = %lX\n", pOffsets[6]);
-            }
-            if (pOffsets[1] && pOffsets[1] != 0xFFFFFFFF)
-            {
-                printf("CLauncherTipContextMenu::GetMenuItemsAsync() = %lX\n", pOffsets[1]);
-            }
-        }
-        if (!pOffsets[2] || pOffsets[2] == 0xFFFFFFFF)
+        if (!pOffsets[1] || pOffsets[1] == 0xFFFFFFFF)
         {
 #if defined(_M_X64)
             // Don't worry if this is too long, this works on 17763 and 25951
@@ -2958,7 +3156,7 @@ void TryToFindTwinuiPCShellOffsets(DWORD* pOffsets)
             );
             if (match)
             {
-                pOffsets[2] = (DWORD)(match - pFile);
+                pOffsets[1] = (DWORD)(match - pFile);
             }
 #elif defined(_M_ARM64)
             // 40 F9 43 03 1C 32 E4 03 15 AA ?? ?? FF 97
@@ -2972,15 +3170,15 @@ void TryToFindTwinuiPCShellOffsets(DWORD* pOffsets)
             if (match)
             {
                 match += 10;
-                pOffsets[2] = (DWORD)FileOffsetToRVA(pFile, (PBYTE)ARM64_FollowBL((DWORD*)match) - pFile);
+                pOffsets[1] = (DWORD)FileOffsetToRVA(pFile, (PBYTE)ARM64_FollowBL((DWORD*)match) - pFile);
             }
 #endif
-            if (pOffsets[2] && pOffsets[2] != 0xFFFFFFFF)
+            if (pOffsets[1] && pOffsets[1] != 0xFFFFFFFF)
             {
-                printf("ImmersiveContextMenuHelper::ApplyOwnerDrawToMenu() = %lX\n", pOffsets[2]);
+                printf("ImmersiveContextMenuHelper::ApplyOwnerDrawToMenu() = %lX\n", pOffsets[1]);
             }
         }
-        if (!pOffsets[3] || pOffsets[3] == 0xFFFFFFFF)
+        if (!pOffsets[2] || pOffsets[2] == 0xFFFFFFFF)
         {
 #if defined(_M_X64)
             // 48 89 5C 24 ? 48 89 7C 24 ? 55 48 8B EC 48 83 EC 60 48 8B FA 48 8B D9 E8
@@ -2991,7 +3189,7 @@ void TryToFindTwinuiPCShellOffsets(DWORD* pOffsets)
             );
             if (match)
             {
-                pOffsets[3] = (DWORD)(match - pFile);
+                pOffsets[2] = (DWORD)(match - pFile);
             }
 #elif defined(_M_ARM64)
             // 7F 23 03 D5 F3 53 BF A9 FD 7B BB A9 FD 03 00 91 F3 03 00 AA F4 03 01 AA ?? ?? ?? ?? FF ?? 03 A9
@@ -3004,15 +3202,15 @@ void TryToFindTwinuiPCShellOffsets(DWORD* pOffsets)
             if (match)
             {
                 match -= 4;
-                pOffsets[3] = (DWORD)FileOffsetToRVA(pFile, match - pFile);
+                pOffsets[2] = (DWORD)FileOffsetToRVA(pFile, match - pFile);
             }
 #endif
-            if (pOffsets[3] && pOffsets[3] != 0xFFFFFFFF)
+            if (pOffsets[2] && pOffsets[2] != 0xFFFFFFFF)
             {
-                printf("ImmersiveContextMenuHelper::RemoveOwnerDrawFromMenu() = %lX\n", pOffsets[3]);
+                printf("ImmersiveContextMenuHelper::RemoveOwnerDrawFromMenu() = %lX\n", pOffsets[2]);
             }
         }
-        if (!pOffsets[4] || pOffsets[4] == 0xFFFFFFFF)
+        if (!pOffsets[3] || pOffsets[3] == 0xFFFFFFFF)
         {
 #if defined(_M_X64)
             // 48 8B ? E8 ? ? ? ? 4C 8B ? 48 8B ? 48 8B CE E8 ? ? ? ? 90
@@ -3025,28 +3223,28 @@ void TryToFindTwinuiPCShellOffsets(DWORD* pOffsets)
             if (match)
             {
                 match += 17;
-                pOffsets[4] = (DWORD)(match + 5 + *(int*)(match + 1) - pFile);
+                pOffsets[3] = (DWORD)(match + 5 + *(int*)(match + 1) - pFile);
             }
 #elif defined(_M_ARM64)
-            // 82 62 00 91 ?? A2 00 91 E0 03 ?? AA ?? ?? ?? ?? 1F 20 03 D5
+            // 82 62 00 91 ?? ?? 00 91 E0 03 ?? AA ?? ?? ?? ?? 1F 20 03 D5
             //                                     ^^^^^^^^^^^
             PBYTE match = (PBYTE)FindPattern(
                 pFile, dwSize,
-                "\x82\x62\x00\x91\x00\xA2\x00\x91\xE0\x03\x00\xAA\x00\x00\x00\x00\x1F\x20\x03\xD5",
-                "xxxx?xxxxx?x????xxxx"
+                "\x82\x62\x00\x91\x00\x00\x00\x91\xE0\x03\x00\xAA\x00\x00\x00\x00\x1F\x20\x03\xD5",
+                "xxxx??xxxx?x????xxxx"
             );
             if (match)
             {
                 match += 12;
-                pOffsets[4] = (DWORD)FileOffsetToRVA(pFile, (PBYTE)ARM64_FollowBL((DWORD*)match) - pFile);
+                pOffsets[3] = (DWORD)FileOffsetToRVA(pFile, (PBYTE)ARM64_FollowBL((DWORD*)match) - pFile);
             }
 #endif
-            if (pOffsets[4] && pOffsets[4] != 0xFFFFFFFF)
+            if (pOffsets[3] && pOffsets[3] != 0xFFFFFFFF)
             {
-                printf("CLauncherTipContextMenu::_ExecuteShutdownCommand() = %lX\n", pOffsets[4]);
+                printf("CLauncherTipContextMenu::_ExecuteShutdownCommand() = %lX\n", pOffsets[3]);
             }
         }
-        if (!pOffsets[5] || pOffsets[5] == 0xFFFFFFFF)
+        if (!pOffsets[4] || pOffsets[4] == 0xFFFFFFFF)
         {
 #if defined(_M_X64)
             // 48 8B ? E8 ? ? ? ? 48 8B D3 48 8B CF E8 ? ? ? ? 90 48 8D 56 ? 48 8B CE
@@ -3059,7 +3257,7 @@ void TryToFindTwinuiPCShellOffsets(DWORD* pOffsets)
             if (match)
             {
                 match += 14;
-                pOffsets[5] = (DWORD)(match + 5 + *(int*)(match + 1) - pFile);
+                pOffsets[4] = (DWORD)(match + 5 + *(int*)(match + 1) - pFile);
             }
             else
             {
@@ -3073,29 +3271,29 @@ void TryToFindTwinuiPCShellOffsets(DWORD* pOffsets)
                 if (match)
                 {
                     match += 14;
-                    pOffsets[5] = (DWORD)(match + 5 + *(int*)(match + 1) - pFile);
+                    pOffsets[4] = (DWORD)(match + 5 + *(int*)(match + 1) - pFile);
                 }
             }
 #elif defined(_M_ARM64)
-            // 08 09 40 F9 ?? 16 00 F9 ?? ?? ?? ?? ?? A2 00 91 E0 03 ?? AA ?? ?? ?? ?? 1F 20 03 D5
+            // 08 09 40 F9 ?? ?? 00 F9 ?? ?? ?? ?? ?? ?? 00 91 E0 03 ?? AA ?? ?? ?? ?? 1F 20 03 D5
             //                                                             ^^^^^^^^^^^
             PBYTE match = (PBYTE)FindPattern(
                 pFile, dwSize,
-                "\x08\x09\x40\xF9\x00\x16\x00\xF9\x00\x00\x00\x00\x00\xA2\x00\x91\xE0\x03\x00\xAA\x00\x00\x00\x00\x1F\x20\x03\xD5",
-                "xxxx?xxx?????xxxxx?x????xxxx"
+                "\x08\x09\x40\xF9\x00\x00\x00\xF9\x00\x00\x00\x00\x00\x00\x00\x91\xE0\x03\x00\xAA\x00\x00\x00\x00\x1F\x20\x03\xD5",
+                "xxxx??xx??????xxxx?x????xxxx"
             );
             if (match)
             {
                 match += 20;
-                pOffsets[5] = (DWORD)FileOffsetToRVA(pFile, (PBYTE)ARM64_FollowBL((DWORD*)match) - pFile);
+                pOffsets[4] = (DWORD)FileOffsetToRVA(pFile, (PBYTE)ARM64_FollowBL((DWORD*)match) - pFile);
             }
 #endif
-            if (pOffsets[5] && pOffsets[5] != 0xFFFFFFFF)
+            if (pOffsets[4] && pOffsets[4] != 0xFFFFFFFF)
             {
-                printf("CLauncherTipContextMenu::_ExecuteCommand() = %lX\n", pOffsets[5]);
+                printf("CLauncherTipContextMenu::_ExecuteCommand() = %lX\n", pOffsets[4]);
             }
         }
-        if (!pOffsets[7] || pOffsets[7] == 0xFFFFFFFF)
+        if (!pOffsets[5] || pOffsets[5] == 0xFFFFFFFF)
         {
 #if defined(_M_X64)
             // Ref: CMultitaskingViewManager::_CreateMTVHost()
@@ -3110,7 +3308,7 @@ void TryToFindTwinuiPCShellOffsets(DWORD* pOffsets)
             if (match)
             {
                 match += 16;
-                pOffsets[7] = (DWORD)(match + 5 + *(int*)(match + 1) - pFile);
+                pOffsets[5] = (DWORD)(match + 5 + *(int*)(match + 1) - pFile);
             }
             else
             {
@@ -3130,7 +3328,7 @@ void TryToFindTwinuiPCShellOffsets(DWORD* pOffsets)
                         match += 26 + jnzSize;
                         if (match[0] == 0xE8)
                         {
-                            pOffsets[7] = (DWORD)(match + 5 + *(int*)(match + 1) - pFile);
+                            pOffsets[5] = (DWORD)(match + 5 + *(int*)(match + 1) - pFile);
                         }
                     }
                 }
@@ -3144,15 +3342,15 @@ void TryToFindTwinuiPCShellOffsets(DWORD* pOffsets)
             );
             if (match)
             {
-                pOffsets[7] = (DWORD)FileOffsetToRVA(pFile, match - 4 - pFile);
+                pOffsets[5] = (DWORD)FileOffsetToRVA(pFile, match - 4 - pFile);
             }
 #endif
-            if (pOffsets[7] && pOffsets[7] != 0xFFFFFFFF)
+            if (pOffsets[5] && pOffsets[5] != 0xFFFFFFFF)
             {
-                printf("CMultitaskingViewManager::_CreateXamlMTVHost() = %lX\n", pOffsets[7]);
+                printf("CMultitaskingViewManager::_CreateXamlMTVHost() = %lX\n", pOffsets[5]);
             }
         }
-        if (!pOffsets[8] || pOffsets[8] == 0xFFFFFFFF)
+        if (!pOffsets[6] || pOffsets[6] == 0xFFFFFFFF)
         {
 #if defined(_M_X64)
             // Ref: CMultitaskingViewManager::_CreateMTVHost()
@@ -3167,7 +3365,7 @@ void TryToFindTwinuiPCShellOffsets(DWORD* pOffsets)
             if (match)
             {
                 match += 16;
-                pOffsets[8] = (DWORD)(match + 5 + *(int*)(match + 1) - pFile);
+                pOffsets[6] = (DWORD)(match + 5 + *(int*)(match + 1) - pFile);
             }
             else
             {
@@ -3184,7 +3382,7 @@ void TryToFindTwinuiPCShellOffsets(DWORD* pOffsets)
                     DWORD jnzSize = 0;
                     if (FollowJnz(match + 26, &target, &jnzSize) && target[0] == 0xE8)
                     {
-                        pOffsets[8] = (DWORD)(target + 5 + *(int*)(target + 1) - pFile);
+                        pOffsets[6] = (DWORD)(target + 5 + *(int*)(target + 1) - pFile);
                     }
                 }
             }
@@ -3197,12 +3395,12 @@ void TryToFindTwinuiPCShellOffsets(DWORD* pOffsets)
             );
             if (match)
             {
-                pOffsets[8] = (DWORD)FileOffsetToRVA(pFile, match - 4 - pFile);
+                pOffsets[6] = (DWORD)FileOffsetToRVA(pFile, match - 4 - pFile);
             }
 #endif
-            if (pOffsets[8] && pOffsets[8] != 0xFFFFFFFF)
+            if (pOffsets[6] && pOffsets[6] != 0xFFFFFFFF)
             {
-                printf("CMultitaskingViewManager::_CreateDCompMTVHost() = %lX\n", pOffsets[8]);
+                printf("CMultitaskingViewManager::_CreateDCompMTVHost() = %lX\n", pOffsets[6]);
             }
         }
     }
@@ -3229,51 +3427,56 @@ extern "C" void RunTwinUIPCShellPatches(symbols_addr* symbols_PTRS)
 
     if (symbols_PTRS->twinui_pcshell_PTRS[1] && symbols_PTRS->twinui_pcshell_PTRS[1] != 0xFFFFFFFF)
     {
-        CLauncherTipContextMenu_GetMenuItemsAsyncFunc = (decltype(CLauncherTipContextMenu_GetMenuItemsAsyncFunc))
+        ImmersiveContextMenuHelper_ApplyOwnerDrawToMenuFunc = (decltype(ImmersiveContextMenuHelper_ApplyOwnerDrawToMenuFunc))
             ((uintptr_t)hTwinuiPcshell + symbols_PTRS->twinui_pcshell_PTRS[1]);
     }
 
     if (symbols_PTRS->twinui_pcshell_PTRS[2] && symbols_PTRS->twinui_pcshell_PTRS[2] != 0xFFFFFFFF)
     {
-        ImmersiveContextMenuHelper_ApplyOwnerDrawToMenuFunc = (decltype(ImmersiveContextMenuHelper_ApplyOwnerDrawToMenuFunc))
+        ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc = (decltype(ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc))
             ((uintptr_t)hTwinuiPcshell + symbols_PTRS->twinui_pcshell_PTRS[2]);
     }
 
     if (symbols_PTRS->twinui_pcshell_PTRS[3] && symbols_PTRS->twinui_pcshell_PTRS[3] != 0xFFFFFFFF)
     {
-        ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc = (decltype(ImmersiveContextMenuHelper_RemoveOwnerDrawFromMenuFunc))
+        CLauncherTipContextMenu_ExecuteShutdownCommandFunc = (decltype(CLauncherTipContextMenu_ExecuteShutdownCommandFunc))
             ((uintptr_t)hTwinuiPcshell + symbols_PTRS->twinui_pcshell_PTRS[3]);
     }
 
     if (symbols_PTRS->twinui_pcshell_PTRS[4] && symbols_PTRS->twinui_pcshell_PTRS[4] != 0xFFFFFFFF)
     {
-        CLauncherTipContextMenu_ExecuteShutdownCommandFunc = (decltype(CLauncherTipContextMenu_ExecuteShutdownCommandFunc))
-            ((uintptr_t)hTwinuiPcshell + symbols_PTRS->twinui_pcshell_PTRS[4]);
-    }
-
-    if (symbols_PTRS->twinui_pcshell_PTRS[5] && symbols_PTRS->twinui_pcshell_PTRS[5] != 0xFFFFFFFF)
-    {
         CLauncherTipContextMenu_ExecuteCommandFunc = (decltype(CLauncherTipContextMenu_ExecuteCommandFunc))
-            ((uintptr_t)hTwinuiPcshell + symbols_PTRS->twinui_pcshell_PTRS[5]);
+            ((uintptr_t)hTwinuiPcshell + symbols_PTRS->twinui_pcshell_PTRS[4]);
     }
 
     int rv;
 
     if (IsWindows11())
     {
-        if (g_rvaILauncherTipContextMenuVtbl)
+        if (bOldTaskbar)
         {
-            void** vtable = (void**)((PBYTE)hTwinuiPcshell + g_rvaILauncherTipContextMenuVtbl);
-            REPLACE_VTABLE_ENTRY(vtable, 3, CLauncherTipContextMenu_ShowLauncherTipContextMenu);
+            typedef HRESULT (WINAPI *DllGetClassObject_t)(REFCLSID rclsid, REFIID riid, LPVOID* ppv);
+            DllGetClassObject_t pfnDllGetClassObject = (DllGetClassObject_t)GetProcAddress(hTwinuiPcshell, "DllGetClassObject");
+            if (pfnDllGetClassObject)
+            {
+                IClassFactory* pFactory;
+                HRESULT hr = pfnDllGetClassObject(__uuidof(CLauncherTipContextMenu), IID_PPV_ARGS(&pFactory));
+                if (SUCCEEDED(hr))
+                {
+                    void** vtable = *(void***)pFactory;
+                    REPLACE_VTABLE_ENTRY(vtable, 3, CLauncherTipContextMenu_CreateInstance_IClassFactory_);
+                    pFactory->Release();
+                }
+            }
         }
 
         rv = -1;
-        if (symbols_PTRS->twinui_pcshell_PTRS[7] && symbols_PTRS->twinui_pcshell_PTRS[7] != 0xFFFFFFFF)
+        if (symbols_PTRS->twinui_pcshell_PTRS[5] && symbols_PTRS->twinui_pcshell_PTRS[5] != 0xFFFFFFFF)
         {
             twinui_pcshell_CMultitaskingViewManager__CreateDCompMTVHostFunc = (decltype(twinui_pcshell_CMultitaskingViewManager__CreateDCompMTVHostFunc))
-                ((uintptr_t)hTwinuiPcshell + symbols_PTRS->twinui_pcshell_PTRS[8]);
+                ((uintptr_t)hTwinuiPcshell + symbols_PTRS->twinui_pcshell_PTRS[6]);
             twinui_pcshell_CMultitaskingViewManager__CreateXamlMTVHostFunc = (decltype(twinui_pcshell_CMultitaskingViewManager__CreateXamlMTVHostFunc))
-                ((uintptr_t)hTwinuiPcshell + symbols_PTRS->twinui_pcshell_PTRS[7]);
+                ((uintptr_t)hTwinuiPcshell + symbols_PTRS->twinui_pcshell_PTRS[5]);
             rv = funchook_prepare(
                 funchook,
                 (void**)&twinui_pcshell_CMultitaskingViewManager__CreateXamlMTVHostFunc,
