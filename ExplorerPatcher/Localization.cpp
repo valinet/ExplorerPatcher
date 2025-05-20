@@ -13,7 +13,7 @@ EP_L10N_Language LangIDToEPLanguage(LANGID wLanguage)
     EP_L10N_Language language = {};
     language.id = wLanguage;
     GetLocaleInfoW(wLanguage, LOCALE_SNAME, language.wszId, ARRAYSIZE(language.wszId));
-    GetLocaleInfoW(wLanguage, LOCALE_SLOCALIZEDLANGUAGENAME, language.wszDisplayName, ARRAYSIZE(language.wszDisplayName));
+    GetLocaleInfoW(wLanguage, LOCALE_SLOCALIZEDDISPLAYNAME, language.wszDisplayName, ARRAYSIZE(language.wszDisplayName));
     return language;
 }
 
