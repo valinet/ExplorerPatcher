@@ -490,8 +490,7 @@ HRESULT STDMETHODCALLTYPE CLauncherTipContextMenu_CreateInstance_IClassFactory_H
     if (SUCCEEDED(hr))
     {
         ILauncherTipContextMenu* pLTCM = nullptr;
-        hr = ((IUnknown*)*ppvObject)->QueryInterface(IID_PPV_ARGS(&pLTCM));
-        if (SUCCEEDED(hr))
+        if (SUCCEEDED(((IUnknown*)*ppvObject)->QueryInterface(IID_PPV_ARGS(&pLTCM)))) // Don't influence hr: if this fails, black screen
         {
             void** vtable = *(void***)pLTCM;
             REPLACE_VTABLE_ENTRY(vtable, 3, CLauncherTipContextMenu_ShowLauncherTipContextMenu);
