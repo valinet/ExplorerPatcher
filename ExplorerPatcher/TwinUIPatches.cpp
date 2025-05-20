@@ -2192,19 +2192,19 @@ BOOL FixStartMenuAnimation(LPMODULEINFO mi)
     {
         // * Pattern 2, used when a4, a5, and a6 are optimized out (e.g. 26020, 26058):
         //   ```
-        //   82 02 0B 32 67 ?? ?? 91 60 ?? ?? 91 ?? ?? ?? ?? E3 03 00 2A
+        //   ?? 02 0B 32 ?? ?? ?? 91 ?? ?? ?? 91 ?? ?? ?? ?? E3 03 00 2A
         //                                       ^^^^^^^^^^^
         //   ```
         // Ref: CJumpViewExperienceManager::OnViewUncloaking()
         matchAnimationBegin = (PBYTE)FindPattern(
             mi->lpBaseOfDll,
             mi->SizeOfImage,
-            "\x82\x02\x0B\x32\x67\x00\x00\x91\x60\x00\x00\x91\x00\x00\x00\x00\xE3\x03\x00\x2A",
-            "xxxxx??xx??x????xxxx"
+            "\x02\x0B\x32\00\x00\x00\x91\x00\x00\x00\x91\x00\x00\x00\x00\xE3\x03\x00\x2A",
+            "xxx???x???x????xxxx"
         );
         if (matchAnimationBegin)
         {
-            matchAnimationBegin += 12;
+            matchAnimationBegin += 11;
             matchAnimationBegin = (PBYTE)ARM64_FollowBL((DWORD*)matchAnimationBegin);
         }
     }
