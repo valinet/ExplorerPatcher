@@ -932,26 +932,42 @@ static void GUI_SubstituteLocalizedString(wchar_t* str, size_t cch)
 {
     // %R:1212%
     //    ^^^^ The resource ID
-    wchar_t* begin = wcsstr(str, L"%R:");
-    if (!begin) return;
+    wchar_t* pszSubstituteBegin = wcsstr(str, L"%R:");
+    if (!pszSubstituteBegin) return;
 
-    wchar_t* end = wcschr(begin + 3, L'%');
-    if (!end) return;
-    ++end; // Skip the %
+    wchar_t* pszSubstituteEnd = wcschr(pszSubstituteBegin + 3, L'%');
+    if (!pszSubstituteEnd) return;
+    ++pszSubstituteEnd; // Skip the %
 
-    int resId = _wtoi(begin + 3);
+    int resId = _wtoi(pszSubstituteBegin + 3);
+    if (resId == 0) return;
 
-    const wchar_t* localized = NULL;
-    int numChars = LoadStringW(hModule, resId, (LPWSTR)&localized, 0);
-    if (numChars == 0) return;
+    const wchar_t* pszLocalized = NULL;
+    int cchLocalized = LoadStringW(hModule, resId, (LPWSTR)&pszLocalized, 0);
+    if (cchLocalized == 0 || !pszLocalized) return;
+
+    size_t cchStrBeginToSubstituteBegin = pszSubstituteBegin - str;
+    size_t cchSubstituteEndToStrEnd = wcslen(pszSubstituteEnd);
+
+    wchar_t* pszLocalizedEnd = pszSubstituteBegin + cchLocalized;
+    size_t cchStrBeginToLocalizedEnd = cchStrBeginToSubstituteBegin + cchLocalized;
+    size_t cchLocalizedEnd = cch - cchStrBeginToLocalizedEnd;
 
     // Move the end to make space
-    SIZE_T endLen = wcslen(end);
-    memmove_s(begin + numChars, cch - (begin - str), end, (endLen + 1) * sizeof(wchar_t)); // Include the null terminator
+    memmove_s(
+        pszLocalizedEnd,
+        sizeof(wchar_t) * cchLocalizedEnd,
+        pszSubstituteEnd,
+        sizeof(wchar_t) * (cchSubstituteEndToStrEnd + 1 /*NUL*/)
+    );
 
     // Copy the localized string
-    memcpy_s(begin, cch - (begin - str), localized, numChars * sizeof(wchar_t));
-    // TODO Check if the numbers are okay
+    memcpy_s(
+        pszSubstituteBegin,
+        sizeof(wchar_t) * (cch - cchStrBeginToSubstituteBegin),
+        pszLocalized,
+        sizeof(wchar_t) * cchLocalized
+    );
 }
 
 static void GUI_EnumerateLanguagesCallback(const EP_L10N_Language* language, void* data)
@@ -2224,7 +2240,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                     }
                                 }
                             }
-                            else if (!strncmp(line + 1, "uninstall", 6))
+                            else if (!strncmp(line + 1, "uninstall", 9))
                             {
                                 HWND hwndExistingMb = FindWindowExW(NULL, NULL, L"#32770", _T(PRODUCT_NAME));
                                 if (hwndExistingMb)
