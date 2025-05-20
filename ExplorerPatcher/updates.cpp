@@ -420,7 +420,7 @@ BOOL IsUpdateAvailableHelper(
                                                 *szRealHash = 0;
                                                 szRealHash++;
                                                 DWORD dwRemoteLeftMost = atoi(szLeftMost);
-                                                if (pLeftMost) *pLeftMost = dwRemoteLeftMost - ((dwRemoteLeftMost == 22622 && szRealHash[0] != '!') ? 1 : 0);
+                                                if (pLeftMost) *pLeftMost = dwRemoteLeftMost;
                                                 DWORD dwRemoteSecondLeft = atoi(szSecondLeft);
                                                 if (pSecondLeft) *pSecondLeft = dwRemoteSecondLeft;
                                                 DWORD dwRemoteSecondRight = atoi(szSecondRight);

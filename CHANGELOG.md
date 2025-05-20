@@ -2,6 +2,34 @@
 
 This document includes the same release notes as in the [Releases](https://github.com/valinet/ExplorerPatcher/releases) section on GitHub.
 
+## 22631.5335.68
+
+Tested on OS builds 22621.3296, 22631.5189, 22631.5335, 26100.3476, 26100.4061, and 26100.4188.
+
+##### 1
+
+* ❗ **ep_taskbar: Fixed incompatibility with 26200.5603 (Dev), 26120.4151 (Beta), and 26100.4188 (Release Preview).** (#4321)
+* Start10: Fixed Pin to Start on 226x1.4541+ and 261xx.2454+. (#3984) (4ef3667, 123ea8b)
+* sws: Added support for 24H2. (#3765)
+* ep_dwm: Added support for 24H2. (#3555)
+* `ep_dwm.exe` has been renamed to `ep_dwm_svc.exe` to get around 24H2 upgrade blocks. (115b462)
+* ep_dwm: Now always unregistered on uninstallation, regardless of whether it was running during the uninstallation or not. (858b634)
+* Setup: The failure message now displays the associated code line number that failed, to assist in troubleshooting. (c64a17e)
+* Taskbar10: Fixed disabling immersive menus on ARM64. (8b4d8db)
+* Taskbar10: Fixed Win+X menu still having Windows Terminal entries when Windows Terminal is not installed, that crashes Explorer when selected. (1b20cbd, 207f669)
+  * For now, if you want to have PowerShell entries, Windows Terminal must be uninstalled.
+* Taskbar10: Fixed Win+X entry clicks doing nothing on 26xxx.5551+ ARM64.
+* GUI: Added dropdown indicators to dropdown entries. (9f71a5c)
+* GUI: The language names now include the country name. (3f11766)
+* Localization: Added Czech translations. (Thanks @9hb, @andrewz1986, and @Panzimy!)
+* Localization: Added Spanish (Spain) translations. (Thanks @AlejandroMartiGisbert!)
+* ep_taskbar: Added support for "Show desktop button: Hidden" setting. (#4020) (1be6658)
+* ep_taskbar: Fixed a bug that prevented shortcut global hotkeys from working on 24H2. (#3777, #4016)
+* ep_taskbar: Fixed a bug that prevented the taskbar from resizing properly after DPI changes. (#3796)
+* ep_taskbar: Added the following languages: German, French, Hungarian, Indonesian, Italian, Korean, Lithuanian, Dutch, Polish, Portuguese (Brazil), Romanian, Spanish (Spain), Turkish, Ukrainian, Chinese (Simplified).
+* ep_taskbar: Now supports all Windows 10 versions supported by EP (17763/1809+). (aec8c70, 1edb989)
+* ep_taskbar: Fixed a number of memory leaks and code/behavior inaccuracies.
+
 ## 22621.4317.67
 
 Tested on OS builds 22621.3296, 22631.4391, 26120.961, 26100.1150, and 26100.2161.
