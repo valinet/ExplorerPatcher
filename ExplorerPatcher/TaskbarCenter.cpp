@@ -1,6 +1,10 @@
 #include "TaskbarCenter.h"
 
 #include "../ep_weather_host/ep_weather_host_h.h"
+#include <intrin.h>
+
+extern "C"
+{
 
 DEFINE_GUID(POLID_TurnOffSPIAnimations, 0xD7AF00A, 0xB468, 0x4A39, 0xB0, 0x16, 0x33, 0x3E, 0x22, 0x77, 0xAB, 0xED);
 extern int(*SHWindowsPolicy)(REFIID);
@@ -24,11 +28,11 @@ HRESULT TaskbarCenter_Center(HWND hWnd, HWND hWndTaskbar, RECT rc, BOOL bIsTaskb
 	VARIANT vt;
 	long k = 0, kk = 0;
 
-	IAccessible* pAccessible = NULL;
-	AccessibleObjectFromWindow(hWnd, 0, &IID_IAccessible, &pAccessible);
+	IAccessible* pAccessible = nullptr;
+	AccessibleObjectFromWindow(hWnd, 0, IID_PPV_ARGS(&pAccessible));
 	if (pAccessible)
 	{
-		pAccessible->lpVtbl->get_accChildCount(pAccessible, &kk);
+		pAccessible->get_accChildCount(&kk);
 		if (kk <= 10)
 		{
 			AccessibleChildren(pAccessible, 0, kk, vtChild, &k);
@@ -36,29 +40,29 @@ HRESULT TaskbarCenter_Center(HWND hWnd, HWND hWndTaskbar, RECT rc, BOOL bIsTaskb
 			{
 				if (vtChild[i].vt == VT_DISPATCH)
 				{
-					IDispatch* pDisp = vtChild[i].ppdispVal;
-					IAccessible* pChild = NULL;
-					pDisp->lpVtbl->QueryInterface(pDisp, &IID_IAccessible, &pChild);
+					IDispatch* pDisp = vtChild[i].pdispVal;
+					IAccessible* pChild = nullptr;
+					pDisp->QueryInterface(IID_PPV_ARGS(&pChild));
 					if (pChild)
 					{
 						vt.vt = VT_I4;
 						vt.lVal = CHILDID_SELF;
-						pChild->lpVtbl->get_accRole(pChild, vt, &vt);
+						pChild->get_accRole(vt, &vt);
 						if (vt.lVal == ROLE_SYSTEM_TOOLBAR)
 						{
-							IAccessible* pLast = NULL;
+							IAccessible* pLast = nullptr;
 							kk = 0;
-							pChild->lpVtbl->get_accChildCount(pChild, &kk);
+							pChild->get_accChildCount(&kk);
 							if (kk <= 1)
 							{
-								SetPropW(hWnd, EP_TASKBAR_LENGTH_PROP_NAME, -1);
+								SetPropW(hWnd, EP_TASKBAR_LENGTH_PROP_NAME, (HANDLE)-1);
 							}
 							else if (kk >= 2)
 							{
 								vt.vt = VT_I4;
 								vt.lVal = kk - 1;
 								long x = 0, y = 0, w = 0, h = 0, d = 0;
-								pChild->lpVtbl->accLocation(pChild, &x, &y, &w, &h, vt);
+								pChild->accLocation(&x, &y, &w, &h, vt);
 								if (bIsTaskbarHorizontal ? (x == -1 || w < EP_TASKBAR_LENGTH_TOO_SMALL) : (y == -1 || h < EP_TASKBAR_LENGTH_TOO_SMALL))
 								{
 									hr = E_FAIL;
@@ -71,23 +75,23 @@ HRESULT TaskbarCenter_Center(HWND hWnd, HWND hWndTaskbar, RECT rc, BOOL bIsTaskb
 										vt.vt = VT_I4;
 										vt.lVal = 1;
 										x = 0, y = 0, w = 0, h = 0;
-										pChild->lpVtbl->accLocation(pChild, &x, &y, &w, &h, vt);
+										pChild->accLocation(&x, &y, &w, &h, vt);
 										if (bIsTaskbarHorizontal ? w == 0 : h == 0)
 										{
 											vt.vt = VT_I4;
 											vt.lVal = 2;
 											x = 0, y = 0, w = 0, h = 0;
-											pChild->lpVtbl->accLocation(pChild, &x, &y, &w, &h, vt);
+											pChild->accLocation(&x, &y, &w, &h, vt);
 										}
 										if (bIsTaskbarHorizontal ? (x == -1 || w < EP_TASKBAR_LENGTH_TOO_SMALL) : (y == -1 || h < EP_TASKBAR_LENGTH_TOO_SMALL))
 										{
-											hr == E_FAIL;
+											hr = E_FAIL;
 										}
 										else
 										{
 											if (!((GetKeyState(VK_LBUTTON) < 0) && (GetForegroundWindow() == hWndTaskbar)))
 											{
-												SetPropW(hWnd, EP_TASKBAR_LENGTH_PROP_NAME, (bIsTaskbarHorizontal ? (d - (x - rc.left)) : (d - (y - rc.top))));
+												SetPropW(hWnd, EP_TASKBAR_LENGTH_PROP_NAME, (HANDLE)(UINT_PTR)(bIsTaskbarHorizontal ? (d - (x - rc.left)) : (d - (y - rc.top))));
 											}
 										}
 									}
@@ -95,19 +99,19 @@ HRESULT TaskbarCenter_Center(HWND hWnd, HWND hWndTaskbar, RECT rc, BOOL bIsTaskb
 									{
 										if (!((GetKeyState(VK_LBUTTON) < 0) && (GetForegroundWindow() == hWndTaskbar)))
 										{
-											SetPropW(hWnd, EP_TASKBAR_LENGTH_PROP_NAME, bIsTaskbarHorizontal ? w : h);
+											SetPropW(hWnd, EP_TASKBAR_LENGTH_PROP_NAME, (HANDLE)(UINT_PTR)(bIsTaskbarHorizontal ? w : h));
 										}
 									}
 								}
 							}
 						}
-						pChild->lpVtbl->Release(pChild);
+						pChild->Release();
 					}
-					pDisp->lpVtbl->Release(pDisp);
+					pDisp->Release();
 				}
 			}
 		}
-		pAccessible->lpVtbl->Release(pAccessible);
+		pAccessible->Release();
 	}
 	return hr;
 }
@@ -131,9 +135,9 @@ BOOL TaskbarCenter_GetClientRectHook(HWND hWnd, LPRECT lpRect)
 		{
 			return GetClientRect(hWnd, lpRect); // Early out
 		}
-		HWND hWndStart = NULL;
+		HWND hWndStart = nullptr;
 		RECT rcStart = { 0, 0, 0, 0 };
-		HWND hWndTaskbar = NULL;
+		HWND hWndTaskbar = nullptr;
 		if (bIsPrimaryTaskbar)
 		{
 			hWndTaskbar = GetParent(GetParent(hwndParent));
@@ -142,12 +146,12 @@ BOOL TaskbarCenter_GetClientRectHook(HWND hWnd, LPRECT lpRect)
 		{
 			hWndTaskbar = GetParent(hwndParent);
 		}
-		hWndStart = FindWindowExW(hWndTaskbar, NULL, L"Start", NULL);
+		hWndStart = FindWindowExW(hWndTaskbar, nullptr, L"Start", nullptr);
 		BOOL bIsTaskbarHorizontal = TaskbarCenter_IsTaskbarHorizontal(hWnd);
-		HWND hReBarWindow32 = NULL;
-		if (bIsPrimaryTaskbar) hReBarWindow32 = FindWindowExW(hWndTaskbar, NULL, L"ReBarWindow32", NULL);
-		HWND hPeopleBand = NULL;
-		if (bIsPrimaryTaskbar) hPeopleBand = FindWindowExW(hReBarWindow32, NULL, L"PeopleBand", NULL);
+		HWND hReBarWindow32 = nullptr;
+		if (bIsPrimaryTaskbar) hReBarWindow32 = FindWindowExW(hWndTaskbar, nullptr, L"ReBarWindow32", nullptr);
+		HWND hPeopleBand = nullptr;
+		if (bIsPrimaryTaskbar) hPeopleBand = FindWindowExW(hReBarWindow32, nullptr, L"PeopleBand", nullptr);
 		BOOL bIsWeatherAvailable = hPeopleBand && dwWeatherToLeft;
 		BOOL bWasLeftAlignedDueToSpaceConstraints = FALSE;
 		if (bCenteringEnabled)
@@ -155,10 +159,10 @@ BOOL TaskbarCenter_GetClientRectHook(HWND hWnd, LPRECT lpRect)
 			if (hWndStart)
 			{
 				GetClientRect(hWndStart, &rcStart);
-				HWND hTrayButton = NULL;
-				wchar_t* pCn = L"TrayButton";
+				HWND hTrayButton = nullptr;
+				const wchar_t* pCn = L"TrayButton";
 				if (/*!IsWindows11() &&*/ dwSearchboxTaskbarMode == 2) pCn = L"TrayDummySearchControl";
-				while (hTrayButton = FindWindowExW(hWndTaskbar, hTrayButton, pCn, NULL))
+				while ((hTrayButton = FindWindowExW(hWndTaskbar, hTrayButton, pCn, nullptr)))
 				{
 					if (pCn == L"TrayButton" && !IsWindowVisible(hTrayButton)) continue;
 					RECT rcTrayButton;
@@ -173,7 +177,7 @@ BOOL TaskbarCenter_GetClientRectHook(HWND hWnd, LPRECT lpRect)
 					}
 					if (pCn == L"TrayDummySearchControl") {
 						pCn = L"TrayButton";
-						hTrayButton = NULL;
+						hTrayButton = nullptr;
 					}
 				}
 			}
@@ -183,9 +187,9 @@ BOOL TaskbarCenter_GetClientRectHook(HWND hWnd, LPRECT lpRect)
 			ZeroMemory(&mi, sizeof(MONITORINFO));
 			mi.cbSize = sizeof(MONITORINFO);
 			GetMonitorInfoW(MonitorFromWindow(hWnd, MONITOR_DEFAULTTOPRIMARY), &mi);
-			DWORD dwLength = 0;
+			long dwLength = 0;
 			TaskbarCenter_Center(hWnd, hWndTaskbar, mi.rcMonitor, bIsTaskbarHorizontal);
-			if (dwLength = GetPropW(hWnd, EP_TASKBAR_LENGTH_PROP_NAME))
+			if ((dwLength = (long)(UINT_PTR)GetPropW(hWnd, EP_TASKBAR_LENGTH_PROP_NAME)))
 			{
 				if (dwLength == -1)
 				{
@@ -193,49 +197,49 @@ BOOL TaskbarCenter_GetClientRectHook(HWND hWnd, LPRECT lpRect)
 					{
 						if (bIsTaskbarHorizontal)
 						{
-							SetWindowPos(hWndStart, NULL, ((mi.rcMonitor.right - mi.rcMonitor.left) - (rcStart.right - rcStart.left)) / 2, rcStart.top, 0, 0, SWP_NOSIZE | SWP_FRAMECHANGED | SWP_ASYNCWINDOWPOS);
+							SetWindowPos(hWndStart, nullptr, ((mi.rcMonitor.right - mi.rcMonitor.left) - (rcStart.right - rcStart.left)) / 2, rcStart.top, 0, 0, SWP_NOSIZE | SWP_FRAMECHANGED | SWP_ASYNCWINDOWPOS);
 							RECT rcTrayButton;
 							GetClientRect(hWndStart, &rcTrayButton);
 							DWORD dwDim = (rcTrayButton.right - rcTrayButton.left);
-							HWND hTrayButton = NULL;
-							wchar_t* pCn = L"TrayButton";
+							HWND hTrayButton = nullptr;
+							const wchar_t* pCn = L"TrayButton";
 							if (/*!IsWindows11() &&*/ dwSearchboxTaskbarMode == 2) pCn = L"TrayDummySearchControl";
-							while (hTrayButton = FindWindowExW(hWndTaskbar, hTrayButton, pCn, NULL))
+							while ((hTrayButton = FindWindowExW(hWndTaskbar, hTrayButton, pCn, nullptr)))
 							{
 								if (pCn == L"TrayButton" && !IsWindowVisible(hTrayButton)) continue;
 								GetClientRect(hTrayButton, &rcTrayButton);
 								MoveWindow(hTrayButton, ((mi.rcMonitor.right - mi.rcMonitor.left) - (rcStart.right - rcStart.left)) / 2 + dwDim, rcStart.top, rcTrayButton.right, rcTrayButton.bottom, TRUE);
-								if (!bIsPrimaryTaskbar) InvalidateRect(hTrayButton, NULL, TRUE);
+								if (!bIsPrimaryTaskbar) InvalidateRect(hTrayButton, nullptr, TRUE);
 								dwDim += (rcTrayButton.right - rcTrayButton.left);
 								if (pCn == L"TrayDummySearchControl") {
 									pCn = L"TrayButton";
-									hTrayButton = NULL;
+									hTrayButton = nullptr;
 								}
 							}
 						}
 						else
 						{
-							SetWindowPos(hWndStart, NULL, rcStart.left, ((mi.rcMonitor.bottom - mi.rcMonitor.top) - (rcStart.bottom - rcStart.top)) / 2, 0, 0, SWP_NOSIZE | SWP_FRAMECHANGED | SWP_ASYNCWINDOWPOS);
+							SetWindowPos(hWndStart, nullptr, rcStart.left, ((mi.rcMonitor.bottom - mi.rcMonitor.top) - (rcStart.bottom - rcStart.top)) / 2, 0, 0, SWP_NOSIZE | SWP_FRAMECHANGED | SWP_ASYNCWINDOWPOS);
 							RECT rcTrayButton;
 							GetClientRect(hWndStart, &rcTrayButton);
 							DWORD dwDim = (rcTrayButton.bottom - rcTrayButton.top);
-							HWND hTrayButton = NULL;
-							wchar_t* pCn = L"TrayButton";
+							HWND hTrayButton = nullptr;
+							const wchar_t* pCn = L"TrayButton";
 							if (/*!IsWindows11() &&*/ dwSearchboxTaskbarMode == 2) pCn = L"TrayDummySearchControl";
-							while (hTrayButton = FindWindowExW(hWndTaskbar, hTrayButton, pCn, NULL))
+							while ((hTrayButton = FindWindowExW(hWndTaskbar, hTrayButton, pCn, nullptr)))
 							{
 								if (pCn == L"TrayButton" && !IsWindowVisible(hTrayButton)) continue;
 								GetClientRect(hTrayButton, &rcTrayButton);
 								MoveWindow(hTrayButton, rcStart.left, ((mi.rcMonitor.bottom - mi.rcMonitor.top) - (rcStart.bottom - rcStart.top)) / 2 + dwDim, rcTrayButton.right, rcTrayButton.bottom, TRUE);
-								InvalidateRect(hTrayButton, NULL, TRUE);
+								InvalidateRect(hTrayButton, nullptr, TRUE);
 								dwDim += (rcTrayButton.bottom - rcTrayButton.top);
 								if (pCn == L"TrayDummySearchControl") {
 									pCn = L"TrayButton";
-									hTrayButton = NULL;
+									hTrayButton = nullptr;
 								}
 							}
 						}
-						if (!bIsPrimaryTaskbar) InvalidateRect(hWndStart, NULL, TRUE);
+						if (!bIsPrimaryTaskbar) InvalidateRect(hWndStart, nullptr, TRUE);
 					}
 				}
 				else
@@ -264,7 +268,7 @@ BOOL TaskbarCenter_GetClientRectHook(HWND hWnd, LPRECT lpRect)
 					//	rc.left += mBand.cxLeftWidth;
 					//}
 
-					DWORD dwAdd = 0;
+					long dwAdd = 0;
 					if (TaskbarCenter_ShouldStartBeCentered(dwSetting) && hWndStart)
 					{
 						dwAdd += (bIsTaskbarHorizontal ? (rcStart.right - rcStart.left) : (rcStart.bottom - rcStart.top));
@@ -333,49 +337,49 @@ BOOL TaskbarCenter_GetClientRectHook(HWND hWnd, LPRECT lpRect)
 					{
 						if (bIsTaskbarHorizontal)
 						{
-							SetWindowPos(hWndStart, NULL, (rc.left - mi.rcMonitor.left) + lpRect->left - (rcStart.right - rcStart.left), rcStart.top, 0, 0, SWP_NOSIZE | SWP_FRAMECHANGED | SWP_ASYNCWINDOWPOS);
+							SetWindowPos(hWndStart, nullptr, (rc.left - mi.rcMonitor.left) + lpRect->left - (rcStart.right - rcStart.left), rcStart.top, 0, 0, SWP_NOSIZE | SWP_FRAMECHANGED | SWP_ASYNCWINDOWPOS);
 							RECT rcTrayButton;
 							GetClientRect(hWndStart, &rcTrayButton);
 							DWORD dwDim = (rcTrayButton.right - rcTrayButton.left);
-							HWND hTrayButton = NULL;
-							wchar_t* pCn = L"TrayButton";
+							HWND hTrayButton = nullptr;
+							const wchar_t* pCn = L"TrayButton";
 							if (/*!IsWindows11() &&*/ dwSearchboxTaskbarMode == 2) pCn = L"TrayDummySearchControl";
-							while (hTrayButton = FindWindowExW(hWndTaskbar, hTrayButton, pCn, NULL))
+							while ((hTrayButton = FindWindowExW(hWndTaskbar, hTrayButton, pCn, nullptr)))
 							{
 								if (pCn == L"TrayButton" && !IsWindowVisible(hTrayButton)) continue;
 								GetClientRect(hTrayButton, &rcTrayButton);
 								MoveWindow(hTrayButton, (rc.left - mi.rcMonitor.left) + lpRect->left - (rcStart.right - rcStart.left) + dwDim, rcStart.top, rcTrayButton.right, rcTrayButton.bottom, TRUE);
-								if (!bIsPrimaryTaskbar) InvalidateRect(hTrayButton, NULL, TRUE);
+								if (!bIsPrimaryTaskbar) InvalidateRect(hTrayButton, nullptr, TRUE);
 								dwDim += (rcTrayButton.right - rcTrayButton.left);
 								if (pCn == L"TrayDummySearchControl") {
 									pCn = L"TrayButton";
-									hTrayButton = NULL;
+									hTrayButton = nullptr;
 								}
 							}
 						}
 						else
 						{
-							SetWindowPos(hWndStart, NULL, rcStart.left, (rc.top - mi.rcMonitor.top) + lpRect->top - (rcStart.bottom - rcStart.top), 0, 0, SWP_NOSIZE | SWP_FRAMECHANGED | SWP_ASYNCWINDOWPOS);
+							SetWindowPos(hWndStart, nullptr, rcStart.left, (rc.top - mi.rcMonitor.top) + lpRect->top - (rcStart.bottom - rcStart.top), 0, 0, SWP_NOSIZE | SWP_FRAMECHANGED | SWP_ASYNCWINDOWPOS);
 							RECT rcTrayButton;
 							GetClientRect(hWndStart, &rcTrayButton);
 							DWORD dwDim = (rcTrayButton.bottom - rcTrayButton.top);
-							HWND hTrayButton = NULL;
-							wchar_t* pCn = L"TrayButton";
+							HWND hTrayButton = nullptr;
+							const wchar_t* pCn = L"TrayButton";
 							if (/*!IsWindows11() &&*/ dwSearchboxTaskbarMode == 2) pCn = L"TrayDummySearchControl";
-							while (hTrayButton = FindWindowExW(hWndTaskbar, hTrayButton, pCn, NULL))
+							while ((hTrayButton = FindWindowExW(hWndTaskbar, hTrayButton, pCn, nullptr)))
 							{
 								if (pCn == L"TrayButton" && !IsWindowVisible(hTrayButton)) continue;
 								GetClientRect(hTrayButton, &rcTrayButton);
 								MoveWindow(hTrayButton, rcStart.left, (rc.top - mi.rcMonitor.top) + lpRect->top - (rcStart.bottom - rcStart.top) + dwDim, rcTrayButton.right, rcTrayButton.bottom, TRUE);
-								InvalidateRect(hTrayButton, NULL, TRUE);
+								InvalidateRect(hTrayButton, nullptr, TRUE);
 								dwDim += (rcTrayButton.bottom - rcTrayButton.top);
 								if (pCn == L"TrayDummySearchControl") {
 									pCn = L"TrayButton";
-									hTrayButton = NULL;
+									hTrayButton = nullptr;
 								}
 							}
 						}
-						if (!bIsPrimaryTaskbar) InvalidateRect(hWndStart, NULL, TRUE);
+						if (!bIsPrimaryTaskbar) InvalidateRect(hWndStart, nullptr, TRUE);
 					}
 				}
 			}
@@ -400,12 +404,12 @@ BOOL TaskbarCenter_GetClientRectHook(HWND hWnd, LPRECT lpRect)
 			ZeroMemory(&rbi, sizeof(REBARBANDINFOW));
 			rbi.cbSize = sizeof(REBARBANDINFOW);
 			rbi.fMask = RBBIM_CHILD;
-			SendMessageW(hReBarWindow32, RB_GETBANDINFOW, 0, &rbi);
+			SendMessageW(hReBarWindow32, RB_GETBANDINFOW, 0, (LPARAM)&rbi);
 			BOOL bIsFirstBandPeopleBand = (GetClassWord(rbi.hwndChild, GCW_ATOM) == atomPeopleBand);
 			if (bWeatherAlignment ? !bIsFirstBandPeopleBand : bIsFirstBandPeopleBand)
 			{
 				int s = 0;
-				int k = SendMessageW(hReBarWindow32, RB_GETBANDCOUNT, 0, 0);
+				int k = (int)SendMessageW(hReBarWindow32, RB_GETBANDCOUNT, 0, 0);
 				if (bWeatherAlignment)
 				{
 					for (int i = k - 1; i >= 0; i--)
@@ -415,7 +419,7 @@ BOOL TaskbarCenter_GetClientRectHook(HWND hWnd, LPRECT lpRect)
 							ZeroMemory(&rbi, sizeof(REBARBANDINFOW));
 							rbi.cbSize = sizeof(REBARBANDINFOW);
 							rbi.fMask = RBBIM_CHILD;
-							SendMessageW(hReBarWindow32, RB_GETBANDINFOW, i, &rbi);
+							SendMessageW(hReBarWindow32, RB_GETBANDINFOW, i, (LPARAM)&rbi);
 							if (rbi.hwndChild && (GetClassWord(rbi.hwndChild, GCW_ATOM) == atomPeopleBand))
 							{
 								s = 1;
@@ -437,13 +441,13 @@ BOOL TaskbarCenter_GetClientRectHook(HWND hWnd, LPRECT lpRect)
 					SendNotifyMessageW(HWND_BROADCAST, WM_WININICHANGE, 0, (LPARAM)L"TraySettings");
 				}
 			}
-			int k = SendMessageW(hReBarWindow32, RB_GETBANDCOUNT, 0, 0);
+			int k = (int)SendMessageW(hReBarWindow32, RB_GETBANDCOUNT, 0, 0);
 			for (int i = 0; i < k - 1; ++i)
 			{
 				ZeroMemory(&rbi, sizeof(REBARBANDINFOW));
 				rbi.cbSize = sizeof(REBARBANDINFOW);
 				rbi.fMask = RBBIM_CHILD | RBBIM_CHILDSIZE;
-				SendMessageW(hReBarWindow32, RB_GETBANDINFOW, i, &rbi);
+				SendMessageW(hReBarWindow32, RB_GETBANDINFOW, i, (LPARAM)&rbi);
 				if (rbi.hwndChild && (GetClassWord(rbi.hwndChild, GCW_ATOM) == atomPeopleBand))
 				{
 					RECT rcpp = { 0, 0, 0, 0 };
@@ -470,7 +474,7 @@ BOOL TaskbarCenter_GetClientRectHook(HWND hWnd, LPRECT lpRect)
 
 BOOL TaskbarCenter_SHWindowsPolicy(REFIID riid)
 {
-	if (IsEqualIID(riid, &POLID_TurnOffSPIAnimations) && (TaskbarCenter_ShouldCenter(dwOldTaskbarAl) || TaskbarCenter_ShouldCenter(dwMMOldTaskbarAl)))
+	if (IsEqualIID(riid, POLID_TurnOffSPIAnimations) && (TaskbarCenter_ShouldCenter(dwOldTaskbarAl) || TaskbarCenter_ShouldCenter(dwMMOldTaskbarAl)))
 	{
 		DWORD flOldProtect = 0;
 		if (!bTaskbarCenterHasPatchedSHWindowsPolicy && *((unsigned char*)_ReturnAddress() + 7) == 0x0F)
@@ -492,3 +496,5 @@ BOOL TaskbarCenter_SHWindowsPolicy(REFIID riid)
 	}
 	return SHWindowsPolicy(riid);
 }
+
+} // extern "C"

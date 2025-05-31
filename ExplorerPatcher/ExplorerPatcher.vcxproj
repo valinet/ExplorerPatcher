@@ -251,7 +251,7 @@
     <ClCompile Include="Taskbar10.cpp">
       <ExcludedFromBuild Condition="'$(WithMainPatcher)'!='true'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="TaskbarCenter.c">
+    <ClCompile Include="TaskbarCenter.cpp">
       <ExcludedFromBuild Condition="'$(WithMainPatcher)'!='true'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="TwinUIPatches.cpp">
