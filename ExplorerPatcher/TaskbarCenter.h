@@ -44,7 +44,7 @@ ITaskListSite : IUnknown
 	virtual HRESULT STDMETHODCALLTYPE GetHost(const GUID&, void**) = 0;
 };
 
-MIDL_INTERFACE("391a8cab-898e-44bc-989d-30029294b3dd")
+MIDL_INTERFACE("2be43f49-c23d-40d8-8092-2fb6577ee134")
 ITaskListWndSite : IUnknown
 {
 	virtual void STDMETHODCALLTYPE CheckSize(int) = 0;
