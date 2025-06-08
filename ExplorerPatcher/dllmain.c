@@ -6714,7 +6714,11 @@ void WINAPI LoadSettings(LPARAM lParam)
         }
         if ((dwRefreshUIMask & REFRESHUI_ORB) || (dwRefreshUIMask & REFRESHUI_PEOPLE))
         {
-            SendNotifyMessageW(HWND_BROADCAST, WM_WININICHANGE, 0, (LPARAM)L"TraySettings");
+            HWND hwndTray = FindWindowW(L"Shell_TrayWnd", NULL);
+            if (hwndTray)
+            {
+                SendMessageW(hwndTray, WM_WININICHANGE, 0, (LPARAM)L"TraySettings");
+            }
             if (dwRefreshUIMask & REFRESHUI_ORB)
             {
                 InvalidateRect(FindWindowW(L"ExplorerPatcher_GUI_" _T(EP_CLSID), NULL), NULL, FALSE);
@@ -6954,7 +6958,11 @@ void WINAPI Explorer_RefreshUI(int src)
         }
     }
     if (src == 99) return;
-    SendNotifyMessageW(HWND_BROADCAST, WM_WININICHANGE, 0, (LPARAM)L"TraySettings");
+    HWND hwndTray = FindWindowW(L"Shell_TrayWnd", NULL);
+    if (hwndTray)
+    {
+        SendMessageW(hwndTray, WM_WININICHANGE, 0, (LPARAM)L"TraySettings");
+    }
     Explorer_RefreshClock(0);
     if (dwRefreshMask & REFRESHUI_CENTER)
     {
