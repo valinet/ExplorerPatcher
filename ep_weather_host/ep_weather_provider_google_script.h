@@ -107,7 +107,7 @@ var final_img2 = 0;\n\
 var final_int;\n\
 var final_cnt = 0;\n\
 function ep_set_final_img(){\n\
-//document.getElementById('wob_tci').src = final_img2;\n\
+//document.getElementsByClassName(\"YQ4gaf zr758c\")[0].src = final_img2;\n\
 //final_cnt++;\n\
 //if (final_cnt == 20)\n\
 is_first_time=0;\n\
@@ -241,7 +241,7 @@ LPCWSTR ep_weather_provider_google_script011 = L"\
     else        final_img = ep_download_image_blob('https://user-images.githubusercontent.com/6503598/156949445-60d12efa-a21d-40e0-b9a8-1b7a84e58944.png');\n\
 }\n\
 if (final_img != 0) {\n\
-    if (im.id != document.getElementById('wob_tci').id) { im.width = 48; im.height = 48; }\n\
+    if (im.id != document.getElementsByClassName(\"YQ4gaf zr758c\")[0].id) { im.width = 48; im.height = 48; }\n\
     im.src = final_img;\n\
 }\n\
 }\n\
@@ -254,23 +254,23 @@ LPCWSTR ep_weather_provider_google_script021 = L"\
 ";
 
 LPCWSTR ep_weather_provider_google_script03 = L"\
-replaceImage(document.getElementById('wob_tci'), is_day1);\n\
+replaceImage(document.getElementsByClassName(\"YQ4gaf zr758c\")[0], is_day1);\n\
 for (const element of document.getElementsByClassName(\"uW5pk\")){ replaceImage(element.children[0], 1); }\n\
 var observer = new MutationObserver((changes) => {\n\
   changes.forEach(change => {\n\
-      if(change.attributeName.includes('src') && (document.getElementById('wob_tci').src.includes('gstatic.com') || document.getElementById('wob_tci').src.includes('data:image/png;base64,'))){\n\
+      if(change.attributeName.includes('src') && (document.getElementsByClassName(\"YQ4gaf zr758c\")[0].src.includes('gstatic.com') || document.getElementsByClassName(\"YQ4gaf zr758c\")[0].src.includes('data:image/png;base64,'))){\n\
         let includes_time = document.getElementById(\"wob_dts\").innerText.includes(\":\");\n\
         if (includes_time) {\n\
             let sp = document.getElementById(\"wob_dts\").innerText.split(':');\n\
             let hrs = parseInt(sp[0].split(' ')[1]);\n\
             let mins = parseInt(sp[1]);\n\
-            if (is_first_time) { replaceImage(document.getElementById('wob_tci'), is_day1); is_first_time = 0 }\n\
-            else replaceImage(document.getElementById('wob_tci'), IsDay(1, hrs, mins));\n\
-        } else { replaceImage(document.getElementById('wob_tci'), 1); }\n\
+            if (is_first_time) { replaceImage(document.getElementsByClassName(\"YQ4gaf zr758c\")[0], is_day1); is_first_time = 0 }\n\
+            else replaceImage(document.getElementsByClassName(\"YQ4gaf zr758c\")[0], IsDay(1, hrs, mins));\n\
+        } else { replaceImage(document.getElementsByClassName(\"YQ4gaf zr758c\")[0], 1); }\n\
       }\n\
   });\n\
 });\n\
-observer.observe(document.getElementById('wob_tci'), {attributes : true});\n\
+observer.observe(document.getElementsByClassName(\"YQ4gaf zr758c\")[0], {attributes : true});\n\
 function ep_weather_part0() {\n\
 return \"run_part_0\";\n\
 }\n\
@@ -341,7 +341,7 @@ function ep_weather_getData(imageBitmap, ch) {\n\
     document.getElementsByClassName(\"ULSxyf\")[0].offsetHeight + \"#\" + \n\
     document.getElementById(ch.includes('x') ? \"wob_ttm\" : \"wob_tm\").innerText + \"#\" + \n\
     Array.from(document.getElementsByClassName('wob-unit')[0].getElementsByTagName('span')).filter(e => e.className == 'wob_t').filter(e => !e.style.display.toString().includes(\"none\"))[0].innerText + \"#\" + \n\
-    document.getElementById(\"wob_tci\").alt + \"#\" + \n\
+    document.getElementsByClassName(\"YQ4gaf zr758c\")[0].alt + \"#\" + \n\
     document.getElementById(\"wob_loc\").innerText + \"#\" + \n\
     ep_weather_toHexString(result)\n\
   );\n\
@@ -359,7 +359,7 @@ if (!unit.includes(p)) {\n\
     unit = 'x';\n\
 }\n\
 createImageBitmap(\n\
-    (final_im != 0) ? final_im : document.getElementById('wob_tci'), \n\
+    (final_im != 0) ? final_im : document.getElementsByClassName(\"YQ4gaf zr758c\")[0], \n\
     { resizeWidth: %d, resizeHeight: %d, resizeQuality: 'high' }\n\
 )\n\
 .then(imageBitmap => \n\
