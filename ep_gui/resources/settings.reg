@@ -248,7 +248,6 @@
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;b %R:1221% **
 "HideExplorerSearchBar"=dword:00000000
-;s Explorer_TitlebarSection !IsWindows11Version22H2OrHigher
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;c 4 %R:1222%
 ;x 0 %R:1223%
@@ -256,7 +255,6 @@
 ;x 2 %R:1225%
 ;x 3 %R:1226%
 "HideIconAndTitleInExplorer"=dword:00000000
-;g Explorer_TitlebarSection
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;b %R:1227% **
 "MicaEffectOnTitlebar"=dword:00000000
