@@ -720,7 +720,7 @@ void LVT_StartDocked_DisableRecommendedSection(HWND hWnd, BOOL bApply, RECT* rec
                                         {
                                             pRootGridParent = pLauncherFrame;
                                         }
-                                        Windows_UI_Xaml_IDependencyObject* pRootGrid = LVT_FindChildByName(pLauncherFrame, pVisualTreeHelperStatics, L"RootGrid");
+                                        Windows_UI_Xaml_IDependencyObject* pRootGrid = LVT_FindChildByName(pRootGridParent, pVisualTreeHelperStatics, L"RootGrid");
                                         if (pRootGrid)
                                         {
                                             Windows_UI_Xaml_IDependencyObject* pRootContent = LVT_FindChildByName(pRootGrid, pVisualTreeHelperStatics, L"RootContent");
