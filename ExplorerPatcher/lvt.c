@@ -714,101 +714,111 @@ void LVT_StartDocked_DisableRecommendedSection(HWND hWnd, BOOL bApply, RECT* rec
                                     Windows_UI_Xaml_IDependencyObject* pLauncherFrame = LVT_FindChildByClassName(pContentPresenter2, pVisualTreeHelperStatics, L"StartDocked.LauncherFrame", NULL);
                                     if (pLauncherFrame)
                                     {
-                                        Windows_UI_Xaml_IDependencyObject* pRootGrid = LVT_FindChildByName(pLauncherFrame, pVisualTreeHelperStatics, L"RootGrid");
-                                        if (pRootGrid)
+										Windows_UI_Xaml_IDependencyObject* pRootPanel = LVT_FindChildByName(pLauncherFrame, pVisualTreeHelperStatics, L"RootPanel");
+                                        Windows_UI_Xaml_IDependencyObject* pRootGridParent = pRootPanel;
+                                        if (!pRootGridParent)
                                         {
-                                            Windows_UI_Xaml_IDependencyObject* pRootContent = LVT_FindChildByName(pRootGrid, pVisualTreeHelperStatics, L"RootContent");
-                                            if (pRootContent)
-                                            {
-                                                Windows_UI_Xaml_IDependencyObject* pMainContent = LVT_FindChildByName(pRootContent, pVisualTreeHelperStatics, L"MainContent");
-                                                if (pMainContent)
-                                                {
-                                                    Windows_UI_Xaml_IDependencyObject* pInnerContent = NULL;
-                                                    Windows_UI_Xaml_IDependencyObject* pUndockedRoot = LVT_FindChildByName(pMainContent, pVisualTreeHelperStatics, L"UndockedRoot");
-                                                    if (!pUndockedRoot)
-                                                    {
-                                                        pInnerContent = LVT_FindChildByName(pMainContent, pVisualTreeHelperStatics, L"InnerContent");
-                                                        if (pInnerContent)
-                                                        {
-                                                            pUndockedRoot = LVT_FindChildByName(pInnerContent, pVisualTreeHelperStatics, L"UndockedRoot");
-                                                        }
-                                                    }
-                                                    if (pUndockedRoot)
-                                                    {
-                                                        Windows_UI_Xaml_IDependencyObject* pStartInnerFrame = LVT_FindChildByClassName(pUndockedRoot, pVisualTreeHelperStatics, L"StartMenu.StartInnerFrame", NULL);
-                                                        if (pStartInnerFrame)
-                                                        {
-                                                            Windows_UI_Xaml_IDependencyObject* pFrameRoot = LVT_FindChildByName(pStartInnerFrame, pVisualTreeHelperStatics, L"FrameRoot");
-                                                            if (pFrameRoot)
-                                                            {
-                                                                Windows_UI_Xaml_IDependencyObject* pTopLevelRoot = LVT_FindChildByName(pFrameRoot, pVisualTreeHelperStatics, L"TopLevelRoot");
-                                                                if (pTopLevelRoot)
-                                                                {
-                                                                    Windows_UI_Xaml_IDependencyObject* pStartMenuPinnedList = LVT_FindChildByName(pTopLevelRoot, pVisualTreeHelperStatics, L"StartMenuPinnedList");
-                                                                    if (pStartMenuPinnedList)
-                                                                    {
-                                                                        Windows_UI_Xaml_IFrameworkElement* pFrameworkElement = NULL;
-                                                                        pStartMenuPinnedList->lpVtbl->QueryInterface(pStartMenuPinnedList, &IID_Windows_UI_Xaml_IFrameworkElement, &pFrameworkElement);
-                                                                        if (pFrameworkElement)
-                                                                        {
-                                                                            static double StartMenuPinnedList_Height = 252.0;
-                                                                            double tempStartMenuPinnedList_Height = 0.0;
-                                                                            if (SUCCEEDED(pFrameworkElement->lpVtbl->get_Height(pFrameworkElement, &tempStartMenuPinnedList_Height)) && tempStartMenuPinnedList_Height != 510.0) StartMenuPinnedList_Height = tempStartMenuPinnedList_Height;
-
-                                                                            if (bApply)
-                                                                            {
-                                                                                pFrameworkElement->lpVtbl->put_Height(pFrameworkElement, 510.0);
-                                                                            }
-                                                                            else
-                                                                            {
-                                                                                pFrameworkElement->lpVtbl->put_Height(pFrameworkElement, StartMenuPinnedList_Height);
-                                                                            }
-                                                                            pFrameworkElement->lpVtbl->Release(pFrameworkElement);
-                                                                        }
-                                                                        Windows_UI_Xaml_IDependencyObject* pRoot = LVT_FindChildByName(pStartMenuPinnedList, pVisualTreeHelperStatics, L"Root");
-                                                                        if (pRoot)
-                                                                        {
-                                                                            Windows_UI_Xaml_IDependencyObject* pPinnedListPipsPager = LVT_FindChildByName(pRoot, pVisualTreeHelperStatics, L"PinnedListPipsPager");
-                                                                            if (pPinnedListPipsPager)
-                                                                            {
-                                                                                Windows_UI_Xaml_IUIElement* pIUIElement = NULL;
-                                                                                pPinnedListPipsPager->lpVtbl->QueryInterface(pPinnedListPipsPager, &IID_Windows_UI_Xaml_IUIElement, &pIUIElement);
-                                                                                if (pIUIElement)
-                                                                                {
-                                                                                    if (bApply)
-                                                                                    {
-                                                                                        pIUIElement->lpVtbl->put_Visibility(pIUIElement, Windows_UI_Xaml_Visibility_Collapsed);
-                                                                                    }
-                                                                                    else
-                                                                                    {
-                                                                                        pIUIElement->lpVtbl->put_Visibility(pIUIElement, Windows_UI_Xaml_Visibility_Visible);
-                                                                                    }
-                                                                                    pIUIElement->lpVtbl->Release(pIUIElement);
-                                                                                }
-                                                                                pPinnedListPipsPager->lpVtbl->Release(pPinnedListPipsPager);
-                                                                            }
-                                                                            pRoot->lpVtbl->Release(pRoot);
-                                                                        }
-                                                                        pStartMenuPinnedList->lpVtbl->Release(pStartMenuPinnedList);
-                                                                    }
-                                                                    pTopLevelRoot->lpVtbl->Release(pTopLevelRoot);
-                                                                }
-                                                                pFrameRoot->lpVtbl->Release(pFrameRoot);
-                                                            }
-                                                            pStartInnerFrame->lpVtbl->Release(pStartInnerFrame);
-                                                        }
-                                                        pUndockedRoot->lpVtbl->Release(pUndockedRoot);
-                                                    }
-                                                    if (pInnerContent)
-                                                    {
-                                                        pInnerContent->lpVtbl->Release(pInnerContent);
-                                                    }
-                                                    pMainContent->lpVtbl->Release(pMainContent);
-                                                }
-                                                pRootContent->lpVtbl->Release(pRootContent);
-                                            }
-                                            pRootGrid->lpVtbl->Release(pRootGrid);
+                                            pRootGridParent = pLauncherFrame;
                                         }
+										Windows_UI_Xaml_IDependencyObject* pRootGrid = LVT_FindChildByName(pRootGridParent, pVisualTreeHelperStatics, L"RootGrid");
+										if (pRootGrid)
+										{
+											Windows_UI_Xaml_IDependencyObject* pRootContent = LVT_FindChildByName(pRootGrid, pVisualTreeHelperStatics, L"RootContent");
+											if (pRootContent)
+											{
+												Windows_UI_Xaml_IDependencyObject* pMainContent = LVT_FindChildByName(pRootContent, pVisualTreeHelperStatics, L"MainContent");
+												if (pMainContent)
+												{
+													Windows_UI_Xaml_IDependencyObject* pInnerContent = NULL;
+													Windows_UI_Xaml_IDependencyObject* pUndockedRoot = LVT_FindChildByName(pMainContent, pVisualTreeHelperStatics, L"UndockedRoot");
+													if (!pUndockedRoot)
+													{
+														pInnerContent = LVT_FindChildByName(pMainContent, pVisualTreeHelperStatics, L"InnerContent");
+														if (pInnerContent)
+														{
+															pUndockedRoot = LVT_FindChildByName(pInnerContent, pVisualTreeHelperStatics, L"UndockedRoot");
+														}
+													}
+													if (pUndockedRoot)
+													{
+														Windows_UI_Xaml_IDependencyObject* pStartInnerFrame = LVT_FindChildByClassName(pUndockedRoot, pVisualTreeHelperStatics, L"StartMenu.StartInnerFrame", NULL);
+														if (pStartInnerFrame)
+														{
+															Windows_UI_Xaml_IDependencyObject* pFrameRoot = LVT_FindChildByName(pStartInnerFrame, pVisualTreeHelperStatics, L"FrameRoot");
+															if (pFrameRoot)
+															{
+																Windows_UI_Xaml_IDependencyObject* pTopLevelRoot = LVT_FindChildByName(pFrameRoot, pVisualTreeHelperStatics, L"TopLevelRoot");
+																if (pTopLevelRoot)
+																{
+																	Windows_UI_Xaml_IDependencyObject* pStartMenuPinnedList = LVT_FindChildByName(pTopLevelRoot, pVisualTreeHelperStatics, L"StartMenuPinnedList");
+																	if (pStartMenuPinnedList)
+																	{
+																		Windows_UI_Xaml_IFrameworkElement* pFrameworkElement = NULL;
+																		pStartMenuPinnedList->lpVtbl->QueryInterface(pStartMenuPinnedList, &IID_Windows_UI_Xaml_IFrameworkElement, &pFrameworkElement);
+																		if (pFrameworkElement)
+																		{
+																			static double StartMenuPinnedList_Height = 252.0;
+																			double tempStartMenuPinnedList_Height = 0.0;
+																			if (SUCCEEDED(pFrameworkElement->lpVtbl->get_Height(pFrameworkElement, &tempStartMenuPinnedList_Height)) && tempStartMenuPinnedList_Height != 510.0) StartMenuPinnedList_Height = tempStartMenuPinnedList_Height;
+
+																			if (bApply)
+																			{
+																				pFrameworkElement->lpVtbl->put_Height(pFrameworkElement, 510.0);
+																			}
+																			else
+																			{
+																				pFrameworkElement->lpVtbl->put_Height(pFrameworkElement, StartMenuPinnedList_Height);
+																			}
+																			pFrameworkElement->lpVtbl->Release(pFrameworkElement);
+																		}
+																		Windows_UI_Xaml_IDependencyObject* pRoot = LVT_FindChildByName(pStartMenuPinnedList, pVisualTreeHelperStatics, L"Root");
+																		if (pRoot)
+																		{
+																			Windows_UI_Xaml_IDependencyObject* pPinnedListPipsPager = LVT_FindChildByName(pRoot, pVisualTreeHelperStatics, L"PinnedListPipsPager");
+																			if (pPinnedListPipsPager)
+																			{
+																				Windows_UI_Xaml_IUIElement* pIUIElement = NULL;
+																				pPinnedListPipsPager->lpVtbl->QueryInterface(pPinnedListPipsPager, &IID_Windows_UI_Xaml_IUIElement, &pIUIElement);
+																				if (pIUIElement)
+																				{
+																					if (bApply)
+																					{
+																						pIUIElement->lpVtbl->put_Visibility(pIUIElement, Windows_UI_Xaml_Visibility_Collapsed);
+																					}
+																					else
+																					{
+																						pIUIElement->lpVtbl->put_Visibility(pIUIElement, Windows_UI_Xaml_Visibility_Visible);
+																					}
+																					pIUIElement->lpVtbl->Release(pIUIElement);
+																				}
+																				pPinnedListPipsPager->lpVtbl->Release(pPinnedListPipsPager);
+																			}
+																			pRoot->lpVtbl->Release(pRoot);
+																		}
+																		pStartMenuPinnedList->lpVtbl->Release(pStartMenuPinnedList);
+																	}
+																	pTopLevelRoot->lpVtbl->Release(pTopLevelRoot);
+																}
+																pFrameRoot->lpVtbl->Release(pFrameRoot);
+															}
+															pStartInnerFrame->lpVtbl->Release(pStartInnerFrame);
+														}
+														pUndockedRoot->lpVtbl->Release(pUndockedRoot);
+													}
+													if (pInnerContent)
+													{
+														pInnerContent->lpVtbl->Release(pInnerContent);
+													}
+													pMainContent->lpVtbl->Release(pMainContent);
+												}
+												pRootContent->lpVtbl->Release(pRootContent);
+											}
+											pRootGrid->lpVtbl->Release(pRootGrid);
+										}
+										if (pRootPanel)
+										{
+											pRootPanel->lpVtbl->Release(pRootPanel);
+										}
                                         pLauncherFrame->lpVtbl->Release(pLauncherFrame);
                                     }
                                     pContentPresenter2->lpVtbl->Release(pContentPresenter2);
