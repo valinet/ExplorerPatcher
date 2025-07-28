@@ -714,7 +714,13 @@ void LVT_StartDocked_DisableRecommendedSection(HWND hWnd, BOOL bApply, RECT* rec
                                     Windows_UI_Xaml_IDependencyObject* pLauncherFrame = LVT_FindChildByClassName(pContentPresenter2, pVisualTreeHelperStatics, L"StartDocked.LauncherFrame", NULL);
                                     if (pLauncherFrame)
                                     {
-                                        Windows_UI_Xaml_IDependencyObject* pRootGrid = LVT_FindChildByName(pLauncherFrame, pVisualTreeHelperStatics, L"RootGrid");
+                                        Windows_UI_Xaml_IDependencyObject* pRootPanel = LVT_FindChildByName(pLauncherFrame, pVisualTreeHelperStatics, L"RootPanel");
+                                        Windows_UI_Xaml_IDependencyObject* pRootGridParent = pRootPanel;
+                                        if (!pRootGridParent)
+                                        {
+                                            pRootGridParent = pLauncherFrame;
+                                        }
+                                        Windows_UI_Xaml_IDependencyObject* pRootGrid = LVT_FindChildByName(pRootGridParent, pVisualTreeHelperStatics, L"RootGrid");
                                         if (pRootGrid)
                                         {
                                             Windows_UI_Xaml_IDependencyObject* pRootContent = LVT_FindChildByName(pRootGrid, pVisualTreeHelperStatics, L"RootContent");
@@ -808,6 +814,10 @@ void LVT_StartDocked_DisableRecommendedSection(HWND hWnd, BOOL bApply, RECT* rec
                                                 pRootContent->lpVtbl->Release(pRootContent);
                                             }
                                             pRootGrid->lpVtbl->Release(pRootGrid);
+                                        }
+                                        if (pRootPanel)
+                                        {
+                                            pRootPanel->lpVtbl->Release(pRootPanel);
                                         }
                                         pLauncherFrame->lpVtbl->Release(pLauncherFrame);
                                     }
