@@ -2571,6 +2571,23 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                 RemoveMenu(hMenu, 3, MF_BYCOMMAND);
                             }
                         }
+                        else if (!wcscmp(name, L"ReplaceVan"))
+                        {
+                            if (IsWindows11Build25346OrHigher())
+                            {
+                                // Hide the win8 network flyout as an option on Win 11 after 25346 as van.dll was removed
+                                MENUITEMINFOA menuInfo;
+                                ZeroMemory(&menuInfo, sizeof(MENUITEMINFOA));
+                                menuInfo.cbSize = sizeof(MENUITEMINFOA);
+                                menuInfo.fMask = MIIM_DATA;
+                                GetMenuItemInfoA(hMenu, 3, FALSE, &menuInfo);
+                                if (menuInfo.dwItemData)
+                                {
+                                    free(menuInfo.dwItemData);
+                                }
+                                RemoveMenu(hMenu, 3, MF_BYCOMMAND);
+                            }
+                        }
                         HKEY hKey = NULL;
                         wchar_t* matchHKLM = wcsstr(section, L"HKEY_LOCAL_MACHINE");
                         BOOL bIsHKLM = matchHKLM && (matchHKLM - section) < 3;
