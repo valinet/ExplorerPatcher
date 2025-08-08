@@ -72,7 +72,7 @@ BEGIN
             VALUE "FileDescription", "ExplorerPatcher Settings"
             VER_FILE_STRING
             VALUE "InternalName", "ep_gui.dll"
-            VALUE "LegalCopyright", "Copyright (C) 2006-2024 VALINET Solutions SRL. All rights reserved."
+            VALUE "LegalCopyright", "Copyright (C) 2006-2025 VALINET Solutions SRL. All rights reserved."
             VALUE "OriginalFilename", "ep_gui.dll"
             VALUE "ProductName", "ExplorerPatcher"
             VER_PRODUCT_STRING

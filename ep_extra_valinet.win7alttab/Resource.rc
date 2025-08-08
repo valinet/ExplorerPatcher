@@ -71,7 +71,7 @@ BEGIN
             VALUE "FileDescription", "ExplorerPatcher Windows 7 Alt-Tab Module"
             VALUE "FileVersion", "1.0.0.0"
             VALUE "InternalName", "ep_extra_valinet.win7alttab"
-            VALUE "LegalCopyright", "Copyright (C) 2006-2024 VALINET Solutions SRL. All rights reserved."
+            VALUE "LegalCopyright", "Copyright (C) 2006-2025 VALINET Solutions SRL. All rights reserved."
             VALUE "OriginalFilename", "ep_extra_valinet.win7alttab"
             VALUE "ProductName", "ExplorerPatcher"
             VALUE "ProductVersion", "1.0.0.0"

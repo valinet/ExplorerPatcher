@@ -71,7 +71,7 @@ BEGIN
             VALUE "FileDescription", "ExplorerPatcher Custom Libraries Chainloader"
             VALUE "FileVersion", "1.0.0.0"
             VALUE "InternalName", "ep_extra.dll"
-            VALUE "LegalCopyright", "Copyright (C) 2006-2024 VALINET Solutions SRL. All rights reserved."
+            VALUE "LegalCopyright", "Copyright (C) 2006-2025 VALINET Solutions SRL. All rights reserved."
             VALUE "OriginalFilename", "ep_extra.dll"
             VALUE "ProductName", "ExplorerPatcher"
             VALUE "ProductVersion", "1.0.0.0"
