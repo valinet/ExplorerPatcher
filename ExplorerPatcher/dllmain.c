@@ -4338,7 +4338,7 @@ HRESULT (STDAPICALLTYPE *PeopleBand_DrawTextWithGlowFunc)(
     BOOL fPreMultiply,
     DTT_CALLBACK_PROC pfnDrawTextCallback,
     LPARAM lParam);
-__declspec(dllexport) HRESULT STDAPICALLTYPE PeopleBand_DrawTextWithGlowHook(
+HRESULT STDAPICALLTYPE PeopleBand_DrawTextWithGlowHook(
     HDC hdc,
     LPCWSTR pszText,
     UINT cch,
@@ -4920,7 +4920,7 @@ INT64 PeopleButton_SubclassProc(
 }
 
 static BOOL(*SetChildWindowNoActivateFunc)(HWND);
-__declspec(dllexport) BOOL explorer_SetChildWindowNoActivateHook(HWND hWnd)
+BOOL explorer_SetChildWindowNoActivateHook(HWND hWnd)
 {
     TCHAR className[100];
     ZeroMemory(className, 100);
@@ -10807,6 +10807,9 @@ DWORD Inject(BOOL bIsExplorer)
         VnPatchIAT(hMyTaskbar, "user32.dll", "SendMessageW", explorer_SendMessageW);
         VnPatchIAT(hMyTaskbar, "user32.dll", "SetRect", explorer_SetRect);
         VnPatchIAT(hMyTaskbar, "user32.dll", "TrackPopupMenuEx", explorer_TrackPopupMenuExHook);
+        VnPatchIAT(hMyTaskbar, "user32.dll", MAKEINTRESOURCEA(2005), explorer_SetChildWindowNoActivateHook);
+
+        VnPatchIAT(hMyTaskbar, "uxtheme.dll", MAKEINTRESOURCEA(126), PeopleBand_DrawTextWithGlowHook);
     }
 
     HANDLE hCombase = LoadLibraryW(L"combase.dll");
