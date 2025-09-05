@@ -10226,6 +10226,24 @@ void PatchPnidui(HMODULE hPnidui)
 #endif
 #pragma endregion
 
+
+#pragma region "Fix TrayThreadBSTA (54481602) taskbar thread flags for compatibility with taskbar toolbars"
+#if WITH_MAIN_PATCHER
+BOOL STDAPICALLTYPE explorer_SHCreateThread(
+    LPTHREAD_START_ROUTINE pfnThreadProc, void* pData, SHCT_FLAGS flags, LPTHREAD_START_ROUTINE pfnCallback)
+{
+    static BOOL bPatched;
+    if (!bPatched && flags == CTF_THREAD_REF | CTF_REF_COUNTED | CTF_NOADDREFLIB)
+    {
+        bPatched = TRUE;
+        flags |= CTF_COINIT_STA | CTF_OLEINITIALIZE; // Add back the removed flags
+    }
+    return SHCreateThread(pfnThreadProc, pData, flags, pfnCallback);
+}
+#endif
+#pragma endregion
+
+
 DWORD Inject(BOOL bIsExplorer)
 {
 #if defined(DEBUG) | defined(_DEBUG)
@@ -10675,6 +10693,10 @@ DWORD Inject(BOOL bIsExplorer)
             {
                 VnPatchIAT(hExplorer, "user32.dll", "SetWindowCompositionAttribute", explorer_SetWindowCompositionAttribute);
             }
+        }
+        if (global_rovi.dwBuildNumber >= 26100)
+        {
+            VnPatchIAT(hExplorer, "api-ms-win-shcore-thread-l1-1-0.dll", "SHCreateThread", explorer_SHCreateThread);
         }
     }
     if (IsWindows11())
