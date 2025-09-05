@@ -78,6 +78,12 @@ inline BOOL IsWindows11BuildHigherThan25158()
     return global_rovi.dwBuildNumber > 25158;
 }
 
+inline BOOL IsWindows11Build25346OrHigher()
+{
+    if (!global_rovi.dwMajorVersion) global_ubr = VnGetOSVersionAndUBR(&global_rovi);
+    return global_rovi.dwBuildNumber >= 25346;
+}
+
 inline BOOL IsWindows11Version22H2Build1413OrHigher()
 {
     if (!global_rovi.dwMajorVersion) global_ubr = VnGetOSVersionAndUBR(&global_rovi);
