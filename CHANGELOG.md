@@ -2,6 +2,29 @@
 
 This document includes the same release notes as in the [Releases](https://github.com/valinet/ExplorerPatcher/releases) section on GitHub.
 
+## 26100.4946.69
+
+Tested on OS builds 26100.4946, 26100.5074, and 26200.5751.
+
+##### 1
+
+* ep_weather: Fixed "Unable to load weather information" due to changes in Google's side. Thanks @davids5 for the fix! (#1334, #4351) (c3c83ff)
+* Start11: Fixed hiding of Recommended Section on recent builds of 24H2. Thanks @m-wigley for the fix! (#4476) (9106226)
+* GUI: File Explorer > Title bar is now available again on >= 22H2. Thanks @SandTechStuff! (583fa53)
+* Reduced the occurrences of the Windows 11 bug in Explorer windows where `WM_SETTINGCHANGE` would scroll the folder items list to the top. (fa19402b)
+* Changed hooking library to SlimDetours. (ff30457)
+  * On ARM64, fixes incompatibilities with certain Windhawk mods that hook `CreateWindowExW` such as [Taskbar Volume Control](https://windhawk.net/mods/taskbar-volume-control).
+  * On ARM64, fixes a very slim chance bug where hooked functions would cause a crash when called until a reboot.
+* ep_taskbar: Now statically links to private functions it uses. (ab99f26)
+* Taskbar10: Fixed folder toolbar menus and Toolbars > New toolbar not working on builds with `TrayThreadBSTA` (54481602) feature flag turned on, such as 26100.5074+. (#4542) (1bbe207)
+* GUI: Windows 8 Network flyout is now no longer an option on builds >= 25346 as van.dll was removed. Thanks @m-wigley for the fix! (#4478) (72c6983)
+* On Windows 11 22H2+, Windows 10 (ExplorerPatcher) taskbar a.k.a. ep_taskbar is now used by default. (ad2fa72)
+
+Known issues we will address in the short term:
+* Due to Google changing weather icons, for now the icons do not appear in the weather button. (#4545)
+* Shrink address bar height results in unexpected dimensions on recent 24H2 builds.
+* When the new Windows 11 Start menu feature flag is enabled, Windows 10 Start menu will refuse to open due to an internal change.
+
 ## 22631.5335.68
 
 Tested on OS builds 22621.3296, 22631.5189, 22631.5335, 26100.3476, 26100.4061, and 26100.4188.
