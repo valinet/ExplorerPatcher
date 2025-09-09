@@ -6,9 +6,9 @@ This project aims to enhance the working environment on Windows.
 
 1. Follow the antivirus configuration instructions and download the latest version of the setup program in [here](https://github.com/valinet/ExplorerPatcher/releases/latest).
    * Choose `ep_setup.exe` if your device uses an Intel or AMD processor, or `ep_setup_arm64.exe` if your device uses a Snapdragon processor.
-1. Run the installer. It will automatically prompt for elevation, after which it will install the necessary files.
-1. When done, right click the taskbar and choose "Properties".
-1. To use the Windows 10 taskbar on Windows 11 versions 22H2, 23H2, and 24H2, go to the "Taskbar" section and change the Taskbar style to Windows 10 (ExplorerPatcher).
+1. Run the installer. It will automatically prompt for elevation, after which it will close `explorer.exe` and install the necessary files. When done, you will see the desktop again and the Windows 10 taskbar.
+1. Right-click the taskbar and choose "Properties".
+1. To change the taskbar style, go to the "Taskbar" section and look for "Taskbar style".
 1. To use the Windows 10 Start menu, go to the "Start menu" section and change the Start menu style to Windows 10.
 1. To use the Windows 10 Alt+Tab, go to the "Window switcher" section and change the "Window switcher (Alt+tab) style" to Windows 10.
 1. Feel free to check other configuration options.
