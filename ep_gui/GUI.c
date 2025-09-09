@@ -11,7 +11,7 @@ void* GUI_FileMapping = NULL;
 DWORD GUI_FileSize = 0;
 BOOL g_darkModeEnabled = FALSE;
 DWORD dwTaskbarPosition = 3;
-DWORD GUI_TaskbarStyle = 1;
+DWORD GUI_TaskbarStyle = -1;
 
 LSTATUS SetPolicy(HKEY hKey, LPCWSTR wszPolicyPath, LPCWSTR wszPolicyName, DWORD dwVal)
 {
@@ -1022,9 +1022,9 @@ static void GUI_UpdateLanguages()
     EP_L10N_GetCurrentThreadLanguage(wszThreadLanguage, ARRAYSIZE(wszThreadLanguage));
 }
 
-DWORD GUI_GetTaskbarStyle(BOOL bAdjust)
+static DWORD GUI_GetTaskbarStyle(BOOL bAdjust)
 {
-    DWORD dwRes = 1;
+    DWORD dwRes = IsWindows11() ? 2 : 1;
     DWORD dwSize = sizeof(DWORD);
     RegGetValueW(HKEY_CURRENT_USER, _T(REGPATH), L"OldTaskbar", RRF_RT_DWORD, NULL, &dwRes, &dwSize);
     if (bAdjust)
@@ -1032,6 +1032,20 @@ DWORD GUI_GetTaskbarStyle(BOOL bAdjust)
         AdjustTaskbarStyleValue(&dwRes);
     }
     return dwRes;
+}
+
+static void GUI_RemoveChoiceEntry(HMENU hMenu, UINT value)
+{
+    MENUITEMINFOA menuInfo;
+    ZeroMemory(&menuInfo, sizeof(MENUITEMINFOA));
+    menuInfo.cbSize = sizeof(MENUITEMINFOA);
+    menuInfo.fMask = MIIM_DATA;
+    GetMenuItemInfoA(hMenu, value + 1, FALSE, &menuInfo);
+    if (menuInfo.dwItemData)
+    {
+        free(menuInfo.dwItemData);
+    }
+    RemoveMenu(hMenu, value + 1, MF_BYCOMMAND);
 }
 
 static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
@@ -1187,7 +1201,6 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                 else if (!_stricmp(funcName, "!IsOldTaskbar") && GUI_GetTaskbarStyle(TRUE) != 0) bSkipLines = TRUE;
                 else if (!_stricmp(funcName, "IsStockWin10Taskbar") && GUI_GetTaskbarStyle(TRUE) != 1) bSkipLines = TRUE;
                 else if (!_stricmp(funcName, "IsAltImplTaskbar") && GUI_GetTaskbarStyle(TRUE) <= 1) bSkipLines = TRUE;
-                else if (!_stricmp(funcName, "!IsStockWindows10TaskbarAvailable") && !(!IsStockWindows10TaskbarAvailable() && GUI_GetTaskbarStyle(FALSE) == 1)) bSkipLines = TRUE;
                 else if (!_stricmp(funcName, "IsWindows10StartMenu") && (!DoesWindows10StartMenuExist() || (dwRes = 0, RegGetValueW(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", L"Start_ShowClassicMode", RRF_RT_DWORD, NULL, &dwRes, &dwSize), (dwRes != 1)))) bSkipLines = TRUE;
                 else if (!_stricmp(funcName, "!IsWindows10StartMenu") && (DoesWindows10StartMenuExist() && (dwRes = 0, RegGetValueW(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", L"Start_ShowClassicMode", RRF_RT_DWORD, NULL, &dwRes, &dwSize), (dwRes == 1)))) bSkipLines = TRUE;
                 else if (!_stricmp(funcName, "DoesWindows10StartMenuExist") && !DoesWindows10StartMenuExist()) bSkipLines = TRUE;
@@ -2517,16 +2530,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                         {
                             if (GUI_TaskbarStyle == 0)
                             {
-                                MENUITEMINFOA menuInfo;
-                                ZeroMemory(&menuInfo, sizeof(MENUITEMINFOA));
-                                menuInfo.cbSize = sizeof(MENUITEMINFOA);
-                                menuInfo.fMask = MIIM_DATA;
-                                GetMenuItemInfoA(hMenu, 3, FALSE, &menuInfo);
-                                if (menuInfo.dwItemData)
-                                {
-                                    free(menuInfo.dwItemData);
-                                }
-                                RemoveMenu(hMenu, 3, MF_BYCOMMAND);
+                                GUI_RemoveChoiceEntry(hMenu, 2);
                                 bShouldAlterTaskbarDa = TRUE;
                             }
                         }
@@ -2534,41 +2538,19 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                         {
                             if (GUI_TaskbarStyle == 0)
                             {
-                                MENUITEMINFOA menuInfo;
-                                ZeroMemory(&menuInfo, sizeof(MENUITEMINFOA));
-                                menuInfo.cbSize = sizeof(MENUITEMINFOA);
-                                menuInfo.fMask = MIIM_DATA;
-                                GetMenuItemInfoA(hMenu, 1, FALSE, &menuInfo);
-                                if (menuInfo.dwItemData)
-                                {
-                                    free(menuInfo.dwItemData);
-                                }
-                                RemoveMenu(hMenu, 1, MF_BYCOMMAND);
-                                ZeroMemory(&menuInfo, sizeof(MENUITEMINFOA));
-                                menuInfo.cbSize = sizeof(MENUITEMINFOA);
-                                menuInfo.fMask = MIIM_DATA;
-                                GetMenuItemInfoA(hMenu, 3, FALSE, &menuInfo);
-                                if (menuInfo.dwItemData)
-                                {
-                                    free(menuInfo.dwItemData);
-                                }
-                                RemoveMenu(hMenu, 3, MF_BYCOMMAND);
+                                GUI_RemoveChoiceEntry(hMenu, 0); // Left
+                                GUI_RemoveChoiceEntry(hMenu, 2); // Right
                             }
                         }
                         else if (!wcscmp(name, L"OldTaskbar"))
                         {
+                            if (IsWindows11() && !IsStockWindows10TaskbarAvailable())
+                            {
+                                GUI_RemoveChoiceEntry(hMenu, 1); // Windows 10
+                            }
                             if (!DoesTaskbarDllExist())
                             {
-                                MENUITEMINFOA menuInfo;
-                                ZeroMemory(&menuInfo, sizeof(MENUITEMINFOA));
-                                menuInfo.cbSize = sizeof(MENUITEMINFOA);
-                                menuInfo.fMask = MIIM_DATA;
-                                GetMenuItemInfoA(hMenu, 3, FALSE, &menuInfo);
-                                if (menuInfo.dwItemData)
-                                {
-                                    free(menuInfo.dwItemData);
-                                }
-                                RemoveMenu(hMenu, 3, MF_BYCOMMAND);
+                                GUI_RemoveChoiceEntry(hMenu, 2); // Windows 10 (ExplorerPatcher)
                             }
                         }
                         else if (!wcscmp(name, L"ReplaceVan"))
@@ -2663,12 +2645,8 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                             );
                             if (!wcscmp(name, L"OldTaskbar"))
                             {
+                                AdjustTaskbarStyleValue(&value);
                                 GUI_TaskbarStyle = value;
-                                AdjustTaskbarStyleValue(&GUI_TaskbarStyle);
-                                if (value >= 2 && !DoesTaskbarDllExist())
-                                {
-                                    value = 0;
-                                }
                             }
                             if (hDC && bInvert)
                             {

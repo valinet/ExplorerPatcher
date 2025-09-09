@@ -74,7 +74,7 @@ DWORD32 global_ubr;
 BOOL bIsExplorerProcess = FALSE;
 BOOL bInstanced = FALSE;
 HWND archivehWnd;
-DWORD bOldTaskbar = TRUE;
+DWORD bOldTaskbar = -1;
 DWORD bWasOldTaskbarSet = FALSE;
 DWORD bAllocConsole = FALSE;
 DWORD bHideExplorerSearchBar = FALSE;
@@ -5896,7 +5896,7 @@ void WINAPI LoadSettings(LPARAM lParam)
             RegCloseKey(hKey);
             return;
         }
-        dwTemp = TRUE;
+        dwTemp = IsWindows11() ? 2 : 1;
         dwSize = sizeof(DWORD);
         RegQueryValueExW(
             hKey,

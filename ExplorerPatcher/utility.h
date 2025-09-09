@@ -1007,9 +1007,20 @@ inline void AdjustTaskbarStyleValue(DWORD* pdwValue)
     {
         *pdwValue = 1;
     }
-    if (*pdwValue == 1 && !IsStockWindows10TaskbarAvailable())
+
+    if (IsWindows11())
     {
-        *pdwValue = 0;
+        if (*pdwValue == 1 && !IsStockWindows10TaskbarAvailable())
+        {
+            *pdwValue = 0;
+        }
+    }
+    else
+    {
+        if (*pdwValue == 0)
+        {
+            *pdwValue = 1; // There's no such thing as Windows 11 taskbar on Windows 10
+        }
     }
 }
 

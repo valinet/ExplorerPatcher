@@ -43,7 +43,6 @@ BEGIN
     IDS_TB_STYLE_0              "Windows 11 (default)"
     IDS_TB_STYLE_1              "Windows 10"
     IDS_TB_STYLE_2              "Windows 10 (ExplorerPatcher)"
-    IDS_TB_WIN10_UNAVAILABLE    "Windows 10 taskbar is not available in this version of Windows."
     IDS_TB_MORE                 "More taskbar options in the Settings app"
     IDS_TB_CUSTOMIZETRAYICONS   "Customize notification area icons"
     IDS_TB_CUSTOMIZESYSTEMICONS "Customize system icons in the notification area"

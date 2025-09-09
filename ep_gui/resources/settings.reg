@@ -10,10 +10,7 @@
 ;x 0 %R:1003%
 ;x 1 %R:1004%
 ;x 2 %R:1047%
-"OldTaskbar"=dword:00000001
-;s Taskbar_StockWin10Unavailable !IsStockWindows10TaskbarAvailable
-;t ⚠ %R:1049%
-;g Taskbar_StockWin10Unavailable
+"OldTaskbar"=dword:00000002
 ;y %R:1005% 🡕
 ;ms-settings:taskbar
 ;y %R:1006% 🡕
