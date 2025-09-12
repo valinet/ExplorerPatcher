@@ -20,8 +20,12 @@ Tested on OS builds 26100.4946, 26100.5074, and 26200.5751.
 * GUI: Windows 8 Network flyout is now no longer an option on builds >= 25346 as van.dll was removed. Thanks @m-wigley for the fix! (#4478) (72c6983)
 * On Windows 11 22H2+, Windows 10 (ExplorerPatcher) taskbar a.k.a. ep_taskbar is now used by default. (ad2fa72)
 
+##### 2
+
+* Fixed weather button not having an icon. (#4545) (6959c69)
+
 Known issues we will address in the short term:
-* Due to Google changing weather icons, for now the icons do not appear in the weather button. (#4545)
+* Changing weather icon pack to "Microsoft" has no effect.
 * Shrink address bar height results in unexpected dimensions on recent 24H2 builds.
 * When the new Windows 11 Start menu feature flag is enabled, Windows 10 Start menu will refuse to open due to an internal change.
 
