@@ -2558,16 +2558,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                             if (IsWindows11Build25346OrHigher())
                             {
                                 // Hide the win8 network flyout as an option on Win 11 after 25346 as van.dll was removed
-                                MENUITEMINFOA menuInfo;
-                                ZeroMemory(&menuInfo, sizeof(MENUITEMINFOA));
-                                menuInfo.cbSize = sizeof(MENUITEMINFOA);
-                                menuInfo.fMask = MIIM_DATA;
-                                GetMenuItemInfoA(hMenu, 3, FALSE, &menuInfo);
-                                if (menuInfo.dwItemData)
-                                {
-                                    free(menuInfo.dwItemData);
-                                }
-                                RemoveMenu(hMenu, 3, MF_BYCOMMAND);
+                                GUI_RemoveChoiceEntry(hMenu, 2); // Windows 8 flyout
                             }
                         }
                         HKEY hKey = NULL;

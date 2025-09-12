@@ -296,13 +296,11 @@ function ep_weather_utf8ToHex(str) {\n\
     encodeURIComponent(c).replace(/\\%%/g,'').toLowerCase()\n\
   ).join('');\n\
 }\n\
-function ep_weather_drawImageToCanvas(image) {\n\
+function ep_weather_drawImageToCanvas(image, w, h) {\n\
   const canvas = document.createElement('canvas');\n\
-  const w = image.width;\n\
-  const h = image.height;\n\
   canvas.width = w;\n\
   canvas.height = h;\n\
-  canvas.getContext('2d').drawImage(image, 0, 0);\n\
+  canvas.getContext('2d').drawImage(image, 0, 0, w, h);\n\
   return canvas;\n\
 }\n\
 function ep_weather_toHexString (byteArray) {\n\
@@ -322,8 +320,8 @@ function ep_weather_toHexString (byteArray) {\n\
   //return chars.toString('utf8');\n\
   return String.fromCharCode.apply(null, chars);\n\
 }\n\
-function ep_weather_getData(imageBitmap, ch) {\n\
-  const canvas = ep_weather_drawImageToCanvas(imageBitmap);\n\
+function ep_weather_getData(image, w, h, ch) {\n\
+  const canvas = ep_weather_drawImageToCanvas(image, w, h);\n\
   const ctx = canvas.getContext('2d');\n\
   \n\
   let result = [];\n\
@@ -358,13 +356,7 @@ if (!unit.includes(p)) {\n\
     Array.from(document.getElementsByClassName('wob-unit')[0].getElementsByTagName('a')).filter(e => e.className == 'wob_t').filter(e => e.innerText.includes(p))[0].click();\n\
     unit = 'x';\n\
 }\n\
-createImageBitmap(\n\
-    (final_im != 0) ? final_im : document.getElementsByClassName(\"YQ4gaf zr758c\")[0], \n\
-    { resizeWidth: %d, resizeHeight: %d, resizeQuality: 'high' }\n\
-)\n\
-.then(imageBitmap => \n\
-    ep_result = ep_weather_getData(imageBitmap, unit)\n\
-);\n\
+ep_result = ep_weather_getData(\n\(final_im != 0) ? final_im : document.getElementsByClassName(\"YQ4gaf zr758c\")[0], %d, %d, unit);\n\
 function ep_weather_part1() {\n\
 return \"run_part_2\";\n\
 }\n\
