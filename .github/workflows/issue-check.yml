@@ -20,7 +20,7 @@ jobs:
           keywords=("Virus" "Malware" "trojan" "Windows Defender" "Antivirus" "bitdefender" "defender" "kaspersky" "unwanted" "harmful" "HackTool:Win64/ExplorerPatcher!MTB" "HackTool:Win64/Patcher!MSR" "HackTool" "Backdoor" "detection" "Norton" "Windows Security" "Win64:MalwareX-gen" "Microsoft Defender" "infected" "Potentially unwanted app found" "potentially unwanted software" "VIRUSTOTAL")
           
           # Get the issue title and body from the event context
-          ISSUE_TITLE="${{ github.event.issue.title }}"
+          ISSUE_TITLE=$(echo '${{ toJson(github.event.issue.title) }}' | jq -r .)
           
           # Convert both title and body to lowercase for case-insensitive comparison
           ISSUE_TITLE_LOWER=$(echo "$ISSUE_TITLE" | tr '[:upper:]' '[:lower:]')
