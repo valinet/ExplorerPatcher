@@ -13,7 +13,7 @@ jobs:
         with:
           persist-credentials: false
         env:
-          name: ${{ github.event.inputs.NAME }}
+          name: ${{ github.event.issue.title }}
           
       - name: Check for keywords in issue title and body
         id: check_keywords
