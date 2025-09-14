@@ -3246,30 +3246,32 @@ void TryToFindTwinuiPCShellOffsets(DWORD* pOffsets)
         if (!pOffsets[4] || pOffsets[4] == 0xFFFFFFFF)
         {
 #if defined(_M_X64)
-            // 48 8B ? E8 ? ? ? ? 48 8B D3 48 8B CF E8 ? ? ? ? 90 48 8D 56 ? 48 8B CE
-            //                                         ^^^^^^^    ------------------- Non-inlined ~::final_suspend()
+            // Cobalt:
+            // 48 89 46 ? 48 8B CB E8 ? ? ? ? 48 8B D3 48 8B CF E8 ? ? ? ? 90
+            //                                                     ^^^^^^^
             PBYTE match = (PBYTE)FindPattern(
                 pFile, dwSize,
-                "\x48\x8B\x00\xE8\x00\x00\x00\x00\x48\x8B\xD3\x48\x8B\xCF\xE8\x00\x00\x00\x00\x90\x48\x8D\x56\x00\x48\x8B\xCE",
-                "xx?x????xxxxxxx????xxxx?xxx"
+                "\x48\x89\x46\x00\x48\x8B\xCB\xE8\x00\x00\x00\x00\x48\x8B\xD3\x48\x8B\xCF\xE8\x00\x00\x00\x00\x90",
+                "xxx?xxxx????xxxxxxx????x"
             );
             if (match)
             {
-                match += 14;
+                match += 18;
                 pOffsets[4] = (DWORD)(match + 5 + *(int*)(match + 1) - pFile);
             }
             else
             {
-                // 48 8B ? E8 ? ? ? ? 48 8B D3 48 8B CF E8 ? ? ? ? 90 48 8B 05 ? ? ? ? 48
-                //                                         ^^^^^^^    ------------------- Inlined ~::final_suspend()
+                // Nickel+:
+                // 48 89 03 48 8B CB E8 ? ? ? ? 48 8B D3 48 8B CF E8 ? ? ? ? 90
+                //                                                   ^^^^^^^
                 match = (PBYTE)FindPattern(
                     pFile, dwSize,
-                    "\x48\x8B\x00\xE8\x00\x00\x00\x00\x48\x8B\xD3\x48\x8B\xCF\xE8\x00\x00\x00\x00\x90\x48\x8B\x05\x00\x00\x00\x00\x48",
-                    "xx?x????xxxxxxx????xxxx????x"
+                    "\x48\x89\x03\x48\x8B\xCB\xE8\x00\x00\x00\x00\x48\x8B\xD3\x48\x8B\xCF\xE8\x00\x00\x00\x00\x90",
+                    "xxxxxxx????xxxxxxx????x"
                 );
                 if (match)
                 {
-                    match += 14;
+                    match += 17;
                     pOffsets[4] = (DWORD)(match + 5 + *(int*)(match + 1) - pFile);
                 }
             }
