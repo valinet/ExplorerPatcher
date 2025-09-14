@@ -12,7 +12,9 @@ jobs:
         uses: actions/checkout@v4
         with:
           persist-credentials: false
-
+        env:
+          name: ${{ github.event.inputs.NAME }}
+          
       - name: Check for keywords in issue title and body
         id: check_keywords
         run: |
@@ -20,7 +22,7 @@ jobs:
           keywords=("Virus" "Malware" "trojan" "Windows Defender" "Antivirus" "bitdefender" "defender" "kaspersky" "unwanted" "harmful" "HackTool:Win64/ExplorerPatcher!MTB" "HackTool:Win64/Patcher!MSR" "HackTool" "Backdoor" "detection" "Norton" "Windows Security" "Win64:MalwareX-gen" "Microsoft Defender" "infected" "Potentially unwanted app found" "potentially unwanted software" "VIRUSTOTAL")
           
           # Get the issue title and body from the event context
-          ISSUE_TITLE='${{ toJson(github.event.issue.title) }}'
+          const ISSUE_TITLE = process.env.name + '';
           
           # Convert both title and body to lowercase for case-insensitive comparison
           ISSUE_TITLE_LOWER=$(echo "$ISSUE_TITLE" | tr '[:upper:]' '[:lower:]')
