@@ -2024,7 +2024,7 @@ BOOL FixStartMenuAnimation(LPMODULEINFO mi)
     {
         // `(CStartExperienceManager *)((char *)this - 40)` before field access
         // ```
-        // 48 83 ?? 80 B9 ?? ?? ?? ?? 00 75 ?? 41 B0 01
+        // 48 83 C1 ?? 80 B9 ?? ?? ?? ?? 00 75 ?? 41 B0 01
         //                ^^^^^^^^^^^ bTransitioningToCortana
         // ```
         // Ref: CStartExperienceManager::DimStart()
