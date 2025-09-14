@@ -2309,61 +2309,63 @@ BOOL FixStartMenuAnimation(LPMODULEINFO mi)
     }
 #elif defined(_M_ARM64)
     // ```
-    // ?? ?? ?? 34 ?? 00 80 52 ?? 8E 0A 39
-    // ^^^^^^^^^^^ Turn CBZ into B
+    // E1 03 ?? 2A ?? ?? 04 91 ?? ?? ?? ?? ?? 03 00 2A
+    // ```
+    // Check two instructions before, and NOP these:
+    // ```
+    // MOV             W??, #3
+    // STRB            W??, [X??,#0x???]
     // ```
     // Perform on exactly two matches
-    PBYTE matchHideA = (PBYTE)FindPattern(
+    PBYTE matchHideA = nullptr;
+    PBYTE matchHideB = nullptr;
+    auto findTheIfBody = [](PBYTE pAnchor) -> PBYTE
+    {
+        // 27881.1000+ has CBNZ before us, follow it if it is.
+        // Otherwise, just check the two instructions before.
+        PBYTE pMaybeFollowed = (PBYTE)ARM64_FollowCBNZW((DWORD*)(pAnchor - 4));
+        PBYTE pIfBlockBegin = pMaybeFollowed ? pMaybeFollowed : pAnchor - 8;
+
+        DWORD insnMovzw = *(DWORD*)pIfBlockBegin;
+        if (!ARM64_IsMOVZW(insnMovzw))
+            return nullptr;
+
+        DWORD movzwImm16 = ARM64_ReadBitsSignExtend(insnMovzw, 20, 5);
+        if (movzwImm16 != 3)
+            return nullptr;
+
+        DWORD insnStrbimm = *(DWORD*)(pIfBlockBegin + 4);
+        if (!ARM64_IsSTRBIMM(insnStrbimm))
+            return nullptr;
+
+        return pIfBlockBegin;
+    };
+    PBYTE matchHideAAfter = (PBYTE)FindPattern(
         mi->lpBaseOfDll,
         mi->SizeOfImage,
-        "\x34\x00\x00\x80\x52\x00\x8E\x0A\x39",
-        "x?xxx?xxx"
+        "\xE1\x03\x00\x2A\x00\x00\x04\x91\x00\x00\x00\x00\x00\x03\x00\x2A",
+        "xx?x??xx?????xxx"
     );
-    PBYTE matchHideB = nullptr;
+    if (matchHideAAfter)
+    {
+        matchHideA = findTheIfBody(matchHideAAfter);
+    }
     if (matchHideA)
     {
-        matchHideA -= 3;
-        printf("[SMA] matchHideA in CStartExperienceManager::Hide() = %llX (Pattern A)\n", matchHideA - (PBYTE)mi->lpBaseOfDll);
-        matchHideB = (PBYTE)FindPattern(
-            matchHideA + 12,
-            mi->SizeOfImage - (matchHideA + 12 - (PBYTE)mi->lpBaseOfDll),
-            "\x34\x00\x00\x80\x52\x00\x8E\x0A\x39",
-            "x?xxx?xxx"
+        printf("[SMA] matchHideA in CStartExperienceManager::Hide() = %llX\n", matchHideA - (PBYTE)mi->lpBaseOfDll);
+        PBYTE matchHideBAfter = (PBYTE)FindPattern(
+            matchHideAAfter + 16,
+            1024,
+            "\xE1\x03\x00\x2A\x00\x00\x04\x91\x00\x00\x00\x00\x00\x03\x00\x2A",
+            "xx?x??xx?????xxx"
         );
+        if (matchHideBAfter)
+        {
+            matchHideB = findTheIfBody(matchHideBAfter);
+        }
         if (matchHideB)
         {
-            matchHideB -= 3;
-            printf("[SMA] matchHideB in CStartExperienceManager::Hide() = %llX (Pattern A)\n", matchHideB - (PBYTE)mi->lpBaseOfDll);
-        }
-    }
-    else
-    {
-        // ```
-        // ?? ?? ?? 34 ?? 00 80 52 ?? 4E 0B 39
-        // ^^^^^^^^^^^ Turn CBZ into B
-        // ```
-        // Perform on exactly two matches
-        matchHideA = (PBYTE)FindPattern(
-            mi->lpBaseOfDll,
-            mi->SizeOfImage,
-            "\x34\x00\x00\x80\x52\x00\x4E\x0B\x39",
-            "x?xxx?xxx"
-        );
-        if (matchHideA)
-        {
-            matchHideA -= 3;
-            printf("[SMA] matchHideA in CStartExperienceManager::Hide() = %llX (Pattern B)\n", matchHideA - (PBYTE)mi->lpBaseOfDll);
-            matchHideB = (PBYTE)FindPattern(
-                matchHideA + 12,
-                mi->SizeOfImage - (matchHideA + 12 - (PBYTE)mi->lpBaseOfDll),
-                "\x34\x00\x00\x80\x52\x00\x4E\x0B\x39",
-                "x?xxx?xxx"
-            );
-            if (matchHideB)
-            {
-                matchHideB -= 3;
-                printf("[SMA] matchHideB in CStartExperienceManager::Hide() = %llX (Pattern B)\n", matchHideB - (PBYTE)mi->lpBaseOfDll);
-            }
+            printf("[SMA] matchHideB in CStartExperienceManager::Hide() = %llX\n", matchHideB - (PBYTE)mi->lpBaseOfDll);
         }
     }
 #endif
@@ -2405,20 +2407,18 @@ BOOL FixStartMenuAnimation(LPMODULEINFO mi)
             }
         }
 #elif defined(_M_ARM64)
-        if (VirtualProtect(matchHideA, 4, PAGE_EXECUTE_READWRITE, &dwOldProtect))
+        if (VirtualProtect(matchHideA, 8, PAGE_EXECUTE_READWRITE, &dwOldProtect))
         {
-            DWORD newInsn = ARM64_CBZWToB(*(DWORD*)matchHideA);
-            if (newInsn)
-                *(DWORD*)matchHideA = newInsn;
-            VirtualProtect(matchHideA, 4, dwOldProtect, &dwOldProtect);
+            *(DWORD*)(matchHideA + 0) = 0xD503201F; // NOP
+            *(DWORD*)(matchHideA + 4) = 0xD503201F; // NOP
+            VirtualProtect(matchHideA, 8, dwOldProtect, &dwOldProtect);
 
             dwOldProtect = 0;
-            if (VirtualProtect(matchHideB, 4, PAGE_EXECUTE_READWRITE, &dwOldProtect))
+            if (VirtualProtect(matchHideB, 8, PAGE_EXECUTE_READWRITE, &dwOldProtect))
             {
-                newInsn = ARM64_CBZWToB(*(DWORD*)matchHideB);
-                if (newInsn)
-                    *(DWORD*)matchHideB = newInsn;
-                VirtualProtect(matchHideB, 4, dwOldProtect, &dwOldProtect);
+                *(DWORD*)(matchHideB + 0) = 0xD503201F; // NOP
+                *(DWORD*)(matchHideB + 4) = 0xD503201F; // NOP
+                VirtualProtect(matchHideB, 8, dwOldProtect, &dwOldProtect);
             }
         }
 #endif

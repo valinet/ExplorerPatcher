@@ -665,6 +665,17 @@ __forceinline BOOL ARM64_IsCBZW(DWORD insn) { return ARM64_ReadBits(insn, 31, 24
 __forceinline BOOL ARM64_IsCBNZW(DWORD insn) { return ARM64_ReadBits(insn, 31, 24) == 0b00110101; }
 __forceinline BOOL ARM64_IsBL(DWORD insn) { return ARM64_ReadBits(insn, 31, 26) == 0b100101; }
 __forceinline BOOL ARM64_IsADRP(DWORD insn) { return (ARM64_ReadBits(insn, 31, 24) & ~0b01100000) == 0b10010000; }
+__forceinline BOOL ARM64_IsMOVZW(DWORD insn) { return ARM64_ReadBits(insn, 31, 23) == 0b010100101; }
+__forceinline BOOL ARM64_IsSTRBIMM(DWORD insn) { return ARM64_ReadBits(insn, 31, 22) == 0b0011100100; }
+
+__forceinline DWORD* ARM64_FollowCBNZW(DWORD* pInsnCBNZW)
+{
+    DWORD insnCBNZW = *pInsnCBNZW;
+    if (!ARM64_IsCBNZW(insnCBNZW))
+        return NULL;
+    int imm19 = ARM64_ReadBitsSignExtend(insnCBNZW, 23, 5);
+    return pInsnCBNZW + imm19; // offset = imm19 * 4
+}
 
 __forceinline DWORD* ARM64_FollowBL(DWORD* pInsnBL)
 {
