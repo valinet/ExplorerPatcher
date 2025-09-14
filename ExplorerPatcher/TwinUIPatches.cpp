@@ -2004,6 +2004,7 @@ BOOL FixStartMenuAnimation(LPMODULEINFO mi)
 
     // ### Offset of bTransitioningToCortana
 #if defined(_M_X64)
+    // `(CStartExperienceManager *)((char *)this - 40)` after field access
     // ```
     // 80 B9 ?? ?? ?? ?? 00 75 ?? 48 83 C1 D8
     //       ^^^^^^^^^^^ bTransitioningToCortana
@@ -2018,6 +2019,25 @@ BOOL FixStartMenuAnimation(LPMODULEINFO mi)
     if (matchTransitioningToCortanaField)
     {
         g_SMAnimationPatchOffsets.startExperienceManager_bTransitioningToCortana = g_SMAnimationPatchOffsets.startExperienceManager_IStartExperienceManager + *(int*)(matchTransitioningToCortanaField + 2);
+    }
+    else
+    {
+        // `(CStartExperienceManager *)((char *)this - 40)` before field access
+        // ```
+        // 48 83 ?? 80 B9 ?? ?? ?? ?? 00 75 ?? 41 B0 01
+        //                ^^^^^^^^^^^ bTransitioningToCortana
+        // ```
+        // Ref: CStartExperienceManager::DimStart()
+        matchTransitioningToCortanaField = (PBYTE)FindPattern(
+            mi->lpBaseOfDll,
+            mi->SizeOfImage,
+            "\x48\x83\xC1\x00\x80\xB9\x00\x00\x00\x00\x00\x75\x00\x41\xB0\x01",
+            "xxx?xx????xx?xxx"
+        );
+        if (matchTransitioningToCortanaField)
+        {
+            g_SMAnimationPatchOffsets.startExperienceManager_bTransitioningToCortana = *(int*)(matchTransitioningToCortanaField + 5);
+        }
     }
 #elif defined(_M_ARM64)
     // ```
