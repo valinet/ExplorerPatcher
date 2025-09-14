@@ -2068,22 +2068,42 @@ BOOL FixStartMenuAnimation(LPMODULEINFO mi)
         matchGetMonitorInformation += 5 + *(int*)(matchGetMonitorInformation + 1);
     }
 #elif defined(_M_ARM64)
-    // * Pattern for 226xx
+    // * Pattern for 226xx, CSingleViewShellExperience* first arg *not* passed (E1 03 14 AA)
     //   ```
-    //   E3 ?? 00 91 E2 ?? 00 91 E0 03 13 AA ?? ?? ?? ?? F4 03 00 2A
-    //                                       ^^^^^^^^^^^
+    //   A9 E4 ?? ?? ?? E3 ?? ?? 91 E2 ?? ?? 91 E0 03 13 AA ?? ?? ?? ?? ?? 03 00 2A
+    //                                                      ^^^^^^^^^^^
     //   ```
     // Ref: CStartExperienceManager::PositionMenu()
     PBYTE matchGetMonitorInformation = (PBYTE)FindPattern(
         mi->lpBaseOfDll,
         mi->SizeOfImage,
-        "\xE3\x00\x00\x91\xE2\x00\x00\x91\xE0\x03\x13\xAA\x00\x00\x00\x00\xF4\x03\x00\x2A",
-        "x?xxx?xxxxxx????xxxx"
+        "\xA9\xE4\x00\x00\x00\xE3\x00\x00\x91\xE2\x00\x00\x91\xE0\x03\x13\xAA\x00\x00\x00\x00\x00\x03\x00\x2A",
+        "xx???x??xx??xxxxx?????xxx"
     );
     if (matchGetMonitorInformation)
     {
-        matchGetMonitorInformation += 12;
+        matchGetMonitorInformation += 17;
         matchGetMonitorInformation = (PBYTE)ARM64_FollowBL((DWORD*)matchGetMonitorInformation);
+    }
+    if (!matchGetMonitorInformation)
+    {
+        // * Pattern for 226xx, CSingleViewShellExperience* first arg passed (E1 03 14 AA)
+        //   ```
+        //   A9 E4 ?? ?? ?? E3 ?? ?? 91 E2 ?? ?? 91 E1 03 14 AA E0 03 13 AA ?? ?? ?? ?? ?? 03 00 2A
+        //                                                                  ^^^^^^^^^^^
+        //   ```
+        // Ref: CStartExperienceManager::PositionMenu()
+        matchGetMonitorInformation = (PBYTE)FindPattern(
+            mi->lpBaseOfDll,
+            mi->SizeOfImage,
+            "\xA9\xE4\x00\x00\x00\xE3\x00\x00\x91\xE2\x00\x00\x91\xE1\x03\x14\xAA\xE0\x03\x13\xAA\x00\x00\x00\x00\x00\x03\x00\x2A",
+            "xx???x??xx??xxxxxxxxx?????xxx"
+        );
+        if (matchGetMonitorInformation)
+        {
+            matchGetMonitorInformation += 21;
+            matchGetMonitorInformation = (PBYTE)ARM64_FollowBL((DWORD*)matchGetMonitorInformation);
+        }
     }
     if (!matchGetMonitorInformation)
     {
