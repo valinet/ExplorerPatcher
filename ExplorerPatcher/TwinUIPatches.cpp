@@ -2025,7 +2025,7 @@ BOOL FixStartMenuAnimation(LPMODULEINFO mi)
         // `(CStartExperienceManager *)((char *)this - 40)` before field access
         // ```
         // 48 83 C1 ?? 80 B9 ?? ?? ?? ?? 00 75 ?? 41 B0 01
-        //                ^^^^^^^^^^^ bTransitioningToCortana
+        //                   ^^^^^^^^^^^ bTransitioningToCortana
         // ```
         // Ref: CStartExperienceManager::DimStart()
         matchTransitioningToCortanaField = (PBYTE)FindPattern(
@@ -2036,7 +2036,7 @@ BOOL FixStartMenuAnimation(LPMODULEINFO mi)
         );
         if (matchTransitioningToCortanaField)
         {
-            g_SMAnimationPatchOffsets.startExperienceManager_bTransitioningToCortana = *(int*)(matchTransitioningToCortanaField + 5);
+            g_SMAnimationPatchOffsets.startExperienceManager_bTransitioningToCortana = *(int*)(matchTransitioningToCortanaField + 6);
         }
     }
 #elif defined(_M_ARM64)
