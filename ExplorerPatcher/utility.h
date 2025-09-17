@@ -605,6 +605,42 @@ inline BOOL IncrementDLLReferenceCount(HINSTANCE hinst)
     return TRUE;
 }
 
+inline void SectionBeginAndSize(HMODULE hModule, const char* pszSectionName, PBYTE* beginSection, DWORD* sizeSection)
+{
+    *beginSection = NULL;
+    *sizeSection = 0;
+
+    PIMAGE_DOS_HEADER dosHeader = (PIMAGE_DOS_HEADER)hModule;
+    if (dosHeader->e_magic == IMAGE_DOS_SIGNATURE)
+    {
+        PIMAGE_NT_HEADERS64 ntHeader = (PIMAGE_NT_HEADERS64)((BYTE*)dosHeader + dosHeader->e_lfanew);
+        if (ntHeader->Signature == IMAGE_NT_SIGNATURE)
+        {
+            PIMAGE_SECTION_HEADER firstSection = IMAGE_FIRST_SECTION(ntHeader);
+            for (unsigned int i = 0; i < ntHeader->FileHeader.NumberOfSections; ++i)
+            {
+                PIMAGE_SECTION_HEADER section = firstSection + i;
+                if (strncmp((const char*)section->Name, pszSectionName, IMAGE_SIZEOF_SHORT_NAME) == 0)
+                {
+                    *beginSection = (PBYTE)dosHeader + section->VirtualAddress;
+                    *sizeSection = section->SizeOfRawData;
+                    break;
+                }
+            }
+        }
+    }
+}
+
+__forceinline void TextSectionBeginAndSize(HMODULE hModule, PBYTE* beginSection, DWORD* sizeSection)
+{
+    SectionBeginAndSize(hModule, ".text", beginSection, sizeSection);
+}
+
+__forceinline void RDataSectionBeginAndSize(HMODULE hModule, PBYTE* beginSection, DWORD* sizeSection)
+{
+    SectionBeginAndSize(hModule, ".rdata", beginSection, sizeSection);
+}
+
 PVOID FindPattern(PVOID pBase, SIZE_T dwSize, LPCSTR lpPattern, LPCSTR lpMask);
 
 #if _M_X64

@@ -77,27 +77,7 @@ void PatchXamlMetaDataProviderGuid()
 
     PBYTE beginRData = NULL;
     DWORD sizeRData = 0;
-
-    // Our target is in .rdata
-    PIMAGE_DOS_HEADER dosHeader = (PIMAGE_DOS_HEADER)GetModuleHandleW(NULL);
-    if (dosHeader->e_magic == IMAGE_DOS_SIGNATURE)
-    {
-        PIMAGE_NT_HEADERS64 ntHeader = (PIMAGE_NT_HEADERS64)((u_char*)dosHeader + dosHeader->e_lfanew);
-        if (ntHeader->Signature == IMAGE_NT_SIGNATURE)
-        {
-            PIMAGE_SECTION_HEADER firstSection = IMAGE_FIRST_SECTION(ntHeader);
-            for (unsigned int i = 0; i < ntHeader->FileHeader.NumberOfSections; ++i)
-            {
-                PIMAGE_SECTION_HEADER section = firstSection + i;
-                if (!strncmp(section->Name, ".rdata", 6))
-                {
-                    beginRData = (PBYTE)dosHeader + section->VirtualAddress;
-                    sizeRData = section->SizeOfRawData;
-                    break;
-                }
-            }
-        }
-    }
+    RDataSectionBeginAndSize(GetModuleHandleW(NULL), &beginRData, &sizeRData);
     if (!beginRData || !sizeRData)
     {
         return;
@@ -131,6 +111,62 @@ void Init()
         {
             LoadLibraryW(L"JumpViewUI_.dll");
             g_bIsUsingOwnJumpViewUI = TRUE;
+        }
+
+        PBYTE beginText = NULL;
+        DWORD sizeText = 0;
+        TextSectionBeginAndSize(GetModuleHandleW(NULL), &beginText, &sizeText);
+        if (beginText && sizeText)
+        {
+            // Fix 0x800704DA (The service is already registered) exception when feature flag 58205615 is enabled
+            // Feature flag introduced in:
+            // - Germanium Client 26100.5742+
+            // - Germanium Server 26461+
+            // - Bromine Canary 27924+ (reworked in 27938)
+            // Used to be inlined in StartMenuExperienceHost::App::OnLaunched(), the rework made it be called using
+            // std::call_once, therefore we have a function that we can make it do nothing.
+
+            // StartMenuExperienceHost::App::SetExperienceManagerPropertiesAsync()
+            // Early return that function
+#if defined(_M_X64)
+            // TODO Improve pattern
+            // 40 53 57 48 83 EC 28 E8 ?? ?? ?? ?? 48 8B D8 48 89 44 24 40 48 8B C8
+            PBYTE match = FindPattern(
+                beginText,
+                sizeText,
+                "\x40\x53\x57\x48\x83\xEC\x28\xE8\x00\x00\x00\x00\x48\x8B\xD8\x48\x89\x44\x24\x40\x48\x8B\xC8",
+                "xxxxxxxx????xxxxxxxxxxx"
+            );
+            if (match)
+            {
+                DWORD dwOldProtect = 0;
+                if (VirtualProtect(match, 1, PAGE_EXECUTE_READWRITE, &dwOldProtect))
+                {
+                    match[0] = 0xC3; // ret
+                    VirtualProtect(match, 1, dwOldProtect, &dwOldProtect);
+                }
+            }
+#elif defined(_M_ARM64)
+            // TODO Improve pattern
+            // 7F 23 03 D5 F3 53 BF A9 FD 7B BC A9 FD 03 00 91 30 00 80 92
+            // ----------- PACIBSP, don't scan for this because it's everywhere
+            PBYTE match = FindPattern(
+                beginText,
+                sizeText,
+                "\xF3\x53\xBF\xA9\xFD\x7B\xBC\xA9\xFD\x03\x00\x91\x30\x00\x80\x92",
+                "xxxxxxxxxxxxxxxx"
+            );
+            if (match)
+            {
+                match -= 4; // include PACIBSP
+                DWORD dwOldProtect = 0;
+                if (VirtualProtect(match, 4, PAGE_EXECUTE_READWRITE, &dwOldProtect))
+                {
+                    *(DWORD*)match = 0xD65F03C0; // RET
+                    VirtualProtect(match, 4, dwOldProtect, &dwOldProtect);
+                }
+            }
+#endif
         }
     }
     HMODULE hMod;
