@@ -8801,7 +8801,7 @@ static void PatchAddressBarSizing(const MODULEINFO* mi)
             VirtualProtect(match, 9, dwOldProtect, &dwOldProtect);
         }
 
-        // CAddressBand::_AddressBandWndProc()
+        // CAddressBand::_AddressBandWndProc() <- CAddressBand::_GetAdjustedClientRect()
         // 83 45 ?? ?? 83 6D ?? ?? 0F
         //          xx To 03    xx To 01
         match = FindPattern(
@@ -8810,11 +8810,32 @@ static void PatchAddressBarSizing(const MODULEINFO* mi)
             "\x83\x45\x00\x00\x83\x6D\x00\x00\x0F",
             "xx??xx??x"
         );
-        if (match && VirtualProtect(match, 9, PAGE_EXECUTE_READWRITE, &dwOldProtect))
+        if (match)
         {
-            match[3] = 3;
-            match[7] = 1;
-            VirtualProtect(match, 9, dwOldProtect, &dwOldProtect);
+            if (VirtualProtect(match, 9, PAGE_EXECUTE_READWRITE, &dwOldProtect))
+            {
+                match[3] = 3;
+                match[7] = 1;
+                VirtualProtect(match, 9, dwOldProtect, &dwOldProtect);
+            }
+        }
+        else
+        {
+            // CAddressBand::_GetAdjustedClientRect()
+            // 0F 1F 44 00 00 83 43 04 ?? 83 43 0C ??
+            //                         xx To 03    xx To FF (-1)
+            match = FindPattern(
+                mi->lpBaseOfDll,
+                mi->SizeOfImage,
+                "\x0F\x1F\x44\x00\x00\x83\x43\x04\x00\x83\x43\x0C",
+                "xxxxxxxx?xxx"
+            );
+            if (match && VirtualProtect(match + 5, 8, PAGE_EXECUTE_READWRITE, &dwOldProtect))
+            {
+                match[8] = 3;
+                match[12] = (BYTE)-1;
+                VirtualProtect(match + 5, 8, dwOldProtect, &dwOldProtect);
+            }
         }
     }
     else
