@@ -4,7 +4,7 @@ This document includes the same release notes as in the [Releases](https://githu
 
 ## 26100.4946.69
 
-Tested on OS builds 26100.4946, 26100.5074, and 26200.5751.
+Tested on OS builds 26100.4946, 26100.5074, 26200.5751, and 26220.6682.
 
 ##### 1
 
@@ -23,11 +23,18 @@ Tested on OS builds 26100.4946, 26100.5074, and 26200.5751.
 ##### 2
 
 * Fixed weather button not having an icon. (#4545) (6959c69)
+  * You may need to perform "Clear weather widget local data" in EP properties > Weather.
+
+##### 3
+
+* File Explorer: Fixed "Shrink address bar height" resulting in broken graphics on recent 24H2 builds. (#4552) (6d946bd)
+* Start10: Fixed open/close animation patching on x64 27938+ and ARM64 27881+. (201a7e5, 79f8dd3, f873888, 465117e, 4434d10)
+* Start10: Fixed Windows 10 Start menu refusing to open when the new Windows 11 Start menu feature flag(s) are enabled. (#4523) (afd109f)
+* Fixed Windows 10 Alt+Tab and Windows 10 taskbar Win+X functionality on ARM64 226x1 and 27686+. (18dfcd0)
 
 Known issues we will address in the short term:
 * Changing weather icon pack to "Microsoft" has no effect.
-* Shrink address bar height results in unexpected dimensions on recent 24H2 builds.
-* When the new Windows 11 Start menu feature flag is enabled, Windows 10 Start menu will refuse to open due to an internal change.
+* On Nickel (Windows 11 22H2/23H2), when the new Windows 11 Start menu is enabled, using Windows 10 or Windows 10 (ExplorerPatcher) taskbar will crashloop explorer.exe.
 
 ## 22631.5335.68
 
