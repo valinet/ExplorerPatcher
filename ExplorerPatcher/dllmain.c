@@ -8774,7 +8774,6 @@ int explorerframe_GetSystemMetricsForDpi(int nIndex, UINT dpi)
     return GetSystemMetricsForDpi(nIndex, dpi);
 }
 
-#if defined(_M_X64)
 static void PatchAddressBarSizing(const MODULEINFO* mi)
 {
     // <- means inlined
@@ -8782,6 +8781,7 @@ static void PatchAddressBarSizing(const MODULEINFO* mi)
     PBYTE match;
     DWORD dwOldProtect;
 
+#if defined(_M_X64)
     // Patch address bar positioning
     if (IsWindows11())
     {
@@ -8999,6 +8999,7 @@ static void PatchAddressBarSizing(const MODULEINFO* mi)
             VirtualProtect(match, 8, dwOldProtect, &dwOldProtect);
         }
     }*/
+#endif
 
     if (IsWindows11())
     {
@@ -9007,6 +9008,7 @@ static void PatchAddressBarSizing(const MODULEINFO* mi)
         // Inlined SHLogicalToPhysicalDPI()
         // 41 B8 60 00 00 00 41 8D 58 B1
         //                            xx To A8
+#if defined(_M_X64)
         match = FindPattern(
             mi->lpBaseOfDll,
             mi->SizeOfImage,
@@ -9038,11 +9040,87 @@ static void PatchAddressBarSizing(const MODULEINFO* mi)
                 VirtualProtect(match, 16, dwOldProtect, &dwOldProtect);
             }
         }
+#endif
+
+        // Windows 11 - Revert feature flag Servicing_CFDNavButtonsTheming's effect on toolbar button size
+        // Nickel: 56845961, Germanium: 52061322
+#if defined(_M_X64)
+        // Feature flag present, Nickel
+        // CAddressBand::_PositionChildWindows() <- CAddressBand::ResizeToolbarButtons()
+        // BA 04 00 00 00 0F 95 C0 84 C0 75 02 8B D6
+        //    xxxxxxxxxxx To 01 00 00 00
+        match = FindPattern(
+            mi->lpBaseOfDll,
+            mi->SizeOfImage,
+            "\xBA\x04\x00\x00\x00\x0F\x95\xC0\x84\xC0\x75\x02\x8B\xD6",
+            "xxxxxxxxxxxxxx"
+        );
+        if (match && VirtualProtect(match, 5, PAGE_EXECUTE_READWRITE, &dwOldProtect))
+        {
+            *(int*)(match + 1) = 1;
+            VirtualProtect(match, 5, dwOldProtect, &dwOldProtect);
+        }
+        else
+        {
+            // Feature flag present, Germanium+
+            // CAddressBand::ResizeToolbarButtons()
+            // C7 44 24 ?? 04 00 00 00 84 C0 75 08 C7 44 24 ?? 01 00 00 00
+            //             xxxxxxxxxxx To 01 00 00 00
+            match = FindPattern(
+                mi->lpBaseOfDll,
+                mi->SizeOfImage,
+                "\xC7\x44\x24\x00\x04\x00\x00\x00\x84\xC0\x75\x08\xC7\x44\x24\x00\x01\x00\x00\x00",
+                "xxx?xxxxxxxxxxx?xxxx"
+            );
+            if (match && VirtualProtect(match, 8, PAGE_EXECUTE_READWRITE, &dwOldProtect))
+            {
+                *(int*)(match + 4) = 1;
+                VirtualProtect(match, 8, dwOldProtect, &dwOldProtect);
+            }
+        }
+        // TODO Revisit once forced-on
+#elif defined(_M_ARM64)
+        // Feature flag present, target register W1 (Nickel)
+        // CAddressBand::ResizeToolbarButtons()
+        // CAddressBand::_PositionChildWindows() <- CAddressBand::ResizeToolbarButtons()
+        // 81 00 80 52 02 00 00 14 21 00 80 52
+        // xxxxxxxxxxx To 21 00 80 52
+        match = FindPattern(
+            mi->lpBaseOfDll,
+            mi->SizeOfImage,
+            "\x81\x00\x80\x52\x02\x00\x00\x14\x21\x00\x80\x52",
+            "xxxxxxxxxxxx"
+        );
+        if (match)
+        {
+            if (VirtualProtect(match, 4, PAGE_EXECUTE_READWRITE, &dwOldProtect))
+            {
+                *(DWORD*)(match + 0) = 0x52800021; // MOV W1, #1
+                VirtualProtect(match, 4, dwOldProtect, &dwOldProtect);
+            }
+        }
+        else
+        {
+            // Feature flag present, target register W8 (Germanium+)
+            // CAddressBand::ResizeToolbarButtons()
+            // 88 00 80 52 02 00 00 14 28 00 80 52
+            // xxxxxxxxxxx To 28 00 80 52
+            match = FindPattern(
+                mi->lpBaseOfDll,
+                mi->SizeOfImage,
+                "\x88\x00\x80\x52\x02\x00\x00\x14\x28\x00\x80\x52",
+                "xxxxxxxxxxxx"
+            );
+            if (match && VirtualProtect(match, 4, PAGE_EXECUTE_READWRITE, &dwOldProtect))
+            {
+                *(DWORD*)(match + 0) = 0x52800028; // MOV W8, #1
+                VirtualProtect(match, 4, dwOldProtect, &dwOldProtect);
+            }
+        }
+        // TODO Revisit once forced-on
+#endif
     }
 }
-#else
-static void PatchAddressBarSizing(MODULEINFO* mi) {}
-#endif
 #pragma endregion
 
 
