@@ -36,6 +36,10 @@ Tested on OS builds 26100.4946, 26100.5074, 26200.5751, and 26220.6682.
 
 * File Explorer: Corrected shrunk address bar toolbar button size when Servicing_CFDNavButtonsTheming (NI: 56845961, GE: 52061322) is enabled. (#4552) (9e91030)
 
+##### 5
+
+* Start10: Fixed Windows 10 Start menu not opening on 22H2/23H2 ARM64. (9baa999)
+
 Known issues we will address in the short term:
 * Changing weather icon pack to "Microsoft" has no effect.
 * On Nickel (Windows 11 22H2/23H2), when the new Windows 11 Start menu is enabled, using Windows 10 or Windows 10 (ExplorerPatcher) taskbar will crashloop explorer.exe.
