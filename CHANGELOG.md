@@ -38,7 +38,7 @@ Tested on OS builds 26100.4946, 26100.5074, 26200.5751, and 26220.6682.
 
 ##### 5
 
-* Start10: Fixed Windows 10 Start menu not opening on 22H2/23H2 ARM64. (9baa999)
+* Start10: Fixed Windows 10 Start menu not opening on 22H2/23H2 ARM64. (c08b0a6)
 
 Known issues we will address in the short term:
 * Changing weather icon pack to "Microsoft" has no effect.
