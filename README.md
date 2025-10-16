@@ -1,10 +1,10 @@
 # ExplorerPatcher
 
-This project aims to enhance the working environment on Windows.
+This project aims to enhance the working environment on Windows. Link for more help: https://github.com/valinet/ExplorerPatcher/releases/latest .
 
 ## How to?
 
-1. Follow the antivirus configuration instructions and download the latest version of the setup program in [here](https://github.com/valinet/ExplorerPatcher/releases/latest).
+1. First, add `Explorer Patcher` into the exclusion list of your Antivirus.
    * Choose `ep_setup.exe` if your device uses an Intel or AMD processor, or `ep_setup_arm64.exe` if your device uses a Snapdragon processor.
 1. Run the installer. It will automatically prompt for elevation, after which it will close `explorer.exe` and install the necessary files. When done, you will see the desktop again and the Windows 10 taskbar.
 1. Right-click the taskbar and choose "Properties".
