@@ -8102,6 +8102,12 @@ DEFINE_GUID(CLSID_XamlIslandViewAdapter,
     0x8A, 0xE5, 0xA8, 0x8E, 0x9A, 0x33
 );
 
+DEFINE_GUID(CLSID_FileExplorerFolderView,
+    0x2AA9162E,
+    0xC906, 0x4DD9, 0xAD, 0x0B,
+    0x3D, 0x24, 0xA8, 0xEE, 0xF5, 0xA0
+);
+
 DEFINE_GUID(CLSID_UIRibbonFramework,
     0x926749FA,
     0x2615, 0x4987, 0x88, 0x45,
@@ -8124,6 +8130,16 @@ HRESULT ExplorerFrame_CoCreateInstanceHook(REFCLSID rclsid, LPUNKNOWN pUnkOuter,
     else if (IsEqualCLSID(rclsid, &CLSID_UIRibbonFramework) && IsEqualIID(riid, &IID_IUIRibbonFramework))
     {
         if (dwFileExplorerCommandUI == 2)
+            return REGDB_E_CLASSNOTREG;
+    }
+    return CoCreateInstance(rclsid, pUnkOuter, dwClsContext, riid, ppv);
+}
+
+HRESULT shell32_CoCreateInstanceHook(REFCLSID rclsid, LPUNKNOWN pUnkOuter, DWORD dwClsContext, REFIID riid, LPVOID* ppv)
+{
+    if (IsEqualCLSID(rclsid, &CLSID_FileExplorerFolderView))
+    {
+        if (dwFileExplorerCommandUI != 0 && dwFileExplorerCommandUI != 3 && dwFileExplorerCommandUI != 4)
             return REGDB_E_CLASSNOTREG;
     }
     return CoCreateInstance(rclsid, pUnkOuter, dwClsContext, riid, ppv);
@@ -9215,7 +9231,7 @@ int RtlQueryFeatureConfigurationHook(UINT32 featureId, int sectionType, INT64* c
             }
             break;
         }
-        case 40729001: // WASDKInFileExplorer - Removed in 22635.2915+
+        /*case 40729001: // WASDKInFileExplorer - Removed in 22635.2915+
         case 42295138: // XAMLFolderViewSupport - Depends on WASDKInFileExplorer
         {
             if (dwFileExplorerCommandUI == 1     // Windows 10 Ribbon     <-- fixes crashing when navigating back to a WASDK view
@@ -9228,15 +9244,13 @@ int RtlQueryFeatureConfigurationHook(UINT32 featureId, int sectionType, INT64* c
                 // without WASDK, and returning to a page with WASDK.
                 //
                 // However this also disables the new Gallery page altogether.
-                // TODO- We have to find a way to either fix the crashing or make Gallery use the non WASDK view in the
-                // TODO  same way as when Explorer is opened into Control Panel then going to Gallery.
                 //
-                // TODO- We cannot rely on feature flag patches because they will eventually be removed.
+                // Fixed by shell32_CoCreateInstanceHook by returning class not registered for CLSID_FileExplorerFolderView
                 //
                 buffer->enabledState = FEATURE_ENABLED_STATE_DISABLED;
             }
             break;
-        }
+        }*/
         case 40950262: // FEMNB "File Explorer Modern Navigation Bar"
         {
             if (dwFileExplorerCommandUI == 3     // Windows 11 Command Bar (no Tabs, classic Address Bar)
@@ -9307,15 +9321,14 @@ DWORD InjectBasicFunctions(BOOL bIsExplorer, BOOL bInstall)
                 VnPatchIAT(hShell32, "user32.dll", "TrackPopupMenu", shell32_TrackPopupMenu);
             }
             else
+#endif
             {
-#endif
                 VnPatchIAT(hShell32, "user32.dll", "TrackPopupMenu", TrackPopupMenuHook);
-#if WITH_MAIN_PATCHER
             }
-#endif
             if (bIsExplorerProcess)
             {
                 HOOK_IMMERSIVE_MENUS(Shell32);
+                VnPatchDelayIAT(hShell32, "api-ms-win-core-com-l1-1-0.dll", "CoCreateInstance", shell32_CoCreateInstanceHook);
             }
             VnPatchIAT(hShell32, "user32.dll", "SystemParametersInfoW", DisableImmersiveMenus_SystemParametersInfoW);
             if (!bIsExplorer)
