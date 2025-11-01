@@ -8144,6 +8144,22 @@ HRESULT shell32_CoCreateInstanceHook(REFCLSID rclsid, LPUNKNOWN pUnkOuter, DWORD
     }
     return CoCreateInstance(rclsid, pUnkOuter, dwClsContext, riid, ppv);
 }
+
+HACCEL WINAPI ExplorerFrame_LoadAcceleratorsW(HINSTANCE hInstance, LPCWSTR lpTableName)
+{
+    if (IS_INTRESOURCE(lpTableName))
+    {
+        UINT uID = (UINT)(UINT_PTR)lpTableName;
+        if (uID == 262)
+        {
+            // When FEMNB (File Explorer Modern Navigation Bar) feature flag is enabled, restore Alt+D functionality
+            // when it is not used
+            if (dwFileExplorerCommandUI != 0)
+                return NULL;
+        }
+    }
+    return LoadAcceleratorsW(hInstance, lpTableName);
+}
 #pragma endregion
 
 
@@ -9387,6 +9403,7 @@ DWORD InjectBasicFunctions(BOOL bIsExplorer, BOOL bInstall)
                 VnPatchIAT(hExplorerFrame, "user32.dll", "SetWindowLongPtrW", SetWindowLongPtrWHook);
             }
             VnPatchIAT(hExplorerFrame, "API-MS-WIN-CORE-STRING-L1-1-0.DLL", "CompareStringOrdinal", ExplorerFrame_CompareStringOrdinal);
+            VnPatchIAT(hExplorerFrame, "user32.dll", "LoadAcceleratorsW", ExplorerFrame_LoadAcceleratorsW);
             VnPatchIAT(hExplorerFrame, "user32.dll", "GetSystemMetricsForDpi", explorerframe_GetSystemMetricsForDpi);
 #if WITH_MAIN_PATCHER
             MODULEINFO mi;
