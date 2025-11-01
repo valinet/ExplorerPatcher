@@ -644,23 +644,33 @@ __forceinline void RDataSectionBeginAndSize(HMODULE hModule, PBYTE* beginSection
 PVOID FindPattern(PVOID pBase, SIZE_T dwSize, LPCSTR lpPattern, LPCSTR lpMask);
 
 #if _M_X64
-inline BOOL FollowJnz(PBYTE pJnz, PBYTE* pTarget, DWORD* pJnzSize)
+inline BOOL FollowJump(PBYTE pInstr, BYTE shortOpcode, BYTE longOpcodeExt, DWORD* pInstrSize, PBYTE* pTarget)
 {
-    // Check big jnz
-    if (pJnz[0] == 0x0F && pJnz[1] == 0x85)
+    // Check long
+    if (pInstr[0] == 0x0F && pInstr[1] == longOpcodeExt)
     {
-        *pTarget = pJnz + 6 + *(int*)(pJnz + 2);
-        *pJnzSize = 6;
+        *pTarget = pInstr + 6 + *(int*)(pInstr + 2);
+        *pInstrSize = 6;
         return TRUE;
     }
-    // Check small jnz
-    if (pJnz[0] == 0x75)
+    // Check short
+    if (pInstr[0] == shortOpcode)
     {
-        *pTarget = pJnz + 2 + *(char*)(pJnz + 1);
-        *pJnzSize = 2;
+        *pTarget = pInstr + 2 + *(char*)(pInstr + 1);
+        *pInstrSize = 2;
         return TRUE;
     }
     return FALSE;
+}
+
+inline BOOL FollowJnz(PBYTE pInstr, PBYTE* pTarget, DWORD* pInstrSize)
+{
+    return FollowJump(pInstr, 0x75, 0x85, pInstrSize, pTarget);
+}
+
+inline BOOL FollowJz(PBYTE pInstr, PBYTE* pTarget, DWORD* pInstrSize)
+{
+    return FollowJump(pInstr, 0x74, 0x84, pInstrSize, pTarget);
 }
 #endif
 

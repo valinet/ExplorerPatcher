@@ -8160,6 +8160,88 @@ HACCEL WINAPI ExplorerFrame_LoadAcceleratorsW(HINSTANCE hInstance, LPCWSTR lpTab
     }
     return LoadAcceleratorsW(hInstance, lpTableName);
 }
+
+/**
+ * When TIFE feature flag is enabled:
+ * - Fixes menu bar behavior on Windows 7 Command Bar
+ * - Fixes window position and size not being saved on Windows 8/10 Ribbon
+ */
+void FixTIFEBreakagesForLegacyControlInterfaces(const MODULEINFO* pmi)
+{
+#if defined(_M_X64)
+    // No TIFE feature flag
+    // 8B 8B ?? ?? 00 00 8B 83 ?? ?? 00 00 89 8B ?? ?? 00 00 89 83 ?? ?? 00 00 F6 C1 10 <jz/jnz>
+    // Ref: CInternetToolbar::_CreateBands()
+    PBYTE match = FindPattern(
+        pmi->lpBaseOfDll,
+        pmi->SizeOfImage,
+        "\x8B\x8B\x00\x00\x00\x00\x8B\x83\x00\x00\x00\x00\x89\x8B\x00\x00\x00\x00\x89\x83\x00\x00\x00\x00\xF6\xC1\x10",
+        "xx??xxxx??xxxx??xxxx??xxxxx"
+    );
+    if (match)
+    {
+        match += 27; // Align to jump
+    }
+    else
+    {
+        // TIFE feature flag present (pattern is fragile!)
+        // 8B 83 ?? ?? 00 00 A8 10 <jz>
+        // Ref: CInternetToolbar::_CreateBands()
+        match = FindPattern(
+            pmi->lpBaseOfDll,
+            pmi->SizeOfImage,
+            "\x8B\x83\x00\x00\x00\x00\xA8\x10",
+            "xx??xxxx"
+        );
+        if (match)
+        {
+            match += 8; // Align to jump
+        }
+    }
+    if (match) // Should be aligned to jump at this point
+    {
+        PBYTE target = NULL;
+        DWORD jmpInstrSize = 0;
+        if (FollowJnz(match, &target, &jmpInstrSize))
+        {
+            // Nop the jnz
+            DWORD dwOldProtect;
+            if (VirtualProtect(match, jmpInstrSize, PAGE_EXECUTE_READWRITE, &dwOldProtect))
+            {
+                memset(match, 0x90, jmpInstrSize);
+                VirtualProtect(match, jmpInstrSize, dwOldProtect, &dwOldProtect);
+            }
+        }
+        else if (FollowJz(match, &target, &jmpInstrSize))
+        {
+            if (jmpInstrSize == 2)
+            {
+                // Change short jz to short jmp
+                DWORD dwOldProtect;
+                if (VirtualProtect(match, jmpInstrSize, PAGE_EXECUTE_READWRITE, &dwOldProtect))
+                {
+                    match[0] = 0xEB; // jmp
+                    VirtualProtect(match, jmpInstrSize, dwOldProtect, &dwOldProtect);
+                }
+            }
+            else if (jmpInstrSize == 6)
+            {
+                // Change long jz to long jmp
+                DWORD dwOldProtect;
+                if (VirtualProtect(match, jmpInstrSize, PAGE_EXECUTE_READWRITE, &dwOldProtect))
+                {
+                    match[0] = 0xE9; // jmp rel32
+                    *(int*)(match + 1) = (int)(target - (match + 5));
+                    match[5] = 0x90; // nop
+                    VirtualProtect(match, jmpInstrSize, dwOldProtect, &dwOldProtect);
+                }
+            }
+        }
+    }
+#elif defined(_M_ARM64)
+    // ARM64 implementation not done yet
+#endif
+}
 #pragma endregion
 
 
@@ -9235,9 +9317,7 @@ int RtlQueryFeatureConfigurationHook(UINT32 featureId, int sectionType, INT64* c
 #endif
         case 37634385: // TIFE "Tabs in File Explorer"
         {
-            if (dwFileExplorerCommandUI == 1     // Windows 10 Ribbon     <-- fixes saving of window position and size
-                || dwFileExplorerCommandUI == 2  // Windows 7 Command Bar <-- fixes menu bar behavior
-                || dwFileExplorerCommandUI == 3) // Windows 11 Command Bar (no Tabs, classic Address Bar) <-- provides option to disable tabs in File Explorer
+            if (dwFileExplorerCommandUI == 3) // Windows 11 Command Bar (no Tabs, classic Address Bar) <-- provides option to disable tabs in File Explorer
             {
                 // Removed in 23575.1000+
                 // Crashing on 22635.2915
@@ -9247,26 +9327,6 @@ int RtlQueryFeatureConfigurationHook(UINT32 featureId, int sectionType, INT64* c
             }
             break;
         }
-        /*case 40729001: // WASDKInFileExplorer - Removed in 22635.2915+
-        case 42295138: // XAMLFolderViewSupport - Depends on WASDKInFileExplorer
-        {
-            if (dwFileExplorerCommandUI == 1     // Windows 10 Ribbon     <-- fixes crashing when navigating back to a WASDK view
-                || dwFileExplorerCommandUI == 2  // Windows 7 Command Bar <-- ditto
-                || dwFileExplorerCommandUI == 3) // Windows 11 Command Bar (no Tabs, classic Address Bar) <-- fixes crashing when opening an Explorer window
-            {
-                // Disable the new Windows App SDK views (in Home and Gallery) when not using the Windows 11 command bar
-                //
-                // There is an issue where Explorer crashes when one goes to a page with WASDK, goes to another page
-                // without WASDK, and returning to a page with WASDK.
-                //
-                // However this also disables the new Gallery page altogether.
-                //
-                // Fixed by shell32_CoCreateInstanceHook by returning class not registered for CLSID_FileExplorerFolderView
-                //
-                buffer->enabledState = FEATURE_ENABLED_STATE_DISABLED;
-            }
-            break;
-        }*/
         case 40950262: // FEMNB "File Explorer Modern Navigation Bar"
         {
             if (dwFileExplorerCommandUI == 3     // Windows 11 Command Bar (no Tabs, classic Address Bar)
@@ -9414,6 +9474,12 @@ DWORD InjectBasicFunctions(BOOL bIsExplorer, BOOL bInstall)
                 {
                     PatchAddressBarSizing(&mi);
                 }
+            }
+            if ((dwFileExplorerCommandUI == 1 || dwFileExplorerCommandUI == 2)
+                && ((global_rovi.dwBuildNumber >= 22621 && global_rovi.dwBuildNumber <= 22635 && global_ubr >= 160)
+                    || global_rovi.dwBuildNumber >= 25136))
+            {
+                FixTIFEBreakagesForLegacyControlInterfaces(&mi);
             }
 #endif
             VnPatchIAT(hExplorerFrame, "api-ms-win-core-com-l1-1-0.dll", "CoCreateInstance", ExplorerFrame_CoCreateInstanceHook);
