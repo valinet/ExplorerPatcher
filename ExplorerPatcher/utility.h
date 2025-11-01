@@ -709,6 +709,8 @@ __forceinline UINT_PTR ARM64_Align(UINT_PTR value, UINT_PTR alignment)
 
 __forceinline BOOL ARM64_IsCBZW(DWORD insn) { return ARM64_ReadBits(insn, 31, 24) == 0b00110100; }
 __forceinline BOOL ARM64_IsCBNZW(DWORD insn) { return ARM64_ReadBits(insn, 31, 24) == 0b00110101; }
+__forceinline BOOL ARM64_IsTBZ(DWORD insn) { return ARM64_ReadBits(insn, 31, 24) == 0b00110110; }
+__forceinline BOOL ARM64_IsTBNZ(DWORD insn) { return ARM64_ReadBits(insn, 31, 24) == 0b00110111; }
 __forceinline BOOL ARM64_IsBL(DWORD insn) { return ARM64_ReadBits(insn, 31, 26) == 0b100101; }
 __forceinline BOOL ARM64_IsADRP(DWORD insn) { return (ARM64_ReadBits(insn, 31, 24) & ~0b01100000) == 0b10010000; }
 __forceinline BOOL ARM64_IsMOVZW(DWORD insn) { return ARM64_ReadBits(insn, 31, 23) == 0b010100101; }
@@ -753,6 +755,22 @@ __forceinline DWORD ARM64_CBNZWToB(DWORD insnCBNZW)
         return 0;
     int imm19 = ARM64_ReadBitsSignExtend(insnCBNZW, 23, 5);
     return ARM64_MakeB(imm19);
+}
+
+__forceinline DWORD ARM64_TBZToB(DWORD insnTBZ)
+{
+    if (!ARM64_IsTBZ(insnTBZ))
+        return 0;
+    int imm14 = ARM64_ReadBitsSignExtend(insnTBZ, 18, 5);
+    return ARM64_MakeB(imm14);
+}
+
+__forceinline DWORD ARM64_TBNZToB(DWORD insnTBNZ)
+{
+    if (!ARM64_IsTBNZ(insnTBNZ))
+        return 0;
+    int imm14 = ARM64_ReadBitsSignExtend(insnTBNZ, 18, 5);
+    return ARM64_MakeB(imm14);
 }
 
 __forceinline DWORD ARM64_DecodeADD(DWORD insnADD)

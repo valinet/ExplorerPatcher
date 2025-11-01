@@ -8180,7 +8180,7 @@ void FixTIFEBreakagesForLegacyControlInterfaces(const MODULEINFO* pmi)
     );
     if (match)
     {
-        match += 27; // Align to jump
+        match += 27; // Point to jump
     }
     else
     {
@@ -8195,10 +8195,10 @@ void FixTIFEBreakagesForLegacyControlInterfaces(const MODULEINFO* pmi)
         );
         if (match)
         {
-            match += 8; // Align to jump
+            match += 8; // Point to jump
         }
     }
-    if (match) // Should be aligned to jump at this point
+    if (match) // Should be pointed to jump at this point
     {
         PBYTE target = NULL;
         DWORD jmpInstrSize = 0;
@@ -8239,7 +8239,58 @@ void FixTIFEBreakagesForLegacyControlInterfaces(const MODULEINFO* pmi)
         }
     }
 #elif defined(_M_ARM64)
-    // ARM64 implementation not done yet
+    // No TIFE feature flag
+    // 69 ?? ?? B9 68 ?? ?? B9 69 ?? ?? 29 <TBZ/TBNZ>
+    // Ref: CInternetToolbar::_CreateBands()
+    PBYTE match = FindPattern(
+        pmi->lpBaseOfDll,
+        pmi->SizeOfImage,
+        "\x69\x00\x00\xB9\x68\x00\x00\xB9\x69\x00\x00\x29",
+        "x??xx??xx??x"
+    );
+    if (match)
+    {
+        match += 12; // Point to TBZ/TBNZ
+    }
+    else
+    {
+        // TIFE feature flag present
+        // 68 ?? ?? B9 68 00 20 36 08 79 1B 12 68 ?? ?? B9
+        //             ^^^^^^^^^^^ <TBZ>
+        // Ref: CInternetToolbar::_CreateBands()
+        match = FindPattern(
+            pmi->lpBaseOfDll,
+            pmi->SizeOfImage,
+            "\x68\x00\x00\xB9\x68\x00\x20\x36\x08\x79\x1B\x12\x68\x00\x00\xB9",
+            "x??xxxxxxxxxx??x"
+        );
+        if (match)
+        {
+            match += 4; // Point to TBZ
+        }
+    }
+    if (match) // Should be pointed to TBZ/TBNZ at this point
+    {
+        DWORD insnCurrent = *(DWORD*)match;
+        DWORD insnNew = 0;
+        if (ARM64_IsTBZ(insnCurrent))
+        {
+            insnNew = ARM64_TBZToB(insnCurrent);
+        }
+        else if (ARM64_IsTBNZ(insnCurrent))
+        {
+            insnNew = 0xD503201F; // NOP
+        }
+        if (insnNew != 0)
+        {
+            DWORD dwOldProtect;
+            if (VirtualProtect(match, 4, PAGE_EXECUTE_READWRITE, &dwOldProtect))
+            {
+                *(DWORD*)match = insnNew;
+                VirtualProtect(match, 4, dwOldProtect, &dwOldProtect);
+            }
+        }
+    }
 #endif
 }
 #pragma endregion
