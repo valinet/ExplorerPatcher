@@ -948,18 +948,29 @@ interface ITaskGroup
     CONST_VTBL struct ITaskGroupVtbl* lpVtbl;
 };
 
-HRESULT(*CTaskGroup_DoesWindowMatchFunc)(LONG_PTR* task_group, HWND hCompareWnd, ITEMIDLIST* pCompareItemIdList,
-    WCHAR* pCompareAppId, int* pnMatch, LONG_PTR** p_task_item) = NULL;
-HRESULT __stdcall CTaskGroup_DoesWindowMatchHook(LONG_PTR* task_group, HWND hCompareWnd, ITEMIDLIST* pCompareItemIdList,
-    WCHAR* pCompareAppId, int* pnMatch, LONG_PTR** p_task_item)
+typedef enum tagWINDOWMATCHCONFIDENCE
 {
-    HRESULT hr = CTaskGroup_DoesWindowMatchFunc(task_group, hCompareWnd, pCompareItemIdList, pCompareAppId, pnMatch, p_task_item);
-    BOOL bDontGroup = FALSE;
-    BOOL bPinned = FALSE;
-    if (bPinnedItemsActAsQuickLaunch && SUCCEEDED(hr) && *pnMatch >= 1 && *pnMatch <= 3) // itemlist or appid match
+    WMC_None,
+    WMC_MatchAppID,
+    WMC_MatchShortcutIDListByAppID,
+    WMC_MatchShortcutIDList,
+    WMC_MatchWindow,
+} WINDOWMATCHCONFIDENCE;
+
+HRESULT(STDMETHODCALLTYPE *CTaskGroup_DoesWindowMatchFunc)(ITaskGroup* pTaskGroup, HWND hCompareWnd, ITEMIDLIST* pCompareItemIdList,
+    WCHAR* pCompareAppId, WINDOWMATCHCONFIDENCE* pnMatch, LONG_PTR** p_task_item) = NULL;
+HRESULT STDMETHODCALLTYPE CTaskGroup_DoesWindowMatchHook(ITaskGroup* pTaskGroup, HWND hCompareWnd, ITEMIDLIST* pCompareItemIdList,
+    WCHAR* pCompareAppId, WINDOWMATCHCONFIDENCE* pnMatch, LONG_PTR** p_task_item)
+{
+    wprintf(L"CTaskGroup_DoesWindowMatchHook called for hwnd 0x%p\n", hCompareWnd);
+    HRESULT hr = CTaskGroup_DoesWindowMatchFunc(pTaskGroup, hCompareWnd, pCompareItemIdList, pCompareAppId, pnMatch, p_task_item);
+    if (bPinnedItemsActAsQuickLaunch && SUCCEEDED(hr)
+        && (*pnMatch == WMC_MatchAppID || *pnMatch == WMC_MatchShortcutIDListByAppID || *pnMatch == WMC_MatchShortcutIDList))
     {
-        bDontGroup = FALSE;
-        bPinned = (!task_group[4] || (int)((LONG_PTR*)task_group[4])[0] == 0);
+        BOOL bDontGroup = FALSE;
+        PBYTE _this = (PBYTE)pTaskGroup - 16 /*sizeof(CTaskUnknown)*/;
+        HDPA hdpaItems = *(HDPA*)(_this + 48 /*offsetof(CTaskGroup, m_hdpaItems)*/);
+        BOOL bPinned = !hdpaItems || !DPA_GetPtrCount(hdpaItems);
         if (bPinned)
         {
             bDontGroup = TRUE;
@@ -1023,13 +1034,13 @@ typedef struct ITaskBtnGroupVtbl
     HRESULT(STDMETHODCALLTYPE* CancelRemoveItem)(
         ITaskBtnGroup* This);
 
-    LONG_PTR(STDMETHODCALLTYPE* GetIdealSpan)(
+    int(STDMETHODCALLTYPE* GetIdealSpan)(
         ITaskBtnGroup* This,
-        LONG_PTR var2, 
-        LONG_PTR var3,
-        LONG_PTR var4, 
-        LONG_PTR var5, 
-        LONG_PTR var6);
+        int var2,
+        int var3,
+        int var4,
+        int var5,
+        int var6);
     // ...
 
     END_INTERFACE
@@ -1040,59 +1051,103 @@ interface ITaskBtnGroup
     CONST_VTBL struct ITaskBtnGroupVtbl* lpVtbl;
 };
 
-LONG_PTR (*CTaskBtnGroup_GetIdealSpanFunc)(ITaskBtnGroup* _this, LONG_PTR var2, LONG_PTR var3,
-    LONG_PTR var4, LONG_PTR var5, LONG_PTR var6) = NULL;
-LONG_PTR __stdcall CTaskBtnGroup_GetIdealSpanHook(ITaskBtnGroup* _this, LONG_PTR var2, LONG_PTR var3,
-    LONG_PTR var4, LONG_PTR var5, LONG_PTR var6)
+typedef enum eTBGROUPTYPE
 {
-    LONG_PTR ret = NULL;
+    TBGROUPTYPE_Unknown,
+    TBGROUPTYPE_Normal,
+    TBGROUPTYPE_Pinned,
+    TBGROUPTYPE_Stacked,
+    TBGROUPTYPE_Invisible,
+} TBGROUPTYPE;
+
+int (STDMETHODCALLTYPE *CTaskBtnGroup_GetIdealSpanFunc)(ITaskBtnGroup* pTaskBtnGroup, int var2, int var3,
+    int var4, int var5, int* var6) = NULL;
+int STDMETHODCALLTYPE CTaskBtnGroup_GetIdealSpanHook(ITaskBtnGroup* pTaskBtnGroup, int var2, int var3,
+    int var4, int var5, int* var6)
+{
     BOOL bTypeModified = FALSE;
-    int button_group_type = *(unsigned int*)((INT64)_this + 64);
-    if (bRemoveExtraGapAroundPinnedItems && button_group_type == 2)
+    PBYTE _this = (PBYTE)pTaskBtnGroup - 16 /*sizeof(CTaskUnknown)*/;
+    TBGROUPTYPE* pGroupType = (TBGROUPTYPE*)(_this + 80 /*offsetof(CTaskBtnGroup, m_groupType)*/);
+    TBGROUPTYPE lastGroupType = *pGroupType;
+    if (bRemoveExtraGapAroundPinnedItems && lastGroupType == TBGROUPTYPE_Pinned)
     {
-        *(unsigned int*)((INT64)_this + 64) = 4;
+        *pGroupType = TBGROUPTYPE_Invisible;
         bTypeModified = TRUE;
     }
-    ret = CTaskBtnGroup_GetIdealSpanFunc(_this, var2, var3, var4, var5, var6);
+    int ret = CTaskBtnGroup_GetIdealSpanFunc(pTaskBtnGroup, var2, var3, var4, var5, var6);
     if (bRemoveExtraGapAroundPinnedItems && bTypeModified)
     {
-        *(unsigned int*)((INT64)_this + 64) = button_group_type;
+        *pGroupType = lastGroupType;
     }
     return ret;
+}
+
+void Win10TaskbarHooks_ConditionalPatchITaskGroupVtbl(ITaskGroupVtbl* pVtbl)
+{
+    if (bPinnedItemsActAsQuickLaunch)
+    {
+        DWORD flOldProtect = 0;
+        if (VirtualProtect(pVtbl, sizeof(ITaskGroupVtbl), PAGE_EXECUTE_READWRITE, &flOldProtect))
+        {
+            if (!CTaskGroup_DoesWindowMatchFunc)
+            {
+                CTaskGroup_DoesWindowMatchFunc = pVtbl->DoesWindowMatch;
+            }
+            pVtbl->DoesWindowMatch = CTaskGroup_DoesWindowMatchHook;
+            VirtualProtect(pVtbl, sizeof(ITaskGroupVtbl), flOldProtect, &flOldProtect);
+        }
+    }
+}
+
+void Win10TaskbarHooks_ConditionalPatchITaskBtnGroupVtbl(ITaskBtnGroupVtbl* pVtbl)
+{
+    if (bRemoveExtraGapAroundPinnedItems)
+    {
+        DWORD flOldProtect = 0;
+        if (VirtualProtect(pVtbl, sizeof(ITaskBtnGroupVtbl), PAGE_EXECUTE_READWRITE, &flOldProtect))
+        {
+            if (!CTaskBtnGroup_GetIdealSpanFunc)
+            {
+                CTaskBtnGroup_GetIdealSpanFunc = pVtbl->GetIdealSpan;
+            }
+            pVtbl->GetIdealSpan = CTaskBtnGroup_GetIdealSpanHook;
+            VirtualProtect(pVtbl, sizeof(ITaskBtnGroupVtbl), flOldProtect, &flOldProtect);
+        }
+    }
 }
 
 HRESULT explorer_QISearch(void* that, LPCQITAB pqit, REFIID riid, void** ppv)
 {
     HRESULT hr = QISearch(that, pqit, riid, ppv);
-    if (SUCCEEDED(hr) && IsEqualGUID(pqit[0].piid, &IID_ITaskGroup) && bPinnedItemsActAsQuickLaunch)
+    if (SUCCEEDED(hr))
     {
-        ITaskGroup* pTaskGroup = (char*)that + pqit[0].dwOffset;
-        DWORD flOldProtect = 0;
-        if (VirtualProtect(pTaskGroup->lpVtbl, sizeof(ITaskGroupVtbl), PAGE_EXECUTE_READWRITE, &flOldProtect))
+        if (IsEqualGUID(pqit[0].piid, &IID_ITaskGroup))
         {
-            if (!CTaskGroup_DoesWindowMatchFunc)
-            {
-                CTaskGroup_DoesWindowMatchFunc = pTaskGroup->lpVtbl->DoesWindowMatch;
-            }
-            pTaskGroup->lpVtbl->DoesWindowMatch = CTaskGroup_DoesWindowMatchHook;
-            VirtualProtect(pTaskGroup->lpVtbl, sizeof(ITaskGroupVtbl), flOldProtect, &flOldProtect);
+            ITaskGroup* pTaskGroup = (char*)that + pqit[0].dwOffset;
+            Win10TaskbarHooks_ConditionalPatchITaskGroupVtbl(pTaskGroup->lpVtbl);
         }
-    }
-    else if (SUCCEEDED(hr) && IsEqualGUID(pqit[0].piid, &IID_ITaskBtnGroup) && bRemoveExtraGapAroundPinnedItems)
-    {
-        ITaskBtnGroup* pTaskBtnGroup = (char*)that + pqit[0].dwOffset;
-        DWORD flOldProtect = 0;
-        if (VirtualProtect(pTaskBtnGroup->lpVtbl, sizeof(ITaskBtnGroupVtbl), PAGE_EXECUTE_READWRITE, &flOldProtect))
+        else if (IsEqualGUID(pqit[0].piid, &IID_ITaskBtnGroup))
         {
-            if (!CTaskBtnGroup_GetIdealSpanFunc)
-            {
-                CTaskBtnGroup_GetIdealSpanFunc = pTaskBtnGroup->lpVtbl->GetIdealSpan;
-            }
-            pTaskBtnGroup->lpVtbl->GetIdealSpan = CTaskBtnGroup_GetIdealSpanHook;
-            VirtualProtect(pTaskBtnGroup->lpVtbl, sizeof(ITaskBtnGroupVtbl), flOldProtect, &flOldProtect);
+            ITaskBtnGroup* pTaskBtnGroup = (char*)that + pqit[0].dwOffset;
+            Win10TaskbarHooks_ConditionalPatchITaskBtnGroupVtbl(pTaskBtnGroup->lpVtbl);
         }
     }
     return hr;
+}
+
+void Win10TaskbarHooks_PatchEPTaskbarVtables(HMODULE hModule)
+{
+    ITaskGroupVtbl* pTaskGroupVtbl = (ITaskGroupVtbl*)GetProcAddress(hModule, "??_7CTaskGroup@@6BITaskGroup@@@");
+    if (pTaskGroupVtbl)
+    {
+        Win10TaskbarHooks_ConditionalPatchITaskGroupVtbl(pTaskGroupVtbl);
+    }
+
+    ITaskBtnGroupVtbl* pTaskBtnGroupVtbl = (ITaskBtnGroupVtbl*)GetProcAddress(hModule, "??_7CTaskBtnGroup@@6BITaskBtnGroup@@@");
+    if (pTaskBtnGroupVtbl)
+    {
+        Win10TaskbarHooks_ConditionalPatchITaskBtnGroupVtbl(pTaskBtnGroupVtbl);
+    }
 }
 #endif
 #pragma endregion
@@ -8389,12 +8444,6 @@ __declspec(dllexport) HRESULT explorer_CoCreateInstanceHook(REFCLSID rclsid, LPU
     }
     return CoCreateInstance(rclsid, pUnkOuter, dwClsContext, riid, ppv);
 }
-
-bool(*DisableWin10TaskbarIsEnabledFunc)(void* _this);
-bool DisableWin10TaskbarIsEnabledHook(void* _this)
-{
-    return false;
-}
 #endif
 #pragma endregion
 
@@ -10823,45 +10872,6 @@ DWORD Inject(BOOL bIsExplorer)
     if (IsWindows11Version22H2OrHigher())
     {
         TryToFindExplorerOffsets(hExplorer, &miExplorer, symbols_PTRS.explorer_PTRS);
-
-#if 0
-        if (global_rovi.dwBuildNumber >= 26002)
-        {
-#if defined(_M_X64)
-            // Please Microsoft 🙏
-            // 48 8B ?? 78 48 8D 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 84 C0 0F 85
-            //                                     ^^^^^^^^^^^
-            // 26040.1000: C28AE
-            // 26052.1000: BF052
-            // 26058.1000: BEFA2
-            // 26080.1   : 11795C
-            PBYTE match = FindPattern(
-                hExplorer,
-                miExplorer.SizeOfImage,
-                "\x48\x8B\x00\x78\x48\x8D\x0D\x00\x00\x00\x00\xE8\x00\x00\x00\x00\x84\xC0\x0F\x85",
-                "xx?xxxx????x????xxxx"
-            );
-            if (match)
-            {
-                match += 11;
-                match += 5 + *(int*)(match + 1);
-            }
-#elif defined(_M_ARM64)
-            PBYTE match = NULL;
-#endif
-            if (match)
-            {
-                DisableWin10TaskbarIsEnabledFunc = match;
-                printf("wil::details::FeatureImpl<__WilFeatureTraits_Feature_DisableWin10Taskbar>::__private_IsEnabled() = %llX\n", match - (PBYTE)hExplorer);
-
-                funchook_prepare(
-                    funchook,
-                    (void**)&DisableWin10TaskbarIsEnabledFunc,
-                    DisableWin10TaskbarIsEnabledHook
-                );
-            }
-        }
-#endif
     }
 
     const WCHAR* pszTaskbarDll = GetTaskbarDllChecked(&symbols_PTRS);
@@ -10883,7 +10893,10 @@ DWORD Inject(BOOL bIsExplorer)
         VnPatchIAT(hExplorer, "API-MS-WIN-CORE-REGISTRY-L1-1-0.DLL", "RegCreateKeyExW", explorer_RegCreateKeyExW);
         VnPatchIAT(hExplorer, "API-MS-WIN-SHCORE-REGISTRY-L1-1-0.DLL", "SHGetValueW", explorer_SHGetValueW);
         VnPatchIAT(hExplorer, "user32.dll", "LoadMenuW", explorer_LoadMenuW);
-        VnPatchIAT(hExplorer, "api-ms-win-core-shlwapi-obsolete-l1-1-0.dll", "QISearch", explorer_QISearch);
+        if (bOldTaskbar == 1)
+        {
+            VnPatchIAT(hExplorer, "api-ms-win-core-shlwapi-obsolete-l1-1-0.dll", "QISearch", explorer_QISearch);
+        }
         if (IsOS(OS_ANYSERVER)) VnPatchIAT(hExplorer, "api-ms-win-shcore-sysinfo-l1-1-0.dll", "IsOS", explorer_IsOS);
         if (IsWindows11Version22H2OrHigher()) VnPatchDelayIAT(hExplorer, "ext-ms-win-rtcore-ntuser-window-ext-l1-1-0.dll", "CreateWindowExW", Windows11v22H2_explorer_CreateWindowExW);
     }
@@ -11078,6 +11091,8 @@ DWORD Inject(BOOL bIsExplorer)
         VnPatchIAT(hMyTaskbar, "user32.dll", MAKEINTRESOURCEA(2005), explorer_SetChildWindowNoActivateHook);
 
         VnPatchIAT(hMyTaskbar, "uxtheme.dll", MAKEINTRESOURCEA(126), PeopleBand_DrawTextWithGlowHook);
+
+        Win10TaskbarHooks_PatchEPTaskbarVtables(hMyTaskbar);
     }
 
     HANDLE hCombase = LoadLibraryW(L"combase.dll");
