@@ -40,6 +40,18 @@ Tested on OS builds 26100.4946, 26100.5074, 26200.5751, and 26220.6682.
 
 * Start10: Fixed Windows 10 Start menu not opening on 22H2/23H2 ARM64. (c08b0a6)
 
+##### 6
+
+* File Explorer: XAML folder views are now disabled when Windows 11 Command Bar is not used. (80414f5)
+  * This fixes crashes when navigating away and returning to Home/Gallery on 22H2/23H2 (#3447), and when opening Home on 26xxx.7019+.
+* File Explorer: Fixed Alt+D not working on builds with modern (XAML) navigation bar in File Explorer. (#2847) (a80d9dc)
+* File Explorer: Mitigated breakages on builds with tabs in File Explorer: (75178ec, df7d604)
+  * Fixed menu bar behavior when Windows 7 Command Bar is used. Pressing Alt will now summon the menu bar immediately like it used to. (#2676)
+  * Fixed window position and size saving when Windows 10 Ribbon is used. (#2243)
+* Taskbar10: These settings now take effect on ep_taskbar: (#4097) (48e1de3)
+  * Pinned items act as quick launch (don't group with active apps)
+  * When the taskbar shows button labels, remove the extra gap around pinned items
+
 Known issues we will address in the short term:
 * Changing weather icon pack to "Microsoft" has no effect.
 * On Nickel (Windows 11 22H2/23H2), when the new Windows 11 Start menu is enabled, using Windows 10 or Windows 10 (ExplorerPatcher) taskbar will crashloop explorer.exe.
