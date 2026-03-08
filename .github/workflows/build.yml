@@ -31,6 +31,7 @@ permissions:
 jobs:
   build:
     runs-on: windows-2025
+    timeout-minutes: 30
     steps:
       - name: Print inputs
         shell: bash
@@ -180,11 +181,13 @@ jobs:
           rm -f build/Release/ARM64/ep_setup_files.zip.bin
 
       - name: Upload artifacts
+        if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: ep_bin_multi_${{ steps.vars.outputs.sha_short }}_${{ steps.vars.outputs.branch }}
           path: |
             build/Release/
+          if-no-files-found: error
 
       # build/Release/x64/ep_setup.exe -> build/Release/ep_setup.exe
       # build/Release/ARM64/ep_setup.exe -> build/Release/ep_setup_arm64.exe
@@ -251,3 +254,4 @@ jobs:
             build/Release/ep_setup_arm64.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
