@@ -8,15 +8,7 @@ name: Build
 
 on:
   push:
-    branches:
-      - '**'
-    tags-ignore:
-      - '**'
   pull_request:
-    branches:
-      - '**'
-    tags-ignore:
-      - '**'
   workflow_dispatch:
     inputs:
       ref:
@@ -33,27 +25,33 @@ env:
   SOLUTION_FILE_PATH: .
   BUILD_CONFIGURATION: Release
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: windows-2025
-
     steps:
       - name: Print inputs
         shell: bash
         run: |
-          echo "ref: ${{ github.event.inputs.ref }}"
-          echo "config: ${{ github.event.inputs.config }}"
-          echo "build_dir: ${{ github.event.inputs.build_dir }}"
+          echo "ref: ${GITHUB_EVENT_INPUTS_REF}"
+          echo "config: ${GITHUB_EVENT_INPUTS_CONFIG}"
+          echo "build_dir: ${GITHUB_EVENT_INPUTS_BUILD_DIR}"
+        env:
+          GITHUB_EVENT_INPUTS_REF: ${{ github.event.inputs.ref }}
+          GITHUB_EVENT_INPUTS_CONFIG: ${{ github.event.inputs.config }}
+          GITHUB_EVENT_INPUTS_BUILD_DIR: ${{ github.event.inputs.build_dir }}
 
       - name: Checkout latest build and submodules
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
         if: github.event.inputs.ref == ''
         with:
           submodules: recursive
           persist-credentials: false
 
       - name: Checkout specific build and submodules
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
         if: github.event.inputs.ref != ''
         with:
           ref: ${{ github.event.inputs.ref }}
@@ -61,7 +59,7 @@ jobs:
           persist-credentials: false
 
       - name: Add MSBuild to PATH
-        uses: microsoft/setup-msbuild@v2
+        uses: microsoft/setup-msbuild@6fb02220983dee41ce7ae257b6f4d8f9bf5ed4ce # 2.0.0
 
       - name: Declare some variables
         id: vars
@@ -82,7 +80,9 @@ jobs:
           exit /b 0
 
       - name: Setup NuGet
-        uses: nuget/setup-nuget@v2
+        uses: nuget/setup-nuget@323ab0502cd38fdc493335025a96c8fdb0edc71f # 2.0.1
+        with:
+          nuget-version: '7.x'
 
       - name: Restore NuGet packages
         run: |
@@ -94,7 +94,7 @@ jobs:
           BuildDependencies%BUILD_CONFIGURATION%.bat
 
       - name: Download ep_taskbar
-        uses: robinraju/release-downloader@v1
+        uses: robinraju/release-downloader@daf26c55d821e836577a15f77d86ddc078948b05 # 1.12
         with:
           repository: ExplorerPatcher/ep_taskbar_releases
           fileName: ep_taskbar.*.dll
@@ -112,7 +112,7 @@ jobs:
               mv "$file" "build/Release/x64/$(basename "$file" .amd64.dll).dll"
             done
           fi
-          
+
           if ls build/Release/ep_taskbar.*.arm64.dll 1> /dev/null 2>&1; then
             mkdir -p build/Release/ARM64
             for file in build/Release/ep_taskbar.*.arm64.dll; do
@@ -120,36 +120,34 @@ jobs:
             done
           fi
 
-      - name: Build EP IA-32
-        if: github.event.inputs.config == ''
-        working-directory: ${{env.GITHUB_WORKSPACE}}
-        run: |
-          msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} /p:Platform=IA-32 ${{env.SOLUTION_FILE_PATH}}
-
-      - name: Build EP amd64
+      - name: Build ExplorerPatcher (amd64)
         if: github.event.inputs.config == ''
         working-directory: ${{env.GITHUB_WORKSPACE}}
         run: |
           msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} /p:Platform=amd64 ${{env.SOLUTION_FILE_PATH}}
 
-      - name: Build EP arm64
+      - name: Build ExplorerPatcher (arm64)
         if: github.event.inputs.config == ''
         working-directory: ${{env.GITHUB_WORKSPACE}}
         run: |
           msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} /p:Platform=arm64 /p:WithArm64XBinaries=true ${{env.SOLUTION_FILE_PATH}}
 
-      - name: Build EP custom
+      - name: Build ExplorerPatcher (Custom Build)
         if: github.event.inputs.config != ''
         working-directory: ${{env.GITHUB_WORKSPACE}}
         run: |
-          msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} /p:Platform=${{ github.event.inputs.config }} ${{env.SOLUTION_FILE_PATH}}
+          msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} /p:Platform=$env:GITHUB_EVENT_INPUTS_CONFIG ${{env.SOLUTION_FILE_PATH}}
+        env:
+          GITHUB_EVENT_INPUTS_CONFIG: ${{ github.event.inputs.config }}
 
       - name: Create expected build directory
         if: github.event.inputs.build_dir != ''
         shell: bash
         run: |
           mkdir build
-          cp -r ${{ github.event.inputs.build_dir }}/Release build/Release
+          cp -r ${GITHUB_EVENT_INPUTS_BUILD_DIR}/Release build/Release
+        env:
+          GITHUB_EVENT_INPUTS_BUILD_DIR: ${{ github.event.inputs.build_dir }}
 
       - name: Generate dxgi.dll
         shell: bash
@@ -182,7 +180,7 @@ jobs:
           rm -f build/Release/ARM64/ep_setup_files.zip.bin
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: ep_bin_multi_${{ steps.vars.outputs.sha_short }}_${{ steps.vars.outputs.branch }}
           path: |
@@ -215,12 +213,15 @@ jobs:
         if: github.ref == 'refs/heads/master' && github.event.inputs.ref == ''
         run: |
           echo "data<<EP_RELEASE_DESCRIPTION_DELIM" >> $GITHUB_OUTPUT
-          echo "$(./ep_generate_release_description.exe ${{ steps.vars.outputs.sha_short }} ${{ steps.vars.outputs.branch }} ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_OUTPUT
+          echo "$(./ep_generate_release_description.exe ${STEPS_VARS_OUTPUTS_SHA_SHORT} ${STEPS_VARS_OUTPUTS_BRANCH} ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_OUTPUT
           echo "EP_RELEASE_DESCRIPTION_DELIM" >> $GITHUB_OUTPUT
         id: release_description
+        env:
+          STEPS_VARS_OUTPUTS_SHA_SHORT: ${{ steps.vars.outputs.sha_short }}
+          STEPS_VARS_OUTPUTS_BRANCH: ${{ steps.vars.outputs.branch }}
 
       - name: Create/update release (valinet)
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # 2.5.0
         if: github.repository_owner == 'valinet' && github.ref == 'refs/heads/master' && github.event.inputs.ref == ''
         id: create_release
         with:
@@ -236,7 +237,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.PAT }}
 
       - name: Create/update release (forks)
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # 2.5.0
         if: github.repository_owner != 'valinet' && github.ref == 'refs/heads/master' && github.event.inputs.ref == ''
         id: create_release_fork
         with:
