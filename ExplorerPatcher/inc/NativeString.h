@@ -214,6 +214,23 @@ namespace Windows::Internal
             return hr;
         }
 
+        HRESULT InitializeMessage(const WCHAR* pszFormat, va_list argList)
+        {
+            return _InitializeHelper(pszFormat, argList, [](const WCHAR* pszFormat, va_list argList, WCHAR* pszStringData, size_t cchStringData) -> HRESULT
+            {
+                va_list argListT = argList;
+                DWORD cchResult = FormatMessageW(FORMAT_MESSAGE_FROM_STRING, pszFormat, 0, 0, pszStringData, (DWORD)cchStringData, &argListT);
+                return ResultFromWin32Bool(cchResult != 0);
+            });
+        }
+
+        HRESULT InitializeMessage(const WCHAR* pszFormat, ...)
+        {
+            va_list args;
+            va_start(args, pszFormat);
+            return InitializeMessage(pszFormat, args);
+        }
+
         HRESULT InitializeResMessage(HINSTANCE hInstance, UINT uId, ...)
         {
             va_list argList;
@@ -226,7 +243,7 @@ namespace Windows::Internal
                 {
                     va_list argListT = argList;
                     DWORD cchResult = FormatMessageW(FORMAT_MESSAGE_FROM_STRING, pszFormat, 0, 0, pszStringData, (DWORD)cchStringData, &argListT);
-                    return ResultFromWin32Bool(cchResult);
+                    return ResultFromWin32Bool(cchResult != 0);
                 });
             }
             return hr;
@@ -257,7 +274,7 @@ namespace Windows::Internal
             *ppsz = nullptr;
             HRESULT hr = S_OK;
 
-            if (_pszStringData)
+            if (!_pszStringData)
             {
                 hr = Initialize(L"");
             }
@@ -334,6 +351,11 @@ namespace Windows::Internal
         bool HasLength() const
         {
             return !_IsEmpty();
+        }
+
+        bool IsEmptyIgnoringWhitespace() const
+        {
+            return _IsEmpty() || _IsOnlyWhitespace();
         }
 
         int CompareOrdinal(const WCHAR* psz, const size_t cch) const
@@ -447,6 +469,18 @@ namespace Windows::Internal
         inline static const WCHAR* const s_pszTrimWhitespaceCharacterSet =
             L"\u0020" // Space
             L"\u0009" // Tab
+            L"\u3000" // Ideographic Space
+            L"\u17D2" // Khmer Sign Coeng
+            L"\u0F0B" // Tibetan Mark Intersyllabic Tsheg
+            L"\u1680" // Ogham Space Mark
+            L"\u180E" // Mongolian Vowel Separator
+        ;
+
+        inline static const WCHAR* const s_pszIsOnlyWhitespaceCharacterSet =
+            L"\u0020" // Space
+            L"\u0009" // Tab
+            L"\u000D" // Carriage Return
+            L"\u000A" // Line Feed
             L"\u3000" // Ideographic Space
             L"\u17D2" // Khmer Sign Coeng
             L"\u0F0B" // Tibetan Mark Intersyllabic Tsheg
@@ -579,6 +613,21 @@ namespace Windows::Internal
         bool _IsEmpty() const
         {
             return !_pszStringData || !_pszStringData[0];
+        }
+
+        bool _IsOnlyWhitespace() const
+        {
+            size_t cchStringData = GetCount();
+            size_t cchWhitespace = 0;
+            while (cchWhitespace < cchStringData)
+            {
+                if (!wcschr(s_pszIsOnlyWhitespaceCharacterSet, _pszStringData[cchWhitespace]))
+                {
+                    break;
+                }
+                ++cchWhitespace;
+            }
+            return cchWhitespace && cchWhitespace == cchStringData;
         }
 
         HRESULT _Initialize(const WCHAR* psz, size_t cch)

@@ -232,46 +232,6 @@ DEFINE_REFERENCE_TRAITS(ABI::Windows::Foundation::Rect, CreateRect);
 // Make it easy to convert from a C string to an HSTRING
 // Note: we don't check for null terminators!
 
-// template <size_t N>
-// struct reference_traits<std::enable_if_t<std::disjunction_v<wchar_t[N], const wchar_t(&)[N]>>>
-
-struct wchar_array_reference_traits
-{
-};
-
-struct wchar_ptr_reference_traits
-{
-    static HRESULT Create(const wchar_t* value, IInspectable** ppPropertyValue)
-    {
-        *ppPropertyValue = nullptr;
-        HSTRING_HEADER hstrH;
-        HSTRING hstr;
-        HRESULT hr = WindowsCreateStringReference(value, static_cast<UINT32>(wcslen(value)), &hstrH, &hstr);
-        if (SUCCEEDED(hr))
-        {
-            hr = reference_traits<HSTRING>::Create(hstr, ppPropertyValue);
-        }
-        return hr;
-    }
-
-    static HRESULT Create(
-        ABI::Windows::Foundation::IPropertyValueStatics* pPropertyValueStatics, const wchar_t* value,
-        IInspectable** ppPropertyValue)
-    {
-        *ppPropertyValue = nullptr;
-        HSTRING_HEADER hstrH;
-        HSTRING hstr;
-        HRESULT hr = WindowsCreateStringReference(value, static_cast<UINT32>(wcslen(value)), &hstrH, &hstr);
-        if (SUCCEEDED(hr))
-        {
-            hr = reference_traits<HSTRING>::Create(pPropertyValueStatics, hstr, ppPropertyValue);
-        }
-        return hr;
-    }
-
-    using InterfaceType = ABI::Windows::Foundation::IReference<HSTRING>;
-};
-
 template <typename T>
 struct reference_traits<T, std::enable_if_t<std::is_array_v<std::remove_reference_t<T>> && std::is_same_v<std::remove_extent_t<std::remove_reference_t<T>>, const wchar_t>>>
 {
@@ -422,14 +382,13 @@ Microsoft::WRL::ComPtr<IInspectable> InlineBoxValue(ABI::Windows::Foundation::IP
 }
 
 // For object types deriving from IInspectable
-template <typename T>
+template <typename T, typename = std::enable_if_t<std::is_base_of_v<IInspectable, T>>>
 HRESULT UnboxValue(IInspectable* pBoxed, T** ppObject)
 {
     return pBoxed->QueryInterface(IID_PPV_ARGS(ppObject));
 }
 
 // For HSTRING
-template <>
 inline HRESULT UnboxValue(IInspectable* pBoxed, HSTRING* pValue)
 {
     *pValue = nullptr;
@@ -523,7 +482,7 @@ HRESULT UnboxValue(IInspectable* pBoxed, T* pValue)
 }
 
 // Allow inference from Microsoft::WRL::ComPtrRef
-template <typename T>
+template <typename T, std::enable_if_t<std::is_base_of_v<IInspectable, T>, int> = 0>
 HRESULT UnboxValue(IInspectable* pBoxed, Microsoft::WRL::Details::ComPtrRef<Microsoft::WRL::ComPtr<T>> ppObject)
 {
     return UnboxValue(pBoxed, ppObject.ReleaseAndGetAddressOf());
@@ -570,6 +529,7 @@ namespace SimpleStringer
 
     DEFINE_STRINGER(BYTE, VarBstrFromUI1);
     DEFINE_STRINGER(SHORT, VarBstrFromI2);
+    DEFINE_STRINGER(INT, VarBstrFromI4);
     DEFINE_STRINGER(LONG, VarBstrFromI4);
     DEFINE_STRINGER(LONG64, VarBstrFromI8);
     DEFINE_STRINGER(FLOAT, VarBstrFromR4);
@@ -577,6 +537,7 @@ namespace SimpleStringer
     // DEFINE_STRINGER(VARIANT_BOOL, VarBstrFromBool);
     DEFINE_STRINGER(CHAR, VarBstrFromI1);
     DEFINE_STRINGER(USHORT, VarBstrFromUI2);
+    DEFINE_STRINGER(UINT, VarBstrFromUI4);
     DEFINE_STRINGER(ULONG, VarBstrFromUI4);
     DEFINE_STRINGER(ULONG64, VarBstrFromUI8);
 

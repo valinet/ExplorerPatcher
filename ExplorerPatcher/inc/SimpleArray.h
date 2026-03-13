@@ -24,6 +24,15 @@ public:
     }
 };
 
+class CSimpleArrayUserDefaultLocaleCaseInsensitiveCompareHelper
+{
+public:
+    int Compare(const WCHAR* psz1, const WCHAR* psz2) const
+    {
+        return CompareStringW(LOCALE_USER_DEFAULT, NORM_IGNORECASE, psz1, -1, psz2, -1) - CSTR_EQUAL;
+    }
+};
+
 template <typename T>
 class CSimpleArrayStandardMergeHelper
 {
@@ -205,6 +214,28 @@ public:
     HRESULT Add(T&& t, size_t* piElemInsertedAt = nullptr)
     {
         return _Add(std::move(t), piElemInsertedAt);
+    }
+
+    HRESULT AddSorted(const T& t, size_t* piElemInsertedAt = nullptr)
+    {
+        return _AddSorted(t, piElemInsertedAt);
+    }
+
+    HRESULT AddSorted(T&& t, size_t* piElemInsertedAt = nullptr)
+    {
+        return _AddSorted(std::move(t), piElemInsertedAt);
+    }
+
+    template <typename Comparer>
+    HRESULT AddSortedEx(const Comparer& tcompare, const T& t, size_t* piElemInsertedAt = nullptr)
+    {
+        return _AddSortedEx(tcompare, t, piElemInsertedAt);
+    }
+
+    template <typename Comparer>
+    HRESULT AddSortedEx(const Comparer& tcompare, T&& t, size_t* piElemInsertedAt = nullptr)
+    {
+        return _AddSortedEx(tcompare, std::move(t), piElemInsertedAt);
     }
 
     HRESULT InsertAt(const T& t, size_t iElem)
@@ -413,6 +444,28 @@ public:
     }
 
     template <typename ArgType>
+    HRESULT _AddSorted(ArgType&& t, size_t* piElemInsertedAt)
+    {
+        if (piElemInsertedAt)
+            *piElemInsertedAt = 0;
+
+        size_t iElemInsertAt;
+        this->BinarySearch(t, &iElemInsertAt);
+        return _InsertAt(std::forward<ArgType>(t), iElemInsertAt);
+    }
+
+    template <typename Comparer, typename ArgType>
+    HRESULT _AddSortedEx(const Comparer& tcompare, ArgType&& t, size_t* piElemInsertedAt)
+    {
+        if (piElemInsertedAt)
+            *piElemInsertedAt = 0;
+
+        size_t iElemInsertAt;
+        this->BinarySearchEx(tcompare, t, &iElemInsertAt);
+        return _InsertAt(std::forward<ArgType>(t), iElemInsertAt);
+    }
+
+    template <typename ArgType>
     HRESULT _InsertAt(ArgType&& t, size_t iElem)
     {
         HRESULT hr = _MakeRoomAt(iElem);
@@ -599,5 +652,34 @@ class CSimplePointerArrayLocalMem : public CSimplePointerArray<T, CTPolicyLocalM
 
 template <typename T>
 class CSimplePointerArrayRelease : public CSimplePointerArray<T, CTContainer_PolicyRelease<T>>
+{
+};
+
+template <typename TCompare>
+class CSimpleStringArrayBase : public CSimplePointerArrayCoTaskMem<WCHAR, TCompare>
+{
+public:
+    HRESULT Find(const WCHAR* pszItem, size_t* piElem, size_t iStartAt = 0) const
+    {
+        return CSimplePointerArrayCoTaskMem<WCHAR, TCompare>::Find(const_cast<WCHAR*>(pszItem), piElem, iStartAt);
+    }
+
+    HRESULT BinarySearch(const WCHAR* pszItem, size_t* piElem) const
+    {
+        return CSimplePointerArrayCoTaskMem<WCHAR, TCompare>::BinarySearch(const_cast<WCHAR*>(pszItem), piElem);
+    }
+
+    HRESULT Remove(const WCHAR* pszItem, size_t* piElemRemovedAt = nullptr)
+    {
+        return CSimplePointerArrayCoTaskMem<WCHAR, TCompare>::Remove(const_cast<WCHAR*>(pszItem), piElemRemovedAt);
+    }
+};
+
+class CSimpleCaseInsensitiveOrdinalStringArray : public CSimpleStringArrayBase<CSimpleArrayCaseInsensitiveOrdinalStringCompareHelper>
+{
+};
+
+
+class CSimpleUserDefaultLocaleCaseInsensitiveStringArray : public CSimpleStringArrayBase<CSimpleArrayUserDefaultLocaleCaseInsensitiveCompareHelper>
 {
 };
