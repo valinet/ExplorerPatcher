@@ -13048,12 +13048,6 @@ HRESULT EntryPoint(DWORD dwMethod)
         {
             return E_NOINTERFACE;
         }
-        TCHAR wszRealDXGIPath[MAX_PATH];
-        GetSystemDirectoryW(wszRealDXGIPath, MAX_PATH);
-        wcscat_s(wszRealDXGIPath, MAX_PATH, L"\\dxgi.dll");
-#if WITH_MAIN_PATCHER
-        SetupDXGIImportFunctions(LoadLibraryW(wszRealDXGIPath));
-#endif
     }
     if (dwMethod == DLL_INJECTION_METHOD_COM && (bIsThisExplorer || bIsThisStartMEH || bIsThisShellEH))
     {
@@ -13129,13 +13123,13 @@ HRESULT EntryPoint(DWORD dwMethod)
 __declspec(dllexport) HRESULT DXGIDeclareAdapterRemovalSupport()
 {
     EntryPoint(DLL_INJECTION_METHOD_DXGI);
-    return DXGIDeclareAdapterRemovalSupportFunc();
+    return DXGIDeclareAdapterRemovalSupportOriginal();
 }
 // for StartMenuExperienceHost.exe via DXGI
 __declspec(dllexport) HRESULT CreateDXGIFactory1(void* p1, void** p2)
 {
     EntryPoint(DLL_INJECTION_METHOD_DXGI);
-    return CreateDXGIFactory1Func(p1, p2);
+    return CreateDXGIFactory1Original(p1, p2);
 }
 // for StartMenuExperienceHost.exe via injection from explorer
 HRESULT InjectStartFromExplorer()

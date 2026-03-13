@@ -221,6 +221,9 @@
       <ExcludedFromBuild Condition="'$(WithMainPatcher)'!='true'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="dllmain.c" />
+    <ClCompile Include="dxgi_imp.cpp">
+      <ExcludedFromBuild Condition="'$(WithMainPatcher)'!='true'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="fmemopen.c" />
     <ClCompile Include="getline.c" />
     <ClCompile Include="HideExplorerSearchBar.c" />
