@@ -1,5 +1,6 @@
 #include <Windows.h>
 #include <ShlObj_core.h>
+#include <strsafe.h>
 #include <windows.foundation.h>
 #include <windows.applicationmodel.resources.core.h>
 
@@ -35,35 +36,38 @@ using namespace Microsoft::WRL;
 extern "C" HRESULT LoadOurShellCommonPri()
 {
     using namespace ABI::Windows::Foundation;
+    using namespace ABI::Windows::ApplicationModel::Resources::Core;
+    using namespace ABI::Windows::ApplicationModel::Resources::Core::Internal;
 
-    ComPtr<IInspectable> pInspectable;
-    HRESULT hr = Windows::Foundation::GetActivationFactory(
-        Wrappers::HStringReference(L"Windows.ApplicationModel.Resources.Core.ResourceManager").Get(),
-        pInspectable.GetAddressOf()
-    );
+    ComPtr<IResourceManagerStaticInternal> spResourceManagerStaticInternal;
+    HRESULT hr = GetActivationFactory(
+        Wrappers::HStringReference(RuntimeClass_Windows_ApplicationModel_Resources_Core_ResourceManager).Get(),
+        &spResourceManagerStaticInternal);
     if (FAILED(hr))
         return hr;
 
-    ComPtr<ABI::Windows::ApplicationModel::Resources::Core::Internal::IResourceManagerStaticInternal> pResourceManagerStaticInternal;
-    hr = pInspectable.As(&pResourceManagerStaticInternal);
+    ComPtr<IResourceManager> spResourceManager;
+    hr = spResourceManagerStaticInternal->GetCurrentResourceManagerForSystemProfile(&spResourceManager);
     if (FAILED(hr))
         return hr;
 
-    ComPtr<ABI::Windows::ApplicationModel::Resources::Core::IResourceManager> pResourceManager;
-    hr = pResourceManagerStaticInternal->GetCurrentResourceManagerForSystemProfile(&pResourceManager);
+    ComPtr<ISystemResourceManagerExtensions2> spSystemResourceManagerExtensions2;
+    hr = spResourceManager.As(&spSystemResourceManagerExtensions2);
     if (FAILED(hr))
         return hr;
-
-    ComPtr<ABI::Windows::ApplicationModel::Resources::Core::Internal::ISystemResourceManagerExtensions2> pSystemResourceManagerExtensions2;
-    pResourceManager.As(&pSystemResourceManagerExtensions2);
 
     WCHAR wszPath[MAX_PATH] = {};
     hr = SHGetFolderPathW(nullptr, CSIDL_PROGRAM_FILES, nullptr, SHGFP_TYPE_CURRENT, wszPath);
     if (FAILED(hr))
         return hr;
 
-    wcscat_s(wszPath, MAX_PATH, L"\\ExplorerPatcher\\Windows.UI.ShellCommon.pri");
-    hr = pSystemResourceManagerExtensions2->LoadPriFileForSystemUse(wszPath);
+    hr = StringCchCatW(wszPath, MAX_PATH, L"\\ExplorerPatcher\\Windows.UI.ShellCommon.pri");
+    if (FAILED(hr))
+        return hr;
+
+    hr = spSystemResourceManagerExtensions2->LoadPriFileForSystemUse(wszPath);
+    if (FAILED(hr))
+        return hr;
 
     return hr;
 }
