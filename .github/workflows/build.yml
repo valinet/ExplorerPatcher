@@ -8,6 +8,8 @@ name: Build
 
 on:
   push:
+    tags:
+      - '*'
   pull_request:
   workflow_dispatch:
     inputs:
@@ -198,7 +200,7 @@ jobs:
       # build/Release/x64/ep_setup.exe -> build/Release/ep_setup.exe
       # build/Release/ARM64/ep_setup.exe -> build/Release/ep_setup_arm64.exe
       - name: Stage files for release
-        if: github.ref == 'refs/heads/master' && github.event.inputs.ref == ''
+        if: github.event_name == 'push' && github.ref_type == 'tag'
         shell: bash
         run: |
           if [ -d "build/Release/x64" ] && ls build/Release/x64/ep_setup.exe 1> /dev/null 2>&1; then
@@ -211,7 +213,7 @@ jobs:
       - name: Generate release name
         shell: bash
         working-directory: build/Release/x64
-        if: github.ref == 'refs/heads/master' && github.event.inputs.ref == ''
+        if: github.event_name == 'push' && github.ref_type == 'tag'
         run: |
           echo "data=$(./ep_generate_release_name.exe)" >> $GITHUB_OUTPUT
         id: release_name
@@ -219,7 +221,7 @@ jobs:
       - name: Generate release notes
         shell: bash
         working-directory: build/Release/x64
-        if: github.ref == 'refs/heads/master' && github.event.inputs.ref == ''
+        if: github.event_name == 'push' && github.ref_type == 'tag'
         run: |
           echo "data<<EP_RELEASE_DESCRIPTION_DELIM" >> $GITHUB_OUTPUT
           echo "$(./ep_generate_release_description.exe ${STEPS_VARS_OUTPUTS_SHA_SHORT} ${STEPS_VARS_OUTPUTS_BRANCH} ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_OUTPUT
@@ -231,13 +233,13 @@ jobs:
 
       - name: Create/update release (valinet)
         uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # 2.5.0
-        if: github.repository_owner == 'valinet' && github.ref == 'refs/heads/master' && github.event.inputs.ref == ''
+        if: github.repository_owner == 'valinet' && github.event_name == 'push' && github.ref_type == 'tag'
         id: create_release
         with:
           draft: false
           prerelease: ${{ !startsWith(github.event.head_commit.message, 'rel_') }}
           name: ${{ steps.release_name.outputs.data }}
-          tag_name: ${{ steps.release_name.outputs.data }}_${{ steps.vars.outputs.sha_short }}
+          tag_name: ${{ github.ref_name }}
           body: ${{ steps.release_description.outputs.data }}
           files: |
             build/Release/ep_setup.exe
@@ -247,13 +249,13 @@ jobs:
 
       - name: Create/update release (forks)
         uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # 2.5.0
-        if: github.repository_owner != 'valinet' && github.ref == 'refs/heads/master' && github.event.inputs.ref == ''
+        if: github.repository_owner != 'valinet' && github.event_name == 'push' && github.ref_type == 'tag'
         id: create_release_fork
         with:
           draft: false
           prerelease: ${{ !startsWith(github.event.head_commit.message, 'rel_') }}
           name: ${{ steps.release_name.outputs.data }}
-          tag_name: ${{ steps.release_name.outputs.data }}_${{ steps.vars.outputs.sha_short }}
+          tag_name: ${{ github.ref_name }}
           body: ${{ steps.release_description.outputs.data }}
           files: |
             build/Release/ep_setup.exe
