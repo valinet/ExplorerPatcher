@@ -605,6 +605,25 @@ inline BOOL IncrementDLLReferenceCount(HINSTANCE hinst)
     return TRUE;
 }
 
+inline void REPLACE_VTABLE_ENTRY_Helper(void** vtable, int index, void* hookFunc, void** originalFunc)
+{
+    void** ppfn = &vtable[index];
+    if (*ppfn != hookFunc)
+    {
+        *originalFunc = *ppfn;
+        DWORD dwOldProtect;
+        if (VirtualProtect(ppfn, sizeof(void*), PAGE_EXECUTE_READWRITE, &dwOldProtect))
+        {
+            *ppfn = hookFunc;
+            VirtualProtect(ppfn, sizeof(void*), dwOldProtect, &dwOldProtect);
+        }
+    }
+}
+
+// Before using this, please make sure that the vtable is in the real module not a stub.
+#define REPLACE_VTABLE_ENTRY(vtable, index, name) \
+    REPLACE_VTABLE_ENTRY_Helper(vtable, index, (void*)name##Hook, (void**)&name##Func)
+
 UINT_PTR RVAToFileOffset(PBYTE pBase, UINT_PTR rva);
 
 inline BOOL SectionBeginAndSizeEx64(

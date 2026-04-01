@@ -1526,13 +1526,8 @@ HMODULE __fastcall Windows11v22H2_combase_LoadLibraryExW(LPCWSTR lpLibFileName, 
             pWindowsXamlManagerFactory->lpVtbl->QueryInterface(pWindowsXamlManagerFactory, &uuidof_Windows_UI_Core_ICoreWindow5, &pCoreWindow5);
             if (pCoreWindow5)
             {
-                INT64* pCoreWindow5Vtbl = pCoreWindow5->lpVtbl;
-                if (VirtualProtect(pCoreWindow5->lpVtbl, sizeof(IInspectableVtbl) + sizeof(INT64), PAGE_EXECUTE_READWRITE, &flOldProtect))
-                {
-                    ICoreWindow5_get_DispatcherQueueFunc = pCoreWindow5Vtbl[6];
-                    pCoreWindow5Vtbl[6] = ICoreWindow5_get_DispatcherQueueHook;
-                    VirtualProtect(pCoreWindow5->lpVtbl, sizeof(IInspectableVtbl) + sizeof(INT64), flOldProtect, &flOldProtect);
-                }
+                void** pCoreWindow5Vtbl = *(void***)pCoreWindow5;
+                REPLACE_VTABLE_ENTRY(pCoreWindow5Vtbl, 6, ICoreWindow5_get_DispatcherQueue);
                 pCoreWindow5->lpVtbl->Release(pCoreWindow5);
             }
             pWindowsXamlManagerFactory->lpVtbl->Release(pWindowsXamlManagerFactory);

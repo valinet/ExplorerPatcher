@@ -536,11 +536,6 @@ namespace ABI::WindowsInternal::Shell::UnifiedTile::CuratedTileCollections
         TilePinSize_Tile4x2 = 1,
     };
 
-    namespace DataStoreCache::CuratedTileCollectionTransformer
-    {
-        class CuratedTile;
-    }
-
     MIDL_INTERFACE("354cba6d-19ab-490c-97b6-8d4d9862e052")
     ICuratedTileGroup : public IInspectable
     {
@@ -585,10 +580,6 @@ namespace ABI::WindowsInternal::Shell::UnifiedTile::CuratedTileCollections
         virtual HRESULT STDMETHODCALLTYPE HasCustomProperty(const HSTRING, BOOLEAN*) = 0;
         virtual HRESULT STDMETHODCALLTYPE RemoveCustomProperty(const HSTRING) = 0;
         virtual HRESULT STDMETHODCALLTYPE SetCustomProperty(const HSTRING, HSTRING) = 0;
-        virtual HRESULT STDMETHODCALLTYPE EnsureTileRegistration() = 0;
-        virtual HRESULT STDMETHODCALLTYPE ResurrectTile(std::shared_ptr<DataStoreCache::CuratedTileCollectionTransformer::CuratedTile>, const GUID&) = 0;
-        virtual HRESULT STDMETHODCALLTYPE OnTileAddedWithinCollection(IUnifiedTileIdentifier*) = 0;
-        virtual HRESULT STDMETHODCALLTYPE OnTileRemovedWithinCollection(IUnifiedTileIdentifier*) = 0;
     };
 
     MIDL_INTERFACE("adbf8965-6056-4126-ab26-6660af4661ce")
@@ -1306,6 +1297,13 @@ HRESULT AppResolver_CAppResolverCacheBuilder__AddUserPinnedShortcutToStart(void*
 
     if (!dwStartShowClassicMode)
         return AppResolver_CAppResolverCacheBuilder__AddUserPinnedShortcutToStartFunc(_this, a2, a3);
+
+    // UnifiedTileIdentifier^ tileIdentifier = UnifiedTileIdentifier::Create(a2->GetAppID(a3));
+    // StartTilePinnedShortcutsManager::CreateUserPinnedShortcutTile(tileIdentifier);
+    // CuratedTileCollectionManager^ tileCollectionManager = ref new CuratedTileCollectionManager();
+    // CuratedTileCollection^ tileCollection = tileCollectionManager->GetCollection(L"Start.TileGrid");
+    // tileCollection->PinToStart(tileIdentifier, TilePinSize::Tile2x2);
+    // tileCollection->Commit();
 
     ComPtr<IWin32UnifiedTileIdentifierFactory> pTileIdentifierFactory;
     RETURN_IF_FAILED(Windows::Foundation::GetActivationFactory(

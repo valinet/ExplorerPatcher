@@ -362,22 +362,6 @@ namespace ExperienceManagerUtils
     }
 }
 
-// Before using this, please make sure that the vtable is in the real module not a stub.
-#define REPLACE_VTABLE_ENTRY(vtable, index, name) \
-    { \
-        auto ppfn = (decltype(&name##Func))&vtable[index]; \
-        if (*ppfn != name##Hook) \
-        { \
-            name##Func = *ppfn; \
-            DWORD dwOldProtectLocal; \
-            if (VirtualProtect(ppfn, sizeof(void*), PAGE_EXECUTE_READWRITE, &dwOldProtectLocal)) \
-            { \
-                *ppfn = name##Hook; \
-                VirtualProtect(ppfn, sizeof(void*), dwOldProtectLocal, &dwOldProtectLocal); \
-            } \
-        } \
-    }
-
 #pragma endregion
 
 
