@@ -8,8 +8,6 @@ name: Build
 
 on:
   push:
-    tags:
-      - '*'
   pull_request:
   workflow_dispatch:
     inputs:
