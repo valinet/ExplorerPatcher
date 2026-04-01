@@ -1011,6 +1011,25 @@ inline BOOL FollowJz(PBYTE pInstr, PBYTE* pTarget, DWORD* pInstrSize)
 {
     return FollowJump(pInstr, 0x74, 0x84, pInstrSize, pTarget);
 }
+
+inline BOOL FollowJmp(PBYTE pInstr, PBYTE* pTarget, DWORD* pInstrSize)
+{
+    // Check long
+    if (pInstr[0] == 0xE9)
+    {
+        *pTarget = pInstr + 5 + *(int*)(pInstr + 1);
+        *pInstrSize = 5;
+        return TRUE;
+    }
+    // Check short
+    if (pInstr[0] == 0xEB)
+    {
+        *pTarget = pInstr + 2 + *(char*)(pInstr + 1);
+        *pInstrSize = 2;
+        return TRUE;
+    }
+    return FALSE;
+}
 #endif
 
 #if _M_ARM64
@@ -1287,7 +1306,7 @@ inline BOOL MaskCompare(PVOID pBuffer, LPCSTR lpPattern, LPCSTR lpMask)
 
 inline __declspec(noinline) PVOID FindPatternHelper(PVOID pBase, SIZE_T dwSize, LPCSTR lpPattern, LPCSTR lpMask)
 {
-    for (SIZE_T index = 0; index < dwSize; ++index)
+    for (SIZE_T index = 0; index <= dwSize; ++index)
     {
         PBYTE pAddress = (PBYTE)pBase + index;
 

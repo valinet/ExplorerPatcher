@@ -2292,63 +2292,88 @@ BOOL FixStartMenuAnimation(HMODULE hTwinuiPcshell, PBYTE pSearchBegin, size_t cb
 
     // ### CStartExperienceManager::Hide()
 #if defined(_M_X64)
-    // * Pattern 1, mov [rbx+2A3h], r12b:
-    //   ```
-    //   74 ?? ?? 03 00 00 00 44 88
-    //   ^^ Turn jz into jmp
-    //   ```
-    // * Pattern 2, mov byte ptr [rbx+2A3h], 1:
-    //   ```
-    //   74 ?? ?? 03 00 00 00 C6 83
-    //   ^^ Turn jz into jmp
-    //   ```
+    // Find for nop targets:
+    // - ?? 03 00 00 00 44 88 ?? ?? ?? 00 00
+    //   mov     e??, 3
+    //   mov     [r??+???h], r12b
+    // OR (26100.916, 26231-26244):
+    // - ?? 03 00 00 00 C6 83 ?? ?? 00 00 01
+    //                     !! Note 1
+    //   mov     e??, 3
+    //   mov     byte ptr [rbx+???h], 1
+    //   Note 1: Do not turn into a mask or there will be matches in
+    //           winrt::Windows::Internal::Shell::implementation::TabProxyWindow::SetWindowLivePreviewAsync$_ResumeCoro$1
+    // Nop if followed by a Hide() call
+    //   48 8D ?? ?? ?? 00 00 8B ?? E8 ?? ?? ?? ?? 8B ?? 85 C0
     // Perform on exactly two matches
-    PBYTE matchHideA = (PBYTE)FindPattern(
-        pSearchBegin,
-        cbSearch,
-        "\x74\x00\x00\x03\x00\x00\x00\x44\x88",
-        "x??xxxxxx"
-    );
+    // Fortunately both are 12 bytes
+    auto hide_findForOne = [](PBYTE pBegin, SIZE_T cbSearch) -> PBYTE
+    {
+        PBYTE pMovMov = (PBYTE)FindPattern(
+            pBegin,
+            cbSearch,
+            "\x03\x00\x00\x00\x44\x88\x00\x00\x00\x00\x00",
+            "xxxxxx???xx"
+        );
+        if (!pMovMov)
+        {
+            pMovMov = (PBYTE)FindPattern(
+                pBegin,
+                cbSearch,
+                "\x03\x00\x00\x00\xC6\x83\x00\x00\x00\x00\x01",
+                "xxxxxx??xxx"
+            );
+        }
+        if (pMovMov)
+        {
+            pMovMov -= 1; // Point to `mov e??, 3`
+
+            PBYTE pAfterMovMov = pMovMov + 12;
+
+            // We might be a jmp, follow it if so
+            PBYTE pJmpTarget = nullptr;
+            DWORD cbJmpInstr = 0;
+            if (FollowJmp(pAfterMovMov, &pJmpTarget, &cbJmpInstr))
+            {
+                pAfterMovMov = pJmpTarget;
+            }
+
+            // Now test
+            bool bThisIsHideCall = FindPattern(
+                pAfterMovMov,
+                18, // Pattern size
+                "\x48\x8D\x00\x00\x00\x00\x00\x8B\x00\xE8\x00\x00\x00\x00\x8B\x00\x85\xC0",
+                "xx???xxx?x????x?xx"
+            ) == pAfterMovMov;
+            if (!bThisIsHideCall)
+            {
+                pMovMov = nullptr; // No, not this one
+            }
+        }
+        return pMovMov;
+        // @Note: We don't retry searches because the "No, not this one" blocks are never executed during testing
+        // with a variety of twinui.pcshell.dll binaries
+    };
+    PBYTE matchHideA = hide_findForOne(pSearchBegin, cbSearch);
     PBYTE matchHideB = nullptr;
     if (matchHideA)
     {
         printf("[SMA] matchHideA in CStartExperienceManager::Hide() = %llX\n", matchHideA - (PBYTE)hTwinuiPcshell);
-        matchHideB = (PBYTE)FindPattern(
-            matchHideA + 14,
-            cbSearch - (matchHideA + 14 - (PBYTE)pSearchBegin),
-            "\x74\x00\x00\x03\x00\x00\x00\x44\x88",
-            "x??xxxxxx"
-        );
+        matchHideB = hide_findForOne(matchHideA + 12, cbSearch - (matchHideA + 12 - (PBYTE)pSearchBegin));
         if (matchHideB)
         {
             printf("[SMA] matchHideB in CStartExperienceManager::Hide() = %llX\n", matchHideB - (PBYTE)hTwinuiPcshell);
         }
     }
-
-    if (!matchHideA || !matchHideB)
+    auto hide_doForOne = [](PBYTE pTarget) -> void
     {
-        matchHideA = (PBYTE)FindPattern(
-            pSearchBegin,
-            cbSearch,
-            "\x74\x00\x00\x03\x00\x00\x00\xC6\x83",
-            "x??xxxxxx"
-        );
-        matchHideB = nullptr;
-        if (matchHideA)
+        DWORD dwOldProtect;
+        if (VirtualProtect(pTarget, 12, PAGE_EXECUTE_READWRITE, &dwOldProtect))
         {
-            printf("[SMA] matchHideA in CStartExperienceManager::Hide() = %llX\n", matchHideA - (PBYTE)hTwinuiPcshell);
-            matchHideB = (PBYTE)FindPattern(
-                matchHideA + 14,
-                cbSearch - (matchHideA + 14 - (PBYTE)pSearchBegin),
-                "\x74\x00\x00\x03\x00\x00\x00\xC6\x83",
-                "x??xxxxxx"
-            );
-            if (matchHideB)
-            {
-                printf("[SMA] matchHideB in CStartExperienceManager::Hide() = %llX\n", matchHideB - (PBYTE)hTwinuiPcshell);
-            }
+            memset(pTarget, 0x90, 12); // nop
+            VirtualProtect(pTarget, 12, dwOldProtect, &dwOldProtect);
         }
-    }
+    };
 #elif defined(_M_ARM64)
     // ```
     // E1 03 ?? 2A ?? ?? 04 91 ?? ?? ?? ?? ?? 03 00 2A
@@ -2361,7 +2386,7 @@ BOOL FixStartMenuAnimation(HMODULE hTwinuiPcshell, PBYTE pSearchBegin, size_t cb
     // Perform on exactly two matches
     PBYTE matchHideA = nullptr;
     PBYTE matchHideB = nullptr;
-    auto findTheIfBody = [](PBYTE pAnchor) -> PBYTE
+    auto hide_findTheIfBody = [](PBYTE pAnchor) -> PBYTE
     {
         // 27881.1000+ has CBNZ before us, follow it if it is.
         // Otherwise, just check the two instructions before.
@@ -2390,7 +2415,7 @@ BOOL FixStartMenuAnimation(HMODULE hTwinuiPcshell, PBYTE pSearchBegin, size_t cb
     );
     if (matchHideAAfter)
     {
-        matchHideA = findTheIfBody(matchHideAAfter);
+        matchHideA = hide_findTheIfBody(matchHideAAfter);
     }
     if (matchHideA)
     {
@@ -2403,13 +2428,23 @@ BOOL FixStartMenuAnimation(HMODULE hTwinuiPcshell, PBYTE pSearchBegin, size_t cb
         );
         if (matchHideBAfter)
         {
-            matchHideB = findTheIfBody(matchHideBAfter);
+            matchHideB = hide_findTheIfBody(matchHideBAfter);
         }
         if (matchHideB)
         {
             printf("[SMA] matchHideB in CStartExperienceManager::Hide() = %llX\n", matchHideB - (PBYTE)hTwinuiPcshell);
         }
     }
+    auto hide_doForOne = [](PBYTE pTarget) -> void
+    {
+        DWORD dwOldProtect;
+        if (VirtualProtect(pTarget, 8, PAGE_EXECUTE_READWRITE, &dwOldProtect))
+        {
+            *(DWORD*)(pTarget + 0) = 0xD503201F; // NOP
+            *(DWORD*)(pTarget + 4) = 0xD503201F; // NOP
+            VirtualProtect(pTarget, 8, dwOldProtect, &dwOldProtect);
+        }
+    };
 #endif
 
     if (!matchVtable
@@ -2434,36 +2469,8 @@ BOOL FixStartMenuAnimation(HMODULE hTwinuiPcshell, PBYTE pSearchBegin, size_t cb
 
     if (dwStartShowClassicMode)
     {
-        DWORD dwOldProtect = 0;
-#if defined(_M_X64)
-        if (VirtualProtect(matchHideA, 1, PAGE_EXECUTE_READWRITE, &dwOldProtect))
-        {
-            matchHideA[0] = 0xEB;
-            VirtualProtect(matchHideA, 1, dwOldProtect, &dwOldProtect);
-
-            dwOldProtect = 0;
-            if (VirtualProtect(matchHideB, 1, PAGE_EXECUTE_READWRITE, &dwOldProtect))
-            {
-                matchHideB[0] = 0xEB;
-                VirtualProtect(matchHideB, 1, dwOldProtect, &dwOldProtect);
-            }
-        }
-#elif defined(_M_ARM64)
-        if (VirtualProtect(matchHideA, 8, PAGE_EXECUTE_READWRITE, &dwOldProtect))
-        {
-            *(DWORD*)(matchHideA + 0) = 0xD503201F; // NOP
-            *(DWORD*)(matchHideA + 4) = 0xD503201F; // NOP
-            VirtualProtect(matchHideA, 8, dwOldProtect, &dwOldProtect);
-
-            dwOldProtect = 0;
-            if (VirtualProtect(matchHideB, 8, PAGE_EXECUTE_READWRITE, &dwOldProtect))
-            {
-                *(DWORD*)(matchHideB + 0) = 0xD503201F; // NOP
-                *(DWORD*)(matchHideB + 4) = 0xD503201F; // NOP
-                VirtualProtect(matchHideB, 8, dwOldProtect, &dwOldProtect);
-            }
-        }
-#endif
+        hide_doForOne(matchHideA);
+        hide_doForOne(matchHideB);
     }
 
     int rv = -1;
