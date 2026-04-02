@@ -1194,6 +1194,7 @@ inline BOOL WINAPI PatchContextMenuOfNewMicrosoftIME(BOOL* bFound)
 #if defined(_M_X64)
     // 44 38 ?? ?? 74 ?? ?? 8B CE E8 ?? ?? ?? ?? 85 C0
     //             ^^ Change jz into jmp
+    // Ref: CTsfHandler::_OnOopImeContextMenu()
     PBYTE match = (PBYTE)FindPattern(
         pInputSwitchText,
         cbInputSwitchText,
@@ -1213,13 +1214,14 @@ inline BOOL WINAPI PatchContextMenuOfNewMicrosoftIME(BOOL* bFound)
 
     return TRUE;
 #elif defined(_M_ARM64)
-    // A8 43 40 39 C8 04 00 34 E0 03 14 AA
+    // A8 43 40 39 C8 04 00 34 E0 03 ?? AA
     //             ^^^^^^^^^^^ Change CBZ to B
+    // Ref: CTsfHandler::_OnOopImeContextMenu()
     PBYTE match = (PBYTE)FindPattern(
         pInputSwitchText,
         cbInputSwitchText,
-        "\xA8\x43\x40\x39\xC8\x04\x00\x34\xE0\x03\x14\xAA",
-        "xxxxxxxxxxxx"
+        "\xA8\x43\x40\x39\xC8\x04\x00\x34\xE0\x03\x00\xAA",
+        "xxxxxxxxxx?x"
     );
     if (!match)
         return FALSE;
