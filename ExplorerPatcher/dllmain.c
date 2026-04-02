@@ -1334,32 +1334,47 @@ void ForceEnableXamlSounds(HMODULE hWindowsUIXaml)
     );
     if (match)
     {
-        PBYTE jnz = match + 14;
-        DWORD flOldProtect = 0;
-        if (VirtualProtect(jnz, 1, PAGE_EXECUTE_READWRITE, &flOldProtect))
+        match += 14; // Point to jnz
+    }
+    else
+    {
+        // 29553+
+        // 83 79 ?? 02 74 ?? 83 79 ?? 00 75 ?? E8 ?? ?? ?? ?? 84 C0 75
+        //                                                          ^^ change jnz to jmp
+        match = FindPattern(
+            pWindowsUIXamlText,
+            cbWindowsUIXamlText,
+            "\x83\x79\x00\x02\x74\x00\x83\x79\x00\x00\x75\x00\xE8\x00\x00\x00\x00\x84\xC0\x75",
+            "xx?xx?xx?xx?x????xxx"
+        );
+        if (match)
         {
-            *jnz = 0xEB;
-            VirtualProtect(jnz, 1, flOldProtect, &flOldProtect);
+            match += 19; // Point to jnz
+        }
+    }
+    if (match)
+    {
+        DWORD flOldProtect = 0;
+        if (VirtualProtect(match, 1, PAGE_EXECUTE_READWRITE, &flOldProtect))
+        {
+            *match = 0xEB;
+            VirtualProtect(match, 1, flOldProtect, &flOldProtect);
         }
     }
 #elif defined(_M_ARM64)
-    // 1F 09 00 71 ?? ?? ?? 54 ?? 00 00 35 ?? ?? ?? ?? 08 1C 00 53 ?? ?? ?? ??
-    //                                                             ^^^^^^^^^^^ CBNZ -> B, CBZ -> NOP
+    // 08 ?? ?? B9 1F 09 00 71 ?? ?? ?? 54 ?? 00 00 35 ?? ?? ?? ??
+    //                                                 ^^^^^^^^^^^ BL -> MOV W0, #1
     PBYTE match = FindPattern(
         pWindowsUIXamlText,
         cbWindowsUIXamlText,
-        "\x1F\x09\x00\x71\x00\x00\x00\x54\x00\x00\x00\x35\x00\x00\x00\x00\x08\x1C\x00\x53",
-        "xxxx???x?xxx????xxxx"
+        "\x08\x00\x00\xB9\x1F\x09\x00\x71\x00\x00\x00\x54\x00\x00\x00\x35",
+        "x??xxxxx???x?xxx"
     );
     if (match)
     {
-        match += 20;
+        match += 16;
         DWORD currentInsn = *(DWORD*)match;
-        DWORD newInsn = ARM64_CBNZWToB(currentInsn);
-        if (!newInsn && ARM64_IsCBZW(currentInsn))
-        {
-            newInsn = 0xD503201F; // NOP
-        }
+        DWORD newInsn = ARM64_IsBL(currentInsn) ? 0x52800020 : 0; // MOV W0, #1
         if (newInsn)
         {
             DWORD flOldProtect = 0;
@@ -12011,11 +12026,29 @@ static BOOL StartMenu_FixContextMenuXbfHijackMethod()
         "\x49\x89\x43\xC8\xE8\x00\x00\x00\x00\x85\xC0",
         "xxxxx????xx"
     );
-    if (!match)
-        return FALSE;
-
-    match += 4;
-    match += 5 + *(int*)(match + 1);
+    if (match)
+    {
+        match += 4;
+        match += 5 + *(int*)(match + 1);
+    }
+    else
+    {
+        // 29553+
+        // 48 8B 45 48 48 89 44 24 ?? E8 ?? ?? ?? ?? 85 C0
+        //                               ^^^^^^^^^^^
+        // Ref: CCoreServices::LoadXamlResource()
+        match = FindPattern(
+            pWindowsUIXamlText,
+            cbWindowsUIXamlText,
+            "\x48\x8B\x45\x48\x48\x89\x44\x24\x00\xE8\x00\x00\x00\x00\x85\xC0",
+            "xxxxxxxx?x????xx"
+        );
+        if (match)
+        {
+            match += 9;
+            match += 5 + *(int*)(match + 1);
+        }
+    }
 #elif defined(_M_ARM64)
     // E1 0B 40 F9 05 00 80 D2 04 00 80 D2 E3 03 ?? AA E2 03 ?? AA E0 03 ?? AA ?? ?? ?? 97
     //                                                                         ^^^^^^^^^^^
@@ -12026,14 +12059,16 @@ static BOOL StartMenu_FixContextMenuXbfHijackMethod()
         "\xE1\x0B\x40\xF9\x05\x00\x80\xD2\x04\x00\x80\xD2\xE3\x03\x00\xAA\xE2\x03\x00\xAA\xE0\x03\x00\xAA\x00\x00\x00\x97",
         "xxxxxxxxxxxxxx?xxx?xxx?x???x"
     );
-    if (!match)
-        return FALSE;
-
-    match += 24;
-    match = (PBYTE)ARM64_FollowBL((DWORD*)match);
-    if (!match)
-        return FALSE;
+    if (match)
+    {
+        match += 24;
+        match = (PBYTE)ARM64_FollowBL((DWORD*)match);
+    }
 #endif
+    if (!match)
+    {
+        return FALSE;
+    }
 
     CCoreServices_TryLoadXamlResourceHelperFunc = match;
     funchook_prepare(
