@@ -280,12 +280,12 @@
     <PackFile Include="..\build\$(Configuration)\$(Platform)\ep_dwm_svc.exe" Condition="Exists('$(SolutionDir)\build\$(Configuration)\$(Platform)\ep_dwm_svc.exe')" />
     <PackFile Include="..\build\$(Configuration)\$(Platform)\ep_gui.dll" Condition="Exists('$(SolutionDir)\build\$(Configuration)\$(Platform)\ep_gui.dll')" />
     <PackFile Include="..\build\$(Configuration)\$(Platform)\ep_startmenu.dll" Condition="Exists('$(SolutionDir)\build\$(Configuration)\$(Platform)\ep_startmenu.dll')" />
-    <PackFile Include="..\build\$(Configuration)\$(Platform)\ep_taskbar.0.dll" Condition="Exists('$(SolutionDir)\build\$(Configuration)\$(Platform)\ep_taskbar.0.dll')" />
-    <PackFile Include="..\build\$(Configuration)\$(Platform)\ep_taskbar.1.dll" Condition="Exists('$(SolutionDir)\build\$(Configuration)\$(Platform)\ep_taskbar.1.dll')" />
-    <PackFile Include="..\build\$(Configuration)\$(Platform)\ep_taskbar.2.dll" Condition="Exists('$(SolutionDir)\build\$(Configuration)\$(Platform)\ep_taskbar.2.dll')" />
-    <PackFile Include="..\build\$(Configuration)\$(Platform)\ep_taskbar.3.dll" Condition="Exists('$(SolutionDir)\build\$(Configuration)\$(Platform)\ep_taskbar.3.dll')" />
-    <PackFile Include="..\build\$(Configuration)\$(Platform)\ep_taskbar.4.dll" Condition="Exists('$(SolutionDir)\build\$(Configuration)\$(Platform)\ep_taskbar.4.dll')" />
-    <PackFile Include="..\build\$(Configuration)\$(Platform)\ep_taskbar.5.dll" Condition="Exists('$(SolutionDir)\build\$(Configuration)\$(Platform)\ep_taskbar.5.dll')" />
+    <PackFile Include="..\build\$(Configuration)\$(Platform)\ep_taskbar.rs2.dll" Condition="Exists('$(SolutionDir)\build\$(Configuration)\$(Platform)\ep_taskbar.rs2.dll')" />
+    <PackFile Include="..\build\$(Configuration)\$(Platform)\ep_taskbar.fe.dll" Condition="Exists('$(SolutionDir)\build\$(Configuration)\$(Platform)\ep_taskbar.fe.dll')" />
+    <PackFile Include="..\build\$(Configuration)\$(Platform)\ep_taskbar.co.dll" Condition="Exists('$(SolutionDir)\build\$(Configuration)\$(Platform)\ep_taskbar.co.dll')" />
+    <PackFile Include="..\build\$(Configuration)\$(Platform)\ep_taskbar.ni.dll" Condition="Exists('$(SolutionDir)\build\$(Configuration)\$(Platform)\ep_taskbar.ni.dll')" />
+    <PackFile Include="..\build\$(Configuration)\$(Platform)\ep_taskbar.zn.dll" Condition="Exists('$(SolutionDir)\build\$(Configuration)\$(Platform)\ep_taskbar.zn.dll')" />
+    <PackFile Include="..\build\$(Configuration)\$(Platform)\ep_taskbar.ge.dll" Condition="Exists('$(SolutionDir)\build\$(Configuration)\$(Platform)\ep_taskbar.ge.dll')" />
     <PackFile Include="..\build\$(Configuration)\$(Platform)\ep_weather_host.dll" Condition="Exists('$(SolutionDir)\build\$(Configuration)\$(Platform)\ep_weather_host.dll')" />
     <PackFile Include="..\build\$(Configuration)\$(Platform)\ep_weather_host_stub.dll" Condition="Exists('$(SolutionDir)\build\$(Configuration)\$(Platform)\ep_weather_host_stub.dll')" />
   </ItemGroup>

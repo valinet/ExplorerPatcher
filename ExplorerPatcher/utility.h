@@ -1397,33 +1397,33 @@ inline const WCHAR* PickTaskbarDll()
      || b >= 18362 && b <= 18363 // Windows 10 1903, 1909
      || b >= 19041 && b <= 19045) // Windows 10 20H2, 21H2, 22H2
     {
-        return L"ep_taskbar.0.dll";
+        return L"ep_taskbar.rs2.dll";
+    }
+
+    if (b == 20348) // Windows Server 2022
+    {
+        return L"ep_taskbar.fe.dll";
     }
 
     if (b >= 21343 && b <= 22000) // Windows 11 21H2
     {
-        return L"ep_taskbar.1.dll";
+        return L"ep_taskbar.co.dll";
     }
 
-    if ((b >= 22621 && b <= 22635)  // 22H2-23H2 Release, Release Preview, and Beta channels
+    if ((b >= 22621 && b <= 22635)  // Windows 11 22H2-23H2 Release, Release Preview, and Beta channels
      || (b >= 23403 && b <= 25197)) // Early pre-reboot Dev channel until post-reboot Dev channel
     {
-        return L"ep_taskbar.2.dll";
+        return L"ep_taskbar.ni.dll";
     }
 
-    if (b >= 25201 && b <= 25915) // Pre-reboot Dev channel until early Canary channel, nuked ITrayComponentHost methods related to classic search box
+    if (b >= 25201 && b <= 25915) // Pre-reboot Dev channel until early Canary channel; Windows Server 23H2
     {
-        return L"ep_taskbar.3.dll";
+        return L"ep_taskbar.zn.dll";
     }
 
-    if (b >= 25921 && b <= 26040) // Canary channel with nuked classic system tray
+    if (b >= 25921) // Windows 11 24H2
     {
-        return L"ep_taskbar.4.dll";
-    }
-
-    if (b >= 26052) // Same as 4 but with 2 new methods in ITrayComponentHost between GetTrayUI and ProgrammableTaskbarReportClick
-    {
-        return L"ep_taskbar.5.dll";
+        return L"ep_taskbar.ge.dll";
     }
 
     return NULL;

@@ -11042,6 +11042,18 @@ DWORD Inject(BOOL bIsExplorer)
             "\x4C\x8D\x05\x00\x00\x00\x00\x48\x8D\x0D\x00\x00\x00\x00\xE8\x00\x00\x00\x00\x85\xC0",
             "xxx????xxx????x????xx"
         );
+        if (!match)
+        {
+            // 20348 (Iron; Server 2022)
+            // 4C 8D 05 ?? ?? ?? ?? 48 8D 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 48 8B
+            //                                              ^^^^^^^^^^^
+            match = FindPattern(
+                pExplorerText,
+                cbExplorerText,
+                "\x4C\x8D\x05\x00\x00\x00\x00\x48\x8D\x0D\x00\x00\x00\x00\xE8\x00\x00\x00\x00\x48\x8B",
+                "xxx????xxx????x????xx"
+            );
+        }
         if (match)
         {
             match += 7; // Point to 48
