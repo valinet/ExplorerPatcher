@@ -9769,92 +9769,6 @@ void TryToFindExplorerOffsets(HANDLE hExplorer, PBYTE pSearchBegin, size_t cbSea
     if (!pSearchBegin || !cbSearch)
         return;
 
-    if (!pOffsets[0] || pOffsets[0] == 0xFFFFFFFF)
-    {
-        // ImmersiveTray::AttachWindowToTray()
-#if defined(_M_X64)
-        // 48 8B 93 ?? ?? ?? ?? 48 8B 8B ?? ?? ?? ?? E8 ?? ?? ?? ?? 48 8B 4B
-        //                                              ^^^^^^^^^^^
-        // Ref: CTaskListThumbnailWnd::SetSite()
-        PBYTE match = FindPattern(
-            pSearchBegin, cbSearch,
-            "\x48\x8B\x93\x00\x00\x00\x00\x48\x8B\x8B\x00\x00\x00\x00\xE8\x00\x00\x00\x00\x48\x8B\x4B",
-            "xxx????xxx????x????xxx"
-        );
-        if (match)
-        {
-            match += 14;
-            pOffsets[0] = match + 5 + *(int*)(match + 1) - (PBYTE)hExplorer;
-            printf("explorer.exe!ImmersiveTray::AttachWindowToTray() = %lX\n", pOffsets[0]);
-        }
-#endif
-    }
-
-    if (!pOffsets[1] || pOffsets[1] == 0xFFFFFFFF)
-    {
-        // ImmersiveTray::RaiseWindow()
-#if defined(_M_X64)
-        // 41 B9 02 00 00 00 48 8B 8B ?? ?? ?? ?? E8 ?? ?? ?? ?? 85 C0
-        //                                           ^^^^^^^^^^^
-        // Ref: CTaskListThumbnailWnd::_RaiseWindowForLivePreviewIfNeeded()
-        PBYTE match = FindPattern(
-            pSearchBegin, cbSearch,
-            "\x41\xB9\x02\x00\x00\x00\x48\x8B\x8B\x00\x00\x00\x00\xE8\x00\x00\x00\x00\x85\xC0",
-            "xxxxxxxxx????x????xx"
-        );
-        if (match)
-        {
-            match += 13;
-            pOffsets[1] = match + 5 + *(int*)(match + 1) - (PBYTE)hExplorer;
-            printf("explorer.exe!ImmersiveTray::RaiseWindow() = %lX\n", pOffsets[1]);
-        }
-#endif
-    }
-
-    if (!pOffsets[2] || pOffsets[2] == 0xFFFFFFFF)
-    {
-        // CTaskBand_CreateInstance()
-#if defined(_M_X64)
-        // Pre-24H2 (output variable uninitialized)
-        // Tested: 19041.3758, 22000.51, 22621.1992
-        // 48 8B F1 4C 8D 44 24 ?? 48 8B 49 ?? 33 D2 E8 ?? ?? ?? ??
-        //                                              ^^^^^^^^^^^
-        // Ref: CTrayBandSite::_AddRequiredBands()
-        PBYTE match = FindPattern(
-            pSearchBegin, cbSearch,
-            "\x48\x8B\xF1\x4C\x8D\x44\x24\x00\x48\x8B\x49\x00\x33\xD2\xE8",
-            "xxxxxxx?xxx?xxx"
-        );
-        if (match)
-        {
-            match += 14;
-            pOffsets[2] = match + 5 + *(int*)(match + 1) - (PBYTE)hExplorer;
-        }
-        else
-        {
-            // 24H2 (output variable initialized to 0)
-            // Tested: 25951, 26080
-            // 4C 8D 40 ?? 48 8B F1 33 D2 48 8B 49 ?? E8 ?? ?? ?? ??
-            //                                           ^^^^^^^^^^^
-            // Ref: CTrayBandSite::_AddRequiredBands()
-            match = FindPattern(
-                pSearchBegin, cbSearch,
-                "\x4C\x8D\x40\x00\x48\x8B\xF1\x33\xD2\x48\x8B\x49\x00\xE8",
-                "xxx?xxxxxxxx?x"
-            );
-            if (match)
-            {
-                match += 13;
-                pOffsets[2] = match + 5 + *(int*)(match + 1) - (PBYTE)hExplorer;
-            }
-        }
-        if (match)
-        {
-            printf("explorer.exe!CTaskBand_CreateInstance() = %lX\n", pOffsets[2]);
-        }
-#endif
-    }
-
     if (!pOffsets[3] || pOffsets[3] == 0xFFFFFFFF)
     {
         // HandleFirstTimeLegacy()
@@ -10932,7 +10846,8 @@ DWORD Inject(BOOL bIsExplorer)
     DWORD cbExplorerText;
     TextSectionBeginAndSize(hExplorer, &pExplorerText, &cbExplorerText);
 
-    if (IsWindows11Version22H2OrHigher())
+    if (IsWindows11Version22H2OrHigher()
+        && (global_rovi.dwBuildNumber < 26100 || (global_rovi.dwBuildNumber == 26100 && global_ubr < 1301)))
     {
         TryToFindExplorerOffsets(hExplorer, pExplorerText, cbExplorerText, symbols_PTRS.explorer_PTRS);
     }
