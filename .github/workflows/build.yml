@@ -60,7 +60,7 @@ jobs:
           persist-credentials: false
 
       - name: Add MSBuild to PATH
-        uses: microsoft/setup-msbuild@6fb02220983dee41ce7ae257b6f4d8f9bf5ed4ce # 2.0.0
+        uses: microsoft/setup-msbuild@30375c66a4eea26614e0d39710365f22f8b0af57 # 3.0.0
 
       - name: Declare some variables
         id: vars
@@ -81,7 +81,7 @@ jobs:
           exit /b 0
 
       - name: Setup NuGet
-        uses: nuget/setup-nuget@323ab0502cd38fdc493335025a96c8fdb0edc71f # 2.0.1
+        uses: nuget/setup-nuget@12c57947e9458a5b976961b08ea0706a17dd71ae # 3.0.0
         with:
           nuget-version: '7.x'
 
@@ -230,7 +230,7 @@ jobs:
           STEPS_VARS_OUTPUTS_BRANCH: ${{ steps.vars.outputs.branch }}
 
       - name: Create/update release (valinet)
-        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # 2.5.0
+        uses: softprops/action-gh-release@153bb8e04406b158c6c84fc1615b65b24149a1fe # 2.6.1
         if: github.repository_owner == 'valinet' && github.event_name == 'push' && github.ref_type == 'tag'
         id: create_release
         with:
@@ -246,7 +246,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.PAT }}
 
       - name: Create/update release (forks)
-        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # 2.5.0
+        uses: softprops/action-gh-release@153bb8e04406b158c6c84fc1615b65b24149a1fe # 2.6.1
         if: github.repository_owner != 'valinet' && github.event_name == 'push' && github.ref_type == 'tag'
         id: create_release_fork
         with:
