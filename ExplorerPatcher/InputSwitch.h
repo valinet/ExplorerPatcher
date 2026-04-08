@@ -120,6 +120,8 @@ extern "C" {
 HRESULT CInputSwitchControlProxy_CreateInstance(IInputSwitchControl* original, REFIID riid, void** ppvObject);
 HRESULT CInputSwitchControlProxySV2_CreateInstance(IInputSwitchControlSV2* original, REFIID riid, void** ppvObject);
 
+BOOL PatchContextMenuOfNewMicrosoftIME(BOOL* bFound);
+
 #ifdef __cplusplus
 }
 #endif

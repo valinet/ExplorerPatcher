@@ -980,8 +980,6 @@ __forceinline BOOL RDataSectionBeginAndSizePEFile(PBYTE pFileBase, DWORD fileSiz
     return SectionBeginAndSizePEFile(pFileBase, fileSize, ".rdata", beginSection, sizeSection);
 }
 
-PVOID FindPattern(PVOID pBase, SIZE_T dwSize, LPCSTR lpPattern, LPCSTR lpMask);
-
 #if _M_X64
 inline BOOL FollowJump(PBYTE pInstr, BYTE shortOpcode, BYTE longOpcodeExt, DWORD* pInstrSize, PBYTE* pTarget)
 {
@@ -1178,73 +1176,6 @@ inline UINT_PTR ARM64_DecodeADRL(UINT_PTR offset, DWORD insnADRP, DWORD insnADD)
 }
 #endif
 
-#if defined(WITH_MAIN_PATCHER) && WITH_MAIN_PATCHER
-inline BOOL WINAPI PatchContextMenuOfNewMicrosoftIME(BOOL* bFound)
-{
-    // huge thanks to @Simplestas: https://github.com/valinet/ExplorerPatcher/issues/598
-    HMODULE hInputSwitch = NULL;
-    if (!GetModuleHandleExW(0, L"InputSwitch.dll", &hInputSwitch))
-        return FALSE;
-
-    PBYTE pInputSwitchText;
-    DWORD cbInputSwitchText;
-    if (!TextSectionBeginAndSize(hInputSwitch, &pInputSwitchText, &cbInputSwitchText))
-        return FALSE;
-
-#if defined(_M_X64)
-    // 44 38 ?? ?? 74 ?? ?? 8B CE E8 ?? ?? ?? ?? 85 C0
-    //             ^^ Change jz into jmp
-    // Ref: CTsfHandler::_OnOopImeContextMenu()
-    PBYTE match = (PBYTE)FindPattern(
-        pInputSwitchText,
-        cbInputSwitchText,
-        "\x44\x38\x00\x00\x74\x00\x00\x8B\xCE\xE8\x00\x00\x00\x00\x85\xC0",
-        "xx??x??xxx????xx"
-    );
-    if (!match)
-        return FALSE;
-
-    DWORD dwOldProtect;
-    if (!VirtualProtect(match + 4, 1, PAGE_EXECUTE_READWRITE, &dwOldProtect))
-        return FALSE;
-
-    match[4] = 0xEB;
-
-    VirtualProtect(match + 4, 1, dwOldProtect, &dwOldProtect);
-
-    return TRUE;
-#elif defined(_M_ARM64)
-    // A8 43 40 39 C8 04 00 34 E0 03 ?? AA
-    //             ^^^^^^^^^^^ Change CBZ to B
-    // Ref: CTsfHandler::_OnOopImeContextMenu()
-    PBYTE match = (PBYTE)FindPattern(
-        pInputSwitchText,
-        cbInputSwitchText,
-        "\xA8\x43\x40\x39\xC8\x04\x00\x34\xE0\x03\x00\xAA",
-        "xxxxxxxxxx?x"
-    );
-    if (!match)
-        return FALSE;
-
-    match += 4;
-
-    DWORD newInsn = ARM64_CBZWToB(*(DWORD*)match);
-    if (!newInsn)
-        return FALSE;
-
-    DWORD dwOldProtect;
-    if (!VirtualProtect(match, 4, PAGE_EXECUTE_READWRITE, &dwOldProtect))
-        return FALSE;
-
-    *(DWORD*)match = newInsn;
-
-    VirtualProtect(match, 4, dwOldProtect, &dwOldProtect);
-
-    return TRUE;
-#endif
-}
-#endif
-
 extern UINT PleaseWaitTimeout;
 extern HHOOK PleaseWaitHook;
 extern HWND PleaseWaitHWND;
@@ -1295,34 +1226,108 @@ BOOL ExtractMonitorByIndex(HMONITOR hMonitor, HDC hDC, LPRECT lpRect, MonitorOve
 HRESULT SHRegGetBOOLWithREGSAM(HKEY key, LPCWSTR subKey, LPCWSTR value, REGSAM regSam, BOOL* data);
 HRESULT SHRegGetDWORD(HKEY hkey, const WCHAR* pwszSubKey, const WCHAR* pwszValue, DWORD* pdwData);
 
-inline BOOL MaskCompare(PVOID pBuffer, LPCSTR lpPattern, LPCSTR lpMask)
+FORCEINLINE BOOL _MaskCompareByteLevel(PVOID pvSearch, LPCSTR pszPattern, LPCSTR pszMask)
 {
-    for (PBYTE value = (PBYTE)pBuffer; *lpMask; ++lpPattern, ++lpMask, ++value)
+    for (PBYTE value = (PBYTE)pvSearch; *pszMask; ++pszPattern, ++pszMask, ++value)
     {
-        if (*lpMask == 'x' && *(LPCBYTE)lpPattern != *value)
+        if (*pszMask == 'x' && *(LPCBYTE)pszPattern != *value)
             return FALSE;
     }
 
     return TRUE;
 }
 
-inline __declspec(noinline) PVOID FindPatternHelper(PVOID pBase, SIZE_T dwSize, LPCSTR lpPattern, LPCSTR lpMask)
+inline DECLSPEC_NOINLINE PVOID _FindPatternHelper_1_(PVOID pvSearch, size_t cbSearch, LPCSTR pszPattern, LPCSTR pszMask)
 {
-    for (SIZE_T index = 0; index <= dwSize; ++index)
+    PBYTE pBegin = (PBYTE)pvSearch;
+    PBYTE pEnd = pBegin + cbSearch;
+    for (PBYTE pIt = pBegin; pIt <= pEnd; pIt += 1)
     {
-        PBYTE pAddress = (PBYTE)pBase + index;
-
-        if (MaskCompare(pAddress, lpPattern, lpMask))
-            return pAddress;
+        if (_MaskCompareByteLevel(pIt, pszPattern, pszMask))
+            return pIt;
     }
 
     return NULL;
 }
 
-inline PVOID FindPattern(PVOID pBase, SIZE_T dwSize, LPCSTR lpPattern, LPCSTR lpMask)
+inline DECLSPEC_NOINLINE PVOID _FindPatternHelper_4_(PVOID pvSearch, size_t cbSearch, LPCSTR pszPattern, LPCSTR pszMask)
 {
-    dwSize -= strlen(lpMask);
-    return FindPatternHelper(pBase, dwSize, lpPattern, lpMask);
+    PBYTE pBegin = (PBYTE)pvSearch;
+    PBYTE pEnd = pBegin + cbSearch;
+    for (PBYTE pIt = pBegin; pIt <= pEnd; pIt += 4)
+    {
+        if (_MaskCompareByteLevel(pIt, pszPattern, pszMask))
+            return pIt;
+    }
+
+    return NULL;
+}
+
+FORCEINLINE PVOID FindPattern(PVOID pvSearch, size_t cbSearch, LPCSTR pszPattern, LPCSTR pszMask)
+{
+    cbSearch -= strlen(pszMask);
+    return _FindPatternHelper_1_(pvSearch, cbSearch, pszPattern, pszMask);
+}
+
+FORCEINLINE PVOID FindPattern_4_(PVOID pvSearch, size_t cbSearch, LPCSTR pszPattern, LPCSTR pszMask)
+{
+    cbSearch -= strlen(pszMask);
+    return _FindPatternHelper_4_(pvSearch, cbSearch, pszPattern, pszMask);
+}
+
+FORCEINLINE BOOL _MaskCompareBitLevel(PVOID pvSearch, LPCSTR pszPattern, LPCSTR pszMask, size_t cbPattern)
+{
+    PBYTE pBegin = (PBYTE)pvSearch;
+    PBYTE pEnd = pBegin + cbPattern;
+    for (PBYTE pIt = pBegin; pIt < pEnd; ++pIt, ++pszPattern, ++pszMask)
+    {
+        if ((*pIt & *(LPCBYTE)pszMask) != *(LPCBYTE)pszPattern)
+            return FALSE;
+    }
+
+    return TRUE;
+}
+
+inline DECLSPEC_NOINLINE PVOID _FindPatternBitMaskHelper_1_(
+    PVOID pvSearch, size_t cbSearch, LPCSTR pszPattern, LPCSTR pszMask, size_t cbPattern)
+{
+    PBYTE pBegin = (PBYTE)pvSearch;
+    PBYTE pEnd = pBegin + cbSearch;
+    for (PBYTE pIt = pBegin; pIt <= pEnd; pIt += 1)
+    {
+        if (_MaskCompareBitLevel(pIt, pszPattern, pszMask, cbPattern))
+            return pIt;
+    }
+
+    return NULL;
+}
+
+inline DECLSPEC_NOINLINE PVOID _FindPatternBitMaskHelper_4_(
+    PVOID pvSearch, size_t cbSearch, LPCSTR pszPattern, LPCSTR pszMask, size_t cbPattern)
+{
+    PBYTE pBegin = (PBYTE)pvSearch;
+    PBYTE pEnd = pBegin + cbSearch;
+    for (PBYTE pIt = pBegin; pIt <= pEnd; pIt += 4)
+    {
+        if (_MaskCompareBitLevel(pIt, pszPattern, pszMask, cbPattern))
+            return pIt;
+    }
+
+    return NULL;
+}
+
+FORCEINLINE PVOID FindPatternBitMask(
+    PVOID pvSearch, size_t cbSearch, LPCSTR pszPattern, LPCSTR pszMask, size_t cbPattern)
+{
+    cbSearch -= strlen(pszMask);
+    return _FindPatternBitMaskHelper_1_(pvSearch, cbSearch, pszPattern, pszMask, cbPattern);
+}
+
+FORCEINLINE PVOID FindPatternBitMask_4_(
+    PVOID pvSearch, size_t cbSearch, LPCSTR pszPattern, LPCSTR pszMask, size_t cbPattern)
+{
+    cbSearch -= strlen(pszMask);
+    return _FindPatternBitMaskHelper_4_(pvSearch, cbSearch, pszPattern, pszMask, cbPattern);
 }
 
 inline UINT_PTR FileOffsetToRVA(PBYTE pBase, UINT_PTR offset)
