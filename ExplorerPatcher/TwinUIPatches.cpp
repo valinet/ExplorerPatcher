@@ -2159,7 +2159,7 @@ BOOL FixStartMenuAnimation(HMODULE hTwinuiPcshell, PBYTE pSearchBegin, size_t cb
             pSearchBegin,
             cbSearch,
             "\xFF\x02\x00\x39\xE2\x82\x00\x91\xE0\x03\x13\xAA",
-            "xxxxxxxxxxx"
+            "xxxxxxxxxxxx"
         );
         if (matchGetMonitorInformation)
         {
@@ -3304,7 +3304,7 @@ void TryToFindTwinuiPCShellOffsets(DWORD* pOffsets)
                 //                                                   ^^^^^^^
                 match = (PBYTE)FindPattern(
                     pSearchBegin, cbSearch,
-                    "\x48\x8B\xCB\xE8\x00\x00\x00\x00\x4C\x8D\x47\x00\x48\x8B\x00\x48\x8B\xCE\xE8\x00\x00\x00\x00\x90",
+                    "\x48\x8B\x00\xE8\x00\x00\x00\x00\x4C\x8D\x47\x00\x48\x8B\x00\x48\x8B\xCE\xE8\x00\x00\x00\x00\x90",
                     "xx?x????xxx?xx?xxxx????x"
                 );
                 if (match)
