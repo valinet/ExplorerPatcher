@@ -2307,7 +2307,7 @@ BOOL FixStartMenuAnimation(HMODULE hTwinuiPcshell, PBYTE pSearchBegin, size_t cb
     //   48 8D ?? ?? ?? 00 00 8B ?? E8 ?? ?? ?? ?? 8B ?? 85 C0
     // Perform on exactly two matches
     // Fortunately both are 12 bytes
-    auto hide_findForOne = [](PBYTE pBegin, SIZE_T cbSearch) -> PBYTE
+    auto hide_findForOne = [](PBYTE pBegin, size_t cbSearch) -> PBYTE
     {
         PBYTE pMovMov = (PBYTE)FindPattern(
             pBegin,
@@ -2375,61 +2375,62 @@ BOOL FixStartMenuAnimation(HMODULE hTwinuiPcshell, PBYTE pSearchBegin, size_t cb
         }
     };
 #elif defined(_M_ARM64)
-    // ```
-    // E1 03 ?? 2A ?? ?? 04 91 ?? ?? ?? ?? ?? 03 00 2A
-    // ```
-    // Check two instructions before, and NOP these:
-    // ```
-    // MOV             W??, #3
-    // STRB            W??, [X??,#0x???]
-    // ```
+    // Find for nop targets:
+    //   MOV             W??, #3
+    //     P: 010100101_00_0000000000000011_00000 = 52800060 = 60 00 80 52
+    //     M: 111111111_11_1111111111111111_00000 = FFFFFFE0 = E0 FF FF FF
+    //   STRB            W??, [X??,#0x???]
+    //     22000.2899 0011100100_001010001011_10101_11011
+    //     22621.1918 0011100100_001010100011_10011_11011
+    //     26100.5551 0011100100_001011010011_10100_11010
+    //     29553.1000 0011100100_001011010011_10101_10100
+    //     P:         0011100100_001010000011_10000_10000 = 390A0E10 = 10 0E 0A 39
+    //     M:         1111111111_111110000111_11000_10000 = FFFE1F10 = 10 1F FE FF
+    // Nop if followed by a Hide() call
+    //   E1 03 ?? 2A ?? ?? 04 91 ?? ?? ?? ?? ?? 03 00 2A
     // Perform on exactly two matches
-    PBYTE matchHideA = nullptr;
-    PBYTE matchHideB = nullptr;
-    auto hide_findTheIfBody = [](PBYTE pAnchor) -> PBYTE
+    auto hide_findForOne = [](PBYTE pBegin, size_t cbSearch) -> PBYTE
     {
-        // 27881.1000+ has CBNZ before us, follow it if it is.
-        // Otherwise, just check the two instructions before.
-        PBYTE pMaybeFollowed = (PBYTE)ARM64_FollowCBNZW((DWORD*)(pAnchor - 4));
-        PBYTE pIfBlockBegin = pMaybeFollowed ? pMaybeFollowed : pAnchor - 8;
+        PBYTE pMovStrb = (PBYTE)FindPatternBitMask_4_(
+            pBegin,
+            cbSearch,
+            "\x60\x00\x80\x52\x10\x0E\x0A\x39",
+            "\xE0\xFF\xFF\xFF\x10\x1F\xFE\xFF",
+            8
+        );
+        if (pMovStrb)
+        {
+            PBYTE pAfterMovStrb = pMovStrb + 8;
 
-        DWORD insnMovzw = *(DWORD*)pIfBlockBegin;
-        if (!ARM64_IsMOVZW(insnMovzw))
-            return nullptr;
+            // We might be a jmp, follow it if so
+            PBYTE pJmpTarget = (PBYTE)ARM64_FollowB((DWORD*)pAfterMovStrb);
+            if (pJmpTarget)
+            {
+                pAfterMovStrb = pJmpTarget;
+            }
 
-        DWORD movzwImm16 = ARM64_ReadBitsSignExtend(insnMovzw, 20, 5);
-        if (movzwImm16 != 3)
-            return nullptr;
-
-        DWORD insnStrbimm = *(DWORD*)(pIfBlockBegin + 4);
-        if (!ARM64_IsSTRBIMM(insnStrbimm))
-            return nullptr;
-
-        return pIfBlockBegin;
+            // Now test
+            bool bThisIsHideCall = FindPattern_4_(
+                pAfterMovStrb,
+                16, // Pattern size
+                "\xE1\x03\x00\x2A\x00\x00\x04\x91\x00\x00\x00\x00\x00\x03\x00\x2A",
+                "xx?x??xx?????xxx"
+            ) == pAfterMovStrb;
+            if (!bThisIsHideCall)
+            {
+                pMovStrb = nullptr; // No, not this one
+            }
+        }
+        return pMovStrb;
+        // @Note: We don't retry searches because the "No, not this one" blocks are never executed during testing
+        // with a variety of twinui.pcshell.dll binaries
     };
-    PBYTE matchHideAAfter = (PBYTE)FindPattern(
-        pSearchBegin,
-        cbSearch,
-        "\xE1\x03\x00\x2A\x00\x00\x04\x91\x00\x00\x00\x00\x00\x03\x00\x2A",
-        "xx?x??xx?????xxx"
-    );
-    if (matchHideAAfter)
-    {
-        matchHideA = hide_findTheIfBody(matchHideAAfter);
-    }
+    PBYTE matchHideA = hide_findForOne(pSearchBegin, cbSearch);
+    PBYTE matchHideB = nullptr;
     if (matchHideA)
     {
         printf("[SMA] matchHideA in CStartExperienceManager::Hide() = %llX\n", matchHideA - (PBYTE)hTwinuiPcshell);
-        PBYTE matchHideBAfter = (PBYTE)FindPattern(
-            matchHideAAfter + 16,
-            1024,
-            "\xE1\x03\x00\x2A\x00\x00\x04\x91\x00\x00\x00\x00\x00\x03\x00\x2A",
-            "xx?x??xx?????xxx"
-        );
-        if (matchHideBAfter)
-        {
-            matchHideB = hide_findTheIfBody(matchHideBAfter);
-        }
+        matchHideB = hide_findForOne(matchHideA + 8, cbSearch - (matchHideA + 8 - (PBYTE)pSearchBegin));
         if (matchHideB)
         {
             printf("[SMA] matchHideB in CStartExperienceManager::Hide() = %llX\n", matchHideB - (PBYTE)hTwinuiPcshell);
@@ -2962,6 +2963,19 @@ BOOL FixJumpViewPositioning(HMODULE hTwinuiPcshell, PBYTE pSearchBegin, size_t c
         "\x41\xB9\x89\x0B\x80\x52\xA8\x01\x00\x34\x1F\x05\x00\x71\x20\x01\x00\x54\x1F\x09\x00\x71\xA0\x00\x00\x54\x1F\x0D\x00\x71\x01\x01\x00\x54\x69\x0B\x80\x52",
         "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
     );
+    if (!matchOffsetTrayStuckPlace)
+    {
+        // 29553+
+        // ?? ?? 41 B9 C8 01 00 34 1F 05 00 71 40 01 00 54 1F 09 00 71 C0 00 00 54 89 0B 80 52
+        // ^^^^^^^^^^^
+        // Ref: CJumpViewExperienceManager::OnViewCloaking()
+        matchOffsetTrayStuckPlace = (PBYTE)FindPattern_4_(
+            pSearchBegin + 2,
+            cbSearch - 2,
+            "\x41\xB9\xC8\x01\x00\x34\x1F\x05\x00\x71\x40\x01\x00\x54\x1F\x09\x00\x71\xC0\x00\x00\x54\x89\x0B\x80\x52",
+            "xxxxxxxxxxxxxxxxxxxxxxxxxx"
+        );
+    }
 #endif
     if (matchOffsetTrayStuckPlace)
     {

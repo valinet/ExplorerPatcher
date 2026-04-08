@@ -1067,6 +1067,7 @@ __forceinline BOOL ARM64_IsCBZW(DWORD insn) { return ARM64_ReadBits(insn, 31, 24
 __forceinline BOOL ARM64_IsCBNZW(DWORD insn) { return ARM64_ReadBits(insn, 31, 24) == 0b00110101; }
 __forceinline BOOL ARM64_IsTBZ(DWORD insn) { return ARM64_ReadBits(insn, 31, 24) == 0b00110110; }
 __forceinline BOOL ARM64_IsTBNZ(DWORD insn) { return ARM64_ReadBits(insn, 31, 24) == 0b00110111; }
+__forceinline BOOL ARM64_IsB(DWORD insn) { return ARM64_ReadBits(insn, 31, 26) == 0b000101; }
 __forceinline BOOL ARM64_IsBL(DWORD insn) { return ARM64_ReadBits(insn, 31, 26) == 0b100101; }
 __forceinline BOOL ARM64_IsADRP(DWORD insn) { return (ARM64_ReadBits(insn, 31, 24) & ~0b01100000) == 0b10010000; }
 __forceinline BOOL ARM64_IsMOVZW(DWORD insn) { return ARM64_ReadBits(insn, 31, 23) == 0b010100101; }
@@ -1079,6 +1080,15 @@ __forceinline DWORD* ARM64_FollowCBNZW(DWORD* pInsnCBNZW)
         return NULL;
     int imm19 = ARM64_ReadBitsSignExtend(insnCBNZW, 23, 5);
     return pInsnCBNZW + imm19; // offset = imm19 * 4
+}
+
+__forceinline DWORD* ARM64_FollowB(DWORD* pInsnB)
+{
+    DWORD insnB = *pInsnB;
+    if (!ARM64_IsB(insnB))
+        return NULL;
+    int imm26 = ARM64_ReadBitsSignExtend(insnB, 25, 0);
+    return pInsnB + imm26; // offset = imm26 * 4
 }
 
 __forceinline DWORD* ARM64_FollowBL(DWORD* pInsnBL)
@@ -1319,14 +1329,14 @@ inline DECLSPEC_NOINLINE PVOID _FindPatternBitMaskHelper_4_(
 FORCEINLINE PVOID FindPatternBitMask(
     PVOID pvSearch, size_t cbSearch, LPCSTR pszPattern, LPCSTR pszMask, size_t cbPattern)
 {
-    cbSearch -= strlen(pszMask);
+    cbSearch -= cbPattern;
     return _FindPatternBitMaskHelper_1_(pvSearch, cbSearch, pszPattern, pszMask, cbPattern);
 }
 
 FORCEINLINE PVOID FindPatternBitMask_4_(
     PVOID pvSearch, size_t cbSearch, LPCSTR pszPattern, LPCSTR pszMask, size_t cbPattern)
 {
-    cbSearch -= strlen(pszMask);
+    cbSearch -= cbPattern;
     return _FindPatternBitMaskHelper_4_(pvSearch, cbSearch, pszPattern, pszMask, cbPattern);
 }
 
