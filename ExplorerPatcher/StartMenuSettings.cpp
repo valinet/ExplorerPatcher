@@ -1209,12 +1209,12 @@ HRESULT PatchUnifiedTilePinUnpinProvider(HMODULE hModule)
         }
     }
 #elif defined(_M_ARM64)
-    // 40 F9 E3 03 15 AA ?? ?? 40 F9 E1 03 ?? AA E0 03 ?? AA ?? ?? ?? ?? E3 03 00 2A // NI, GE
-    //                                                       ^^^^^^^^^^^
+    // ?? ?? 40 F9 E3 03 15 AA ?? ?? 40 F9 E1 03 ?? AA E0 03 ?? AA ?? ?? ?? ?? E3 03 00 2A // NI, GE
+    //                                                             ^^^^^^^^^^^
     // Ref: WindowsInternal::Shell::UnifiedTile::Private::UnifiedTilePinUnpinVerbProvider::GetVerbs()
-    PBYTE match = (PBYTE)FindPattern(
-        pText,
-        cbText,
+    PBYTE match = (PBYTE)FindPattern_4_(
+        pText + 2,
+        cbText - 2,
         "\x40\xF9\xE3\x03\x15\xAA\x00\x00\x40\xF9\xE1\x03\x00\xAA\xE0\x03\x00\xAA\x00\x00\x00\x00\xE3\x03\x00\x2A",
         "xxxxxx??xxxx?xxx?x????xxxx"
     );
@@ -1228,7 +1228,7 @@ HRESULT PatchUnifiedTilePinUnpinProvider(HMODULE hModule)
         // E4 8A 40 A9 E3 03 ?? AA E1 03 ?? AA E0 03 ?? AA ?? ?? ?? ?? ?? ?? ?? F9 E3 03 00 2A // BR
         //                                                 ^^^^^^^^^^^
         // Ref: WindowsInternal::Shell::UnifiedTile::Private::UnifiedTilePinUnpinVerbProvider::GetVerbs()
-        match = (PBYTE)FindPattern(
+        match = (PBYTE)FindPattern_4_(
             pText,
             cbText,
             "\xE4\x8A\x40\xA9\xE3\x03\x00\xAA\xE1\x03\x00\xAA\xE0\x03\x00\xAA\x00\x00\x00\x00\x00\x00\x00\xF9\xE3\x03\x00\x2A",

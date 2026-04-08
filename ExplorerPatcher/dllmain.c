@@ -1364,7 +1364,7 @@ void ForceEnableXamlSounds(HMODULE hWindowsUIXaml)
 #elif defined(_M_ARM64)
     // 08 ?? ?? B9 1F 09 00 71 ?? ?? ?? 54 ?? 00 00 35 ?? ?? ?? ??
     //                                                 ^^^^^^^^^^^ BL -> MOV W0, #1
-    PBYTE match = FindPattern(
+    PBYTE match = FindPattern_4_(
         pWindowsUIXamlText,
         cbWindowsUIXamlText,
         "\x08\x00\x00\xB9\x1F\x09\x00\x71\x00\x00\x00\x54\x00\x00\x00\x35",
@@ -2508,11 +2508,11 @@ static void HookImmersiveMenuFunctions(
         "xxxxxxxxxxxxxxxxx????xxx????xxx????xxxxxx????xx?????xxx"
     );
 #elif defined(_M_ARM64)
-    // 40 F9 43 03 1C 32 E4 03 ?? AA ?? ?? FF 97
-    //                               ^^^^^^^^^^^
+    // ?? ?? 40 F9 43 03 1C 32 E4 03 ?? AA ?? ?? FF 97
+    //                                     ^^^^^^^^^^^
     // Ref: ImmersiveContextMenuHelper::ApplyOwnerDrawToMenu()
-    PBYTE match = (PBYTE)FindPattern(
-        pText, cbText,
+    PBYTE match = (PBYTE)FindPattern_4_(
+        pText + 2, cbText - 2,
         "\x40\xF9\x43\x03\x1C\x32\xE4\x03\x00\xAA\x00\x00\xFF\x97",
         "xxxxxxxx?x??xx"
     );
@@ -2526,7 +2526,7 @@ static void HookImmersiveMenuFunctions(
         // 43 03 1C 32 E4 03 ?? AA E2 03 ?? AA ?? ?? FF 97 // 27938
         //                                     ^^^^^^^^^^^
         // Ref: ImmersiveContextMenuHelper::ApplyOwnerDrawToMenu()
-        match = (PBYTE)FindPattern(
+        match = (PBYTE)FindPattern_4_(
             pText, cbText,
             "\x43\x03\x1C\x32\xE4\x03\x00\xAA\xE2\x03\x00\xAA\x00\x00\xFF\x97",
             "xxxxxx?xxx?x??xx"
@@ -8331,7 +8331,7 @@ void FixTIFEBreakagesForLegacyControlInterfaces(PBYTE pSearchBegin, size_t cbSea
     // No TIFE feature flag
     // 69 ?? ?? B9 68 ?? ?? B9 69 ?? ?? 29 <TBZ/TBNZ>
     // Ref: CInternetToolbar::_CreateBands()
-    PBYTE match = FindPattern(
+    PBYTE match = FindPattern_4_(
         pSearchBegin,
         cbSearch,
         "\x69\x00\x00\xB9\x68\x00\x00\xB9\x69\x00\x00\x29",
@@ -8347,7 +8347,7 @@ void FixTIFEBreakagesForLegacyControlInterfaces(PBYTE pSearchBegin, size_t cbSea
         // 68 ?? ?? B9 68 00 20 36 08 79 1B 12 68 ?? ?? B9
         //             ^^^^^^^^^^^ <TBZ>
         // Ref: CInternetToolbar::_CreateBands()
-        match = FindPattern(
+        match = FindPattern_4_(
             pSearchBegin,
             cbSearch,
             "\x68\x00\x00\xB9\x68\x00\x20\x36\x08\x79\x1B\x12\x68\x00\x00\xB9",
@@ -9351,7 +9351,7 @@ static void PatchAddressBarSizing(PBYTE pSearchBegin, size_t cbSearch)
         // CAddressBand::_PositionChildWindows() <- CAddressBand::ResizeToolbarButtons()
         // 81 00 80 52 02 00 00 14 21 00 80 52
         // xxxxxxxxxxx To 21 00 80 52
-        match = FindPattern(
+        match = FindPattern_4_(
             pSearchBegin,
             cbSearch,
             "\x81\x00\x80\x52\x02\x00\x00\x14\x21\x00\x80\x52",
@@ -9371,7 +9371,7 @@ static void PatchAddressBarSizing(PBYTE pSearchBegin, size_t cbSearch)
             // CAddressBand::ResizeToolbarButtons()
             // 88 00 80 52 02 00 00 14 28 00 80 52
             // xxxxxxxxxxx To 28 00 80 52
-            match = FindPattern(
+            match = FindPattern_4_(
                 pSearchBegin,
                 cbSearch,
                 "\x88\x00\x80\x52\x02\x00\x00\x14\x28\x00\x80\x52",
@@ -9875,7 +9875,7 @@ static void PatchAppResolver()
 #elif defined(_M_ARM64)
     // 7F 23 03 D5  FD 7B BC A9  F3 53 01 A9  F5 5B 02 A9  F7 1B 00 F9  FD 03 00 91  ?? ?? ?? ??  FF 43 01 D1  F7 03 00 91  30 00 80 92  F0 1A 00 F9  ?? 03 01 AA  ?? 03 02 AA  FF ?? 00 F9
     // ----------- PACIBSP, don't scan for this because it's everywhere
-    PBYTE match = FindPattern(
+    PBYTE match = FindPattern_4_(
         pAppResolverText,
         cbAppResolverText,
         "\xFD\x7B\xBC\xA9\xF3\x53\x01\xA9\xF5\x5B\x02\xA9\xF7\x1B\x00\xF9\xFD\x03\x00\x91\x00\x00\x00\x00\xFF\x43\x01\xD1\xF7\x03\x00\x91\x30\x00\x80\x92\xF0\x1A\x00\xF9\x00\x03\x01\xAA\x00\x03\x02\xAA\xFF\x00\x00\xF9",
@@ -11968,7 +11968,7 @@ static BOOL StartMenu_FixContextMenuXbfHijackMethod()
     // E1 0B 40 F9 05 00 80 D2 04 00 80 D2 E3 03 ?? AA E2 03 ?? AA E0 03 ?? AA ?? ?? ?? 97
     //                                                                         ^^^^^^^^^^^
     // Ref: CoreServices_TryGetApplicationResource()
-    PBYTE match = FindPattern(
+    PBYTE match = FindPattern_4_(
         pWindowsUIXamlText,
         cbWindowsUIXamlText,
         "\xE1\x0B\x40\xF9\x05\x00\x80\xD2\x04\x00\x80\xD2\xE3\x03\x00\xAA\xE2\x03\x00\xAA\xE0\x03\x00\xAA\x00\x00\x00\x97",
@@ -12031,7 +12031,7 @@ static void StartMenu_FixUserTileMenu(PBYTE pSearchBegin, size_t cbSearch)
     // 63 00 80 52 E2 03 1B AA E1 03 14 AA E0 03 19 AA ?? ?? ?? 94
     //                                                 ^^^^^^^^^^^
     // Ref: <lambda_3a9b433356e31b02e54fffbca0ecf3fa>::operator()
-    PBYTE match = FindPattern(
+    PBYTE match = FindPattern_4_(
         pSearchBegin,
         cbSearch,
         "\x63\x00\x80\x52\xE2\x03\x1B\xAA\xE1\x03\x14\xAA\xE0\x03\x19\xAA\x00\x00\x00\x94",

@@ -257,7 +257,7 @@ void HandleLoadedQuickActions(HMODULE hModule)
         //                                     ^^^^^^^^^^^^^^^^^^^^^^^                         ^^^^^^^^^^^
         // ref new QuickActions::QuickActionTemplates();
         // Ref: QuickActions::QuickActionTemplates::Instance::get()
-        PBYTE matchSource = (PBYTE)FindPattern(
+        PBYTE matchSource = (PBYTE)FindPattern_4_(
             pSearch, cbSearch,
             "\xB7\x17\x00\xF9\x00\x00\x00\x00\x00\x00\x00\x00\x01\x12\x80\xD2\x00\x0F\x80\xD2\x00\x01\x3F\xD6\xA0\x13\x00\xF9\x00\x00\x00\x00\x00\x03\x00\xAA",
             "xxxx????????xxxxxxxxxxxxxxxx?????xxx"
@@ -277,7 +277,7 @@ void HandleLoadedQuickActions(HMODULE hModule)
         // xxxxxxxxxxx ctor call
         // ref new QuickActions::ControlCenter::ControlCenterTemplates();
         // Ref: QuickActions::QuickActionControl::QuickActionControl()
-        PBYTE matchTarget = (PBYTE)FindPattern(
+        PBYTE matchTarget = (PBYTE)FindPattern_4_(
             pSearch, cbSearch,
             "\xE1\x03\x00\xAA\xE0\x03\x00\xAA\x00\x00\x00\x00\x1F\x20\x03\xD5\xE0\x03\x00\xAA\x00\x00\x00\x00\x1F\x20\x03\xD5\xE0\x03\x00\xAA\x00\x00\x00\x00"
             "\xE1\x03\x00\xAA\xE0\x03\x00\xAA\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x17\x80\xD2\x00\x14\x80\xD2\x00\x01\x3F\xD6\x40\x03\x00\xF9"
@@ -485,7 +485,7 @@ void HandleLoadedNetworkUX(HMODULE hModule)
         // E0 03 ?? AA ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? 08 ?? ?? ?? 48 00 00 35
         //                         ^^^^^^^^^^^
         // Ref: NetworkUX::App::StaticOnLaunched()
-        PBYTE match = (PBYTE)FindPattern(
+        PBYTE match = (PBYTE)FindPattern_4_(
             pSearch, cbSearch,
             "\xE0\x03\x00\xAA\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x08\x00\x00\x00\x48\x00\x00\x35",
             "xx?x????????????x???xxxx"
