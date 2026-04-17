@@ -1553,6 +1553,16 @@ BOOL Moment2PatchHardwareConfirmator(HMODULE hHardwareConfirmator, PBYTE pSearch
     // Execution
     DWORD dwOldProtect = 0;
     SIZE_T totalSize = sizeof(shellcode) + 5;
+    // Validate writeAt is within the expected module bounds to prevent privilege escalation
+    // via memory corruption vulnerabilities redirecting shellcode injection into privileged processes
+    MODULEINFO modInfo = {};
+    if (writeAt == nullptr ||
+        !GetModuleInformation(GetCurrentProcess(), (HMODULE)hHardwareConfirmator, &modInfo, sizeof(modInfo)) ||
+        writeAt < (PBYTE)modInfo.lpBaseOfDll ||
+        writeAt + totalSize > (PBYTE)modInfo.lpBaseOfDll + modInfo.SizeOfImage)
+    {
+        return FALSE;
+    }
     if (!VirtualProtect(writeAt, totalSize, PAGE_EXECUTE_READWRITE, &dwOldProtect)) return FALSE;
     memcpy(writeAt, shellcode, sizeof(shellcode));
     PBYTE jmpLoc = writeAt + sizeof(shellcode);
