@@ -11538,6 +11538,56 @@ DWORD StartUI_EnableRoundedCornersApply = TRUE;
 DWORD StartUI_ShowMoreTiles = FALSE;
 HKEY hKey_StartUI_TileGrid = NULL;
 
+/*
+ * Fix bug where Recommended section would re-appear.
+ *
+ *   Various interactions inside the Start Menu would trigger OnSettingChanged(),
+ *   which in turn calls UpdatePinnedListHeight(), which causes the problem.
+ *   So hook OnSettingChanged(), mark that it has been called, and, when
+ *   UpdatePinnedListHeight() is called afterwards, return from it.
+ * 
+ *   Pinned List Height can still be adjusted from Settings.
+ *
+ */
+
+static BOOL b_IsFromOnSettingChanged = 0;
+
+typedef uintptr_t (__fastcall* StartMenu_OnSettingChanged_t)(
+    void* _this,
+    uintptr_t param_2,
+    void* param_3,
+    void* param_4
+);
+
+typedef void(__fastcall* StartMenu_UpdatePinnedListHeight_t)(
+    void* _this
+    );
+
+static StartMenu_OnSettingChanged_t StartMenu_OnSettingChangedFunc = NULL;
+
+static StartMenu_UpdatePinnedListHeight_t
+StartMenu_UpdatePinnedListHeightFunc = NULL;
+
+void __fastcall StartMenu_OnSettingChangedHook(void* _this, uintptr_t param_2, void* param_3, void* param_4)
+{
+    // Mark that OnSettingChanged() has ran
+    b_IsFromOnSettingChanged = TRUE;
+    StartMenu_OnSettingChangedFunc(_this, param_2, param_3, param_4);
+}
+
+void __fastcall StartMenu_UpdatePinnedListHeightHook(void* _this)
+{
+    // If call is coming from OnSettingChanged(), return; 
+    if (b_IsFromOnSettingChanged)
+    {
+        b_IsFromOnSettingChanged = FALSE;
+        return;
+    }
+
+    // Call original function, if call is not coming from OnSettingChanged()
+    StartMenu_UpdatePinnedListHeightFunc(_this);
+}
+
 void StartMenu_LoadSettings(BOOL bRestartIfChanged)
 {
     HKEY hKey = NULL;
@@ -12686,6 +12736,7 @@ DWORD InjectStartMenu()
 
     HANDLE hStartDocked = NULL;
     HANDLE hStartUI = NULL;
+    HANDLE hStartMenu = NULL;
 
     if (!IsWindows11()) dwTaskbarAl = 0;
 
@@ -12731,6 +12782,18 @@ DWORD InjectStartMenu()
         hStartDocked = GetModuleHandleW(L"StartDocked.dll");
 
         VnPatchDelayIAT(hStartDocked, "ext-ms-win-ntuser-draw-l1-1-0.dll", "SetWindowRgn", Start_SetWindowRgn);
+
+        WCHAR wszStartMenuDll[MAX_PATH];
+        GetWindowsDirectoryW(wszStartMenuDll, MAX_PATH);
+        wcscat_s(
+            wszStartMenuDll,
+            MAX_PATH,
+            L"\\SystemApps\\MicrosoftWindows.Client.Core_cw5n1h2txyewy\\StartMenu.dll"
+        );
+        hStartMenu = LoadLibraryExW(wszStartMenuDll,
+                                    NULL,
+                                    LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_DEFAULT_DIRS
+        );
     }
 
     Setting* settings = calloc(6, sizeof(Setting));
@@ -12785,6 +12848,8 @@ DWORD InjectStartMenu()
 
     int rv;
     DWORD dwVal0 = 0, dwVal1 = 0, dwVal2 = 0, dwVal3 = 0, dwVal4 = 0;
+    DWORD dwStartMenuOnSettingChanged = 0;
+    DWORD dwStartMenuUpdatePinnedListHeight = 0;
 
     HMODULE hModule = LoadLibraryExW(L"Shlwapi.dll", NULL, LOAD_LIBRARY_SEARCH_SYSTEM32);
     if (hModule)
@@ -12835,6 +12900,24 @@ DWORD InjectStartMenu()
                 &dwVal4,
                 &dwSize
             );
+            dwSize = sizeof(DWORD);
+            SHRegGetValueFromHKCUHKLM(
+                TEXT(REGPATH_STARTMENU) TEXT("\\") TEXT(STARTMENU_SB_NAME),
+                TEXT(STARTMENU_SB_STARTINNERFRAME_ONSETTINGCHANGED),
+                SRRF_RT_REG_DWORD,
+                NULL,
+                &dwStartMenuOnSettingChanged,
+                &dwSize
+            );
+            dwSize = sizeof(DWORD);
+            SHRegGetValueFromHKCUHKLM(
+                TEXT(REGPATH_STARTMENU) TEXT("\\") TEXT(STARTMENU_SB_NAME),
+                TEXT(STARTMENU_SB_STARTINNERFRAME_UPDATEPINNEDLISTHEIGHT),
+                SRRF_RT_REG_DWORD,
+                NULL,
+                &dwStartMenuUpdatePinnedListHeight,
+                &dwSize
+            );
         }
         FreeLibrary(hModule);
     }
@@ -12882,6 +12965,39 @@ DWORD InjectStartMenu()
             funchook,
             (void**)&StartUI_SystemListPolicyProvider_GetMaximumFrequentAppsFunc,
             StartUI_SystemListPolicyProvider_GetMaximumFrequentAppsHook
+        );
+        if (rv != 0)
+        {
+            FreeLibraryAndExitThread(hModule, rv);
+            return rv;
+        }
+    }
+
+    if (hStartMenu &&
+        dwStartMenuOnSettingChanged &&
+        dwStartMenuUpdatePinnedListHeight)
+    {
+        StartMenu_OnSettingChangedFunc = (StartMenu_OnSettingChanged_t)
+            ((uintptr_t)hStartMenu + dwStartMenuOnSettingChanged);
+
+        StartMenu_UpdatePinnedListHeightFunc = (StartMenu_UpdatePinnedListHeight_t)
+            ((uintptr_t)hStartMenu + dwStartMenuUpdatePinnedListHeight);
+
+        rv = funchook_prepare(
+            funchook,
+            (void**)&StartMenu_OnSettingChangedFunc,
+            StartMenu_OnSettingChangedHook
+        );
+        if (rv != 0)
+        {
+            FreeLibraryAndExitThread(hModule, rv);
+            return rv;
+        }
+
+        rv = funchook_prepare(
+            funchook,
+            (void**)&StartMenu_UpdatePinnedListHeightFunc,
+            StartMenu_UpdatePinnedListHeightHook
         );
         if (rv != 0)
         {
