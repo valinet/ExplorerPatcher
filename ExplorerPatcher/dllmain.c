@@ -11541,7 +11541,7 @@ HKEY hKey_StartUI_TileGrid = NULL;
 /*
  * Fix bug where Recommended section would re-appear.
  *
- *   Various interactions inside the Start Menu would trigger OnSettingChanged(),
+ *   Various interactions inside the Start Menu trigger OnSettingChanged(),
  *   which in turn calls UpdatePinnedListHeight(), which causes the problem.
  *   So hook OnSettingChanged(), mark that it has been called, and, when
  *   UpdatePinnedListHeight() is called afterwards, return from it.
@@ -11570,21 +11570,36 @@ StartMenu_UpdatePinnedListHeightFunc = NULL;
 
 void __fastcall StartMenu_OnSettingChangedHook(void* _this, uintptr_t param_2, void* param_3, void* param_4)
 {
-    // Mark that OnSettingChanged() has ran
-    b_IsFromOnSettingChanged = TRUE;
+    // Mark that OnSettingChanged() has ran, if DisableRecommended is set
+    if (StartDocked_DisableRecommendedSection)
+        b_IsFromOnSettingChanged = TRUE;
     StartMenu_OnSettingChangedFunc(_this, param_2, param_3, param_4);
+
+    /* OnSettingChanged() always returns before UpdatePinnedListHeight() is called.
+     * There is a chance that, in future (or some undocumented Insider) versions
+     * of Windows that do not call UpdatePinnedListHeight() from OnSettingChanged(),
+     * b_IsFromOnSettingChanged will always remain true and _UpdatePinnedListHeight()
+     * will always be skipped, regardless if we want to change Pinned List height or not.
+     * Hence, we will reset variable inside StartMenu_UpdatePinnedListHeightHook(),
+     * and the return will be guarded, so that we force a return only if
+     * StartDocked_DisableRecommendedSection is unset.
+     * 
+     * See LVT_StartDocked_DisableRecommendedSection() for more details.
+    */
 }
 
 void __fastcall StartMenu_UpdatePinnedListHeightHook(void* _this)
 {
-    // If call is coming from OnSettingChanged(), return; 
+    // If call is coming from OnSettingChanged(), reset the trigger variable
+    // and return, if DisableRecommended is set.
     if (b_IsFromOnSettingChanged)
     {
         b_IsFromOnSettingChanged = FALSE;
-        return;
+        if (StartDocked_DisableRecommendedSection)
+            return;
     }
 
-    // Call original function, if call is not coming from OnSettingChanged()
+    // Call original function, if trigger is unset.
     StartMenu_UpdatePinnedListHeightFunc(_this);
 }
 
