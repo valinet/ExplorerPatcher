@@ -1551,14 +1551,18 @@ BOOL Moment2PatchHardwareConfirmator(HMODULE hHardwareConfirmator, PBYTE pSearch
     *(uintptr_t*)(memmem(shellcode, sizeof(shellcode), &pattern, sizeof(uintptr_t))) = (uintptr_t)HardwareConfirmatorShellcode;
 
     // Execution
+    BYTE patch[sizeof(shellcode) + 5];
+    memcpy(patch, shellcode, sizeof(shellcode));
+    PBYTE jmpLoc = writeAt + sizeof(shellcode);
+    patch[sizeof(shellcode)] = 0xE9;
+    *(DWORD*)(patch + sizeof(shellcode) + 1) = (DWORD)(match2 - jmpLoc - 5);
     DWORD dwOldProtect = 0;
     SIZE_T totalSize = sizeof(shellcode) + 5;
+    SIZE_T bytesWritten = 0;
     if (!VirtualProtect(writeAt, totalSize, PAGE_EXECUTE_READWRITE, &dwOldProtect)) return FALSE;
-    memcpy(writeAt, shellcode, sizeof(shellcode));
-    PBYTE jmpLoc = writeAt + sizeof(shellcode);
-    jmpLoc[0] = 0xE9;
-    *(DWORD*)(jmpLoc + 1) = (DWORD)(match2 - jmpLoc - 5);
+    WriteProcessMemory(GetCurrentProcess(), writeAt, patch, totalSize, &bytesWritten);
     VirtualProtect(writeAt, totalSize, dwOldProtect, &dwOldProtect);
+    if (bytesWritten != totalSize) return FALSE;
 
     if (cleanupBegin)
     {
