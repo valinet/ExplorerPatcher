@@ -154,6 +154,7 @@ DWORD dwTaskbarDa = FALSE;
 DWORD bDisableSpotlightIcon = FALSE;
 DWORD dwSpotlightDesktopMenuMask = 0;
 DWORD dwSpotlightUpdateSchedule = 0;
+DWORD dwSearchUI_FollowSystemTheme = FALSE;
 int Code = 0;
 HRESULT InjectStartFromExplorer();
 BOOL InvokeClockFlyout();
@@ -6598,6 +6599,15 @@ void WINAPI LoadSettings(LPARAM lParam)
                 epw->lpVtbl->SetZoomFactor(epw, dwWeatherZoomFactor ? (LONG64)dwWeatherZoomFactor : 100);
             }
         }
+        dwSize = sizeof(DWORD);
+        RegQueryValueExW(
+            hKey,
+            TEXT("SearchUI_FollowSystemTheme"),
+            0,
+            NULL,
+            &dwSearchUI_FollowSystemTheme,
+            &dwSize
+        );
 
         LeaveCriticalSection(&lock_epw);
 #endif
@@ -10513,6 +10523,16 @@ BOOL STDAPICALLTYPE explorer_SHCreateThread(
 #endif
 #pragma endregion
 
+typedef int32_t(__cdecl* WindowsUdk_AppTheme_t)(void* self);
+
+static WindowsUdk_AppTheme_t WindowsUdk_AppThemeFunc = NULL;
+
+int32_t __cdecl WindowsUdk_AppThemeHook(void* param_1)
+{
+    if (dwSearchUI_FollowSystemTheme || !WindowsUdk_AppThemeFunc)
+        return 0;
+    return WindowsUdk_AppThemeFunc(param_1);
+}
 
 DWORD Inject(BOOL bIsExplorer)
 {
@@ -11010,6 +11030,33 @@ DWORD Inject(BOOL bIsExplorer)
             TrayUI__UpdatePearlSizeFunc = (PBYTE)hExplorer + symbols_PTRS.explorer_PTRS[5];
         }
         UpdateSearchBox();
+    }
+
+    HMODULE hWindowsUdkShellCommon = LoadLibraryExW(
+        L"windowsudk.shellcommon.dll",
+        NULL,
+        LOAD_LIBRARY_SEARCH_SYSTEM32
+    );
+
+    if (
+        hWindowsUdkShellCommon &&
+        symbols_PTRS.winudk_PTRS[0] &&
+        symbols_PTRS.winudk_PTRS[0] != 0xFFFFFFFF
+    )
+    {
+        WindowsUdk_AppThemeFunc =
+            (WindowsUdk_AppTheme_t)((uintptr_t)hWindowsUdkShellCommon + symbols_PTRS.winudk_PTRS[0]);
+
+        rv = funchook_prepare(
+            funchook,
+            (void**)&WindowsUdk_AppThemeFunc,
+            WindowsUdk_AppThemeHook
+        );
+        if (rv != 0)
+        {
+            FreeLibraryAndExitThread(hModule, rv);
+            return rv;
+        }
     }
 
     HANDLE hShcore = LoadLibraryExW(L"shcore.dll", NULL, LOAD_LIBRARY_SEARCH_SYSTEM32);
@@ -11793,6 +11840,35 @@ void StartMenu_LoadSettings(BOOL bRestartIfChanged)
 
         RegCloseKey(hKey);
     }
+
+    RegCreateKeyExW(
+        HKEY_CURRENT_USER,
+        TEXT(REGPATH_STARTMENU),
+        0,
+        NULL,
+        REG_OPTION_NON_VOLATILE,
+        KEY_READ,
+        NULL,
+        &hKey,
+        NULL
+    );
+    if (hKey && hKey != INVALID_HANDLE_VALUE)
+    {
+        dwSize = sizeof(DWORD);
+        dwVal = 0;
+        RegQueryValueExW(
+            hKey,
+            TEXT("SearchUI_FollowSystemTheme"),
+            0,
+            NULL,
+            (LPBYTE)&dwVal,
+            &dwSize
+        );
+
+        dwSearchUI_FollowSystemTheme = dwVal;
+
+        RegCloseKey(hKey);
+    }
 }
 
 static INT64(*StartDocked_LauncherFrame_OnVisibilityChangedFunc)(void*, INT64, void*) = NULL;
@@ -12262,6 +12338,43 @@ int Start_SetWindowRgn(HWND hWnd, HRGN hRgn, BOOL bRedraw)
         }
     }
     return SetWindowRgn(hWnd, hRgn, bRedraw);
+}
+
+void SearchUI_LoadSettings(BOOL bRestartIfChanged)
+{
+    HKEY hKey = NULL;
+    DWORD dwSize;
+    DWORD dwVal = FALSE;
+
+    RegCreateKeyExW(
+        HKEY_CURRENT_USER,
+        TEXT(REGPATH_STARTMENU),
+        0,
+        NULL,
+        REG_OPTION_NON_VOLATILE,
+        KEY_READ,
+        NULL,
+        &hKey,
+        NULL
+    );
+
+    if (hKey && hKey != INVALID_HANDLE_VALUE)
+    {
+        dwSize = sizeof(DWORD);
+
+        RegQueryValueExW(
+            hKey,
+            TEXT("SearchUI_FollowSystemTheme"),
+            0,
+            NULL,
+            (LPBYTE)&dwVal,
+            &dwSize
+        );
+
+        dwSearchUI_FollowSystemTheme = dwVal;
+
+        RegCloseKey(hKey);
+    }
 }
 
 int WINAPI SetupMessage(HWND hWnd, LPCWSTR lpText, LPCWSTR lpCaption, UINT uType)
@@ -12785,6 +12898,7 @@ DWORD InjectStartMenu()
 
     int rv;
     DWORD dwVal0 = 0, dwVal1 = 0, dwVal2 = 0, dwVal3 = 0, dwVal4 = 0;
+    DWORD dwWindowsUdkAppTheme = 0;
 
     HMODULE hModule = LoadLibraryExW(L"Shlwapi.dll", NULL, LOAD_LIBRARY_SEARCH_SYSTEM32);
     if (hModule)
@@ -12833,6 +12947,14 @@ DWORD InjectStartMenu()
                 SRRF_RT_REG_DWORD,
                 NULL,
                 &dwVal4,
+                &dwSize
+            );
+            SHRegGetValueFromHKCUHKLM(
+                TEXT(REGPATH_STARTMENU) TEXT("\\") TEXT(WINDOWSUDK_SHELLCOMMON_SB_NAME),
+                TEXT(WINDOWSUDK_SHELLCOMMON_SB_WINRT_APPTHEME),
+                SRRF_RT_REG_DWORD,
+                NULL,
+                &dwWindowsUdkAppTheme,
                 &dwSize
             );
         }
@@ -12888,6 +13010,142 @@ DWORD InjectStartMenu()
             FreeLibraryAndExitThread(hModule, rv);
             return rv;
         }
+    }
+    HMODULE hWindowsUdkShellCommon = LoadLibraryExW(
+        L"windowsudk.shellcommon.dll",
+        NULL,
+        LOAD_LIBRARY_SEARCH_SYSTEM32
+    );
+
+    if (
+        hWindowsUdkShellCommon &&
+        dwWindowsUdkAppTheme &&
+        dwWindowsUdkAppTheme != 0xFFFFFFFF
+    )
+    {
+        WindowsUdk_AppThemeFunc =
+            (WindowsUdk_AppTheme_t)((uintptr_t)hWindowsUdkShellCommon + dwWindowsUdkAppTheme);
+
+        rv = funchook_prepare(
+            funchook,
+            (void**)&WindowsUdk_AppThemeFunc,
+            WindowsUdk_AppThemeHook
+        );
+        if (rv != 0)
+        {
+            FreeLibraryAndExitThread(hModule, rv);
+            return rv;
+        }
+    }
+    rv = funchook_install(funchook, 0);
+    if (rv != 0)
+    {
+        FreeLibraryAndExitThread(hModule, rv);
+        return rv;
+    }
+    funchook_destroy(funchook);
+    funchook = NULL;
+#endif
+    return 0;
+}
+
+DWORD InjectSearchUI()
+{
+#if WITH_MAIN_PATCHER
+    funchook = funchook_create();
+
+    SearchUI_LoadSettings(FALSE);
+
+    HMODULE hWindowsUdkShellCommon = LoadLibraryExW(
+        L"windowsudk.shellcommon.dll",
+        NULL,
+        LOAD_LIBRARY_SEARCH_SYSTEM32
+    );
+
+    if (!hWindowsUdkShellCommon)
+    {
+        funchook_destroy(funchook);
+        funchook = NULL;
+        return 0;
+    }
+
+    Setting* settings = calloc(2, sizeof(Setting));
+    settings[0].callback = NULL;
+    settings[0].data = NULL;
+    settings[0].hEvent = CreateEventW(NULL, FALSE, FALSE, NULL);
+    settings[0].hKey = NULL;
+    ZeroMemory(settings[0].name, MAX_PATH);
+    settings[0].origin = NULL;
+
+    settings[1].callback = SearchUI_LoadSettings;
+    settings[1].data = FALSE;
+    settings[1].hEvent = NULL;
+    settings[1].hKey = NULL;
+    wcscpy_s(settings[1].name, MAX_PATH, TEXT(REGPATH_STARTMENU));
+    settings[1].origin = HKEY_CURRENT_USER;
+
+    SettingsChangeParameters* params = calloc(1, sizeof(SettingsChangeParameters));
+    params->settings = settings;
+    params->size = 2;
+    CreateThread(
+        0,
+        0,
+        MonitorSettings,
+        params,
+        0,
+        0
+    );
+
+    int rv;
+    DWORD dwWindowsUdkAppTheme = 0;
+
+    HMODULE hShlwapi = LoadLibraryExW(L"Shlwapi.dll", NULL, LOAD_LIBRARY_SEARCH_SYSTEM32);
+    if (hShlwapi)
+    {
+        DWORD dwSize = sizeof(DWORD);
+        t_SHRegGetValueFromHKCUHKLM SHRegGetValueFromHKCUHKLMFunc =
+            GetProcAddress(hShlwapi, "SHRegGetValueFromHKCUHKLM");
+
+        if (SHRegGetValueFromHKCUHKLMFunc)
+        {
+            dwSize = sizeof(DWORD);
+            SHRegGetValueFromHKCUHKLMFunc(
+                TEXT(REGPATH_STARTMENU) TEXT("\\") TEXT(WINDOWSUDK_SHELLCOMMON_SB_NAME),
+                TEXT(WINDOWSUDK_SHELLCOMMON_SB_WINRT_APPTHEME),
+                SRRF_RT_REG_DWORD,
+                NULL,
+                &dwWindowsUdkAppTheme,
+                &dwSize
+            );
+        }
+
+        FreeLibrary(hShlwapi);
+    }
+
+    if (
+        dwWindowsUdkAppTheme &&
+        dwWindowsUdkAppTheme != 0xFFFFFFFF
+    )
+    {
+        WindowsUdk_AppThemeFunc =
+            (WindowsUdk_AppTheme_t)((uintptr_t)hWindowsUdkShellCommon + dwWindowsUdkAppTheme);
+
+        rv = funchook_prepare(
+            funchook,
+            (void**)&WindowsUdk_AppThemeFunc,
+            WindowsUdk_AppThemeHook
+        );
+        if (rv != 0)
+        {
+            FreeLibraryAndExitThread(hModule, rv);
+            return rv;
+        }
+    }
+    else
+    {
+        funchook_destroy(funchook);
+        funchook = NULL;
+        return 0;
     }
 
     rv = funchook_install(funchook, 0);
@@ -12994,6 +13252,11 @@ HRESULT EntryPoint(DWORD dwMethod)
     wcscat_s(wszStartExpectedPath, MAX_PATH, L"\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\StartMenuExperienceHost.exe");
     BOOL bIsThisStartMEH = !_wcsicmp(exePath, wszStartExpectedPath);
 
+    TCHAR wszSearchUIExpectedPath[MAX_PATH];
+    GetWindowsDirectoryW(wszSearchUIExpectedPath, MAX_PATH);
+    wcscat_s(wszSearchUIExpectedPath, MAX_PATH, L"\\SystemApps\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\SearchHost.exe");
+    BOOL bIsThisSearchUI = !_wcsicmp(exePath, wszSearchUIExpectedPath);
+
     TCHAR wszShellExpectedPath[MAX_PATH];
     GetWindowsDirectoryW(wszShellExpectedPath, MAX_PATH);
     wcscat_s(wszShellExpectedPath, MAX_PATH, L"\\SystemApps\\ShellExperienceHost_cw5n1h2txyewy\\ShellExperienceHost.exe");
@@ -13001,12 +13264,13 @@ HRESULT EntryPoint(DWORD dwMethod)
 
     if (dwMethod == DLL_INJECTION_METHOD_DXGI)
     {
-        if (!(bIsThisExplorer || bIsThisStartMEH || bIsThisShellEH))
+        if (!(bIsThisExplorer || bIsThisStartMEH || bIsThisShellEH || bIsThisSearchUI))
         {
             return E_NOINTERFACE;
         }
     }
-    if (dwMethod == DLL_INJECTION_METHOD_COM && (bIsThisExplorer || bIsThisStartMEH || bIsThisShellEH))
+    if (dwMethod == DLL_INJECTION_METHOD_COM &&
+        (bIsThisExplorer || bIsThisStartMEH || bIsThisShellEH || bIsThisSearchUI))
     {
         return E_NOINTERFACE;
     }
@@ -13048,6 +13312,14 @@ HRESULT EntryPoint(DWORD dwMethod)
             HMODULE hWindowsUIXaml = LoadLibraryW(L"Windows.UI.Xaml.dll");
             ForceEnableXamlSounds(hWindowsUIXaml);
         }
+#endif
+        IncrementDLLReferenceCount(hModule);
+        bInstanced = TRUE;
+    }
+    else if (bIsThisSearchUI)
+    {
+#if WITH_MAIN_PATCHER
+        InjectSearchUI();
 #endif
         IncrementDLLReferenceCount(hModule);
         bInstanced = TRUE;

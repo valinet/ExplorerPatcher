@@ -48,6 +48,12 @@
 #define STARTUI_SB_CNT 1
 #define STARTUI_SB_VERSION 1
 
+#define WINDOWSUDK_SHELLCOMMON_SB_NAME "windowsudk.shellcommon"
+#define WINDOWSUDK_SHELLCOMMON_SB_WINRT_APPTHEME \
+        "winrt::WindowsUdk::UI::Themes::factory_implementation::AppVisualThemeSingleton::AppTheme"
+#define WINDOWSUDK_SHELLCOMMON_SB_CNT 1
+#define WINDOWSUDK_SHELLCOMMON_SB_VERSION 1
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -59,6 +65,7 @@ typedef struct symbols_addr
     DWORD twinui_pcshell_PTRS[TWINUI_PCSHELL_SB_CNT];
     DWORD startdocked_PTRS[STARTDOCKED_SB_CNT];
     DWORD startui_PTRS[STARTUI_SB_CNT];
+    DWORD winudk_PTRS[WINDOWSUDK_SHELLCOMMON_SB_CNT];
 } symbols_addr;
 #pragma pack(pop)
 
@@ -69,6 +76,7 @@ typedef struct _LoadSymbolsResult
     BOOL bNeedToDownloadTwinuiPcshellSymbols : 1;
     BOOL bNeedToDownloadStartDockedSymbols : 1;
     BOOL bNeedToDownloadStartUISymbols : 1;
+    BOOL bNeedToDownloadWinUDKSymbols : 1;
 } LoadSymbolsResult;
 
 inline BOOL NeedToDownloadSymbols(const LoadSymbolsResult* pLoadResult)
@@ -76,7 +84,8 @@ inline BOOL NeedToDownloadSymbols(const LoadSymbolsResult* pLoadResult)
     return pLoadResult->bNeedToDownloadExplorerSymbols
         || pLoadResult->bNeedToDownloadTwinuiPcshellSymbols
         || pLoadResult->bNeedToDownloadStartDockedSymbols
-        || pLoadResult->bNeedToDownloadStartUISymbols;
+        || pLoadResult->bNeedToDownloadStartUISymbols
+        || pLoadResult->bNeedToDownloadWinUDKSymbols;
 }
 
 typedef struct _DownloadSymbolsParams

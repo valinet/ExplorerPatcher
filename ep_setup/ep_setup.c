@@ -1490,6 +1490,21 @@ int WINAPI wWinMain(
 
         // --------------------------------------------------------------------------------
 
+        // C:\Windows\SystemApps\MicrosoftWindows.Client.CBS_cw5n1h2txyewy
+        // + dxgi.dll
+        if (CHECK_OK(bOk)) GetWindowsDirectoryW(wszPath, MAX_PATH);
+        if (CHECK_OK(bOk)) wcscat_s(wszPath, MAX_PATH, L"\\SystemApps\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy");
+        if (CHECK_OK(bOk) && FileExistsW(wszPath))
+        {
+#if defined(_M_X64)
+            if (CHECK_OK(bOk) && IsWindows11()) bOk = InstallResource(bInstall, hInstance, zipFile, PRODUCT_NAME ".amd64.dll", wszPath, L"dxgi.dll");
+#elif defined(_M_ARM64)
+            if (CHECK_OK(bOk) && IsWindows11()) bOk = InstallResource(bInstall, hInstance, zipFile, PRODUCT_NAME ".arm64.dll", wszPath, L"dxgi.dll");
+#endif
+        }
+
+        // --------------------------------------------------------------------------------
+
         // C:\Windows\SystemApps\ShellExperienceHost_cw5n1h2txyewy
         // + dxgi.dll
         if (CHECK_OK(bOk)) GetWindowsDirectoryW(wszPath, MAX_PATH);

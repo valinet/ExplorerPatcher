@@ -360,6 +360,19 @@ LSTATUS GUI_Internal_RegSetValueExW(
         }
         return ERROR_SUCCESS;
     }
+    else if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_SearchUI_FollowSystemTheme"))
+    {
+        RegSetKeyValueW(
+            HKEY_CURRENT_USER,
+            TEXT(REGPATH_OLD),
+            L"SearchUI_FollowSystemTheme",
+            dwType,
+            lpData,
+            cbData
+        );
+
+        return RegSetValueExW(hKey, L"SearchUI_FollowSystemTheme", 0, dwType, lpData, cbData);
+    }
     else if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_Start_MaximumFrequentApps"))
     {
         RegSetKeyValueW(
@@ -640,6 +653,10 @@ LSTATUS GUI_Internal_RegQueryValueExW(
     else if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_PeopleBand"))
     {
         return RegGetValueW(HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced\\People", L"PeopleBand", RRF_RT_DWORD, NULL, lpData, lpcbData);
+    }
+    else if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_SearchUI_FollowSystemTheme"))
+    {
+        return RegQueryValueExW(hKey, L"SearchUI_FollowSystemTheme", lpReserved, lpType, lpData, lpcbData);
     }
     else if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_Start_MaximumFrequentApps"))
     {

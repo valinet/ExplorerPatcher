@@ -314,6 +314,8 @@
 "MonitorOverride"=dword:00000001
 ;s StartMenu_Windows11 !IsWindows10StartMenu
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
+;b %R:1342%
+;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_SearchUI_FollowSystemTheme"=dword:00000000
 ;b %R:1325%
 ;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_StartDocked_DisableRecommendedSection"=dword:00000000
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\StartPage]

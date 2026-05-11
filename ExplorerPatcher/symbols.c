@@ -32,6 +32,10 @@ const char* startui_SN[STARTUI_SB_CNT] = {
     STARTUI_SB_0,
 };
 
+const char* winudk_SN[WINDOWSUDK_SHELLCOMMON_SB_CNT] = {
+    WINDOWSUDK_SHELLCOMMON_SB_WINRT_APPTHEME,
+};
+
 const wchar_t DownloadNotificationXML[] =
     L"<toast scenario=\"reminder\" "
     L"activationType=\"protocol\" launch=\"%s\" duration=\"%s\">\r\n"
@@ -390,6 +394,95 @@ static BOOL ProcessStartUISymbols(char* pszSettingsPath, DWORD* pOffsets)
     return TRUE;
 }
 
+static BOOL ProcessWindowsUDKSymbols(char* pszSettingsPath, DWORD* pOffsets)
+{
+    HKEY hKey = NULL;
+    DWORD dwDisposition;
+    RegCreateKeyExW(
+        HKEY_CURRENT_USER,
+        TEXT(REGPATH_STARTMENU) L"\\" TEXT(WINDOWSUDK_SHELLCOMMON_SB_NAME),
+        0,
+        NULL,
+        REG_OPTION_NON_VOLATILE,
+        KEY_WRITE,
+        NULL,
+        &hKey,
+        &dwDisposition
+    );
+    if (!hKey || hKey == INVALID_HANDLE_VALUE)
+    {
+        printf("[Symbols] Unable to create registry key.\n");
+        return FALSE;
+    }
+
+    WCHAR wszPath[MAX_PATH];
+    ZeroMemory(wszPath, sizeof(wszPath));
+    GetWindowsDirectoryW(wszPath, MAX_PATH);
+    wcscat_s(
+        wszPath,
+        MAX_PATH,
+        L"\\System32\\" L"windowsudk.shellcommon" L".dll"
+    );
+
+    if (!FileExistsW(wszPath))
+    {
+        if (hKey) RegCloseKey(hKey);
+        return TRUE; // windowsudk.shellcommon.dll is not present on this installation.
+    }
+
+    char winudk_sb_dll[MAX_PATH];
+    ZeroMemory(winudk_sb_dll, sizeof(winudk_sb_dll));
+    GetWindowsDirectoryA(winudk_sb_dll, MAX_PATH);
+    strcat_s(winudk_sb_dll, MAX_PATH,
+        "\\System32\\" "windowsudk.shellcommon" ".dll");
+
+    CHAR szHash[100];
+    ZeroMemory(szHash, sizeof(szHash));
+    ComputeFileHash(wszPath, szHash, ARRAYSIZE(szHash));
+
+    printf("[Symbols] Downloading symbols for \"%s\" (\"%s\")...\n",
+        winudk_sb_dll,
+        szHash
+    );
+
+    if (VnDownloadSymbols(
+        NULL,
+        winudk_sb_dll,
+        pszSettingsPath,
+        MAX_PATH
+    ))
+    {
+        printf("[Symbols] Symbols for \"%s\" are not available - unable to download.\n", winudk_sb_dll);
+        printf("[Symbols] Please refer to \"https://github.com/valinet/ExplorerPatcher/wiki/Symbols\" for more information.\n");
+        if (hKey) RegCloseKey(hKey);
+        return FALSE;
+    }
+
+    printf("[Symbols] Reading symbols...\n");
+
+    if (VnGetSymbols(
+        pszSettingsPath,
+        pOffsets,
+        (char**)winudk_SN,
+        WINDOWSUDK_SHELLCOMMON_SB_CNT
+    ))
+    {
+        printf("[Symbols] Failure in reading symbols for \"%s\".\n", winudk_sb_dll);
+        if (hKey) RegCloseKey(hKey);
+        return FALSE;
+    }
+
+    RegSetValueExW(hKey, TEXT(WINDOWSUDK_SHELLCOMMON_SB_WINRT_APPTHEME), 0, REG_DWORD, (const BYTE*)&pOffsets[0], sizeof(DWORD));
+
+    RegSetValueExA(hKey, "Hash", 0, REG_SZ, szHash, (DWORD)(strlen(szHash) + 1));
+
+    SaveVersion(hKey, WINDOWSUDK_SHELLCOMMON_SB_VERSION);
+
+    if (hKey) RegCloseKey(hKey);
+
+    return TRUE;
+}
+
 DWORD DownloadSymbols(DownloadSymbolsParams* params)
 {
     Sleep(6000);
@@ -546,6 +639,12 @@ DWORD DownloadSymbols(DownloadSymbolsParams* params)
     if (params->loadResult.bNeedToDownloadStartUISymbols && rovi.dwBuildNumber >= 18362)
     {
         BOOL bSuccess = ProcessStartUISymbols(szSettingsPath, symbols_PTRS.startui_PTRS);
+        bAnySuccess |= bSuccess;
+        bAllSuccess &= bSuccess;
+    }
+    if (params->loadResult.bNeedToDownloadWinUDKSymbols && IsWindows11())
+    {
+        BOOL bSuccess = ProcessWindowsUDKSymbols(szSettingsPath, symbols_PTRS.winudk_PTRS);
         bAnySuccess |= bSuccess;
         bAllSuccess &= bSuccess;
     }
@@ -840,6 +939,65 @@ LoadSymbolsResult LoadSymbols(symbols_addr* symbols_PTRS)
                HKEY_CURRENT_USER,
                TEXT(REGPATH_STARTMENU) L"\\" TEXT(STARTUI_SB_NAME)
            );
+        }
+    }
+
+    if (IsWindows11())
+    {
+        // Load windowsudk.shellcommon.dll offsets
+        bOffsetsValid = FALSE;
+        RegCreateKeyExW(
+            HKEY_CURRENT_USER,
+            TEXT(REGPATH_STARTMENU) L"\\" TEXT(WINDOWSUDK_SHELLCOMMON_SB_NAME),
+            0,
+            NULL,
+            REG_OPTION_NON_VOLATILE,
+            KEY_READ,
+            NULL,
+            &hKey,
+            &dwDisposition
+        );
+
+        GetWindowsDirectoryW(wszPath, MAX_PATH);
+        wcscat_s(
+            wszPath,
+            MAX_PATH,
+            L"\\System32\\"
+            L"windowsudk.shellcommon"
+            L".dll"
+        );
+
+        if (ComputeFileHash(wszPath, szHash, ARRAYSIZE(szHash)) == ERROR_SUCCESS)
+        {
+            szStoredHash[0] = 0;
+            dwSize = sizeof(szStoredHash);
+            if (RegQueryValueExA(hKey, "Hash", 0, NULL, szStoredHash, &dwSize) == ERROR_SUCCESS
+                && !_stricmp(szHash, szStoredHash) && CheckVersion(hKey, WINDOWSUDK_SHELLCOMMON_SB_VERSION))
+            {
+                dwSize = sizeof(DWORD);
+                RegQueryValueExW(hKey, TEXT(WINDOWSUDK_SHELLCOMMON_SB_WINRT_APPTHEME), 0, NULL, (LPBYTE)&symbols_PTRS->winudk_PTRS[0], &dwSize);
+
+                bOffsetsValid =
+                    symbols_PTRS->winudk_PTRS[0];
+            }
+
+            if (!bOffsetsValid)
+            {
+                printf("[Symbols] Symbols for \"%s\" are not available.\n", WINDOWSUDK_SHELLCOMMON_SB_NAME);
+#ifdef _M_X64 // TODO Add support for ARM64
+                result.bNeedToDownloadWinUDKSymbols = TRUE;
+#endif
+            }
+        }
+
+        if (hKey) RegCloseKey(hKey);
+
+        if (!bOffsetsValid)
+        {
+            RegDeleteTreeW(
+                HKEY_CURRENT_USER,
+                TEXT(REGPATH_STARTMENU) L"\\" TEXT(WINDOWSUDK_SHELLCOMMON_SB_NAME)
+            );
         }
     }
 

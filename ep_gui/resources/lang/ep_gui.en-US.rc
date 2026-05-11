@@ -203,6 +203,7 @@ BEGIN
     IDS_START_APPLIST_1         "Disable"
     IDS_START_NOTICE            "IMPORTANT, MUST READ: Notice regarding this feature (online)"
     IDS_START_WIN10_NOTICE      "Some settings might not be available in older Windows 10 versions."
+    IDS_SEARCHUI_FOLLOWSYSTEMTHEME "Search Box follows System Theme"
 
     IDS_AT                      "Window switcher"
 
