@@ -5,7 +5,7 @@
 
 using namespace Microsoft::WRL;
 
-namespace wis = Windows::Internal::Shell;
+namespace wis = ABI::Windows::Internal::Shell;
 namespace wf = ABI::Windows::Foundation;
 
 using namespace ABI;
@@ -43,22 +43,22 @@ private:
 HRESULT CStartExperienceWrapper::RuntimeClassInitialize(IStartExperience* pInner)
 {
     _spInner = pInner;
-    RETURN_HR(S_OK);
+    return S_OK;
 }
 
 HRESULT CStartExperienceWrapper::ProcessBackgroundImage(IInspectable* a1, int a2, INT64* a3)
 {
-    RETURN_HR(_spInner->ProcessBackgroundImage(a1, a2, a3));
+    return _spInner->ProcessBackgroundImage(a1, a2, a3);
 }
 
 HRESULT CStartExperienceWrapper::get_WaitableExplorerProcessHandle(UINT64* a1)
 {
-    RETURN_HR(_spInner->get_WaitableExplorerProcessHandle(a1));
+    return _spInner->get_WaitableExplorerProcessHandle(a1);
 }
 
 HRESULT CStartExperienceWrapper::PromoteAppsToTopOfFrequentList(wf::Collections::IVector<HSTRING>* a1)
 {
-    RETURN_HR(_spInner->PromoteAppsToTopOfFrequentList(a1));
+    return _spInner->PromoteAppsToTopOfFrequentList(a1);
 }
 
 HRESULT CStartExperienceWrapper::add_GlobalAnimationRequested(
@@ -66,12 +66,12 @@ HRESULT CStartExperienceWrapper::add_GlobalAnimationRequested(
         wis::StartUI::StartExperience*, wis::StartUI::StartExperienceAnimationRequestedEventArgs*>* a1,
         EventRegistrationToken* token)
 {
-    RETURN_HR(_spInner->add_GlobalAnimationRequested(a1, token));
+    return _spInner->add_GlobalAnimationRequested(a1, token);
 }
 
 HRESULT CStartExperienceWrapper::remove_GlobalAnimationRequested(EventRegistrationToken token)
 {
-    RETURN_HR(_spInner->remove_GlobalAnimationRequested(token));
+    return _spInner->remove_GlobalAnimationRequested(token);
 }
 
 HRESULT CStartExperienceWrapper::add_ShellModeChanged(
@@ -79,12 +79,12 @@ HRESULT CStartExperienceWrapper::add_ShellModeChanged(
         wis::StartUI::StartExperience*, wis::StartUI::ShellModeChangedEventArgs*>* a1, EventRegistrationToken* token)
 {
     *token = {};
-    RETURN_HR(S_OK);
+    return S_OK;
 }
 
 HRESULT CStartExperienceWrapper::remove_ShellModeChanged(EventRegistrationToken token)
 {
-    RETURN_HR(S_OK);
+    return S_OK;
 }
 
 class CStartExperienceStaticsWrapper
@@ -110,7 +110,7 @@ private:
 HRESULT CStartExperienceStaticsWrapper::RuntimeClassInitialize(IStartExperienceStatics* pInner)
 {
     _spInner = pInner;
-    RETURN_HR(S_OK);
+    return S_OK;
 }
 
 HRESULT CStartExperienceStaticsWrapper::GetForCurrentView(wis::StartUI::IStartExperience** ppStartExperience)

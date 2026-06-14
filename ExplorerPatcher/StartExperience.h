@@ -8,7 +8,7 @@
 DEFINE_GUID(IID_IStartExperience, 0x4C4D0C66, 0x5BD5, 0xFD8C, 0x61, 0x7F, 0x3C, 0x77, 0x78, 0xF4, 0x6B, 0xB6);
 DEFINE_GUID(IID_IStartExperienceStatics, 0xFB2E3E59, 0xB442, 0x4B5B, 0x91, 0x28, 0x23, 0x19, 0xBF, 0x8D, 0xE3, 0xB0);
 
-namespace Windows::Internal::Shell::StartUI
+namespace ABI::Windows::Internal::Shell::StartUI
 {
 
 struct StartExperience;
@@ -40,6 +40,6 @@ IStartExperienceStatics : IInspectable
     virtual HRESULT STDMETHODCALLTYPE GetIfNoCurrentView(IStartExperience**) = 0;
 };
 
-} // Windows::Internal::Shell::StartUI
+} // ABI::Windows::Internal::Shell::StartUI
 
 EXTERN_C HRESULT StartExperienceWrapper_Wrap(REFIID riid, void** ppv);
