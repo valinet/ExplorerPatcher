@@ -12215,6 +12215,27 @@ HRESULT StartUI_CoCreateInstanceHook(REFCLSID rclsid, LPUNKNOWN pUnkOuter, DWORD
     return CoCreateInstance(rclsid, pUnkOuter, dwClsContext, riid, ppv);
 }
 
+HRESULT StartExperienceWrapper_Wrap(REFIID riid, void** ppv);
+
+EXTERN_C const IID IID_IStartExperienceStatics;
+
+HRESULT (STDAPICALLTYPE *StartUI_GetActivationFactoryByPCWSTRFunc)(PCWSTR activatableClassId, REFIID riid, void** ppv);
+HRESULT STDAPICALLTYPE StartUI_GetActivationFactoryByPCWSTRHook(PCWSTR activatableClassId, REFIID riid, void** ppv)
+{
+    if (wcscmp(activatableClassId, L"Windows.Internal.Shell.StartUI.StartExperience") == 0
+        && IsEqualIID(riid, &IID_IStartExperienceStatics))
+    {
+        HRESULT hr = StartUI_GetActivationFactoryByPCWSTRFunc(activatableClassId, riid, ppv);
+        if (SUCCEEDED(hr))
+        {
+            hr = StartExperienceWrapper_Wrap(riid, ppv);
+        }
+        return hr;
+    }
+
+    return StartUI_GetActivationFactoryByPCWSTRFunc(activatableClassId, riid, ppv);
+}
+
 int Start_SetWindowRgn(HWND hWnd, HRGN hRgn, BOOL bRedraw)
 {
     WCHAR wszDebug[MAX_PATH];
@@ -12846,6 +12867,17 @@ DWORD InjectStartMenu()
             VnPatchIAT(hWindowsCloudStore, "api-ms-win-core-registry-l1-1-0.dll", "RegOpenKeyExW", StartUI_RegOpenKeyExW);
             VnPatchIAT(hWindowsCloudStore, "api-ms-win-core-registry-l1-1-0.dll", "RegQueryValueExW", StartUI_RegQueryValueExW);
             VnPatchIAT(hWindowsCloudStore, "api-ms-win-core-registry-l1-1-0.dll", "RegCloseKey", StartUI_RegCloseKey);
+
+            // Adds compatibility with RLTM ("Remove Legacy Tablet Mode" / 61558864) feature flag
+            HANDLE hWincorlib = GetModuleHandleW(L"wincorlib.DLL");
+            if (hWincorlib)
+            {
+                StartUI_GetActivationFactoryByPCWSTRFunc = GetProcAddress(hWincorlib, "?GetActivationFactoryByPCWSTR@@YAJPEAXAEAVGuid@Platform@@PEAPEAX@Z");
+            }
+            if (StartUI_GetActivationFactoryByPCWSTRFunc)
+            {
+                VnPatchIAT(hStartUI, "wincorlib.DLL", "?GetActivationFactoryByPCWSTR@@YAJPEAXAEAVGuid@Platform@@PEAPEAX@Z", StartUI_GetActivationFactoryByPCWSTRHook);
+            }
         }
     }
     else
