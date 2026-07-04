@@ -3411,499 +3411,553 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
     return TRUE;
 }
 
-static LRESULT CALLBACK GUI_WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
-    GUI* _this;
-    if (uMsg == WM_CREATE)
+LRESULT CALLBACK GUIWndProc(GUI* pThis, HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+    switch (uMsg)
     {
-        CREATESTRUCT* pCreate = (CREATESTRUCT*)(lParam);
-        _this = (int*)(pCreate->lpCreateParams);
-        SetWindowLongPtr(hWnd, GWLP_USERDATA, (LONG_PTR)_this);
-        UINT dpiX, dpiY, dpiXP, dpiYP;
-        POINT ptCursor, ptZero;
-        ptZero.x = 0;
-        ptZero.y = 0;
-        GetCursorPos(&ptCursor);
-        HMONITOR hMonitor = MonitorFromPoint(ptCursor, MONITOR_DEFAULTTOPRIMARY);
-        HMONITOR hPrimaryMonitor = MonitorFromPoint(ptZero, MONITOR_DEFAULTTOPRIMARY);
-        HRESULT hr = GetDpiForMonitor(
-            hMonitor,
-            MDT_DEFAULT,
-            &dpiX,
-            &dpiY
-        );
-        hr = GetDpiForMonitor(
-            hPrimaryMonitor,
-            MDT_DEFAULT,
-            &dpiXP,
-            &dpiYP
-        );
-        MONITORINFO mi;
-        mi.cbSize = sizeof(MONITORINFO);
-        GetMonitorInfo(hMonitor, &mi);
-        double dx = dpiX / 96.0, dy = dpiY / 96.0, dxp = dpiXP / 96.0, dyp = dpiYP / 96.0;
-        _this->dpi.x = dpiX;
-        _this->dpi.y = dpiY;
-        SetRect(&_this->border_thickness, 2, 2, 2, 2);
-        if (IsThemeActive() && IsWindows11() && !IsDwmExtendFrameIntoClientAreaBrokenInThisBuild())
+        case WM_CREATE:
         {
-            BOOL bIsCompositionEnabled = TRUE;
-            DwmIsCompositionEnabled(&bIsCompositionEnabled);
-            if (bIsCompositionEnabled)
-            {
-                MARGINS marGlassInset;
-                if (!IsHighContrast())
-                {
-                    marGlassInset.cxLeftWidth = -1; // -1 means the whole window
-                    marGlassInset.cxRightWidth = -1;
-                    marGlassInset.cyBottomHeight = -1;
-                    marGlassInset.cyTopHeight = -1;
-                }
-                else
-                {
-                    marGlassInset.cxLeftWidth = 0;
-                    marGlassInset.cxRightWidth = 0;
-                    marGlassInset.cyBottomHeight = 0;
-                    marGlassInset.cyTopHeight = 0;
-                }
-                DwmExtendFrameIntoClientArea(hWnd, &marGlassInset);
-            }
-        }
-        SetWindowPos(
-            hWnd,
-            hWnd,
-            mi.rcWork.left + ((mi.rcWork.right - mi.rcWork.left) / 2 - (_this->size.cx * dx) / 2),
-            mi.rcWork.top + ((mi.rcWork.bottom - mi.rcWork.top) / 2 - (_this->size.cy * dy) / 2),
-            _this->size.cx * dxp,
-            _this->size.cy * dyp,
-            SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED
-        );
-        SetTimer(hWnd, GUI_TIMER_READ_HELP, GUI_TIMER_READ_HELP_TIMEOUT, NULL);
-        if (IsThemeActive() && !IsHighContrast() && IsWindows11() && !IsDwmExtendFrameIntoClientAreaBrokenInThisBuild())
-        {
-            RECT rcTitle;
-            DwmGetWindowAttribute(hWnd, DWMWA_CAPTION_BUTTON_BOUNDS, &rcTitle, sizeof(RECT));
-            _this->GUI_CAPTION_LINE_HEIGHT = rcTitle.bottom - rcTitle.top;
-        }
-        else
-        {
-            _this->GUI_CAPTION_LINE_HEIGHT = GUI_CAPTION_LINE_HEIGHT_DEFAULT;
-        }
-        if (IsThemeActive() && ShouldAppsUseDarkMode && !IsHighContrast())
-        {
-            AllowDarkModeForWindow(hWnd, g_darkModeEnabled);
-            BOOL value = g_darkModeEnabled;
-            int s = 0;
-            if (global_rovi.dwBuildNumber < 18985)
-            {
-                s = -1;
-            }
-            DwmSetWindowAttribute(hWnd, DWMWA_USE_IMMERSIVE_DARK_MODE + s, &value, sizeof(BOOL));
-        }
-        if (!IsThemeActive() || IsHighContrast() || !IsWindows11() || IsDwmExtendFrameIntoClientAreaBrokenInThisBuild())
-        {
-            int extendedStyle = GetWindowLong(hWnd, GWL_EXSTYLE);
-            SetWindowLong(hWnd, GWL_EXSTYLE, extendedStyle | WS_EX_DLGMODALFRAME);
-        }
-    }
-    else
-    {
-        LONG_PTR ptr = GetWindowLongPtr(hWnd, GWLP_USERDATA);
-        _this = (int*)(ptr);
-    }
-    if (uMsg == WM_DESTROY)
-    {
-        PostQuitMessage(0);
-        return 0;
-    }
-    else if (uMsg == WM_GETICON)
-    {
-        return _this->hIcon;
-    }
-    else if (uMsg == WM_SETTINGCHANGE)
-    {
-        if (IsColorSchemeChangeMessage(lParam))
-        {
+            UINT dpiX, dpiY, dpiXP, dpiYP;
+            POINT ptCursor, ptZero;
+            ptZero.x = 0;
+            ptZero.y = 0;
+            GetCursorPos(&ptCursor);
+            HMONITOR hMonitor = MonitorFromPoint(ptCursor, MONITOR_DEFAULTTOPRIMARY);
+            HMONITOR hPrimaryMonitor = MonitorFromPoint(ptZero, MONITOR_DEFAULTTOPRIMARY);
+            HRESULT hr = GetDpiForMonitor(
+                hMonitor,
+                MDT_DEFAULT,
+                &dpiX,
+                &dpiY
+            );
+            hr = GetDpiForMonitor(
+                hPrimaryMonitor,
+                MDT_DEFAULT,
+                &dpiXP,
+                &dpiYP
+            );
+            MONITORINFO mi;
+            mi.cbSize = sizeof(MONITORINFO);
+            GetMonitorInfoW(hMonitor, &mi);
+            double dx = dpiX / 96.0, dy = dpiY / 96.0, dxp = dpiXP / 96.0, dyp = dpiYP / 96.0;
+            pThis->dpi.x = dpiX;
+            pThis->dpi.y = dpiY;
+
+            SetRect(&pThis->border_thickness, 2, 2, 2, 2);
             if (IsThemeActive() && IsWindows11() && !IsDwmExtendFrameIntoClientAreaBrokenInThisBuild())
             {
                 BOOL bIsCompositionEnabled = TRUE;
                 DwmIsCompositionEnabled(&bIsCompositionEnabled);
                 if (bIsCompositionEnabled)
                 {
-                    MARGINS marGlassInset;
+                    MARGINS marGlassInset = { 0, 0, 0, 0 };
                     if (!IsHighContrast())
                     {
-                        marGlassInset.cxLeftWidth = -1; // -1 means the whole window
+                        // Extend the glass frame into the whole window
+                        marGlassInset.cxLeftWidth = -1;
                         marGlassInset.cxRightWidth = -1;
                         marGlassInset.cyBottomHeight = -1;
                         marGlassInset.cyTopHeight = -1;
                     }
-                    else
-                    {
-                        marGlassInset.cxLeftWidth = 0;
-                        marGlassInset.cxRightWidth = 0;
-                        marGlassInset.cyBottomHeight = 0;
-                        marGlassInset.cyTopHeight = 0;
-                    }
                     DwmExtendFrameIntoClientArea(hWnd, &marGlassInset);
                 }
             }
-            BOOL bIsCompositionEnabled = TRUE;
-            DwmIsCompositionEnabled(&bIsCompositionEnabled);
-            if (bIsCompositionEnabled)
+            SetWindowPos(
+                hWnd,
+                hWnd,
+                mi.rcWork.left + ((mi.rcWork.right - mi.rcWork.left) / 2 - (pThis->size.cx * dx) / 2),
+                mi.rcWork.top + ((mi.rcWork.bottom - mi.rcWork.top) / 2 - (pThis->size.cy * dy) / 2),
+                pThis->size.cx * dxp,
+                pThis->size.cy * dyp,
+                SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED
+            );
+            SetTimer(hWnd, GUI_TIMER_READ_HELP, GUI_TIMER_READ_HELP_TIMEOUT, NULL);
+
+            if (IsThemeActive() && !IsHighContrast() && IsWindows11() && !IsDwmExtendFrameIntoClientAreaBrokenInThisBuild())
             {
-                BOOL value = (IsThemeActive() && !IsHighContrast() && IsWindows11()) ? 1 : 0;
-                SetMicaMaterialForThisWindow(hWnd, value);
+                RECT rcTitle;
+                DwmGetWindowAttribute(hWnd, DWMWA_CAPTION_BUTTON_BOUNDS, &rcTitle, sizeof(RECT));
+                pThis->GUI_CAPTION_LINE_HEIGHT = rcTitle.bottom - rcTitle.top;
+            }
+            else
+            {
+                pThis->GUI_CAPTION_LINE_HEIGHT = GUI_CAPTION_LINE_HEIGHT_DEFAULT;
             }
             if (IsThemeActive() && ShouldAppsUseDarkMode && !IsHighContrast())
             {
-                RefreshImmersiveColorPolicyState();
-                BOOL bDarkModeEnabled = IsThemeActive() && bIsCompositionEnabled && ShouldAppsUseDarkMode() && !IsHighContrast();
-                if (bDarkModeEnabled != g_darkModeEnabled)
+                AllowDarkModeForWindow(hWnd, g_darkModeEnabled);
+                BOOL value = g_darkModeEnabled;
+                int s = 0;
+                if (global_rovi.dwBuildNumber < 18985)
                 {
-                    g_darkModeEnabled = bDarkModeEnabled;
-                    AllowDarkModeForWindow(hWnd, g_darkModeEnabled);
-                    BOOL value = g_darkModeEnabled;
-                    int s = 0;
-                    if (global_rovi.dwBuildNumber < 18985)
-                    {
-                        s = -1;
-                    }
-                    DwmSetWindowAttribute(hWnd, DWMWA_USE_IMMERSIVE_DARK_MODE + s, &value, sizeof(BOOL));
-                    _this->bCalcExtent = 2;
-                    _this->last_section = _this->section;
-                    _this->section = 0;
-                    InvalidateRect(hWnd, NULL, FALSE);
+                    s = -1;
                 }
+                DwmSetWindowAttribute(hWnd, DWMWA_USE_IMMERSIVE_DARK_MODE + s, &value, sizeof(BOOL));
             }
-            else
+            if (!IsThemeActive() || IsHighContrast() || !IsWindows11() || IsDwmExtendFrameIntoClientAreaBrokenInThisBuild())
             {
-                _this->bCalcExtent = 2;
-                _this->last_section = _this->section;
-                _this->section = 0;
-                InvalidateRect(hWnd, NULL, FALSE);
+                int extendedStyle = GetWindowLongPtrW(hWnd, GWL_EXSTYLE);
+                SetWindowLongPtrW(hWnd, GWL_EXSTYLE, extendedStyle | WS_EX_DLGMODALFRAME);
             }
+            break;
         }
-    }
-    else if (uMsg == WM_KEYDOWN)
-    {
-        _this->bRebuildIfTabOrderIsEmpty = FALSE;
-        if (wParam == VK_ESCAPE)
+        case WM_DESTROY:
         {
-            PostMessage(hWnd, WM_CLOSE, 0, 0);
+            PostQuitMessage(0);
             return 0;
         }
-        else if (wParam == VK_TAB || wParam == VK_DOWN || wParam == VK_UP)
+        case WM_GETICON:
         {
-            if ((GetKeyState(VK_SHIFT) & 0x8000) || wParam == VK_UP)
+            return pThis->hIcon;
+        }
+        case WM_SETTINGCHANGE:
+        {
+            if (IsColorSchemeChangeMessage(lParam))
             {
-                if (_this->tabOrder == 0)
+                if (IsThemeActive() && IsWindows11() && !IsDwmExtendFrameIntoClientAreaBrokenInThisBuild())
                 {
-                    _this->tabOrder = GUI_MAX_TABORDER;
+                    BOOL bIsCompositionEnabled = TRUE;
+                    DwmIsCompositionEnabled(&bIsCompositionEnabled);
+                    if (bIsCompositionEnabled)
+                    {
+                        MARGINS marGlassInset = { 0, 0, 0, 0 };
+                        if (!IsHighContrast())
+                        {
+                            // Extend the glass frame into the whole window
+                            marGlassInset.cxLeftWidth = -1;
+                            marGlassInset.cxRightWidth = -1;
+                            marGlassInset.cyBottomHeight = -1;
+                            marGlassInset.cyTopHeight = -1;
+                        }
+                        DwmExtendFrameIntoClientArea(hWnd, &marGlassInset);
+                    }
+                }
+
+                BOOL fCompositionEnabled = TRUE;
+                DwmIsCompositionEnabled(&fCompositionEnabled);
+                if (fCompositionEnabled)
+                {
+                    BOOL fApply = (IsThemeActive() && !IsHighContrast() && IsWindows11()) ? 1 : 0;
+                    SetMicaMaterialForThisWindow(hWnd, fApply);
+                }
+                if (IsThemeActive() && ShouldAppsUseDarkMode && !IsHighContrast())
+                {
+                    RefreshImmersiveColorPolicyState();
+                    BOOL bDarkModeEnabled = IsThemeActive() && fCompositionEnabled && ShouldAppsUseDarkMode() && !IsHighContrast();
+                    if (bDarkModeEnabled != g_darkModeEnabled)
+                    {
+                        g_darkModeEnabled = bDarkModeEnabled;
+                        AllowDarkModeForWindow(hWnd, g_darkModeEnabled);
+                        BOOL value = g_darkModeEnabled;
+                        int s = 0;
+                        if (global_rovi.dwBuildNumber < 18985)
+                        {
+                            s = -1;
+                        }
+                        DwmSetWindowAttribute(hWnd, DWMWA_USE_IMMERSIVE_DARK_MODE + s, &value, sizeof(BOOL));
+                        pThis->bCalcExtent = 2;
+                        pThis->last_section = pThis->section;
+                        pThis->section = 0;
+                        InvalidateRect(hWnd, NULL, FALSE);
+                    }
                 }
                 else
                 {
-                    _this->tabOrder--;
-                    if (_this->tabOrder == 0)
-                    {
-                        _this->tabOrder = GUI_MAX_TABORDER;
-                    }
+                    pThis->bCalcExtent = 2;
+                    pThis->last_section = pThis->section;
+                    pThis->section = 0;
+                    InvalidateRect(hWnd, NULL, FALSE);
                 }
             }
-            else
-            {
-                _this->tabOrder++;
-            }
-            _this->bRebuildIfTabOrderIsEmpty = TRUE;
-            _this->bShouldAnnounceSelected = TRUE;
-            InvalidateRect(hWnd, NULL, FALSE);
-            return 0;
+            break;
         }
-        else if (wParam == VK_SPACE || wParam == VK_RETURN)
+        case WM_KEYDOWN:
+        {
+            pThis->bRebuildIfTabOrderIsEmpty = FALSE;
+            switch (wParam)
+            {
+                case VK_ESCAPE:
+                {
+                    PostMessageW(hWnd, WM_CLOSE, 0, 0);
+                    return 0;
+                }
+                case VK_TAB:
+                case VK_DOWN:
+                case VK_UP:
+                {
+                    if ((GetKeyState(VK_SHIFT) & 0x8000) || wParam == VK_UP)
+                    {
+                        if (pThis->tabOrder == 0)
+                        {
+                            pThis->tabOrder = GUI_MAX_TABORDER;
+                        }
+                        else
+                        {
+                            pThis->tabOrder--;
+                            if (pThis->tabOrder == 0)
+                            {
+                                pThis->tabOrder = GUI_MAX_TABORDER;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        pThis->tabOrder++;
+                    }
+                    pThis->bRebuildIfTabOrderIsEmpty = TRUE;
+                    pThis->bShouldAnnounceSelected = TRUE;
+                    InvalidateRect(hWnd, NULL, FALSE);
+                    return 0;
+                }
+                case VK_SPACE:
+                case VK_RETURN:
+                {
+                    POINT pt = { 0, 0 };
+                    pThis->bShouldAnnounceSelected = TRUE;
+                    GUI_Build(0, hWnd, pt);
+                    return 0;
+                }
+                case VK_LEFT:
+                case VK_RIGHT:
+                {
+                    int min_section = 0;
+                    int max_section = 100;
+                    int new_section = pThis->section;
+                    for (unsigned int i = 0; i < 100; ++i)
+                    {
+                        if (pThis->sectionNames[i][0] == 0)
+                        {
+                            max_section = i - 1;
+                            break;
+                        }
+                    }
+                    if (wParam == VK_LEFT)
+                    {
+                        new_section--;
+                    }
+                    else
+                    {
+                        new_section++;
+                    }
+                    if (new_section < min_section)
+                    {
+                        new_section = max_section;
+                    }
+                    if (new_section > max_section)
+                    {
+                        new_section = min_section;
+                    }
+                    if (pThis->section != new_section)
+                    {
+                        pThis->tabOrder = 0;
+                        GUI_SetSection(pThis, TRUE, new_section);
+                        pThis->bShouldAnnounceSelected = TRUE;
+                        InvalidateRect(hWnd, NULL, FALSE);
+                    }
+                    return 0;
+                }
+                case 'H':
+                case VK_F1:
+                {
+                    SetTimer(hWnd, GUI_TIMER_READ_HELP, 200, NULL);
+                    return 0;
+                }
+                case VK_F5:
+                {
+                    InvalidateRect(hWnd, NULL, FALSE);
+                    return 0;
+                }
+                case 'Z':
+                {
+                    return 0;
+                }
+                case 'X':
+                {
+                    return 0;
+                }
+            }
+            if (wParam >= '1' && wParam <= '9' || wParam == '0' || wParam == MapVirtualKeyW(0x0C, MAPVK_VSC_TO_VK_EX)
+                || wParam == MapVirtualKeyW(0x0D, MAPVK_VSC_TO_VK_EX))
+            {
+                int min_section = 0;
+                int max_section = 100;
+                for (unsigned int i = 0; i < 100; ++i)
+                {
+                    if (pThis->sectionNames[i][0] == 0)
+                    {
+                        max_section = i - 1;
+                        break;
+                    }
+                }
+                int new_section = 0;
+                if (wParam == MapVirtualKeyW(0x0C, MAPVK_VSC_TO_VK_EX)) new_section = 10;
+                else if (wParam == MapVirtualKeyW(0x0D, MAPVK_VSC_TO_VK_EX)) new_section = 11;
+                else new_section = (wParam == '0' ? 9 : wParam - '1');
+                if (new_section < min_section) return 0;
+                if (new_section > max_section) return 0;
+                if (pThis->section != new_section)
+                {
+                    pThis->tabOrder = 0;
+                    GUI_SetSection(pThis, TRUE, new_section);
+                    pThis->bShouldAnnounceSelected = TRUE;
+                    InvalidateRect(hWnd, NULL, FALSE);
+                }
+                return 0;
+            }
+            break;
+        }
+        case WM_NCMOUSELEAVE:
+        {
+            if (IsThemeActive() && !IsHighContrast() && IsWindows11()
+                && !IsDwmExtendFrameIntoClientAreaBrokenInThisBuild())
+            {
+                LRESULT lRes = 0;
+                if (DwmDefWindowProc(hWnd, uMsg, wParam, lParam, &lRes))
+                {
+                    return lRes;
+                }
+            }
+            break;
+        }
+        case WM_NCRBUTTONUP:
+        {
+            if (IsThemeActive() && !IsHighContrast() && IsWindows11()
+                && !IsDwmExtendFrameIntoClientAreaBrokenInThisBuild())
+            {
+                HMENU pSysMenu = GetSystemMenu(hWnd, FALSE);
+                if (pSysMenu != NULL)
+                {
+                    int xPos = GET_X_LPARAM(lParam);
+                    int yPos = GET_Y_LPARAM(lParam);
+                    EnableMenuItem(pSysMenu, SC_RESTORE, MF_GRAYED);
+                    EnableMenuItem(pSysMenu, SC_SIZE, MF_GRAYED);
+                    EnableMenuItem(pSysMenu, SC_MAXIMIZE, MF_GRAYED);
+                    BOOL cmd = TrackPopupMenu(
+                        pSysMenu, TPM_LEFTALIGN | TPM_LEFTBUTTON | TPM_RIGHTBUTTON | TPM_RETURNCMD, xPos, yPos, NULL,
+                        hWnd, 0);
+                    if (cmd)
+                    {
+                        PostMessageW(hWnd, WM_SYSCOMMAND, cmd, 0);
+                    }
+                }
+                return 0;
+            }
+            break;
+        }
+        case WM_LBUTTONUP:
+        case WM_RBUTTONUP:
+        {
+            if (IsThemeActive() && !IsHighContrast() && IsWindows11()
+                && !IsDwmExtendFrameIntoClientAreaBrokenInThisBuild())
+            {
+                POINT pt;
+                pt.x = GET_X_LPARAM(lParam);
+                pt.y = GET_Y_LPARAM(lParam);
+
+                double dx = pThis->dpi.x / 96.0, dy = pThis->dpi.y / 96.0;
+                UINT diff = (int)(((pThis->GUI_CAPTION_LINE_HEIGHT - 16) * dx) / 2.0);
+                RECT rc;
+                SetRect(&rc, diff, diff, diff + (int)(16.0 * dx), diff + (int)(16.0 * dy));
+                if (PtInRect(&rc, pt))
+                {
+                    if (uMsg == WM_LBUTTONUP && pThis->LeftClickTime != 0)
+                    {
+                        pThis->LeftClickTime = milliseconds_now() - pThis->LeftClickTime;
+                    }
+                    if (uMsg == WM_LBUTTONUP && pThis->LeftClickTime != 0 && pThis->LeftClickTime < GetDoubleClickTime())
+                    {
+                        pThis->LeftClickTime = 0;
+                        PostQuitMessage(0);
+                    }
+                    else
+                    {
+                        if (uMsg == WM_LBUTTONUP)
+                        {
+                            pThis->LeftClickTime = milliseconds_now();
+                        }
+                        if (uMsg == WM_RBUTTONUP || !pThis->LastClickTime || milliseconds_now() - pThis->LastClickTime > 500)
+                        {
+                            HMENU pSysMenu = GetSystemMenu(hWnd, FALSE);
+                            if (pSysMenu != NULL)
+                            {
+                                if (uMsg == WM_LBUTTONUP)
+                                {
+                                    pt.x = 0;
+                                    pt.y = pThis->GUI_CAPTION_LINE_HEIGHT * dy;
+                                }
+                                ClientToScreen(hWnd, &pt);
+                                EnableMenuItem(pSysMenu, SC_RESTORE, MF_GRAYED);
+                                EnableMenuItem(pSysMenu, SC_SIZE, MF_GRAYED);
+                                EnableMenuItem(pSysMenu, SC_MAXIMIZE, MF_GRAYED);
+                                BOOL cmd = TrackPopupMenu(pSysMenu, TPM_LEFTALIGN | TPM_LEFTBUTTON | TPM_RIGHTBUTTON | TPM_RETURNCMD, pt.x, pt.y, NULL, hWnd, 0);
+                                if (cmd)
+                                {
+                                    PostMessageW(hWnd, WM_SYSCOMMAND, cmd, 0);
+                                }
+                                if (uMsg == WM_LBUTTONUP)
+                                {
+                                    pThis->LastClickTime = milliseconds_now();
+                                }
+                            }
+                        }
+                    }
+                    return 0;
+                }
+            }
+            break;
+        }
+        case WM_NCHITTEST:
+        {
+            if (IsThemeActive() && !IsHighContrast() && IsWindows11()
+                && !IsDwmExtendFrameIntoClientAreaBrokenInThisBuild())
+            {
+                LRESULT lRes = 0;
+                if (DwmDefWindowProc(hWnd, uMsg, wParam, lParam, &lRes))
+                {
+                    return lRes;
+                }
+
+                POINT pt;
+                pt.x = GET_X_LPARAM(lParam);
+                pt.y = GET_Y_LPARAM(lParam);
+                ScreenToClient(hWnd, &pt);
+
+                double dx = pThis->dpi.x / 96.0, dy = pThis->dpi.y / 96.0;
+                UINT diff = (int)(((pThis->GUI_CAPTION_LINE_HEIGHT - 16) * dx) / 2.0);
+                RECT rc;
+                SetRect(&rc, diff, diff, diff + (int)(16.0 * dx), diff + (int)(16.0 * dy));
+                if (PtInRect(&rc, pt))
+                {
+                    return HTCLIENT;
+                }
+
+                if (pt.y < pThis->extent.cyTopHeight)
+                {
+                    return HTCAPTION;
+                }
+            }
+            break;
+        }
+        case WM_NCCALCSIZE:
+        {
+            if (wParam == TRUE && IsThemeActive() && !IsHighContrast() && IsWindows11()
+                && !IsDwmExtendFrameIntoClientAreaBrokenInThisBuild())
+            {
+                NCCALCSIZE_PARAMS* sz = (NCCALCSIZE_PARAMS*)lParam;
+                sz->rgrc[0].left += pThis->border_thickness.left;
+                sz->rgrc[0].right -= pThis->border_thickness.right;
+                sz->rgrc[0].bottom -= pThis->border_thickness.bottom;
+                return 0;
+            }
+            break;
+        }
+        case WM_LBUTTONDOWN:
         {
             POINT pt;
-            pt.x = 0;
-            pt.y = 0;
-            _this->bShouldAnnounceSelected = TRUE;
+            pt.x = GET_X_LPARAM(lParam);
+            pt.y = GET_Y_LPARAM(lParam);
             GUI_Build(0, hWnd, pt);
+            //InvalidateRect(hWnd, NULL, FALSE);
+            break;
+        }
+        case WM_DPICHANGED:
+        {
+            pThis->dpi.x = LOWORD(wParam);
+            pThis->dpi.y = HIWORD(wParam);
+
+            RECT* rc = (RECT*)lParam;
+            SetWindowPos(
+                hWnd,
+                hWnd,
+                rc->left,
+                rc->top,
+                rc->right - rc->left,
+                rc->bottom - rc->top,
+                SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOCOPYBITS
+            );
+            RECT rcTitle;
+            DwmGetWindowAttribute(hWnd, DWMWA_CAPTION_BUTTON_BOUNDS, &rcTitle, sizeof(RECT));
+            pThis->GUI_CAPTION_LINE_HEIGHT = (rcTitle.bottom - rcTitle.top) * (96.0 / pThis->dpi.y);
             return 0;
         }
-        // this should be determined from the file, but for now it works
-        else if (wParam >= '1' && wParam <= '9' || wParam == '0' || wParam == MapVirtualKeyW(0x0C, MAPVK_VSC_TO_VK_EX) || wParam == MapVirtualKeyW(0x0D, MAPVK_VSC_TO_VK_EX))
+        case WM_PAINT:
         {
-            int min_section = 0;
-            int max_section = 100;
-            for (unsigned int i = 0; i < 100; ++i)
-            {
-                if (_this->sectionNames[i][0] == 0)
-                {
-                    max_section = i - 1;
-                    break;
-                }
-            }
-            int new_section = 0;
-            if (wParam == MapVirtualKeyW(0x0C, MAPVK_VSC_TO_VK_EX)) new_section = 10;
-            else if (wParam == MapVirtualKeyW(0x0D, MAPVK_VSC_TO_VK_EX)) new_section = 11;
-            else new_section = (wParam == '0' ? 9 : wParam - '1');
-            if (new_section < min_section) return 0;
-            if (new_section > max_section) return 0;
-            if (_this->section != new_section)
-            {
-                _this->tabOrder = 0;
-                GUI_SetSection(_this, TRUE, new_section);
-                _this->bShouldAnnounceSelected = TRUE;
-                InvalidateRect(hWnd, NULL, FALSE);
-            }
+            PAINTSTRUCT ps;
+            HDC hDC = BeginPaint(hWnd, &ps);
+
+            RECT rc;
+            GetClientRect(hWnd, &rc);
+
+            POINT pt = { 0, 0 };
+            GUI_Build(hDC, hWnd, pt);
+
+            EndPaint(hWnd, &ps);
             return 0;
         }
-        else if (wParam == VK_LEFT || wParam == VK_RIGHT)
-        {
-            int min_section = 0;
-            int max_section = 100;
-            int new_section = _this->section;
-            for (unsigned int i = 0; i < 100; ++i)
-            {
-                if (_this->sectionNames[i][0] == 0)
-                {
-                    max_section = i - 1;
-                    break;
-                }
-            }
-            if (wParam == VK_LEFT)
-            {
-                new_section--;
-            }
-            else
-            {
-                new_section++;
-            }
-            if (new_section < min_section)
-            {
-                new_section = max_section;
-            }
-            if (new_section > max_section)
-            {
-                new_section = min_section;
-            }
-            if (_this->section != new_section)
-            {
-                _this->tabOrder = 0;
-                GUI_SetSection(_this, TRUE, new_section);
-                _this->bShouldAnnounceSelected = TRUE;
-                InvalidateRect(hWnd, NULL, FALSE);
-            }
-            return 0; 
-        }
-        else if (wParam == 'H' || wParam == VK_F1)
-        {
-            SetTimer(hWnd, GUI_TIMER_READ_HELP, 200, NULL);
-            return 0;
-        }
-        else if (wParam == VK_F5)
+        case WM_INPUTLANGCHANGE:
         {
             InvalidateRect(hWnd, NULL, FALSE);
             return 0;
         }
-        else if (wParam == 'Z')
+        case WM_MSG_GUI_SECTION:
         {
+            if (wParam == WM_MSG_GUI_SECTION_GET)
+            {
+                return pThis->section + 1;
+            }
+            break;
+        }
+        /*case WM_USER + 1: // same value as WM_MSG_GUI_SECTION
+        {
+            SetTimer(hWnd, GUI_TIMER_REFRESH_FOR_PEOPLEBAND, GUI_TIMER_REFRESH_FOR_PEOPLEBAND_TIMEOUT, NULL);
             return 0;
-        }
-        else if (wParam == 'X')
+        }*/
+        case WM_TIMER:
         {
-            return 0;
-        }
-    }
-    else if (uMsg == WM_NCMOUSELEAVE && IsThemeActive() && !IsHighContrast() && IsWindows11() && !IsDwmExtendFrameIntoClientAreaBrokenInThisBuild())
-    {
-        LRESULT lRes = 0;
-        if (DwmDefWindowProc(hWnd, uMsg, wParam, lParam, &lRes))
-        {
-            return lRes;
-        }
-    }
-    else if (uMsg == WM_NCRBUTTONUP && IsThemeActive() && !IsHighContrast() && IsWindows11() && !IsDwmExtendFrameIntoClientAreaBrokenInThisBuild())
-    {
-        HMENU pSysMenu = GetSystemMenu(hWnd, FALSE);
-        if (pSysMenu != NULL)
-        {
-            int xPos = GET_X_LPARAM(lParam);
-            int yPos = GET_Y_LPARAM(lParam);
-            EnableMenuItem(pSysMenu, SC_RESTORE, MF_GRAYED);
-            EnableMenuItem(pSysMenu, SC_SIZE, MF_GRAYED);
-            EnableMenuItem(pSysMenu, SC_MAXIMIZE, MF_GRAYED);
-            BOOL cmd = TrackPopupMenu(pSysMenu, TPM_LEFTALIGN | TPM_LEFTBUTTON | TPM_RIGHTBUTTON | TPM_RETURNCMD, xPos, yPos, NULL, hWnd, 0);
-            if (cmd)
+            switch (wParam)
             {
-                PostMessageW(hWnd, WM_SYSCOMMAND, cmd, 0);
-            }
-        }
-        return 0;
-    }
-    else if ((uMsg == WM_LBUTTONUP || uMsg == WM_RBUTTONUP) && IsThemeActive() && !IsHighContrast() && IsWindows11() && !IsDwmExtendFrameIntoClientAreaBrokenInThisBuild())
-    {
-        POINT pt;
-        pt.x = GET_X_LPARAM(lParam);
-        pt.y = GET_Y_LPARAM(lParam);
-
-        double dx = _this->dpi.x / 96.0, dy = _this->dpi.y / 96.0;
-        UINT diff = (int)(((_this->GUI_CAPTION_LINE_HEIGHT - 16) * dx) / 2.0);
-        RECT rc;
-        SetRect(&rc, diff, diff, diff + (int)(16.0 * dx), diff + (int)(16.0 * dy));
-        if (PtInRect(&rc, pt))
-        {
-            if (uMsg == WM_LBUTTONUP && _this->LeftClickTime != 0)
-            {
-                _this->LeftClickTime = milliseconds_now() - _this->LeftClickTime;
-            }
-            if (uMsg == WM_LBUTTONUP && _this->LeftClickTime != 0 && _this->LeftClickTime < GetDoubleClickTime())
-            {
-                _this->LeftClickTime = 0;
-                PostQuitMessage(0);
-            }
-            else
-            {
-                if (uMsg == WM_LBUTTONUP)
+                case GUI_TIMER_READ_HELP:
                 {
-                    _this->LeftClickTime = milliseconds_now();
+                    PlayHelpMessage(pThis);
+                    KillTimer(hWnd, GUI_TIMER_READ_HELP);
+                    break;
                 }
-                if (uMsg == WM_RBUTTONUP || !_this->LastClickTime || milliseconds_now() - _this->LastClickTime > 500)
+                case GUI_TIMER_READ_REPEAT_SELECTION:
                 {
-                    HMENU pSysMenu = GetSystemMenu(hWnd, FALSE);
-                    if (pSysMenu != NULL)
-                    {
-                        if (uMsg == WM_LBUTTONUP)
-                        {
-                            pt.x = 0;
-                            pt.y = _this->GUI_CAPTION_LINE_HEIGHT * dy;
-                        }
-                        ClientToScreen(hWnd, &pt);
-                        EnableMenuItem(pSysMenu, SC_RESTORE, MF_GRAYED);
-                        EnableMenuItem(pSysMenu, SC_SIZE, MF_GRAYED);
-                        EnableMenuItem(pSysMenu, SC_MAXIMIZE, MF_GRAYED);
-                        BOOL cmd = TrackPopupMenu(pSysMenu, TPM_LEFTALIGN | TPM_LEFTBUTTON | TPM_RIGHTBUTTON | TPM_RETURNCMD, pt.x, pt.y, NULL, hWnd, 0);
-                        if (cmd)
-                        {
-                            PostMessageW(hWnd, WM_SYSCOMMAND, cmd, 0);
-                        }
-                        if (uMsg == WM_LBUTTONUP)
-                        {
-                            _this->LastClickTime = milliseconds_now();
-                        }
-                    }
+                    pThis->bShouldAnnounceSelected = TRUE;
+                    InvalidateRect(hWnd, NULL, FALSE);
+                    KillTimer(hWnd, GUI_TIMER_READ_REPEAT_SELECTION);
+                    break;
                 }
+                /*case GUI_TIMER_REFRESH_FOR_PEOPLEBAND: // Same value as GUI_TIMER_READ_REPEAT_SELECTION
+                {
+                    InvalidateRect(hWnd, NULL, FALSE);
+                    KillTimer(hWnd, GUI_TIMER_REFRESH_FOR_PEOPLEBAND);
+                    return 0;
+                }*/
             }
-            return 0;
+            break;
         }
     }
-    else if (uMsg == WM_NCHITTEST && IsThemeActive() && !IsHighContrast() && IsWindows11() && !IsDwmExtendFrameIntoClientAreaBrokenInThisBuild())
-    {
-        LRESULT lRes = 0;
-        if (DwmDefWindowProc(hWnd, uMsg, wParam, lParam, &lRes))
-        {
-            return lRes;
-        }
 
-        POINT pt;
-        pt.x = GET_X_LPARAM(lParam);
-        pt.y = GET_Y_LPARAM(lParam);
-        ScreenToClient(hWnd, &pt);
+    return DefWindowProcW(hWnd, uMsg, wParam, lParam);
+}
 
-        double dx = _this->dpi.x / 96.0, dy = _this->dpi.y / 96.0;
-        UINT diff = (int)(((_this->GUI_CAPTION_LINE_HEIGHT - 16) * dx) / 2.0);
-        RECT rc;
-        SetRect(&rc, diff, diff, diff + (int)(16.0 * dx), diff + (int)(16.0 * dy));
-        if (PtInRect(&rc, pt))
-        {
-            return HTCLIENT;
-        }
-
-        if (pt.y < _this->extent.cyTopHeight)
-        {
-            return HTCAPTION;
-        }
-    }
-    else if (uMsg == WM_NCCALCSIZE && wParam == TRUE && IsThemeActive() && !IsHighContrast() && IsWindows11() && !IsDwmExtendFrameIntoClientAreaBrokenInThisBuild())
+static LRESULT CALLBACK s_GUIWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+    GUI* pThis = (GUI*)GetWindowLongPtrW(hWnd, GWLP_USERDATA);
+    if (uMsg == WM_NCCREATE)
     {
-        NCCALCSIZE_PARAMS* sz = (NCCALCSIZE_PARAMS*)(lParam);
-        sz->rgrc[0].left += _this->border_thickness.left;
-        sz->rgrc[0].right -= _this->border_thickness.right;
-        sz->rgrc[0].bottom -= _this->border_thickness.bottom;
-        return 0;
+        CREATESTRUCTW* pcs = (CREATESTRUCTW*)lParam;
+        pThis = (GUI*)pcs->lpCreateParams;
+        SetWindowLongPtrW(hWnd, GWLP_USERDATA, (LONG_PTR)pThis);
+        pThis->hWnd = hWnd;
     }
-    else if (uMsg == WM_LBUTTONDOWN)
+    if (pThis)
     {
-        POINT pt;
-        pt.x = GET_X_LPARAM(lParam);
-        pt.y = GET_Y_LPARAM(lParam);
-        GUI_Build(0, hWnd, pt);
-        //InvalidateRect(hWnd, NULL, FALSE);
+        return GUIWndProc(pThis, hWnd, uMsg, wParam, lParam);
     }
-    else if (uMsg == WM_DPICHANGED)
-    {
-        _this->dpi.x = LOWORD(wParam);
-        _this->dpi.y = HIWORD(wParam);
-        RECT* rc = lParam;
-        SetWindowPos(
-            hWnd,
-            hWnd,
-            rc->left,
-            rc->top,
-            rc->right - rc->left,
-            rc->bottom - rc->top,
-            SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOCOPYBITS
-        );
-        RECT rcTitle;
-        DwmGetWindowAttribute(hWnd, DWMWA_CAPTION_BUTTON_BOUNDS, &rcTitle, sizeof(RECT));
-        _this->GUI_CAPTION_LINE_HEIGHT = (rcTitle.bottom - rcTitle.top) * (96.0 / _this->dpi.y);
-        return 0;
-    }
-    else if (uMsg == WM_PAINT)
-    {    
-        PAINTSTRUCT ps;
-        HDC hDC = BeginPaint(hWnd, &ps);
-
-        RECT rc;
-        GetClientRect(hWnd, &rc);
-
-        POINT pt;
-        pt.x = 0;
-        pt.y = 0;
-        GUI_Build(hDC, hWnd, pt);
-
-        EndPaint(hWnd, &ps);
-        return 0;
-    }
-    else if (uMsg == WM_INPUTLANGCHANGE)
-    {
-        InvalidateRect(hWnd, NULL, FALSE);
-        return 0;
-    }
-    else if (uMsg == WM_MSG_GUI_SECTION && wParam == WM_MSG_GUI_SECTION_GET)
-    {
-        return _this->section + 1;
-    }
-    else if (uMsg == WM_TIMER && wParam == GUI_TIMER_READ_HELP)
-    {
-        PlayHelpMessage(_this);
-        KillTimer(hWnd, GUI_TIMER_READ_HELP);
-    }
-    else if (uMsg == WM_TIMER && wParam == GUI_TIMER_READ_REPEAT_SELECTION)
-    {
-        _this->bShouldAnnounceSelected = TRUE;
-        InvalidateRect(hWnd, NULL, FALSE);
-        KillTimer(hWnd, GUI_TIMER_READ_REPEAT_SELECTION);
-    }
-    else if (uMsg == WM_USER + 1)
-    {
-        SetTimer(hWnd, GUI_TIMER_REFRESH_FOR_PEOPLEBAND, GUI_TIMER_REFRESH_FOR_PEOPLEBAND_TIMEOUT, NULL);
-        return 0;
-    }
-    else if (uMsg == WM_TIMER && wParam == GUI_TIMER_REFRESH_FOR_PEOPLEBAND)
-    {
-        InvalidateRect(hWnd, NULL, FALSE);
-        KillTimer(hWnd, GUI_TIMER_REFRESH_FOR_PEOPLEBAND);
-        return 0;
-    }
-    return DefWindowProc(hWnd, uMsg, wParam, lParam);
+    return DefWindowProcW(hWnd, uMsg, wParam, lParam);
 }
 
 __declspec(dllexport) int ZZGUI(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLine, int nCmdShow)
@@ -4039,7 +4093,7 @@ __declspec(dllexport) int ZZGUI(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLin
     WNDCLASS wc = { 0 };
     ZeroMemory(&wc, sizeof(WNDCLASSW));
     wc.style = 0;// CS_DBLCLKS;
-    wc.lpfnWndProc = GUI_WindowProc;
+    wc.lpfnWndProc = s_GUIWndProc;
     wc.hbrBackground = _this.hBackgroundBrush;
     wc.hInstance = hModule;
     wc.lpszClassName = L"ExplorerPatcher_GUI_" _T(EP_CLSID);
