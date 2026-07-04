@@ -3450,7 +3450,7 @@ LRESULT CALLBACK GUIWndProc(GUI* pThis, HWND hWnd, UINT uMsg, WPARAM wParam, LPA
                 DwmIsCompositionEnabled(&bIsCompositionEnabled);
                 if (bIsCompositionEnabled)
                 {
-                    MARGINS marGlassInset = { 0, 0, 0, 0 };
+                    MARGINS marGlassInset;
                     if (!IsHighContrast())
                     {
                         // Extend the glass frame into the whole window
@@ -3458,6 +3458,13 @@ LRESULT CALLBACK GUIWndProc(GUI* pThis, HWND hWnd, UINT uMsg, WPARAM wParam, LPA
                         marGlassInset.cxRightWidth = -1;
                         marGlassInset.cyBottomHeight = -1;
                         marGlassInset.cyTopHeight = -1;
+                    }
+                    else
+                    {
+                        marGlassInset.cxLeftWidth = 0;
+                        marGlassInset.cxRightWidth = 0;
+                        marGlassInset.cyBottomHeight = 0;
+                        marGlassInset.cyTopHeight = 0;
                     }
                     DwmExtendFrameIntoClientArea(hWnd, &marGlassInset);
                 }
@@ -3520,7 +3527,7 @@ LRESULT CALLBACK GUIWndProc(GUI* pThis, HWND hWnd, UINT uMsg, WPARAM wParam, LPA
                     DwmIsCompositionEnabled(&bIsCompositionEnabled);
                     if (bIsCompositionEnabled)
                     {
-                        MARGINS marGlassInset = { 0, 0, 0, 0 };
+                        MARGINS marGlassInset;
                         if (!IsHighContrast())
                         {
                             // Extend the glass frame into the whole window
@@ -3528,6 +3535,13 @@ LRESULT CALLBACK GUIWndProc(GUI* pThis, HWND hWnd, UINT uMsg, WPARAM wParam, LPA
                             marGlassInset.cxRightWidth = -1;
                             marGlassInset.cyBottomHeight = -1;
                             marGlassInset.cyTopHeight = -1;
+                        }
+                        else
+                        {
+                            marGlassInset.cxLeftWidth = 0;
+                            marGlassInset.cxRightWidth = 0;
+                            marGlassInset.cyBottomHeight = 0;
+                            marGlassInset.cyTopHeight = 0;
                         }
                         DwmExtendFrameIntoClientArea(hWnd, &marGlassInset);
                     }
