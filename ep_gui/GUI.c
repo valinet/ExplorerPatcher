@@ -3965,7 +3965,7 @@ static LRESULT CALLBACK s_GUIWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM
         CREATESTRUCTW* pcs = (CREATESTRUCTW*)lParam;
         pThis = (GUI*)pcs->lpCreateParams;
         SetWindowLongPtrW(hWnd, GWLP_USERDATA, (LONG_PTR)pThis);
-        pThis->hWnd = hWnd;
+        // pThis->hWnd = hWnd;
     }
     if (pThis)
     {

@@ -63,7 +63,7 @@ extern HMODULE hModule;
 #define GUI_TIMER_REFRESH_FOR_PEOPLEBAND_TIMEOUT 1000
 typedef struct _GUI
 {
-	HWND hWnd;
+	// HWND hWnd;
 	POINT location;
 	SIZE size;
 	RECT padding;
