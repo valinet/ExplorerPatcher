@@ -3411,7 +3411,7 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
     return TRUE;
 }
 
-LRESULT CALLBACK GUIWndProc(GUI* pThis, HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+LRESULT CALLBACK GUI_WndProc(GUI* pThis, HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     switch (uMsg)
     {
@@ -3921,7 +3921,7 @@ LRESULT CALLBACK GUIWndProc(GUI* pThis, HWND hWnd, UINT uMsg, WPARAM wParam, LPA
             }
             break;
         }
-        /*case WM_USER + 1: // same value as WM_MSG_GUI_SECTION
+        /*case WM_USER + 1: // same value as WM_MSG_GUI_SECTION; used to be called by PeopleButton_CalculateMinimumSizeHook()
         {
             SetTimer(hWnd, GUI_TIMER_REFRESH_FOR_PEOPLEBAND, GUI_TIMER_REFRESH_FOR_PEOPLEBAND_TIMEOUT, NULL);
             return 0;
@@ -3957,7 +3957,7 @@ LRESULT CALLBACK GUIWndProc(GUI* pThis, HWND hWnd, UINT uMsg, WPARAM wParam, LPA
     return DefWindowProcW(hWnd, uMsg, wParam, lParam);
 }
 
-static LRESULT CALLBACK s_GUIWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+LRESULT CALLBACK s_GUI_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     GUI* pThis = (GUI*)GetWindowLongPtrW(hWnd, GWLP_USERDATA);
     if (uMsg == WM_NCCREATE)
@@ -3969,7 +3969,7 @@ static LRESULT CALLBACK s_GUIWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM
     }
     if (pThis)
     {
-        return GUIWndProc(pThis, hWnd, uMsg, wParam, lParam);
+        return GUI_WndProc(pThis, hWnd, uMsg, wParam, lParam);
     }
     return DefWindowProcW(hWnd, uMsg, wParam, lParam);
 }
@@ -4107,7 +4107,7 @@ __declspec(dllexport) int ZZGUI(HWND hWnd, HINSTANCE hInstance, LPSTR lpszCmdLin
     WNDCLASS wc = { 0 };
     ZeroMemory(&wc, sizeof(WNDCLASSW));
     wc.style = 0;// CS_DBLCLKS;
-    wc.lpfnWndProc = s_GUIWndProc;
+    wc.lpfnWndProc = s_GUI_WndProc;
     wc.hbrBackground = _this.hBackgroundBrush;
     wc.hInstance = hModule;
     wc.lpszClassName = L"ExplorerPatcher_GUI_" _T(EP_CLSID);
