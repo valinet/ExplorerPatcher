@@ -31,6 +31,10 @@ const char* startdocked_SN[STARTDOCKED_SB_CNT] = {
 const char* startui_SN[STARTUI_SB_CNT] = {
     STARTUI_SB_0,
 };
+const char* startmenu_SN[STARTMENU_SB_CNT] = {
+    STARTMENU_SB_STARTINNERFRAME_ONSETTINGCHANGED,
+    STARTMENU_SB_STARTINNERFRAME_UPDATEPINNEDLISTHEIGHT
+};
 
 const wchar_t DownloadNotificationXML[] =
     L"<toast scenario=\"reminder\" "
@@ -390,6 +394,98 @@ static BOOL ProcessStartUISymbols(char* pszSettingsPath, DWORD* pOffsets)
     return TRUE;
 }
 
+static BOOL ProcessStartMenuSymbols(char* pszSettingsPath, DWORD* pOffsets)
+{
+    HKEY hKey = NULL;
+    DWORD dwDisposition;
+    RegCreateKeyExW(
+        HKEY_CURRENT_USER,
+        TEXT(REGPATH_STARTMENU) L"\\" TEXT(STARTMENU_SB_NAME),
+        0,
+        NULL,
+        REG_OPTION_NON_VOLATILE,
+        KEY_WRITE,
+        NULL,
+        &hKey,
+        &dwDisposition
+    );
+    if (!hKey || hKey == INVALID_HANDLE_VALUE)
+    {
+        printf("[Symbols] Unable to create registry key.\n");
+        return FALSE;
+    }
+
+    WCHAR wszPath[MAX_PATH];
+    ZeroMemory(wszPath, sizeof(wszPath));
+    GetWindowsDirectoryW(wszPath, MAX_PATH);
+    wcscat_s(
+        wszPath,
+        MAX_PATH,
+        L"\\SystemApps\\MicrosoftWindows.Client.Core_cw5n1h2txyewy\\" _T(STARTMENU_SB_NAME) L".dll"
+    );
+
+    if (!FileExistsW(wszPath))
+    {
+        if (hKey) RegCloseKey(hKey);
+        return TRUE; // StartMenu.dll is not present on this installation.
+    }
+
+    char startmenu_sb_dll[MAX_PATH];
+    ZeroMemory(startmenu_sb_dll, sizeof(startmenu_sb_dll));
+    GetWindowsDirectoryA(startmenu_sb_dll, MAX_PATH);
+    strcat_s(startmenu_sb_dll, MAX_PATH,
+        "\\SystemApps\\MicrosoftWindows.Client.Core_cw5n1h2txyewy\\" STARTMENU_SB_NAME ".dll");
+
+    CHAR szHash[100];
+    ZeroMemory(szHash, sizeof(szHash));
+    ComputeFileHash(wszPath, szHash, ARRAYSIZE(szHash));
+
+    printf("[Symbols] Downloading symbols for \"%s\" (\"%s\")...\n",
+        startmenu_sb_dll,
+        szHash
+    );
+
+    if (VnDownloadSymbols(
+        NULL,
+        startmenu_sb_dll,
+        pszSettingsPath,
+        MAX_PATH
+    ))
+    {
+        printf("[Symbols] Symbols for \"%s\" are not available - unable to download.\n", startmenu_sb_dll);
+        printf("[Symbols] Please refer to \"https://github.com/valinet/ExplorerPatcher/wiki/Symbols\" for more information.\n");
+        if (hKey) RegCloseKey(hKey);
+        return FALSE;
+    }
+
+    printf("[Symbols] Reading symbols...\n");
+
+    BOOL bStartMenuSymbolsOk = TRUE;
+
+    if (VnGetSymbols(
+        pszSettingsPath,
+        pOffsets,
+        (char**)startmenu_SN,
+        STARTMENU_SB_CNT
+    ))
+    {
+        printf("[Symbols] Failure in reading symbols for \"%s\".\n", startmenu_sb_dll);
+        if (hKey) RegCloseKey(hKey);
+        return FALSE;
+    }
+
+    RegSetValueExW(hKey, TEXT(STARTMENU_SB_STARTINNERFRAME_ONSETTINGCHANGED), 0, REG_DWORD, (const BYTE*)&pOffsets[0], sizeof(DWORD));
+    RegSetValueExW(hKey, TEXT(STARTMENU_SB_STARTINNERFRAME_UPDATEPINNEDLISTHEIGHT), 0, REG_DWORD, (const BYTE*)&pOffsets[1], sizeof(DWORD));
+
+    RegSetValueExA(hKey, "Hash", 0, REG_SZ, szHash, (DWORD)(strlen(szHash) + 1));
+
+    SaveVersion(hKey, STARTMENU_SB_VERSION);
+
+    if (hKey) RegCloseKey(hKey);
+
+    return TRUE;
+}
+
 DWORD DownloadSymbols(DownloadSymbolsParams* params)
 {
     Sleep(6000);
@@ -546,6 +642,12 @@ DWORD DownloadSymbols(DownloadSymbolsParams* params)
     if (params->loadResult.bNeedToDownloadStartUISymbols && rovi.dwBuildNumber >= 18362)
     {
         BOOL bSuccess = ProcessStartUISymbols(szSettingsPath, symbols_PTRS.startui_PTRS);
+        bAnySuccess |= bSuccess;
+        bAllSuccess &= bSuccess;
+    }
+    if (params->loadResult.bNeedToDownloadStartMenuSymbols && IsWindows11())
+    {
+        BOOL bSuccess = ProcessStartMenuSymbols(szSettingsPath, symbols_PTRS.startmenu_PTRS);
         bAnySuccess |= bSuccess;
         bAllSuccess &= bSuccess;
     }
@@ -840,6 +942,66 @@ LoadSymbolsResult LoadSymbols(symbols_addr* symbols_PTRS)
                HKEY_CURRENT_USER,
                TEXT(REGPATH_STARTMENU) L"\\" TEXT(STARTUI_SB_NAME)
            );
+        }
+    }
+    if (IsWindows11())
+    {
+        // Load StartMenu.dll offsets
+        bOffsetsValid = FALSE;
+        RegCreateKeyExW(
+            HKEY_CURRENT_USER,
+            TEXT(REGPATH_STARTMENU) L"\\" TEXT(STARTMENU_SB_NAME),
+            0,
+            NULL,
+            REG_OPTION_NON_VOLATILE,
+            KEY_READ,
+            NULL,
+            &hKey,
+            &dwDisposition
+        );
+
+        GetWindowsDirectoryW(wszPath, MAX_PATH);
+        wcscat_s(
+            wszPath,
+            MAX_PATH,
+            L"\\SystemApps\\MicrosoftWindows.Client.Core_cw5n1h2txyewy\\"
+            TEXT(STARTMENU_SB_NAME)
+            L".dll"
+        );
+
+        if (ComputeFileHash(wszPath, szHash, ARRAYSIZE(szHash)) == ERROR_SUCCESS)
+        {
+            szStoredHash[0] = 0;
+            dwSize = sizeof(szStoredHash);
+            if (RegQueryValueExA(hKey, "Hash", 0, NULL, szStoredHash, &dwSize) == ERROR_SUCCESS
+                && !_stricmp(szHash, szStoredHash) && CheckVersion(hKey, STARTMENU_SB_VERSION))
+            {
+                dwSize = sizeof(DWORD);
+                RegQueryValueExW(hKey, TEXT(STARTMENU_SB_STARTINNERFRAME_ONSETTINGCHANGED), 0, NULL, (LPBYTE)&symbols_PTRS->startmenu_PTRS[0], &dwSize);
+                RegQueryValueExW(hKey, TEXT(STARTMENU_SB_STARTINNERFRAME_UPDATEPINNEDLISTHEIGHT), 0, NULL, (LPBYTE)&symbols_PTRS->startmenu_PTRS[1], &dwSize);
+
+                bOffsetsValid =
+                    symbols_PTRS->startmenu_PTRS[0] &&
+                    symbols_PTRS->startmenu_PTRS[1];
+            }
+
+            if (!bOffsetsValid)
+            {
+                printf("[Symbols] Symbols for \"%s\" are not available.\n", STARTMENU_SB_NAME);
+#ifdef _M_X64 // TODO Add support for ARM64
+                result.bNeedToDownloadStartMenuSymbols = TRUE;
+#endif
+            }
+        }
+
+        if (hKey) RegCloseKey(hKey);
+
+        if (!bOffsetsValid)
+        {
+            RegDeleteTreeW(
+                HKEY_CURRENT_USER,
+                TEXT(REGPATH_STARTMENU) L"\\" TEXT(STARTMENU_SB_NAME)
+            );
         }
     }
 

@@ -48,6 +48,15 @@
 #define STARTUI_SB_CNT 1
 #define STARTUI_SB_VERSION 1
 
+#define STARTMENU_SB_NAME "StartMenu"
+#define STARTMENU_SB_STARTINNERFRAME_ONSETTINGCHANGED \
+    "winrt::StartMenu::implementation::StartInnerFrame::OnSettingChanged"
+#define STARTMENU_SB_STARTINNERFRAME_UPDATEPINNEDLISTHEIGHT \
+    "winrt::StartMenu::implementation::StartInnerFrame::UpdatePinnedListHeight"
+
+#define STARTMENU_SB_CNT 2
+#define STARTMENU_SB_VERSION 1
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -59,6 +68,7 @@ typedef struct symbols_addr
     DWORD twinui_pcshell_PTRS[TWINUI_PCSHELL_SB_CNT];
     DWORD startdocked_PTRS[STARTDOCKED_SB_CNT];
     DWORD startui_PTRS[STARTUI_SB_CNT];
+    DWORD startmenu_PTRS[STARTMENU_SB_CNT];
 } symbols_addr;
 #pragma pack(pop)
 
@@ -69,6 +79,7 @@ typedef struct _LoadSymbolsResult
     BOOL bNeedToDownloadTwinuiPcshellSymbols : 1;
     BOOL bNeedToDownloadStartDockedSymbols : 1;
     BOOL bNeedToDownloadStartUISymbols : 1;
+    BOOL bNeedToDownloadStartMenuSymbols : 1;
 } LoadSymbolsResult;
 
 inline BOOL NeedToDownloadSymbols(const LoadSymbolsResult* pLoadResult)
@@ -76,7 +87,8 @@ inline BOOL NeedToDownloadSymbols(const LoadSymbolsResult* pLoadResult)
     return pLoadResult->bNeedToDownloadExplorerSymbols
         || pLoadResult->bNeedToDownloadTwinuiPcshellSymbols
         || pLoadResult->bNeedToDownloadStartDockedSymbols
-        || pLoadResult->bNeedToDownloadStartUISymbols;
+        || pLoadResult->bNeedToDownloadStartUISymbols
+        || pLoadResult->bNeedToDownloadStartMenuSymbols;
 }
 
 typedef struct _DownloadSymbolsParams
