@@ -10,6 +10,8 @@ This project aims to enhance the working environment on Windows.
 3. Right-click the taskbar and choose "Properties".
 4. To change the taskbar style, go to the "Taskbar" section and look for "Taskbar style".
 5. To use the Windows 10 Start menu, go to the "Start menu" section and change the Start menu style to Windows 10.
+   * 如果切换后仍然显示 Windows 11 开始菜单，请确认 `HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\Start_ShowClassicMode` 的值为 `1`，然后重启 `StartMenuExperienceHost.exe` 和 `explorer.exe`。
+   * 也可以使用 `tools/win10-style/Apply-Win10ExplorerStyle.ps1` 一键应用 Windows 10 风格任务栏、右下角托盘图标全部显示、经典右键菜单和 Windows 10 磁贴开始菜单；需要回退时运行 `tools/win10-style/Undo-Win10ExplorerStyle.ps1`。
 6. To use the Windows 10 Alt+Tab, go to the "Window switcher" section and change the "Window switcher (Alt+Tab) style" to Windows 10.
 7. Feel free to check other configuration options.
 
