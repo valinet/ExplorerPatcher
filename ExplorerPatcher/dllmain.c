@@ -633,12 +633,14 @@ void FixUpCenteredTaskbar()
 // arm -> detect -> repair chain is observable in the field.
 #define EP_WORKAREA_WATCHDOG_TIMER_ID   200
 #define EP_WORKAREA_WATCHDOG_DEBOUNCE   2000  // ms - wait for topology to stabilize
+#define EP_WORKAREA_WATCHDOG_MAX_DEBOUNCE 2500 // ms - cap: the detect timer fires at most this long after the FIRST arm of a cycle, so a wake event storm (many DISPLAYCHANGE/SETTINGCHANGE) cannot keep resetting the debounce and stretch the restore latency
 #define EP_WORKAREA_WATCHDOG_VERIFY     1500  // ms - recheck after a kick/repair
 #define EP_WORKAREA_WATCHDOG_MAX_KICKS  3
 #define EP_WORKAREA_REPAIR_COOLDOWN     15000 // ms - ignore new arms this long after a direct SPI repair (anti-loop)
 #define EP_WORKAREA_MAX_BROKEN          8
 static UINT g_epWorkAreaKickCount = 0;
 static ULONGLONG g_epLastDirectRepairTick = 0;
+static ULONGLONG g_epFirstArmTick = 0; // tick of the first arm of the current debounce cycle (0 = idle); bounds the debounce so a wake event storm cannot extend it past MAX_DEBOUNCE
 static HPOWERNOTIFY g_epDisplayStateNotify = NULL;
 static const GUID EP_GUID_CONSOLE_DISPLAY_STATE = // 6fe69556-704a-47a0-8f24-c28d936fda47
     { 0x6fe69556, 0x704a, 0x47a0, { 0x8f, 0x24, 0xc2, 0x8d, 0x93, 0x6f, 0xda, 0x47 } };
@@ -1197,9 +1199,33 @@ static void EP_ArmWorkAreaWatchdog(HWND hWnd)
         }
     }
 
-    EP_WorkAreaLog("arm: debounce %d ms", EP_WORKAREA_WATCHDOG_DEBOUNCE);
+    ULONGLONG now = GetTickCount64();
+    UINT interval;
+    if (g_epFirstArmTick == 0)
+    {
+        // First arm of a new cycle: full debounce.
+        g_epFirstArmTick = now;
+        interval = EP_WORKAREA_WATCHDOG_DEBOUNCE;
+        EP_WorkAreaLog("arm: debounce %u ms (cycle start)", interval);
+    }
+    else
+    {
+        // Re-arm during the wake event storm: keep coalescing, but clamp the interval so
+        // the timer never fires later than MAX_DEBOUNCE after the first arm. Without this
+        // a burst of DISPLAYCHANGE/SETTINGCHANGE events resets the 2000ms debounce over
+        // and over and stretches the restore latency (observed up to ~3.3s).
+        ULONGLONG sinceFirst = now - g_epFirstArmTick;
+        if (sinceFirst >= EP_WORKAREA_WATCHDOG_MAX_DEBOUNCE)
+        {
+            EP_WorkAreaLog("arm: cap reached (%llu ms since first arm), not extending", sinceFirst);
+            return; // let the pending timer fire
+        }
+        ULONGLONG headroom = EP_WORKAREA_WATCHDOG_MAX_DEBOUNCE - sinceFirst;
+        interval = (headroom < EP_WORKAREA_WATCHDOG_DEBOUNCE) ? (UINT)headroom : EP_WORKAREA_WATCHDOG_DEBOUNCE;
+        EP_WorkAreaLog("arm: debounce %u ms (%llu ms since first arm)", interval, sinceFirst);
+    }
     g_epWorkAreaKickCount = 0;
-    SetTimer(hWnd, EP_WORKAREA_WATCHDOG_TIMER_ID, EP_WORKAREA_WATCHDOG_DEBOUNCE, NULL);
+    SetTimer(hWnd, EP_WORKAREA_WATCHDOG_TIMER_ID, interval, NULL);
 }
 
 #define EP_SERVICE_WINDOW_CLASS_NAME L"EP_Service_Window_" _T(EP_CLSID)
@@ -1353,6 +1379,7 @@ LRESULT CALLBACK EP_Service_Window_WndProc(
                 EP_RestoreWindowsFromSnapshot();
             }
             g_epWorkAreaKickCount = 0;
+            g_epFirstArmTick = 0;
             return 0;
         }
         if (g_epWorkAreaKickCount >= EP_WORKAREA_WATCHDOG_MAX_KICKS)
@@ -1362,6 +1389,7 @@ LRESULT CALLBACK EP_Service_Window_WndProc(
             // shove them back). Drop the captured broken list.
             g_epWorkAreaBrokenAtDetect.count = 0;
             g_epWorkAreaKickCount = 0;
+            g_epFirstArmTick = 0;
             return 0;
         }
 
@@ -1383,9 +1411,10 @@ LRESULT CALLBACK EP_Service_Window_WndProc(
         EP_WorkAreaLog("attempt %u: direct SPI_SETWORKAREA repair (%d monitor(s))", g_epWorkAreaKickCount, broken);
         EP_RepairWorkAreasDirect(&list);                // proven fallback (ep_taskbar, etc.)
 
-        // SPI_SETWORKAREA with SPIF_SENDCHANGE is synchronous - by the time it returns
-        // the work area is committed, so re-check inline instead of burning another
-        // ~1.5s verify timer. If sane, restore the displaced windows right away.
+        // SPI_SETWORKAREA sets the work-area metric synchronously (even without
+        // SPIF_SENDCHANGE), so by the time it returns GetMonitorInfo reads the new value
+        // - re-check inline instead of burning another ~1.5s verify timer. If sane,
+        // restore the displaced windows right away.
         EP_WORKAREA_BROKEN_LIST after;
         int stillBroken = EP_CollectBrokenWorkAreas(&after);
         if (stillBroken == 0)
@@ -1393,6 +1422,7 @@ LRESULT CALLBACK EP_Service_Window_WndProc(
             EP_WorkAreaLog("verdict: all work areas sane after SPI repair, cycle done");
             EP_RestoreWindowsFromSnapshot();
             g_epWorkAreaKickCount = 0;
+            g_epFirstArmTick = 0;
             return 0;
         }
 
