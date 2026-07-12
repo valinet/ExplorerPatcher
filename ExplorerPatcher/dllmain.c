@@ -1336,16 +1336,37 @@ LRESULT CALLBACK EP_Service_Window_WndProc(
         }
 
         g_epWorkAreaKickCount++;
-        if (g_epWorkAreaKickCount == 1)
+
+        // The soft WM_DISPLAYCHANGE kick only heals classic TrayUI; the prebuilt
+        // ep_taskbar (OldTaskbar=2) always ignores it. Skip the wasted soft-kick
+        // attempt there and go straight to the SPI repair - saves one ~1.5s verify
+        // round-trip on the common path. Classic TrayUI still gets the soft kick first.
+        BOOL bSoftKick = (g_epWorkAreaKickCount == 1) && (bOldTaskbar != 2);
+        if (bSoftKick)
         {
             EP_WorkAreaLog("attempt %u: soft kick", g_epWorkAreaKickCount);
-            EP_KickTaskbarWorkAreaRecompute();          // soft first try (classic TrayUI)
+            EP_KickTaskbarWorkAreaRecompute();
+            SetTimer(hWnd, EP_WORKAREA_WATCHDOG_TIMER_ID, EP_WORKAREA_WATCHDOG_VERIFY, NULL); // re-verify
+            return 0;
         }
-        else
+
+        EP_WorkAreaLog("attempt %u: direct SPI_SETWORKAREA repair (%d monitor(s))", g_epWorkAreaKickCount, broken);
+        EP_RepairWorkAreasDirect(&list);                // proven fallback (ep_taskbar, etc.)
+
+        // SPI_SETWORKAREA with SPIF_SENDCHANGE is synchronous - by the time it returns
+        // the work area is committed, so re-check inline instead of burning another
+        // ~1.5s verify timer. If sane, restore the displaced windows right away.
+        EP_WORKAREA_BROKEN_LIST after;
+        int stillBroken = EP_CollectBrokenWorkAreas(&after);
+        if (stillBroken == 0)
         {
-            EP_WorkAreaLog("attempt %u: direct SPI_SETWORKAREA repair (%d monitor(s))", g_epWorkAreaKickCount, broken);
-            EP_RepairWorkAreasDirect(&list);            // proven fallback (ep_taskbar, etc.)
+            EP_WorkAreaLog("verdict: all work areas sane after SPI repair, cycle done");
+            EP_RestoreWindowsFromSnapshot();
+            g_epWorkAreaKickCount = 0;
+            return 0;
         }
+
+        EP_WorkAreaLog("still %d broken after SPI repair, re-verify", stillBroken);
         SetTimer(hWnd, EP_WORKAREA_WATCHDOG_TIMER_ID, EP_WORKAREA_WATCHDOG_VERIFY, NULL); // re-verify
         return 0;
     }
