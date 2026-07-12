@@ -925,12 +925,23 @@ static void EP_RepairWorkAreasDirect(EP_WORKAREA_BROKEN_LIST* list)
     for (int i = 0; i < list->count; i++)
     {
         RECT rc = list->items[i].expectedWork;
-        BOOL ok = SystemParametersInfoW(SPI_SETWORKAREA, 0, &rc, SPIF_SENDCHANGE);
+        // No SPIF_SENDCHANGE: the synchronous broadcast blocks ~3s waiting on every
+        // top-level window. Without the flag the work-area metric is still set
+        // synchronously (GetMonitorInfo reads the new value at once) - we just skip the
+        // stall. Displaced windows are reflowed ourselves in the restore pass (snapped
+        // from the snapshot, maximized via a targeted WM_SETTINGCHANGE), and a
+        // non-blocking courtesy broadcast is posted below so other apps refresh their
+        // cached work area without stalling this thread.
+        BOOL ok = SystemParametersInfoW(SPI_SETWORKAREA, 0, &rc, 0);
         EP_WorkAreaLog("  SPI_SETWORKAREA mon=%p rect=(%ld,%ld,%ld,%ld) result=%d err=%lu",
             list->items[i].hMonitor, rc.left, rc.top, rc.right, rc.bottom,
             ok, ok ? 0UL : GetLastError());
     }
     g_epLastDirectRepairTick = GetTickCount64();
+    // Courtesy async notification for other work-area consumers. Our own service window
+    // handles this too, but the 15s repair cooldown (stamped above) suppresses re-arm.
+    if (list->count > 0)
+        PostMessageW(HWND_BROADCAST, WM_SETTINGCHANGE, SPI_SETWORKAREA, 0);
 }
 
 // --- Window layout snapshot/restore implementation ------------------------------
@@ -1097,12 +1108,31 @@ static void EP_RestoreWindowsFromSnapshot(void)
         HWND hWnd = e->hWnd;
 
         if (!IsWindow(hWnd)) { EP_WorkAreaLog("  restore skip %p: window gone", hWnd); continue; }
-        if (e->bZoomed || IsZoomed(hWnd)) { EP_WorkAreaLog("  restore skip %p: maximized", hWnd); continue; }
         if (IsIconic(hWnd)) { EP_WorkAreaLog("  restore skip %p: minimized", hWnd); continue; }
         if (!IsWindowVisible(hWnd)) { EP_WorkAreaLog("  restore skip %p: hidden", hWnd); continue; }
 
         EP_BROKEN_WORKAREA* brk = EP_FindBrokenForWindow(e);
         if (!brk) continue; // window's monitor did not collapse -> nothing to undo (no log)
+
+        // Maximized window: with SPIF_SENDCHANGE gone, reflow it to the repaired work
+        // area ourselves (targeted, no global broadcast). Inflate by the maximize frame
+        // overhang so the visible edge meets the work area exactly like a real maximize
+        // (matches what SENDCHANGE produced in experiment (a)). If it is already correct
+        // this SetWindowPos is a no-op.
+        if (e->bZoomed || IsZoomed(hWnd))
+        {
+            int fx = GetSystemMetrics(SM_CXSIZEFRAME) + GetSystemMetrics(SM_CXPADDEDBORDER);
+            int fy = GetSystemMetrics(SM_CYSIZEFRAME) + GetSystemMetrics(SM_CXPADDEDBORDER);
+            RECT wa = brk->expectedWork;
+            int mw = (wa.right - wa.left) + 2 * fx;
+            int mh = (wa.bottom - wa.top) + 2 * fy;
+            BOOL okz = SetWindowPos(hWnd, NULL, wa.left - fx, wa.top - fy, mw, mh,
+                SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOOWNERZORDER | SWP_ASYNCWINDOWPOS);
+            EP_WorkAreaLog("  restore reflow %p: maximized -> (%ld,%ld,%ld,%ld) result=%d",
+                hWnd, wa.left - fx, wa.top - fy, wa.left - fx + mw, wa.top - fy + mh, okz);
+            if (okz) restored++;
+            continue;
+        }
 
         RECT cur;
         if (!GetWindowRect(hWnd, &cur)) { EP_WorkAreaLog("  restore skip %p: GetWindowRect failed", hWnd); continue; }
