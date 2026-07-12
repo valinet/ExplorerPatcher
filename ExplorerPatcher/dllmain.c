@@ -3,6 +3,7 @@
 #endif
 #include <initguid.h>
 #include <stdio.h>
+#include <stdarg.h>
 #include <stdbool.h>
 #include <Windows.h>
 #include <Shlwapi.h>
@@ -103,6 +104,7 @@ DWORD dwTaskbarAl = 1;
 DWORD bShowUpdateToast = FALSE;
 DWORD bToolbarSeparators = FALSE;
 DWORD bTaskbarAutohideOnDoubleClick = FALSE;
+DWORD bFixWorkAreaAfterDisplayReinit = TRUE;
 DWORD dwOrbStyle = 0;
 DWORD bEnableSymbolDownload = TRUE;
 DWORD dwAltTabSettings = 0;
@@ -617,6 +619,559 @@ void FixUpCenteredTaskbar()
     }
 }
 
+// Work-area watchdog: after a display re-init (resume, display-on, mode change),
+// the Win10 taskbar (classic TrayUI or the prebuilt ep_taskbar.ge.dll) can compute
+// its stuck rect against a transient monitor geometry and never recompute the work
+// area once the topology settles, collapsing the desktop work area. We watch for
+// display power/resume/mode events, wait for the topology to stabilize, then
+// validate each monitor's work area against its taskbar band. If broken we first
+// "kick" the taskbar's own recompute path by posting WM_DISPLAYCHANGE to the tray
+// windows (soft, the same thing an explorer restart triggers); if that fails to
+// heal, we escalate to writing SPI_SETWORKAREA directly for the broken monitors
+// (the proven method - it is exactly what the user's external watcher did).
+// Everything here is logged to %TEMP%\ep_workarea_watchdog.log so the event ->
+// arm -> detect -> repair chain is observable in the field.
+#define EP_WORKAREA_WATCHDOG_TIMER_ID   200
+#define EP_WORKAREA_WATCHDOG_DEBOUNCE   2000  // ms - wait for topology to stabilize
+#define EP_WORKAREA_WATCHDOG_VERIFY     1500  // ms - recheck after a kick/repair
+#define EP_WORKAREA_WATCHDOG_MAX_KICKS  3
+#define EP_WORKAREA_REPAIR_COOLDOWN     15000 // ms - ignore new arms this long after a direct SPI repair (anti-loop)
+#define EP_WORKAREA_MAX_BROKEN          8
+static UINT g_epWorkAreaKickCount = 0;
+static ULONGLONG g_epLastDirectRepairTick = 0;
+static HPOWERNOTIFY g_epDisplayStateNotify = NULL;
+static const GUID EP_GUID_CONSOLE_DISPLAY_STATE = // 6fe69556-704a-47a0-8f24-c28d936fda47
+    { 0x6fe69556, 0x704a, 0x47a0, { 0x8f, 0x24, 0xc2, 0x8d, 0x93, 0x6f, 0xda, 0x47 } };
+
+typedef struct
+{
+    HMONITOR hMonitor;
+    RECT     expectedWork;  // healthy work area we repair to
+    RECT     observedWork;  // rcWork at detect time = the transient collapsed band
+    RECT     rcMonitor;     // for fallback matching when the HMONITOR handle changes
+} EP_BROKEN_WORKAREA;
+
+typedef struct
+{
+    EP_BROKEN_WORKAREA items[EP_WORKAREA_MAX_BROKEN];
+    int count;
+} EP_WORKAREA_BROKEN_LIST;
+
+// --- Window layout snapshot/restore (iteration 3) -------------------------------
+// SPI_SETWORKAREA repairs the work area but only reflows *maximized* windows; a
+// snapped window that the shell shoved into the transient collapsed band on wake is
+// left stranded. We snapshot top-level window rects on EP-taskbar monitors on
+// display-OFF/suspend (which precedes the wake-time collapse), and after a verified
+// repair we move any window that landed inside the former collapsed band back to its
+// snapshot rect. All snapshot/restore state is touched only on the service-window
+// thread (WM_POWERBROADCAST + WM_TIMER); the tray thread only calls
+// EP_ArmWorkAreaWatchdog (SetTimer), so no locking is needed.
+#define EP_WINRESTORE_MAX_WINDOWS 64     // snapshot capacity
+#define EP_WINRESTORE_WAKE_WINDOW 90000  // ms after display-ON within which a snapshot may be applied
+#define EP_WINRESTORE_BAND_TOL    32     // px tolerance for "window sits inside the collapsed band"
+
+typedef struct { HWND hWnd; RECT rc; HMONITOR hMonitor; RECT rcMonitor; BOOL bZoomed; } EP_WINRESTORE_ENTRY;
+typedef struct { EP_WINRESTORE_ENTRY items[EP_WINRESTORE_MAX_WINDOWS]; int count; } EP_WINRESTORE_SNAPSHOT;
+
+static EP_WINRESTORE_SNAPSHOT  g_epWinSnapshot;
+static ULONGLONG               g_epWinSnapshotTick = 0;
+static ULONGLONG               g_epLastDisplayOnTick = 0;
+static EP_WORKAREA_BROKEN_LIST g_epWorkAreaBrokenAtDetect; // broken list captured at the FIRST detect of a cycle
+
+// Append one timestamped line to %TEMP%\ep_workarea_watchdog.log. Events are rare
+// (display re-inits), so open/write/close per call is fine and keeps the log intact
+// across crashes. Enabled unconditionally - it is also the field diagnostic tool for
+// issue reporters.
+static void EP_WorkAreaLog(const char* fmt, ...)
+{
+    WCHAR wszDir[MAX_PATH];
+    DWORD n = GetTempPathW(MAX_PATH, wszDir);
+    if (n == 0 || n >= MAX_PATH) return;
+
+    WCHAR wszPath[MAX_PATH + 32];
+    _snwprintf_s(wszPath, _countof(wszPath), _TRUNCATE, L"%sep_workarea_watchdog.log", wszDir);
+
+    HANDLE hFile = CreateFileW(wszPath, FILE_APPEND_DATA, FILE_SHARE_READ | FILE_SHARE_WRITE,
+        NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (hFile == INVALID_HANDLE_VALUE) return;
+
+    SYSTEMTIME st;
+    GetLocalTime(&st);
+
+    char szLine[1024];
+    int len = _snprintf_s(szLine, _countof(szLine), _TRUNCATE,
+        "%04d-%02d-%02d %02d:%02d:%02d.%03d ",
+        st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
+    if (len < 0 || len >= (int)_countof(szLine)) len = (int)strlen(szLine);
+
+    va_list args;
+    va_start(args, fmt);
+    _vsnprintf_s(szLine + len, _countof(szLine) - len, _TRUNCATE, fmt, args);
+    va_end(args);
+
+    size_t total = strlen(szLine);
+    if (total + 2 < _countof(szLine))
+    {
+        szLine[total++] = '\r';
+        szLine[total++] = '\n';
+        szLine[total] = '\0';
+    }
+
+    DWORD written;
+    WriteFile(hFile, szLine, (DWORD)strlen(szLine), &written, NULL);
+    CloseHandle(hFile);
+}
+
+// Find the EP taskbar on a monitor: the primary tray (Shell_TrayWnd) when bPrimary,
+// else a Shell_SecondaryTrayWnd that sits on this monitor. Returns NULL when no EP
+// tray is on the monitor (so we never touch third-party appbar reservations).
+static HWND EP_FindEPTrayOnMonitor(HMONITOR hMonitor, BOOL bPrimary)
+{
+    HWND hTray = NULL;
+    if (bPrimary)
+    {
+        hTray = FindWindowW(L"Shell_TrayWnd", NULL);
+        if (hTray && MonitorFromWindow(hTray, MONITOR_DEFAULTTONULL) != hMonitor) hTray = NULL;
+    }
+    if (!hTray)
+    {
+        HWND hWnd = NULL;
+        do
+        {
+            hWnd = FindWindowExW(NULL, hWnd, L"Shell_SecondaryTrayWnd", NULL);
+            if (hWnd && MonitorFromWindow(hWnd, MONITOR_DEFAULTTONULL) == hMonitor)
+            {
+                hTray = hWnd;
+                break;
+            }
+        } while (hWnd);
+    }
+    return hTray;
+}
+
+// Examine one monitor; if its work area matches a known bug signature, append a
+// {HMONITOR, expectedWork} record to the broken list. Never stops enumeration so we
+// collect every broken monitor. Logs the full geometry + verdict for every monitor.
+static BOOL CALLBACK EP_WorkAreaCollectMonitorProc(HMONITOR hMonitor, HDC hdc, LPRECT lprc, LPARAM lParam)
+{
+    UNREFERENCED_PARAMETER(hdc);
+    UNREFERENCED_PARAMETER(lprc);
+    EP_WORKAREA_BROKEN_LIST* list = (EP_WORKAREA_BROKEN_LIST*)lParam;
+
+    MONITORINFO mi;
+    mi.cbSize = sizeof(mi);
+    if (!GetMonitorInfoW(hMonitor, &mi))
+    {
+        EP_WorkAreaLog("  mon %p: GetMonitorInfo failed err=%lu -> skip", hMonitor, GetLastError());
+        return TRUE;
+    }
+
+    RECT rcMonitor = mi.rcMonitor;
+    RECT rcWork = mi.rcWork;
+
+    // Find the EP taskbar on this monitor (primary: Shell_TrayWnd; else a Shell_SecondaryTrayWnd)
+    HWND hTray = EP_FindEPTrayOnMonitor(hMonitor, (mi.dwFlags & MONITORINFOF_PRIMARY) != 0);
+    if (!hTray)
+    {
+        // No EP taskbar here -> don't touch third-party appbar reservations.
+        EP_WorkAreaLog("  mon %p rcMon=(%ld,%ld,%ld,%ld) rcWork=(%ld,%ld,%ld,%ld): no EP tray -> skip",
+            hMonitor, rcMonitor.left, rcMonitor.top, rcMonitor.right, rcMonitor.bottom,
+            rcWork.left, rcWork.top, rcWork.right, rcWork.bottom);
+        return TRUE;
+    }
+
+    RECT rcTray;
+    if (!GetWindowRect(hTray, &rcTray))
+    {
+        EP_WorkAreaLog("  mon %p tray=%p: GetWindowRect failed -> skip", hMonitor, hTray);
+        return TRUE;
+    }
+    RECT rcBand;
+    if (!IntersectRect(&rcBand, &rcTray, &rcMonitor))
+    {
+        EP_WorkAreaLog("  mon %p tray=%p: tray not on monitor -> skip", hMonitor, hTray);
+        return TRUE;
+    }
+
+    int monW = rcMonitor.right - rcMonitor.left;
+    int monH = rcMonitor.bottom - rcMonitor.top;
+    if (monW <= 0 || monH <= 0) return TRUE;
+
+    int bandW = rcBand.right - rcBand.left;
+    int bandH = rcBand.bottom - rcBand.top;
+    BOOL horizontal = (bandW >= bandH); // horizontal strip -> docked top/bottom
+
+    // Global autohide state (same query pattern as ToggleTaskbarAutohide)
+    BOOL bAutohide = FALSE;
+    {
+        APPBARDATA abd;
+        abd.cbSize = sizeof(APPBARDATA);
+        if (SHAppBarMessage(ABM_GETSTATE, &abd) == ABS_AUTOHIDE) bAutohide = TRUE;
+    }
+
+    // Expected work area = monitor minus the taskbar band (or the whole monitor when autohide)
+    RECT expectedWork = rcMonitor;
+    if (!bAutohide)
+    {
+        if (horizontal)
+        {
+            if ((rcBand.top - rcMonitor.top) <= (rcMonitor.bottom - rcBand.bottom))
+                expectedWork.top = rcBand.bottom;    // docked to top
+            else
+                expectedWork.bottom = rcBand.top;    // docked to bottom
+        }
+        else
+        {
+            if ((rcBand.left - rcMonitor.left) <= (rcMonitor.right - rcBand.right))
+                expectedWork.left = rcBand.right;    // docked to left
+            else
+                expectedWork.right = rcBand.left;    // docked to right
+        }
+    }
+
+    int band = horizontal ? bandH : bandW;
+    int tol = band / 4;
+    if (tol < 8) tol = 8;
+
+    int expW = expectedWork.right - expectedWork.left;
+    int expH = expectedWork.bottom - expectedWork.top;
+    int workW = rcWork.right - rcWork.left;
+    int workH = rcWork.bottom - rcWork.top;
+
+    // Signature #1 (Collapsed, #3045/#2086): work area is much smaller than expected,
+    // by more than ~25% of the monitor along either axis.
+    BOOL sig1 = ((expW - workW) > (monW / 4)) || ((expH - workH) > (monH / 4));
+
+    // Signature #2 (Not recalculated, #3045): a visible (non-autohide) taskbar whose
+    // band still overlaps the work area beyond tolerance (windows leak under the bar).
+    BOOL sig2 = FALSE;
+    if (!bAutohide)
+    {
+        RECT rcOverlap;
+        if (IntersectRect(&rcOverlap, &rcWork, &rcBand))
+        {
+            int overlapDepth = horizontal
+                ? (rcOverlap.bottom - rcOverlap.top)
+                : (rcOverlap.right - rcOverlap.left);
+            if (overlapDepth > tol) sig2 = TRUE;
+        }
+    }
+
+    EP_WorkAreaLog("  mon %p rcMon=(%ld,%ld,%ld,%ld) rcWork=(%ld,%ld,%ld,%ld) exp=(%ld,%ld,%ld,%ld) tray=%p autohide=%d sig1=%d sig2=%d -> %s",
+        hMonitor, rcMonitor.left, rcMonitor.top, rcMonitor.right, rcMonitor.bottom,
+        rcWork.left, rcWork.top, rcWork.right, rcWork.bottom,
+        expectedWork.left, expectedWork.top, expectedWork.right, expectedWork.bottom,
+        hTray, bAutohide, sig1, sig2, (sig1 || sig2) ? "BROKEN" : "sane");
+
+    if ((sig1 || sig2) && list->count < EP_WORKAREA_MAX_BROKEN)
+    {
+        list->items[list->count].hMonitor = hMonitor;
+        list->items[list->count].expectedWork = expectedWork;
+        list->items[list->count].observedWork = rcWork;    // the transient collapsed band
+        list->items[list->count].rcMonitor = rcMonitor;    // fallback match when HMONITOR changes
+        list->count++;
+    }
+    return TRUE; // keep enumerating all monitors
+}
+
+// Collect every broken monitor. Returns the count.
+static int EP_CollectBrokenWorkAreas(EP_WORKAREA_BROKEN_LIST* list)
+{
+    list->count = 0;
+    EnumDisplayMonitors(NULL, NULL, EP_WorkAreaCollectMonitorProc, (LPARAM)list);
+    return list->count;
+}
+
+// Wrapper kept for symmetry: TRUE when no monitor matches a bug signature.
+static BOOL EP_AreWorkAreasSane(void)
+{
+    EP_WORKAREA_BROKEN_LIST list;
+    return EP_CollectBrokenWorkAreas(&list) == 0;
+}
+
+// Post WM_DISPLAYCHANGE to the tray windows to make the taskbar run its full
+// stuck-rect + work-area recompute path. Posted (not sent) and addressed directly to
+// the tray windows. This is the soft first attempt (works for classic TrayUI).
+static void EP_KickTaskbarWorkAreaRecompute(void)
+{
+    int bpp = 32;
+    HDC hdc = GetDC(NULL);
+    if (hdc)
+    {
+        bpp = GetDeviceCaps(hdc, BITSPIXEL);
+        ReleaseDC(NULL, hdc);
+    }
+    LPARAM lp = MAKELPARAM(GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN));
+
+    HWND hTray = FindWindowW(L"Shell_TrayWnd", NULL);
+    if (hTray) PostMessageW(hTray, WM_DISPLAYCHANGE, (WPARAM)bpp, lp);
+
+    HWND hWnd = NULL;
+    do
+    {
+        hWnd = FindWindowExW(NULL, hWnd, L"Shell_SecondaryTrayWnd", NULL);
+        if (hWnd) PostMessageW(hWnd, WM_DISPLAYCHANGE, (WPARAM)bpp, lp);
+    } while (hWnd);
+
+    EP_WorkAreaLog("  kick: posted WM_DISPLAYCHANGE to tray windows");
+}
+
+// Directly set the correct work area for each broken monitor via SPI_SETWORKAREA.
+// This is the proven repair (exactly what the user's external watcher did):
+// SPI_SETWORKAREA applies to the monitor that contains the rect. Escalation fallback
+// when the soft kick did not heal the collapse. Stamps the cooldown clock.
+static void EP_RepairWorkAreasDirect(EP_WORKAREA_BROKEN_LIST* list)
+{
+    for (int i = 0; i < list->count; i++)
+    {
+        RECT rc = list->items[i].expectedWork;
+        BOOL ok = SystemParametersInfoW(SPI_SETWORKAREA, 0, &rc, SPIF_SENDCHANGE);
+        EP_WorkAreaLog("  SPI_SETWORKAREA mon=%p rect=(%ld,%ld,%ld,%ld) result=%d err=%lu",
+            list->items[i].hMonitor, rc.left, rc.top, rc.right, rc.bottom,
+            ok, ok ? 0UL : GetLastError());
+    }
+    g_epLastDirectRepairTick = GetTickCount64();
+}
+
+// --- Window layout snapshot/restore implementation ------------------------------
+
+// Monitors that currently host an EP taskbar. Restricting snapshot/restore to these
+// keeps us consistent with the work-area fix (never touch a third-party appbar's
+// monitor).
+typedef struct { HMONITOR items[16]; int count; } EP_TRAY_MONITOR_LIST;
+
+static BOOL CALLBACK EP_CollectTrayMonitorsProc(HMONITOR hMonitor, HDC hdc, LPRECT lprc, LPARAM lParam)
+{
+    UNREFERENCED_PARAMETER(hdc);
+    UNREFERENCED_PARAMETER(lprc);
+    EP_TRAY_MONITOR_LIST* list = (EP_TRAY_MONITOR_LIST*)lParam;
+    if (list->count >= (int)_countof(list->items)) return TRUE;
+    MONITORINFO mi;
+    mi.cbSize = sizeof(mi);
+    if (!GetMonitorInfoW(hMonitor, &mi)) return TRUE;
+    if (EP_FindEPTrayOnMonitor(hMonitor, (mi.dwFlags & MONITORINFOF_PRIMARY) != 0))
+        list->items[list->count++] = hMonitor;
+    return TRUE;
+}
+
+static BOOL EP_IsTrayMonitor(EP_TRAY_MONITOR_LIST* list, HMONITOR hMonitor)
+{
+    for (int i = 0; i < list->count; i++)
+        if (list->items[i] == hMonitor) return TRUE;
+    return FALSE;
+}
+
+typedef struct { EP_TRAY_MONITOR_LIST* trays; EP_WINRESTORE_SNAPSHOT* snap; BOOL overflow; } EP_WINSNAP_CTX;
+
+// Conservative top-level-window filter: a window is snapshotted only if it is visible,
+// non-minimized, unowned, not a tool window, not cloaked, not a shell/desktop window,
+// has a non-empty rect, and sits on an EP-tray monitor.
+static BOOL CALLBACK EP_WinSnapshotEnumProc(HWND hWnd, LPARAM lParam)
+{
+    EP_WINSNAP_CTX* ctx = (EP_WINSNAP_CTX*)lParam;
+    if (ctx->snap->count >= EP_WINRESTORE_MAX_WINDOWS)
+    {
+        if (!ctx->overflow)
+        {
+            EP_WorkAreaLog("  snapshot: capacity %d reached, stopping enumeration", EP_WINRESTORE_MAX_WINDOWS);
+            ctx->overflow = TRUE;
+        }
+        return FALSE; // stop enumerating
+    }
+
+    if (!IsWindowVisible(hWnd) || IsIconic(hWnd)) return TRUE;
+    if (GetWindow(hWnd, GW_OWNER) != NULL) return TRUE;
+
+    LONG_PTR exStyle = GetWindowLongPtrW(hWnd, GWL_EXSTYLE);
+    if (exStyle & WS_EX_TOOLWINDOW) return TRUE;
+
+    BOOL isCloaked = FALSE;
+    if (SUCCEEDED(DwmGetWindowAttribute(hWnd, DWMWA_CLOAKED, &isCloaked, sizeof(BOOL))) && isCloaked)
+        return TRUE;
+
+    WCHAR cls[64] = { 0 };
+    if (GetClassNameW(hWnd, cls, (int)_countof(cls)))
+    {
+        if (!wcscmp(cls, L"Shell_TrayWnd") || !wcscmp(cls, L"Shell_SecondaryTrayWnd") ||
+            !wcscmp(cls, L"Progman") || !wcscmp(cls, L"WorkerW"))
+            return TRUE;
+    }
+
+    RECT rc;
+    if (!GetWindowRect(hWnd, &rc)) return TRUE;
+    if (rc.right <= rc.left || rc.bottom <= rc.top) return TRUE;
+
+    HMONITOR hMon = MonitorFromWindow(hWnd, MONITOR_DEFAULTTONULL);
+    if (!hMon || !EP_IsTrayMonitor(ctx->trays, hMon)) return TRUE;
+
+    RECT rcMon = { 0 };
+    MONITORINFO mi;
+    mi.cbSize = sizeof(mi);
+    if (GetMonitorInfoW(hMon, &mi)) rcMon = mi.rcMonitor;
+
+    EP_WINRESTORE_ENTRY* e = &ctx->snap->items[ctx->snap->count++];
+    e->hWnd = hWnd;
+    e->rc = rc;
+    e->hMonitor = hMon;
+    e->rcMonitor = rcMon;
+    e->bZoomed = IsZoomed(hWnd);
+
+    EP_WorkAreaLog("  snapshot win %p cls=%ls rc=(%ld,%ld,%ld,%ld) mon=%p zoomed=%d",
+        hWnd, cls, rc.left, rc.top, rc.right, rc.bottom, hMon, e->bZoomed);
+    return TRUE;
+}
+
+// Snapshot the top-level window layout on EP-tray monitors. Triggered on display-OFF/
+// suspend, which precede the wake-time work-area collapse, so the snapshot captures
+// the pre-damage baseline. Skipped mid-repair so a shifted layout never overwrites a
+// good snapshot.
+static void EP_SnapshotWindowLayout(void)
+{
+    if (g_epWorkAreaKickCount > 0)
+    {
+        EP_WorkAreaLog("snapshot skipped: repair cycle in progress (kickCount=%u)", g_epWorkAreaKickCount);
+        return;
+    }
+
+    EP_TRAY_MONITOR_LIST trays;
+    trays.count = 0;
+    EnumDisplayMonitors(NULL, NULL, EP_CollectTrayMonitorsProc, (LPARAM)&trays);
+    if (trays.count == 0)
+    {
+        EP_WorkAreaLog("snapshot skipped: no EP-tray monitors");
+        return;
+    }
+
+    g_epWinSnapshot.count = 0;
+    EP_WINSNAP_CTX ctx = { &trays, &g_epWinSnapshot, FALSE };
+    EnumWindows(EP_WinSnapshotEnumProc, (LPARAM)&ctx);
+
+    g_epWinSnapshotTick = GetTickCount64();
+    EP_WorkAreaLog("snapshot: %d windows on %d EP-tray monitors", g_epWinSnapshot.count, trays.count);
+}
+
+// Match a snapshot entry to a broken-at-detect record: first by HMONITOR handle, then
+// by monitor rect (the handle can change across a display re-init).
+static EP_BROKEN_WORKAREA* EP_FindBrokenForWindow(EP_WINRESTORE_ENTRY* e)
+{
+    for (int i = 0; i < g_epWorkAreaBrokenAtDetect.count; i++)
+        if (g_epWorkAreaBrokenAtDetect.items[i].hMonitor == e->hMonitor)
+            return &g_epWorkAreaBrokenAtDetect.items[i];
+    for (int i = 0; i < g_epWorkAreaBrokenAtDetect.count; i++)
+        if (EqualRect(&g_epWorkAreaBrokenAtDetect.items[i].rcMonitor, &e->rcMonitor))
+            return &g_epWorkAreaBrokenAtDetect.items[i];
+    return NULL;
+}
+
+// After a verified work-area repair, move any snapshotted window that the shell shoved
+// into the former collapsed band back to its snapshot rect. One-shot: consumes both
+// the snapshot and the broken-at-detect list.
+static void EP_RestoreWindowsFromSnapshot(void)
+{
+    if (g_epWorkAreaBrokenAtDetect.count == 0 || g_epWinSnapshot.count == 0)
+    {
+        EP_WorkAreaLog("restore skipped: no broken-at-detect (%d) or snapshot (%d)",
+            g_epWorkAreaBrokenAtDetect.count, g_epWinSnapshot.count);
+        g_epWinSnapshot.count = 0;
+        g_epWorkAreaBrokenAtDetect.count = 0;
+        return;
+    }
+
+    // Freshness: the snapshot must predate the last display-ON, and the wake must be
+    // recent. Otherwise it is stale (the user likely rearranged windows since).
+    ULONGLONG now = GetTickCount64();
+    if (!(g_epWinSnapshotTick < g_epLastDisplayOnTick) ||
+        (now - g_epLastDisplayOnTick) > EP_WINRESTORE_WAKE_WINDOW)
+    {
+        EP_WorkAreaLog("restore skipped: stale snapshot (snapTick=%llu onTick=%llu now=%llu)",
+            g_epWinSnapshotTick, g_epLastDisplayOnTick, now);
+        g_epWinSnapshot.count = 0;
+        g_epWorkAreaBrokenAtDetect.count = 0;
+        return;
+    }
+
+    int restored = 0;
+    for (int i = 0; i < g_epWinSnapshot.count; i++)
+    {
+        EP_WINRESTORE_ENTRY* e = &g_epWinSnapshot.items[i];
+        HWND hWnd = e->hWnd;
+
+        if (!IsWindow(hWnd)) { EP_WorkAreaLog("  restore skip %p: window gone", hWnd); continue; }
+        if (e->bZoomed || IsZoomed(hWnd)) { EP_WorkAreaLog("  restore skip %p: maximized", hWnd); continue; }
+        if (IsIconic(hWnd)) { EP_WorkAreaLog("  restore skip %p: minimized", hWnd); continue; }
+        if (!IsWindowVisible(hWnd)) { EP_WorkAreaLog("  restore skip %p: hidden", hWnd); continue; }
+
+        EP_BROKEN_WORKAREA* brk = EP_FindBrokenForWindow(e);
+        if (!brk) continue; // window's monitor did not collapse -> nothing to undo (no log)
+
+        RECT cur;
+        if (!GetWindowRect(hWnd, &cur)) { EP_WorkAreaLog("  restore skip %p: GetWindowRect failed", hWnd); continue; }
+        if (EqualRect(&cur, &e->rc)) { EP_WorkAreaLog("  restore skip %p: unchanged", hWnd); continue; }
+
+        if (MonitorFromWindow(hWnd, MONITOR_DEFAULTTONULL) != e->hMonitor)
+        {
+            EP_WorkAreaLog("  restore skip %p: now on another monitor", hWnd);
+            continue;
+        }
+
+        // Anti-conflict: only restore a window whose current rect lies fully inside the
+        // collapsed band (inflated by tolerance). A window the user moved elsewhere is
+        // left alone.
+        RECT band = brk->observedWork;
+        band.left -= EP_WINRESTORE_BAND_TOL; band.top -= EP_WINRESTORE_BAND_TOL;
+        band.right += EP_WINRESTORE_BAND_TOL; band.bottom += EP_WINRESTORE_BAND_TOL;
+        RECT rcTest;
+        if (!IntersectRect(&rcTest, &cur, &band) || !EqualRect(&rcTest, &cur))
+        {
+            EP_WorkAreaLog("  restore skip %p: not inside collapsed band cur=(%ld,%ld,%ld,%ld) band=(%ld,%ld,%ld,%ld)",
+                hWnd, cur.left, cur.top, cur.right, cur.bottom, band.left, band.top, band.right, band.bottom);
+            continue;
+        }
+
+        int w = e->rc.right - e->rc.left;
+        int h = e->rc.bottom - e->rc.top;
+        // Restore both position AND size (the reflow may have shrunk the window).
+        // SWP_ASYNCWINDOWPOS so a hung app cannot block the service thread.
+        BOOL ok = SetWindowPos(hWnd, NULL, e->rc.left, e->rc.top, w, h,
+            SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOOWNERZORDER | SWP_ASYNCWINDOWPOS);
+        EP_WorkAreaLog("  restore %p to (%ld,%ld,%ld,%ld) result=%d",
+            hWnd, e->rc.left, e->rc.top, e->rc.right, e->rc.bottom, ok);
+        if (ok) restored++;
+    }
+
+    EP_WorkAreaLog("restore pass done: %d restored of %d", restored, g_epWinSnapshot.count);
+    g_epWinSnapshot.count = 0;
+    g_epWorkAreaBrokenAtDetect.count = 0;
+}
+
+// (Re)arm the debounce timer. Guards against re-arming while a repair cycle is
+// already running (our own kick comes back as WM_DISPLAYCHANGE) and against a
+// pathological fight with a third-party appbar right after a direct SPI repair.
+static void EP_ArmWorkAreaWatchdog(HWND hWnd)
+{
+    if (!hWnd) return;
+
+    if (g_epWorkAreaKickCount > 0)
+    {
+        EP_WorkAreaLog("arm ignored: repair cycle in progress (kickCount=%u)", g_epWorkAreaKickCount);
+        return;
+    }
+
+    if (g_epLastDirectRepairTick)
+    {
+        ULONGLONG elapsed = GetTickCount64() - g_epLastDirectRepairTick;
+        if (elapsed < EP_WORKAREA_REPAIR_COOLDOWN)
+        {
+            EP_WorkAreaLog("arm ignored: cooldown (%llu ms since last direct repair)", elapsed);
+            return;
+        }
+    }
+
+    EP_WorkAreaLog("arm: debounce %d ms", EP_WORKAREA_WATCHDOG_DEBOUNCE);
+    g_epWorkAreaKickCount = 0;
+    SetTimer(hWnd, EP_WORKAREA_WATCHDOG_TIMER_ID, EP_WORKAREA_WATCHDOG_DEBOUNCE, NULL);
+}
+
 #define EP_SERVICE_WINDOW_CLASS_NAME L"EP_Service_Window_" _T(EP_CLSID)
 LRESULT CALLBACK EP_Service_Window_WndProc(
     HWND hWnd,
@@ -628,6 +1183,85 @@ LRESULT CALLBACK EP_Service_Window_WndProc(
     if (uMsg == WM_CREATE)
     {
         s_uTaskbarRestart = RegisterWindowMessageW(L"TaskbarCreated");
+        // Register unconditionally; the setting is checked in the handler so it can be
+        // toggled live without re-registering. Hosted on the service window because it
+        // outlives taskbar recreation (a notify on the tray window would die with it).
+        g_epDisplayStateNotify = RegisterPowerSettingNotification(hWnd, &EP_GUID_CONSOLE_DISPLAY_STATE, DEVICE_NOTIFY_WINDOW_HANDLE);
+        EP_WorkAreaLog("WM_CREATE: RegisterPowerSettingNotification -> %p err=%lu bOldTaskbar=%lu bFix=%lu",
+            g_epDisplayStateNotify, g_epDisplayStateNotify ? 0UL : GetLastError(),
+            (unsigned long)bOldTaskbar, (unsigned long)bFixWorkAreaAfterDisplayReinit);
+    }
+    else if (uMsg == WM_DESTROY)
+    {
+        if (g_epDisplayStateNotify)
+        {
+            UnregisterPowerSettingNotification(g_epDisplayStateNotify);
+            g_epDisplayStateNotify = NULL;
+        }
+    }
+    else if (uMsg == WM_POWERBROADCAST)
+    {
+        DWORD dwDisplayState = 0xFFFFFFFF;
+        if (wParam == PBT_POWERSETTINGCHANGE && lParam)
+        {
+            POWERBROADCAST_SETTING* pbs = (POWERBROADCAST_SETTING*)lParam;
+            if (IsEqualGUID(&pbs->PowerSetting, &EP_GUID_CONSOLE_DISPLAY_STATE) &&
+                pbs->DataLength >= sizeof(DWORD))
+            {
+                dwDisplayState = pbs->Data[0];
+            }
+        }
+        EP_WorkAreaLog("WM_POWERBROADCAST wParam=%llu displayState=%ld guard(bOldTaskbar=%lu bFix=%lu)",
+            (unsigned long long)wParam, (long)dwDisplayState,
+            (unsigned long)bOldTaskbar, (unsigned long)bFixWorkAreaAfterDisplayReinit);
+        if (bOldTaskbar && bFixWorkAreaAfterDisplayReinit)
+        {
+            if (wParam == PBT_APMRESUMEAUTOMATIC || wParam == PBT_APMRESUMESUSPEND)
+            {
+                g_epLastDisplayOnTick = GetTickCount64();
+                EP_ArmWorkAreaWatchdog(hWnd);
+            }
+            else if (wParam == PBT_POWERSETTINGCHANGE && dwDisplayState == 1) // display ON
+            {
+                g_epLastDisplayOnTick = GetTickCount64();
+                EP_ArmWorkAreaWatchdog(hWnd);
+            }
+            else if (wParam == PBT_POWERSETTINGCHANGE && dwDisplayState == 0) // display OFF (precedes wake collapse)
+            {
+                EP_SnapshotWindowLayout();
+            }
+            else if (wParam == PBT_APMSUSPEND) // about to sleep (precedes resume collapse)
+            {
+                EP_SnapshotWindowLayout();
+            }
+        }
+        return TRUE;
+    }
+    else if (uMsg == WM_DISPLAYCHANGE)
+    {
+        // Top-level window -> receives the display-change broadcast. Covers frequency/
+        // resolution changes, monitor add/remove, and primary-monitor changes.
+        EP_WorkAreaLog("WM_DISPLAYCHANGE on service window guard(bOldTaskbar=%lu bFix=%lu)",
+            (unsigned long)bOldTaskbar, (unsigned long)bFixWorkAreaAfterDisplayReinit);
+        if (bOldTaskbar && bFixWorkAreaAfterDisplayReinit)
+        {
+            EP_ArmWorkAreaWatchdog(hWnd);
+        }
+    }
+    else if (uMsg == WM_SETTINGCHANGE)
+    {
+        // The most direct "someone changed the work area" signal (this is exactly what
+        // the user's external watcher listened for). A loop with our own SPI repair is
+        // broken by the sane-detect + the 15s repair cooldown.
+        if (wParam == SPI_SETWORKAREA)
+        {
+            EP_WorkAreaLog("WM_SETTINGCHANGE SPI_SETWORKAREA on service window guard(bOldTaskbar=%lu bFix=%lu)",
+                (unsigned long)bOldTaskbar, (unsigned long)bFixWorkAreaAfterDisplayReinit);
+            if (bOldTaskbar && bFixWorkAreaAfterDisplayReinit)
+            {
+                EP_ArmWorkAreaWatchdog(hWnd);
+            }
+        }
     }
     else if (uMsg == WM_HOTKEY && (wParam == 1 || wParam == 2))
     {
@@ -659,6 +1293,61 @@ LRESULT CALLBACK EP_Service_Window_WndProc(
     {
         if (IsSpotlightEnabled()) SpotlightHelper(SPOP_CLICKMENU_NEXTPIC, hWnd, NULL, NULL);
         printf("Refreshed Spotlight\n");
+    }
+    else if (uMsg == WM_TIMER && wParam == EP_WORKAREA_WATCHDOG_TIMER_ID)
+    {
+        KillTimer(hWnd, EP_WORKAREA_WATCHDOG_TIMER_ID);
+
+        EP_WORKAREA_BROKEN_LIST list;
+        int broken = EP_CollectBrokenWorkAreas(&list);
+        EP_WorkAreaLog("timer fired: broken=%d kickCount=%u bOldTaskbar=%lu bFix=%lu",
+            broken, g_epWorkAreaKickCount, (unsigned long)bOldTaskbar, (unsigned long)bFixWorkAreaAfterDisplayReinit);
+
+        // On the FIRST detect of a cycle, capture the broken list before any repair
+        // overwrites observedWork - it records the transient collapsed bands that the
+        // window restore pass needs to recognize stranded windows.
+        if (broken > 0 && g_epWorkAreaKickCount == 0)
+        {
+            g_epWorkAreaBrokenAtDetect = list;
+            EP_WorkAreaLog("captured %d broken record(s) at detect for window restore", broken);
+        }
+
+        if (broken == 0)
+        {
+            EP_WorkAreaLog("verdict: all work areas sane, cycle done");
+            // Restore windows only if this cycle actually detected+repaired a collapse
+            // (kickCount>0). Covers both soft-kick and SPI heal: window damage happens
+            // at the collapse, not at the repair.
+            if (g_epWorkAreaKickCount > 0)
+            {
+                EP_RestoreWindowsFromSnapshot();
+            }
+            g_epWorkAreaKickCount = 0;
+            return 0;
+        }
+        if (g_epWorkAreaKickCount >= EP_WORKAREA_WATCHDOG_MAX_KICKS)
+        {
+            EP_WorkAreaLog("giving up after %u attempts, %d monitor(s) still broken", g_epWorkAreaKickCount, broken);
+            // Work area not healed -> restoring windows is pointless (the shell will
+            // shove them back). Drop the captured broken list.
+            g_epWorkAreaBrokenAtDetect.count = 0;
+            g_epWorkAreaKickCount = 0;
+            return 0;
+        }
+
+        g_epWorkAreaKickCount++;
+        if (g_epWorkAreaKickCount == 1)
+        {
+            EP_WorkAreaLog("attempt %u: soft kick", g_epWorkAreaKickCount);
+            EP_KickTaskbarWorkAreaRecompute();          // soft first try (classic TrayUI)
+        }
+        else
+        {
+            EP_WorkAreaLog("attempt %u: direct SPI_SETWORKAREA repair (%d monitor(s))", g_epWorkAreaKickCount, broken);
+            EP_RepairWorkAreasDirect(&list);            // proven fallback (ep_taskbar, etc.)
+        }
+        SetTimer(hWnd, EP_WORKAREA_WATCHDOG_TIMER_ID, EP_WORKAREA_WATCHDOG_VERIFY, NULL); // re-verify
+        return 0;
     }
     return DefWindowProcW(hWnd, uMsg, wParam, lParam);
 }
@@ -2006,6 +2695,16 @@ INT64 Shell_TrayWndSubclassProc(
             {
                 UpdateStartMenuPositioning(MAKELPARAM(TRUE, FALSE));
             }
+            // The tray reliably receives WM_DISPLAYCHANGE even when the service window
+            // does not; arm the work-area watchdog from here too. EP_ArmWorkAreaWatchdog
+            // guards against re-arming from our own kick (kickCount>0) and the repair
+            // cooldown, so this cannot loop. SetTimer on the service window from the
+            // taskbar thread is legal (WM_TIMER is delivered to the service thread).
+            if (bOldTaskbar && bFixWorkAreaAfterDisplayReinit && hWndServiceWindow)
+            {
+                EP_WorkAreaLog("tray WM_DISPLAYCHANGE (isPrimary=%d) -> arm", (int)bIsPrimaryTaskbar);
+                EP_ArmWorkAreaWatchdog(hWndServiceWindow);
+            }
             break;
         }
         /*case WM_PARENTNOTIFY:
@@ -2069,6 +2768,12 @@ INT64 Shell_TrayWndSubclassProc(
             if (bIsPrimaryTaskbar)
             {
                 UpdateStartMenuPositioning(MAKELPARAM(TRUE, FALSE));
+            }
+            // Monitor/stuck-place change - another reliable arm source from the tray.
+            if (bOldTaskbar && bFixWorkAreaAfterDisplayReinit && hWndServiceWindow)
+            {
+                EP_WorkAreaLog("tray 0x5C3 stuck-place change (isPrimary=%d) -> arm", (int)bIsPrimaryTaskbar);
+                EP_ArmWorkAreaWatchdog(hWndServiceWindow);
             }
             break;
         }
@@ -6157,6 +6862,15 @@ void WINAPI LoadSettings(LPARAM lParam)
             0,
             NULL,
             &bTaskbarAutohideOnDoubleClick,
+            &dwSize
+        );
+        dwSize = sizeof(DWORD);
+        RegQueryValueExW(
+            hKey,
+            TEXT("FixWorkAreaAfterDisplayReinit"),
+            0,
+            NULL,
+            &bFixWorkAreaAfterDisplayReinit,
             &dwSize
         );
         dwTemp = ORB_STYLE_WINDOWS10;
