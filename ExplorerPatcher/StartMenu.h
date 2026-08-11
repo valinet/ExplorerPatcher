@@ -15,6 +15,7 @@ EXTERN_C NTSYSAPI PIMAGE_NT_HEADERS NTAPI RtlImageNtHeader(PVOID);
 
 extern DWORD bMonitorOverride;
 extern DWORD bOpenAtLogon;
+extern HMONITOR g_hStartMenuTargetMonitor;
 
 DEFINE_GUID(SID_IImmersiveMonitorService,
     0x47094e3a,

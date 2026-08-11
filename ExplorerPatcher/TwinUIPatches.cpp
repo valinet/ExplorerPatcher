@@ -1575,6 +1575,11 @@ BOOL Moment2PatchHardwareConfirmator(HMODULE hHardwareConfirmator, PBYTE pSearch
 #pragma region "Fix broken Windows 10 start menu positioning issues caused by 44656322"
 
 // Reverts 44656322's effects on the start menu
+// Target monitor on which the Start menu is expected to open. Set by explorer.exe when it invokes
+// the Start menu itself (see OpenStartOnMonitor in StartMenu.c); when unset, the hook falls back
+// to the monitor under the cursor, and finally to the monitor reported by the launcher.
+extern "C" HMONITOR g_hStartMenuTargetMonitor = nullptr;
+
 extern "C" HRESULT CStartExperienceManager_GetMonitorInformationHook(void* _this, CSingleViewShellExperience* experience, RECT* rcOutWorkArea, EDGEUI_TRAYSTUCKPLACE* outTrayStuckPlace, bool* bOutRtl, HMONITOR* hOutMonitor)
 {
     *rcOutWorkArea = {};
@@ -1589,17 +1594,40 @@ extern "C" HRESULT CStartExperienceManager_GetMonitorInformationHook(void* _this
     ComPtr<IImmersiveLauncher> spImmersiveLauncher;
     RETURN_IF_FAILED(spImmersiveShellServiceProvider->QueryService(SID_ImmersiveLauncher, IID_PPV_ARGS(&spImmersiveLauncher)));
 
+    // The monitor reported by the launcher is not reliable when opening the Start menu on a
+    // monitor with a different resolution and/or scaling than the previously used one, so it is
+    // only used as a last resort. Prefer the monitor we were asked to open the menu on, then the
+    // monitor under the cursor (which matches both keyboard and taskbar button invocation).
+    ComPtr<IImmersiveMonitor> spLauncherMonitor;
+    HRESULT hr = spImmersiveLauncher->GetMonitor(&spLauncherMonitor);
+    HMONITOR hLauncherMonitor = nullptr;
+    if (SUCCEEDED(hr) && spLauncherMonitor)
+    {
+        if (FAILED(spLauncherMonitor->GetHandle(&hLauncherMonitor)))
+            hLauncherMonitor = nullptr;
+    }
+
+    HMONITOR hShared = g_hStartMenuTargetMonitor;
+    HMONITOR hCursor = nullptr;
+    {
+        POINT ptCursor;
+        if (GetCursorPos(&ptCursor))
+        {
+            hCursor = MonitorFromPoint(ptCursor, MONITOR_DEFAULTTONEAREST);
+        }
+    }
+
+    HMONITOR hMonitor = hShared ? hShared : hCursor;
+    if (!hMonitor)
+        hMonitor = hLauncherMonitor;
+    if (!hMonitor)
+        return E_FAIL;
+
+    ComPtr<IImmersiveMonitorManager> spImmersiveMonitorManager;
+    RETURN_IF_FAILED(spImmersiveShellServiceProvider->QueryService(SID_IImmersiveMonitorService, IID_PPV_ARGS(&spImmersiveMonitorManager)));
+
     ComPtr<IImmersiveMonitor> spImmersiveMonitor;
-    HRESULT hr = spImmersiveLauncher->GetMonitor(&spImmersiveMonitor);
-    if (FAILED(hr))
-        return hr;
-
-    HMONITOR hMonitor = nullptr;
-    if (hOutMonitor)
-        hr = spImmersiveMonitor->GetHandle(&hMonitor);
-
-    if (FAILED(hr))
-        return hr;
+    RETURN_IF_FAILED(spImmersiveMonitorManager->GetFromHandle(hMonitor, &spImmersiveMonitor));
 
     ComPtr<IEdgeUiManager> spEdgeUiManager;
     hr = IUnknown_QueryService(spImmersiveMonitor.Get(), SID_EdgeUi, IID_PPV_ARGS(&spEdgeUiManager));
