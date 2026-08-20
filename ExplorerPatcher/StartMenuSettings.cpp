@@ -128,6 +128,9 @@ extern "C" BOOL NeedsRo_SyncSettingsFromRegToCDS()
         return FALSE;
     }
 
+	// HideAppList
+	start_global_properties->put_HideAppList(FALSE);
+
     DWORD dwValue, dwSize;
 
     // ShowFrequentList
