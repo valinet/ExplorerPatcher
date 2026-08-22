@@ -1,23 +1,27 @@
 #include "StartMenu.h"
 
-// Minimal vtable definition for the ImmersiveMonitor object returned by
-// IImmersiveLauncher10RS::GetMonitor(); only GetHandle is used here.
-typedef struct _EPImmersiveMonitorVtbl
+// One-shot target monitor for the next Start menu invocation. Set by OpenStartOnMonitor() right
+// before the Start menu is opened on a specific monitor and atomically consumed by
+// CStartExperienceManager_GetMonitorInformationHook() (TwinUIPatches.cpp), so it only ever
+// applies to a single Start open and never lingers.
+static volatile HMONITOR g_hStartMenuTargetMonitor = NULL;
+
+void SetStartMenuTargetMonitor(HMONITOR monitor)
 {
-    HRESULT (STDMETHODCALLTYPE* QueryInterface)(void* This, REFIID riid, void** ppvObject);
-    ULONG (STDMETHODCALLTYPE* AddRef)(void* This);
-    ULONG (STDMETHODCALLTYPE* Release)(void* This);
-    HRESULT (STDMETHODCALLTYPE* GetIdentity)(void* This, DWORD* pdwIdentity);
-    HRESULT (STDMETHODCALLTYPE* ConnectObject)(void* This, IUnknown* pObject);
-    HRESULT (STDMETHODCALLTYPE* GetHandle)(void* This, HMONITOR* phMonitor);
-} EPImmersiveMonitorVtbl;
+    InterlockedExchangePointer((volatile PVOID*)&g_hStartMenuTargetMonitor, monitor);
+}
+
+HMONITOR ConsumeStartMenuTargetMonitor(void)
+{
+    return (HMONITOR)InterlockedExchangePointer((volatile PVOID*)&g_hStartMenuTargetMonitor, NULL);
+}
 
 void OpenStartOnMonitor(HMONITOR monitor)
 {
     // Remember the monitor the Start menu is expected to open on, so that
     // CStartExperienceManager::GetMonitorInformation() (hooked in TwinUIPatches.cpp) can use it
     // instead of the potentially stale monitor reported by the launcher.
-    g_hStartMenuTargetMonitor = monitor;
+    SetStartMenuTargetMonitor(monitor);
 
     HRESULT hr = S_OK;
     IUnknown* pImmersiveShell = NULL;
@@ -63,27 +67,6 @@ void OpenStartOnMonitor(HMONITOR monitor)
                         if (pMonitor)
                         {
                             pLauncher->lpVtbl->ConnectToMonitor(pLauncher, pMonitor);
-
-                            // Wait until the launcher has actually switched to the target monitor,
-                            // otherwise the Start menu view is created using the previously
-                            // connected monitor's work area (visible as mispositioning when the
-                            // monitors differ in resolution and/or scaling).
-                            for (int i = 0; i < 20; i++) // up to 1 second
-                            {
-                                IUnknown* pCurrentMonitor = NULL;
-                                if (SUCCEEDED(pLauncher->lpVtbl->GetMonitor(pLauncher, &pCurrentMonitor)) && pCurrentMonitor)
-                                {
-                                    EPImmersiveMonitorVtbl* pVtbl = (EPImmersiveMonitorVtbl*)pCurrentMonitor->lpVtbl;
-                                    HMONITOR hCurrentMonitor = NULL;
-                                    HRESULT hrGetHandle = pVtbl->GetHandle(pCurrentMonitor, &hCurrentMonitor);
-                                    pCurrentMonitor->lpVtbl->Release(pCurrentMonitor);
-                                    if (SUCCEEDED(hrGetHandle) && hCurrentMonitor == monitor)
-                                    {
-                                        break;
-                                    }
-                                }
-                                Sleep(50);
-                            }
                         }
                         pLauncher->lpVtbl->ShowStartView(pLauncher, 11, 0);
                     }
@@ -116,6 +99,10 @@ LRESULT CALLBACK OpenStartOnCurentMonitorThreadHook(
         if (GetSystemMetrics(SM_CMONITORS) >= 2 && msg->message == WM_SYSCOMMAND && (msg->wParam & 0xFFF0) == SC_TASKLIST)
         {
             printf("Position Start\n");
+            if (bMonitorOverride == 1)
+            {
+                goto finish;
+            }
 
             /*DWORD dwStatus = 0;
             DWORD dwSize = sizeof(DWORD);
@@ -134,7 +121,7 @@ LRESULT CALLBACK OpenStartOnCurentMonitorThreadHook(
             }*/
 
             HMONITOR monitor = NULL;
-            if (!bMonitorOverride || bMonitorOverride == 1)
+            if (!bMonitorOverride)
             {
                 DWORD pts = GetMessagePos();
                 POINT pt;
@@ -168,6 +155,7 @@ LRESULT CALLBACK OpenStartOnCurentMonitorThreadHook(
             msg->message = WM_NULL;
         }
     }
+finish:
     return CallNextHookEx(NULL, code, wParam, lParam);
 }
 
