@@ -1575,6 +1575,13 @@ BOOL Moment2PatchHardwareConfirmator(HMODULE hHardwareConfirmator, PBYTE pSearch
 #pragma region "Fix broken Windows 10 start menu positioning issues caused by 44656322"
 
 // Reverts 44656322's effects on the start menu
+// One-shot target monitor override for the next Start menu invocation. Set by
+// OpenStartOnMonitor() (StartMenu.c) right before the Start menu is opened on a specific
+// monitor, and atomically consumed by the hook below, so it only ever applies to a single
+// Start open and never lingers.
+extern "C" void SetStartMenuTargetMonitor(HMONITOR monitor);
+extern "C" HMONITOR ConsumeStartMenuTargetMonitor(void);
+
 extern "C" HRESULT CStartExperienceManager_GetMonitorInformationHook(void* _this, CSingleViewShellExperience* experience, RECT* rcOutWorkArea, EDGEUI_TRAYSTUCKPLACE* outTrayStuckPlace, bool* bOutRtl, HMONITOR* hOutMonitor)
 {
     *rcOutWorkArea = {};
@@ -1589,17 +1596,59 @@ extern "C" HRESULT CStartExperienceManager_GetMonitorInformationHook(void* _this
     ComPtr<IImmersiveLauncher> spImmersiveLauncher;
     RETURN_IF_FAILED(spImmersiveShellServiceProvider->QueryService(SID_ImmersiveLauncher, IID_PPV_ARGS(&spImmersiveLauncher)));
 
+    // Official default path: the monitor currently connected to the launcher.
     ComPtr<IImmersiveMonitor> spImmersiveMonitor;
     HRESULT hr = spImmersiveLauncher->GetMonitor(&spImmersiveMonitor);
     if (FAILED(hr))
         return hr;
 
-    HMONITOR hMonitor = nullptr;
-    if (hOutMonitor)
-        hr = spImmersiveMonitor->GetHandle(&hMonitor);
-
+    HMONITOR hLauncherMonitor = nullptr;
+    hr = spImmersiveMonitor->GetHandle(&hLauncherMonitor);
     if (FAILED(hr))
         return hr;
+
+    // One-shot explicit target monitor, set by OpenStartOnMonitor() for taskbar button
+    // invocations; atomically consumed so it only ever applies to this Start open.
+    HMONITOR hRequestedMonitor = ConsumeStartMenuTargetMonitor();
+
+    // Fall back to the monitor under the cursor. This covers Win key invocations, which open
+    // the Start menu without going through OpenStartOnMonitor(), so the menu follows the mouse.
+    HMONITOR hCursorMonitor = nullptr;
+    POINT pt;
+    if (GetCursorPos(&pt))
+    {
+        hCursorMonitor = MonitorFromPoint(pt, MONITOR_DEFAULTTONEAREST);
+    }
+
+    // Explicit target > cursor monitor > launcher monitor (official behavior).
+    HMONITOR hTargetMonitor = hRequestedMonitor ? hRequestedMonitor : (hCursorMonitor ? hCursorMonitor : hLauncherMonitor);
+
+    // Swap the monitor object only when the target actually differs from the launcher's, and
+    // only for this invocation. Any failure falls back to the launcher monitor (official path).
+    if (hTargetMonitor && hTargetMonitor != hLauncherMonitor)
+    {
+        ComPtr<IImmersiveMonitorManager> spImmersiveMonitorManager;
+        HRESULT hrGetFromHandle = E_FAIL;
+        if (SUCCEEDED(spImmersiveShellServiceProvider->QueryService(SID_IImmersiveMonitorService, IID_PPV_ARGS(&spImmersiveMonitorManager))))
+        {
+            ComPtr<IImmersiveMonitor> spOverrideMonitor;
+            hrGetFromHandle = spImmersiveMonitorManager->GetFromHandle(hTargetMonitor, &spOverrideMonitor);
+            if (SUCCEEDED(hrGetFromHandle) && spOverrideMonitor)
+            {
+                spImmersiveMonitor = spOverrideMonitor;
+            }
+            else
+            {
+                hTargetMonitor = hLauncherMonitor;
+            }
+        }
+        else
+        {
+            hTargetMonitor = hLauncherMonitor;
+        }
+        printf("[EP] Start monitor select: requested=%p cursor=%p launcher=%p final=%p GetFromHandle=0x%08lX\n",
+            (void*)hRequestedMonitor, (void*)hCursorMonitor, (void*)hLauncherMonitor, (void*)hTargetMonitor, (unsigned long)hrGetFromHandle);
+    }
 
     ComPtr<IEdgeUiManager> spEdgeUiManager;
     hr = IUnknown_QueryService(spImmersiveMonitor.Get(), SID_EdgeUi, IID_PPV_ARGS(&spEdgeUiManager));
@@ -1625,7 +1674,7 @@ extern "C" HRESULT CStartExperienceManager_GetMonitorInformationHook(void* _this
     *outTrayStuckPlace = trayStuckPlace;
     *bOutRtl = Mirror_IsThreadRTL() != FALSE;
     if (hOutMonitor)
-        *hOutMonitor = hMonitor;
+        *hOutMonitor = hTargetMonitor;
 
     return S_OK;
 }

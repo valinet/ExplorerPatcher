@@ -1,7 +1,28 @@
 #include "StartMenu.h"
 
+// One-shot target monitor for the next Start menu invocation. Set by OpenStartOnMonitor() right
+// before the Start menu is opened on a specific monitor and atomically consumed by
+// CStartExperienceManager_GetMonitorInformationHook() (TwinUIPatches.cpp), so it only ever
+// applies to a single Start open and never lingers.
+static volatile HMONITOR g_hStartMenuTargetMonitor = NULL;
+
+void SetStartMenuTargetMonitor(HMONITOR monitor)
+{
+    InterlockedExchangePointer((volatile PVOID*)&g_hStartMenuTargetMonitor, monitor);
+}
+
+HMONITOR ConsumeStartMenuTargetMonitor(void)
+{
+    return (HMONITOR)InterlockedExchangePointer((volatile PVOID*)&g_hStartMenuTargetMonitor, NULL);
+}
+
 void OpenStartOnMonitor(HMONITOR monitor)
 {
+    // Remember the monitor the Start menu is expected to open on, so that
+    // CStartExperienceManager::GetMonitorInformation() (hooked in TwinUIPatches.cpp) can use it
+    // instead of the potentially stale monitor reported by the launcher.
+    SetStartMenuTargetMonitor(monitor);
+
     HRESULT hr = S_OK;
     IUnknown* pImmersiveShell = NULL;
     hr = CoCreateInstance(

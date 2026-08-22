@@ -16,6 +16,12 @@ EXTERN_C NTSYSAPI PIMAGE_NT_HEADERS NTAPI RtlImageNtHeader(PVOID);
 extern DWORD bMonitorOverride;
 extern DWORD bOpenAtLogon;
 
+// One-shot Start menu target monitor override (implemented in StartMenu.c). Set right before the
+// Start menu is opened on a specific monitor; consumed (read + cleared) atomically by the
+// CStartExperienceManager::GetMonitorInformation hook, so it applies to a single Start open only.
+void SetStartMenuTargetMonitor(HMONITOR monitor);
+HMONITOR ConsumeStartMenuTargetMonitor(void);
+
 DEFINE_GUID(SID_IImmersiveMonitorService,
     0x47094e3a,
     0x0cf2, 0x430f, 0x80, 0x6f,
