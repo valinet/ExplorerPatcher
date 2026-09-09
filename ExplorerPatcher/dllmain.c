@@ -56,6 +56,9 @@ DWORD32 global_ubr;
 #include <userenv.h>
 #pragma comment(lib, "Userenv.lib")
 #endif
+#if WITH_MAIN_PATCHER
+#include "StartSearchFix.h"
+#endif
 
 #define CHECKFOREGROUNDELAPSED_TIMEOUT 300
 #define POPUPMENU_SAFETOREMOVE_TIMEOUT 300
@@ -11555,6 +11558,9 @@ DWORD Inject(BOOL bIsExplorer)
         VnPatchIAT(hMyTaskbar, "USER32.dll", "GetClientRect", TaskbarCenter_GetClientRectHook);
     VnPatchIAT(hExplorer, "SHCORE.dll", (LPCSTR)190, TaskbarCenter_SHWindowsPolicy);
     printf("Initialized taskbar centering module.\n");
+#if WITH_MAIN_PATCHER
+    StartSearchFix_Init();
+#endif
 
 
 
@@ -13411,6 +13417,9 @@ BOOL WINAPI DllMain(
     case DLL_THREAD_DETACH:
         break;
     case DLL_PROCESS_DETACH:
+#if WITH_MAIN_PATCHER
+        StartSearchFix_Uninit();
+#endif
         break;
     }
     return TRUE;
