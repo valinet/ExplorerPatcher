@@ -59,48 +59,57 @@ HRESULT TaskbarCenter_Center(HWND hWnd, HWND hWndTaskbar, RECT rc, BOOL bIsTaskb
 							}
 							else if (kk >= 2)
 							{
-								vt.vt = VT_I4;
-								vt.lVal = kk - 1;
-								long x = 0, y = 0, w = 0, h = 0, d = 0;
-								pChild->accLocation(&x, &y, &w, &h, vt);
-								if (bIsTaskbarHorizontal ? (x == -1 || w < EP_TASKBAR_LENGTH_TOO_SMALL) : (y == -1 || h < EP_TASKBAR_LENGTH_TOO_SMALL))
+								// Sum the extent of every distinct button slot instead of measuring from the first
+								// to the last button. When the task list wraps onto a second row/column (e.g. after
+								// many windows open at once), first-to-last only spans the last line, which reports
+								// a length that is too small, keeps the band offset too far and makes the wrap
+								// (and the off-center icons) permanent.
+								// Lines that lie inside the taskbar (a taskbar sized to several rows) are shown
+								// side by side, so only the longest of them counts; lines wrapped outside of it are
+								// added on top, since they need room on the visible line. The task list window itself
+								// grows past the taskbar edge when it wraps, so it can't be used for this check.
+								RECT rcList;
+								GetWindowRect(hWndTaskbar, &rcList);
+								long lVisible = 0, lHidden = 0, lLine = 0, lLineCross = MINLONG, lLastX = MINLONG, lLastY = MINLONG;
+								BOOL bLineVisible = FALSE;
+								for (long i = 1; i <= kk - 1; ++i)
+								{
+									vt.vt = VT_I4;
+									vt.lVal = i;
+									long x = 0, y = 0, w = 0, h = 0;
+									if (FAILED(pChild->accLocation(&x, &y, &w, &h, vt))) continue;
+									if (w == 0 || h == 0 || (bIsTaskbarHorizontal ? x == -1 : y == -1)) continue;
+									if (x == lLastX && y == lLastY) continue; // grouped windows share one slot
+									lLastX = x;
+									lLastY = y;
+									long lCross = (bIsTaskbarHorizontal ? y : x);
+									if (lCross != lLineCross)
+									{
+										lLineCross = lCross;
+										lLine = 0;
+										bLineVisible = (bIsTaskbarHorizontal ? (y >= rcList.top && y < rcList.bottom) : (x >= rcList.left && x < rcList.right));
+									}
+									long lExtent = (bIsTaskbarHorizontal ? w : h);
+									lLine += lExtent;
+									if (bLineVisible)
+									{
+										if (lLine > lVisible) lVisible = lLine;
+									}
+									else
+									{
+										lHidden += lExtent;
+									}
+								}
+								long lTotal = lVisible + lHidden;
+								if (lTotal < EP_TASKBAR_LENGTH_TOO_SMALL)
 								{
 									hr = E_FAIL;
 								}
 								else
 								{
-									if (kk >= 3)
+									if (!((GetKeyState(VK_LBUTTON) < 0) && (GetForegroundWindow() == hWndTaskbar)))
 									{
-										d = (bIsTaskbarHorizontal ? ((x - rc.left) + w) : ((y - rc.top) + h));
-										vt.vt = VT_I4;
-										vt.lVal = 1;
-										x = 0, y = 0, w = 0, h = 0;
-										pChild->accLocation(&x, &y, &w, &h, vt);
-										if (bIsTaskbarHorizontal ? w == 0 : h == 0)
-										{
-											vt.vt = VT_I4;
-											vt.lVal = 2;
-											x = 0, y = 0, w = 0, h = 0;
-											pChild->accLocation(&x, &y, &w, &h, vt);
-										}
-										if (bIsTaskbarHorizontal ? (x == -1 || w < EP_TASKBAR_LENGTH_TOO_SMALL) : (y == -1 || h < EP_TASKBAR_LENGTH_TOO_SMALL))
-										{
-											hr = E_FAIL;
-										}
-										else
-										{
-											if (!((GetKeyState(VK_LBUTTON) < 0) && (GetForegroundWindow() == hWndTaskbar)))
-											{
-												SetPropW(hWnd, EP_TASKBAR_LENGTH_PROP_NAME, (HANDLE)(UINT_PTR)(bIsTaskbarHorizontal ? (d - (x - rc.left)) : (d - (y - rc.top))));
-											}
-										}
-									}
-									else
-									{
-										if (!((GetKeyState(VK_LBUTTON) < 0) && (GetForegroundWindow() == hWndTaskbar)))
-										{
-											SetPropW(hWnd, EP_TASKBAR_LENGTH_PROP_NAME, (HANDLE)(UINT_PTR)(bIsTaskbarHorizontal ? w : h));
-										}
+										SetPropW(hWnd, EP_TASKBAR_LENGTH_PROP_NAME, (HANDLE)(UINT_PTR)lTotal);
 									}
 								}
 							}
