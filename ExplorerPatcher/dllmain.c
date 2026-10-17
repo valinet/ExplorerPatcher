@@ -10601,7 +10601,7 @@ BOOL STDAPICALLTYPE explorer_SHCreateThread(
     LPTHREAD_START_ROUTINE pfnThreadProc, void* pData, SHCT_FLAGS flags, LPTHREAD_START_ROUTINE pfnCallback)
 {
     static BOOL bPatched;
-    if (!bPatched && flags == CTF_THREAD_REF | CTF_REF_COUNTED | CTF_NOADDREFLIB)
+    if (!bPatched && flags == (CTF_THREAD_REF | CTF_REF_COUNTED | CTF_NOADDREFLIB))
     {
         bPatched = TRUE;
         flags |= CTF_COINIT_STA | CTF_OLEINITIALIZE; // Add back the removed flags
