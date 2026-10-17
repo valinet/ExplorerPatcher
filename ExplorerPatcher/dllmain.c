@@ -4938,7 +4938,6 @@ void WINAPI PeopleButton_ShowTooltipHook(__int64 _this, unsigned __int8 bShow)
     {
         return PeopleButton_ShowTooltipFunc(_this, bShow);
     }
-    return 0;
 }
 
 __int64 (*PeopleButton_OnClickFunc)(__int64 a1, __int64 a2) = 0;
@@ -7514,7 +7513,7 @@ HRESULT explorer_GetThemeMetric(
     int* piVal
 )
 {
-    if (!bClassicThemeMitigations || (hTheme != 0xABadBabe))
+    if (!bClassicThemeMitigations || (hTheme != (HTHEME)(UINT_PTR)0xABadBabe))
     {
         return GetThemeMetric(
             hTheme,
@@ -7527,11 +7526,11 @@ HRESULT explorer_GetThemeMetric(
     }
     const int TMT_WIDTH = 2416;
     const int TMT_HEIGHT = 2417;
-    if (hTheme == 0xABadBabe && iPropId == TMT_WIDTH && iPartId == 3 && iStateId == 0)
+    if (hTheme == (HTHEME)(UINT_PTR)0xABadBabe && iPropId == TMT_WIDTH && iPartId == 3 && iStateId == 0)
     {
         *piVal = GetSystemMetrics(SM_CXICON);
     }
-    else if (hTheme == 0xABadBabe && iPropId == TMT_HEIGHT && iPartId == 3 && iStateId == 0)
+    else if (hTheme == (HTHEME)(UINT_PTR)0xABadBabe && iPropId == TMT_HEIGHT && iPartId == 3 && iStateId == 0)
     {
         *piVal = GetSystemMetrics(SM_CYICON);
     }
@@ -7548,7 +7547,7 @@ HRESULT explorer_GetThemeMargins(
     MARGINS* pMargins
 )
 {
-    if (!bClassicThemeMitigations || (hTheme != 0xDeadBeef && hTheme != 0xABadBabe))
+    if (!bClassicThemeMitigations || (hTheme != (HTHEME)(UINT_PTR)0xDeadBeef && hTheme != (HTHEME)(UINT_PTR)0xABadBabe))
     {
         HRESULT hr = GetThemeMargins(
             hTheme,
@@ -7589,7 +7588,7 @@ HRESULT explorer_GetThemeMargins(
             pMargins->cyBottomHeight
         );
     }*/
-    if (hTheme == 0xDeadBeef && iPropId == TMT_CONTENTMARGINS && iPartId == 5 && iStateId == 1)
+    if (hTheme == (HTHEME)(UINT_PTR)0xDeadBeef && iPropId == TMT_CONTENTMARGINS && iPartId == 5 && iStateId == 1)
     {
         // task list button measurements
         pMargins->cxLeftWidth = 4;
@@ -7597,7 +7596,7 @@ HRESULT explorer_GetThemeMargins(
         pMargins->cxRightWidth = 4;
         pMargins->cyBottomHeight = 3;
     }
-    else if (hTheme == 0xDeadBeef && iPropId == TMT_CONTENTMARGINS && iPartId == 1 && iStateId == 0)
+    else if (hTheme == (HTHEME)(UINT_PTR)0xDeadBeef && iPropId == TMT_CONTENTMARGINS && iPartId == 1 && iStateId == 0)
     {
         // task list measurements
         pMargins->cxLeftWidth = 0;
@@ -7605,14 +7604,14 @@ HRESULT explorer_GetThemeMargins(
         pMargins->cxRightWidth = 4;
         pMargins->cyBottomHeight = 0;
     }
-    else if (hTheme == 0xDeadBeef && iPropId == TMT_SIZINGMARGINS && iPartId == 5 && iStateId == 1)
+    else if (hTheme == (HTHEME)(UINT_PTR)0xDeadBeef && iPropId == TMT_SIZINGMARGINS && iPartId == 5 && iStateId == 1)
     {
         pMargins->cxLeftWidth = 0;
         pMargins->cyTopHeight = 10;
         pMargins->cxRightWidth = 0;
         pMargins->cyBottomHeight = 10;
     }
-    else if (hTheme = 0xABadBabe && iPropId == TMT_CONTENTMARGINS && iPartId == 3 && iStateId == 0)
+    else if (hTheme == (HTHEME)(UINT_PTR)0xABadBabe && iPropId == TMT_CONTENTMARGINS && iPartId == 3 && iStateId == 0)
     {
         pMargins->cxLeftWidth = 6;// GetSystemMetrics(SM_CXICONSPACING);
         pMargins->cyTopHeight = 6;// GetSystemMetrics(SM_CYICONSPACING);
