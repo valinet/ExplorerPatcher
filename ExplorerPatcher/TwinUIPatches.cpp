@@ -2356,15 +2356,24 @@ BOOL FixStartMenuAnimation(HMODULE hTwinuiPcshell, PBYTE pSearchBegin, size_t cb
 
     // ### Offset of CExperienceManagerAnimationHelper::End()
 #if defined(_M_X64)
-    // ```
-    // 40 53 48 83 EC 20 80 39 00 74
-    // ```
+    // 28000.3172+
+    // 40 53 48 83 EC 20 80 39 00 75
     PBYTE matchAnimationEnd = (PBYTE)FindPattern(
         pSearchBegin,
         cbSearch,
-        "\x40\x53\x48\x83\xEC\x20\x80\x39\x00\x74",
+        "\x40\x53\x48\x83\xEC\x20\x80\x39\x00\x75",
         "xxxxxxxxxx"
     );
+    if (!matchAnimationEnd)
+    {
+        // 40 53 48 83 EC 20 80 39 00 74
+        matchAnimationEnd = (PBYTE)FindPattern(
+            pSearchBegin,
+            cbSearch,
+            "\x40\x53\x48\x83\xEC\x20\x80\x39\x00\x74",
+            "xxxxxxxxxx"
+        );
+    }
 #elif defined(_M_ARM64)
     // ```
     // 7F 23 03 D5 F3 0F 1F F8 FD 7B BF A9 FD 03 00 91 08 00 40 39
@@ -3181,6 +3190,24 @@ BOOL FixJumpViewPositioning(HMODULE hTwinuiPcshell, PBYTE pSearchBegin, size_t c
     PBYTE matchEnsureWindowPosition = nullptr;
     if (!matchEnsureWindowPosition)
     {
+        // 26100.9343+, 28000.3032+, 29683
+        // 4D 8D 7E C0 48 8B D7 49 8B CF E8 ?? ?? ?? ?? 8B
+        //                                  ^^^^^^^^^^^
+        // Ref: CJumpViewExperienceManager::OnViewPropertiesChanging()
+        matchEnsureWindowPosition = (PBYTE)FindPattern(
+            pSearchBegin,
+            cbSearch,
+            "\x4D\x8D\x7E\xC0\x48\x8B\xD7\x49\x8B\xCF\xE8\x00\x00\x00\x00\x8B",
+            "xxxxxxxxxxx????x"
+        );
+        if (matchEnsureWindowPosition)
+        {
+            matchEnsureWindowPosition += 10;
+            matchEnsureWindowPosition += 5 + *(int*)(matchEnsureWindowPosition + 1);
+        }
+    }
+    if (!matchEnsureWindowPosition)
+    {
         // Germanium with Feature_TaskbarJumplistOnHover (48980211)
         // - 26100.1350, 1591, ...
         // 48 8B D7 49 8D 4E C0 E8 ?? ?? ?? ?? 8B
@@ -3223,7 +3250,7 @@ BOOL FixJumpViewPositioning(HMODULE hTwinuiPcshell, PBYTE pSearchBegin, size_t c
         // 8D 4E C0 48 8B ?? E8 ?? ?? ?? ?? 8B
         //                      ^^^^^^^^^^^
         // Ref: CJumpViewExperienceManager::OnViewPropertiesChanging()
-        PBYTE matchEnsureWindowPosition = (PBYTE)FindPattern(
+        matchEnsureWindowPosition = (PBYTE)FindPattern(
             pSearchBegin,
             cbSearch,
             "\x8D\x4E\xC0\x48\x8B\x00\xE8\x00\x00\x00\x00\x8B",
@@ -3495,17 +3522,33 @@ void TryToFindTwinuiPCShellOffsets(DWORD* pOffsets)
                 }
             }
 #elif defined(_M_ARM64)
-            // ?? 0A 40 F9 ?? ?? ?? F9 ?? ?? 00 ?? ?? ?? ?? ?? ?? 62 00 91 ?? ?? 00 91 E0 03 ?? AA ?? ?? ?? ?? 1F 20 03 D5
+            // 29661+
+            // ?? 0A 40 F9 ?? ?? 00 F9 ?? ?? 01 91 ?? ?? ?? ?? ?? 62 00 91 ?? ?? 01 91 E0 03 ?? AA ?? ?? ?? ?? 1F 20 03 D5
             //                                                                                     ^^^^^^^^^^^
             PBYTE match = (PBYTE)FindPattern_4_(
-                pSearchBegin + 1, cbSearch - 1,
-                "\x0A\x40\xF9\x00\x00\x00\xF9\x00\x00\x00\x00\x00\x00\x00\x00\x00\x62\x00\x91\x00\x00\x00\x91\xE0\x03\x00\xAA\x00\x00\x00\x00\x1F\x20\x03\xD5",
-                "xxx???x??x??????xxx??xxxx?x????xxxx"
+                pSearchBegin, cbSearch,
+                "\x00\x0A\x40\xF9\x00\x00\x00\xF9\x00\x00\x01\x91\x00\x00\x00\x00\x00\x62\x00\x91\x00\x00\x01\x91\xE0\x03\x00\xAA\x00\x00\x00\x00\x1F\x20\x03\xD5",
+                "?xxx??xx??xx?????xxx??xxxx?x????xxxx"
             );
             if (match)
             {
-                match += 27;
+                match += 28;
                 pOffsets[3] = (DWORD)FileOffsetToRVA(pFile, (PBYTE)ARM64_FollowBL((DWORD*)match) - pFile);
+            }
+            else
+            {
+                // ?? 0A 40 F9 ?? ?? ?? F9 ?? ?? 00 ?? ?? ?? ?? ?? ?? 62 00 91 ?? ?? 00 91 E0 03 ?? AA ?? ?? ?? ?? 1F 20 03 D5
+                //                                                                                     ^^^^^^^^^^^
+                match = (PBYTE)FindPattern_4_(
+                    pSearchBegin + 1, cbSearch - 1,
+                    "\x0A\x40\xF9\x00\x00\x00\xF9\x00\x00\x00\x00\x00\x00\x00\x00\x00\x62\x00\x91\x00\x00\x00\x91\xE0\x03\x00\xAA\x00\x00\x00\x00\x1F\x20\x03\xD5",
+                    "xxx???x??x??????xxx??xxxx?x????xxxx"
+                );
+                if (match)
+                {
+                    match += 27;
+                    pOffsets[3] = (DWORD)FileOffsetToRVA(pFile, (PBYTE)ARM64_FollowBL((DWORD*)match) - pFile);
+                }
             }
 #endif
             if (pOffsets[3] && pOffsets[3] != 0xFFFFFFFF)
@@ -3546,14 +3589,25 @@ void TryToFindTwinuiPCShellOffsets(DWORD* pOffsets)
                 }
             }
 #elif defined(_M_ARM64)
-            // 28000.2630, 29634
-            // 08 09 40 F9 ?? ?? 00 F9 ?? ?? 00 91 ?? ?? ?? ?? ?? ?? 00 91 E0 03 ?? AA ?? ?? ?? ?? 1F 20 03 D5
+            // 29661+
+            // 08 09 40 F9 ?? ?? 00 F9 ?? ?? 01 91 ?? ?? ?? ?? ?? ?? 01 91 E0 03 ?? AA ?? ?? ?? ?? 1F 20 03 D5
             //                                                                         ^^^^^^^^^^^
             PBYTE match = (PBYTE)FindPattern_4_(
                 pSearchBegin, cbSearch,
-                "\x08\x09\x40\xF9\x00\x00\x00\xF9\x00\x00\x00\x91\x00\x00\x00\x00\x00\x00\x00\x91\xE0\x03\x00\xAA\x00\x00\x00\x00\x1F\x20\x03\xD5",
+                "\x08\x09\x40\xF9\x00\x00\x00\xF9\x00\x00\x01\x91\x00\x00\x00\x00\x00\x00\x01\x91\xE0\x03\x00\xAA\x00\x00\x00\x00\x1F\x20\x03\xD5",
                 "xxxx??xx??xx??????xxxx?x????xxxx"
             );
+            if (!match)
+            {
+                // 28000.2630, 29634
+                // 08 09 40 F9 ?? ?? 00 F9 ?? ?? 00 91 ?? ?? ?? ?? ?? ?? 00 91 E0 03 ?? AA ?? ?? ?? ?? 1F 20 03 D5
+                //                                                                         ^^^^^^^^^^^
+                match = (PBYTE)FindPattern_4_(
+                    pSearchBegin, cbSearch,
+                    "\x08\x09\x40\xF9\x00\x00\x00\xF9\x00\x00\x00\x91\x00\x00\x00\x00\x00\x00\x00\x91\xE0\x03\x00\xAA\x00\x00\x00\x00\x1F\x20\x03\xD5",
+                    "xxxx??xx??xx??????xxxx?x????xxxx"
+                );
+            }
             if (match)
             {
                 match += 24;
@@ -3583,50 +3637,83 @@ void TryToFindTwinuiPCShellOffsets(DWORD* pOffsets)
         if (!pOffsets[5] || pOffsets[5] == 0xFFFFFFFF)
         {
 #if defined(_M_X64)
+            // 26100.9606+: GetMTVHostKind() compared with r15d (1).
+            // 8B CF E8 ?? ?? ?? ?? ?? 89 ?? 24 ?? ?? 8B ?? ?? 8B ?? 8B D7 48 8B CE 41 3B C7 <jnz>
             // Ref: CMultitaskingViewManager::_CreateMTVHost()
-            // Inlined GetMTVHostKind()
-            // 4C 89 74 24 ?? ?? 8B ?? ?? 8B ?? 8B D7 48 8B CE E8 ?? ?? ?? ?? 8B
-            //                                                    ^^^^^^^^^^^
             PBYTE match = (PBYTE)FindPattern(
                 pSearchBegin, cbSearch,
-                "\x4C\x89\x74\x24\x00\x00\x8B\x00\x00\x8B\x00\x8B\xD7\x48\x8B\xCE\xE8\x00\x00\x00\x00\x8B",
-                "xxxx??x??x?xxxxxx????x"
+                "\x8B\xCF\xE8\x00\x00\x00\x00\x00\x89\x00\x24\x00\x00\x8B\x00\x00\x8B\x00\x8B\xD7\x48\x8B\xCE\x41\x3B\xC7",
+                "xxx?????x?x??x??x?xxxxxxxx"
             );
             if (match)
             {
-                match += 16;
-                pOffsets[5] = (DWORD)(match + 5 + *(int*)(match + 1) - pFile);
+                PBYTE target = nullptr;
+                DWORD jnzSize = 0;
+                if (FollowJnz(match + 26, &target, &jnzSize))
+                {
+                    match += 26 + jnzSize;
+                    if (match[0] == 0xE8)
+                    {
+                        pOffsets[5] = (DWORD)(match + 5 + *(int*)(match + 1) - pFile);
+                    }
+                }
             }
-            else
+            if (!pOffsets[5] || pOffsets[5] == 0xFFFFFFFF)
             {
-                // Non-inlined GetMTVHostKind() (Germanium+)
-                // 8B CF E8 ?? ?? ?? ?? ?? 89 ?? 24 ?? ?? 8B ?? ?? 8B ?? 8B D7 48 8B CE 83 F8 01 <jnz>
+                // Inlined GetMTVHostKind()
+                // 4C 89 74 24 ?? ?? 8B ?? ?? 8B ?? 8B D7 48 8B CE E8 ?? ?? ?? ?? 8B
+                //                                                    ^^^^^^^^^^^
                 match = (PBYTE)FindPattern(
                     pSearchBegin, cbSearch,
-                    "\x8B\xCF\xE8\x00\x00\x00\x00\x00\x89\x00\x24\x00\x00\x8B\x00\x00\x8B\x00\x8B\xD7\x48\x8B\xCE\x83\xF8\x01",
-                    "xxx?????x?x??x??x?xxxxxxxx"
+                    "\x4C\x89\x74\x24\x00\x00\x8B\x00\x00\x8B\x00\x8B\xD7\x48\x8B\xCE\xE8\x00\x00\x00\x00\x8B",
+                    "xxxx??x??x?xxxxxx????x"
                 );
                 if (match)
                 {
-                    PBYTE target = nullptr;
-                    DWORD jnzSize = 0;
-                    if (FollowJnz(match + 26, &target, &jnzSize))
+                    match += 16;
+                    pOffsets[5] = (DWORD)(match + 5 + *(int*)(match + 1) - pFile);
+                }
+                else
+                {
+                    // Non-inlined GetMTVHostKind() (Germanium+)
+                    // 8B CF E8 ?? ?? ?? ?? ?? 89 ?? 24 ?? ?? 8B ?? ?? 8B ?? 8B D7 48 8B CE 83 F8 01 <jnz>
+                    match = (PBYTE)FindPattern(
+                        pSearchBegin, cbSearch,
+                        "\x8B\xCF\xE8\x00\x00\x00\x00\x00\x89\x00\x24\x00\x00\x8B\x00\x00\x8B\x00\x8B\xD7\x48\x8B\xCE\x83\xF8\x01",
+                        "xxx?????x?x??x??x?xxxxxxxx"
+                    );
+                    if (match)
                     {
-                        match += 26 + jnzSize;
-                        if (match[0] == 0xE8)
+                        PBYTE target = nullptr;
+                        DWORD jnzSize = 0;
+                        if (FollowJnz(match + 26, &target, &jnzSize))
                         {
-                            pOffsets[5] = (DWORD)(match + 5 + *(int*)(match + 1) - pFile);
+                            match += 26 + jnzSize;
+                            if (match[0] == 0xE8)
+                            {
+                                pOffsets[5] = (DWORD)(match + 5 + *(int*)(match + 1) - pFile);
+                            }
                         }
                     }
                 }
             }
 #elif defined(_M_ARM64)
-            // F3 53 BE A9  F5 5B 01 A9  FD 7B ?? A9  FD 03 00 91  30 00 80 92  ?? 03 04 AA  B0 ?? 00 F9  ?? 03 00 AA  ?? 02 00 F9  ?? 2E 40 F9  ?? 03 03 AA  ?? 23 02 A9  ?? ?? ?? B5
+            // 28000.2630, 29634
+            // F3 53 BE A9  F5 5B 01 A9  FD 7B ?? A9  FD 03 00 91  30 00 80 92  B0 ?? 00 F9  ?? 03 00 AA  ?? 03 03 AA  ?? 03 04 AA  ?? 02 00 F9  ?? 2E 40 F9  ?? 23 02 A9  ?? ?? ?? B5
             PBYTE match = (PBYTE)FindPattern_4_(
                 pSearchBegin, cbSearch,
-                "\xF3\x53\xBE\xA9\xF5\x5B\x01\xA9\xFD\x7B\x00\xA9\xFD\x03\x00\x91\x30\x00\x80\x92\x00\x03\x04\xAA\xB0\x00\x00\xF9\x00\x03\x00\xAA\x00\x02\x00\xF9\x00\x2E\x40\xF9\x00\x03\x03\xAA\x00\x23\x02\xA9\x00\x00\x00\xB5",
-                "xxxxxxxxxx?xxxxxxxxx?xxxx?xx?xxx?xxx?xxx?xxx?xxx???x"
+                "\xF3\x53\xBE\xA9\xF5\x5B\x01\xA9\xFD\x7B\x00\xA9\xFD\x03\x00\x91\x30\x00\x80\x92\xB0\x00\x00\xF9\x00\x03\x00\xAA\x00\x03\x03\xAA\x00\x03\x04\xAA\x00\x02\x00\xF9\x00\x2E\x40\xF9\x00\x23\x02\xA9\x00\x00\x00\xB5",
+                "xxxxxxxxxx?xxxxxxxxxx?xx?xxx?xxx?xxx?xxx?xxx?xxx???x"
             );
+            if (!match)
+            {
+                // F3 53 BE A9  F5 5B 01 A9  FD 7B ?? A9  FD 03 00 91  30 00 80 92  ?? 03 04 AA  B0 ?? 00 F9  ?? 03 00 AA  ?? 02 00 F9  ?? 2E 40 F9  ?? 03 03 AA  ?? 23 02 A9  ?? ?? ?? B5
+                match = (PBYTE)FindPattern_4_(
+                    pSearchBegin, cbSearch,
+                    "\xF3\x53\xBE\xA9\xF5\x5B\x01\xA9\xFD\x7B\x00\xA9\xFD\x03\x00\x91\x30\x00\x80\x92\x00\x03\x04\xAA\xB0\x00\x00\xF9\x00\x03\x00\xAA\x00\x02\x00\xF9\x00\x2E\x40\xF9\x00\x03\x03\xAA\x00\x23\x02\xA9\x00\x00\x00\xB5",
+                    "xxxxxxxxxx?xxxxxxxxx?xxxx?xx?xxx?xxx?xxx?xxx?xxx???x"
+                );
+            }
             if (match)
             {
                 pOffsets[5] = (DWORD)FileOffsetToRVA(pFile, match - 4 - pFile);
@@ -3640,14 +3727,24 @@ void TryToFindTwinuiPCShellOffsets(DWORD* pOffsets)
         if (!pOffsets[6] || pOffsets[6] == 0xFFFFFFFF)
         {
 #if defined(_M_X64)
+            // 26100.9606+: GetMTVHostKind() compared with r15d (1).
+            // 8B CF E8 ?? ?? ?? ?? ?? 89 ?? 24 ?? ?? 8B ?? ?? 8B ?? 8B D7 48 8B CE 41 3B C7 <jnz>
             // Ref: CMultitaskingViewManager::_CreateMTVHost()
-            // Non-inlined GetMTVHostKind() (Germanium+)
-            // 8B CF E8 ?? ?? ?? ?? ?? 89 ?? 24 ?? ?? 8B ?? ?? 8B ?? 8B D7 48 8B CE 83 F8 01 <jnz>
             PBYTE match = (PBYTE)FindPattern(
                 pSearchBegin, cbSearch,
-                "\x8B\xCF\xE8\x00\x00\x00\x00\x00\x89\x00\x24\x00\x00\x8B\x00\x00\x8B\x00\x8B\xD7\x48\x8B\xCE\x83\xF8\x01",
+                "\x8B\xCF\xE8\x00\x00\x00\x00\x00\x89\x00\x24\x00\x00\x8B\x00\x00\x8B\x00\x8B\xD7\x48\x8B\xCE\x41\x3B\xC7",
                 "xxx?????x?x??x??x?xxxxxxxx"
             );
+            if (!match)
+            {
+                // Non-inlined GetMTVHostKind() (Germanium+)
+                // 8B CF E8 ?? ?? ?? ?? ?? 89 ?? 24 ?? ?? 8B ?? ?? 8B ?? 8B D7 48 8B CE 83 F8 01 <jnz>
+                match = (PBYTE)FindPattern(
+                    pSearchBegin, cbSearch,
+                    "\x8B\xCF\xE8\x00\x00\x00\x00\x00\x89\x00\x24\x00\x00\x8B\x00\x00\x8B\x00\x8B\xD7\x48\x8B\xCE\x83\xF8\x01",
+                    "xxx?????x?x??x??x?xxxxxxxx"
+                );
+            }
             if (match)
             {
                 PBYTE target = nullptr;
@@ -3777,7 +3874,8 @@ extern "C" void RunTwinUIPCShellPatches(symbols_addr* symbols_PTRS)
         }
 
         rv = -1;
-        if (symbols_PTRS->twinui_pcshell_PTRS[5] && symbols_PTRS->twinui_pcshell_PTRS[5] != 0xFFFFFFFF)
+        if (symbols_PTRS->twinui_pcshell_PTRS[5] && symbols_PTRS->twinui_pcshell_PTRS[5] != 0xFFFFFFFF
+            && symbols_PTRS->twinui_pcshell_PTRS[6] && symbols_PTRS->twinui_pcshell_PTRS[6] != 0xFFFFFFFF)
         {
             twinui_pcshell_CMultitaskingViewManager__CreateDCompMTVHostFunc = (decltype(twinui_pcshell_CMultitaskingViewManager__CreateDCompMTVHostFunc))
                 ((uintptr_t)hTwinuiPcshell + symbols_PTRS->twinui_pcshell_PTRS[6]);

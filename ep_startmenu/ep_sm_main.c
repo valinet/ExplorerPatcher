@@ -163,15 +163,26 @@ void Init()
                 }
             }
 #elif defined(_M_ARM64)
-            // TODO Improve pattern
-            // 7F 23 03 D5 F3 53 BF A9 FD 7B BC A9 FD 03 00 91 30 00 80 92 B0 0F 00 F9
-            // ----------- PACIBSP, don't scan for this because it's everywhere
+            // 28000.2630: smaller stack frame
+            // F3 53 BF A9 FD 7B BD A9 FD 03 00 91 30 00 80 92 B0 0F 00 F9 ?? ?? ?? ?? F3 03 00 AA
+            // PACIBSP is excluded from the scan and included in the patch below.
             PBYTE match = FindPattern_4_(
                 beginText,
                 sizeText,
-                "\xF3\x53\xBF\xA9\xFD\x7B\xBC\xA9\xFD\x03\x00\x91\x30\x00\x80\x92\xB0\x0F\x00\xF9",
-                "xxxxxxxxxxxxxxxxxxxx"
+                "\xF3\x53\xBF\xA9\xFD\x7B\xBD\xA9\xFD\x03\x00\x91\x30\x00\x80\x92\xB0\x0F\x00\xF9\x00\x00\x00\x00\xF3\x03\x00\xAA",
+                "xxxxxxxxxxxxxxxxxxxx????xxxx"
             );
+            if (!match)
+            {
+                // Older stack layout
+                // F3 53 BF A9 FD 7B BC A9 FD 03 00 91 30 00 80 92 B0 0F 00 F9
+                match = FindPattern_4_(
+                    beginText,
+                    sizeText,
+                    "\xF3\x53\xBF\xA9\xFD\x7B\xBC\xA9\xFD\x03\x00\x91\x30\x00\x80\x92\xB0\x0F\x00\xF9",
+                    "xxxxxxxxxxxxxxxxxxxx"
+                );
+            }
             if (match)
             {
                 match -= 4; // include PACIBSP

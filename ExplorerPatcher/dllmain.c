@@ -9045,6 +9045,43 @@ int explorerframe_GetSystemMetricsForDpi(int nIndex, UINT dpi)
     return GetSystemMetricsForDpi(nIndex, dpi);
 }
 
+#if defined(_M_ARM64)
+static PBYTE AddressBarRectArm64FromCall(PBYTE call)
+{
+    // The linker-folded helper may lie outside the native CHPE search range.
+    PBYTE helper = (PBYTE)ARM64_FollowBL((DWORD*)call);
+    if (!helper || !FindPatternBitMask_4_(
+        helper, 68,
+        "\x7F\x23\x03\xD5\xF3\x0F\x1F\xF8\xFD\x7B\xBF\xA9\xFD\x03\x00\x91\x00\x24\x40\xF9\xF3\x03\x01\xAA\x00\x00\x00\x94\x68\x06\x40\xB9\x08\x01\x00\x11\x68\x06\x00\xB9\x68\x0E\x40\xB9\x08\x01\x00\x51\x68\x0E\x00\xB9\xFD\x7B\xC1\xA8\xF3\x07\x41\xF8\xFF\x23\x03\xD5\xC0\x03\x5F\xD6",
+        "\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\x00\x00\x00\xFC\xFF\xFF\xFF\xFF\xFF\x03\xC0\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\x03\xC0\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF",
+        68))
+        return NULL;
+
+    // Both native callsites can share this helper, so accept patched immediates.
+    DWORD top = (*(DWORD*)(helper + 32) >> 10) & 0xFFF;
+    DWORD bottom = (*(DWORD*)(helper + 44) >> 10) & 0xFFF;
+    if ((top != 9 && top != 3) || (bottom != 7 && bottom != 1))
+        return NULL;
+    return helper + 32;
+}
+
+static void PatchAddressBarRectArm64(PBYTE top, DWORD bottomOffset)
+{
+    DWORD oldProtect;
+    SIZE_T span = bottomOffset + sizeof(DWORD);
+    if (top && VirtualProtect(top, span, PAGE_EXECUTE_READWRITE, &oldProtect))
+    {
+        // Change only imm12: top += 9 -> 3, bottom -= 7 -> 1.
+        // Preserve the legacy bottom input in W9, as well as all other operands.
+        *(DWORD*)top = (*(DWORD*)top & ~0x003FFC00u) | (3u << 10);
+        *(DWORD*)(top + bottomOffset) =
+            (*(DWORD*)(top + bottomOffset) & ~0x003FFC00u) | (1u << 10);
+        FlushInstructionCache(GetCurrentProcess(), top, span);
+        VirtualProtect(top, span, oldProtect, &oldProtect);
+    }
+}
+#endif
+
 static void PatchAddressBarSizing(PBYTE pSearchBegin, size_t cbSearch)
 {
     if (!pSearchBegin || !cbSearch)
@@ -9059,56 +9096,95 @@ static void PatchAddressBarSizing(PBYTE pSearchBegin, size_t cbSearch)
     // Patch address bar positioning
     if (IsWindows11())
     {
-        // CAddressBand::_PositionChildWindows()
-        // 83 45 ?? ?? 83 6D ?? ?? 48
-        //          xx To 03    xx To 01
+        // 26100.9343+, 28000.3142+: _PositionChildWindows() calls _GetAdjustedClientRect().
+        // Follow the CALL at +14; the helper's RECT adjustments start at +25.
         match = FindPattern(
             pSearchBegin,
             cbSearch,
-            "\x83\x45\x00\x00\x83\x6D\x00\x00\x48",
-            "xx??xx??x"
-        );
-        if (match && VirtualProtect(match, 9, PAGE_EXECUTE_READWRITE, &dwOldProtect))
-        {
-            match[3] = 3;
-            match[7] = 1;
-            VirtualProtect(match, 9, dwOldProtect, &dwOldProtect);
-        }
-
-        // CAddressBand::_AddressBandWndProc() <- CAddressBand::_GetAdjustedClientRect()
-        // 83 45 ?? ?? 83 6D ?? ?? 0F
-        //          xx To 03    xx To 01
-        match = FindPattern(
-            pSearchBegin,
-            cbSearch,
-            "\x83\x45\x00\x00\x83\x6D\x00\x00\x0F",
-            "xx??xx??x"
+            "\x0F\x57\xC0\x48\x8D\x55\x00\x48\x8B\x00\x0F\x11\x45\x00\xE8\x00\x00\x00\x00\x48\x8B\x00\x70\x01\x00\x00",
+            "xxxxxx?xx?xxx?x????xx?xxxx"
         );
         if (match)
         {
-            if (VirtualProtect(match, 9, PAGE_EXECUTE_READWRITE, &dwOldProtect))
+            match += 19 + *(int*)(match + 15) + 25;
+            if (VirtualProtect(match, 8, PAGE_EXECUTE_READWRITE, &dwOldProtect))
+            {
+                match[3] = 3;
+                match[7] = (BYTE)-1;
+                VirtualProtect(match, 8, dwOldProtect, &dwOldProtect);
+            }
+        }
+        else
+        {
+            // CAddressBand::_PositionChildWindows()
+            // 83 45 ?? ?? 83 6D ?? ?? 48
+            //          xx To 03    xx To 01
+            match = FindPattern(
+                pSearchBegin,
+                cbSearch,
+                "\x83\x45\x00\x00\x83\x6D\x00\x00\x48",
+                "xx??xx??x"
+            );
+            if (match && VirtualProtect(match, 9, PAGE_EXECUTE_READWRITE, &dwOldProtect))
             {
                 match[3] = 3;
                 match[7] = 1;
                 VirtualProtect(match, 9, dwOldProtect, &dwOldProtect);
             }
         }
+
+        // CAddressBand::_GetAdjustedClientRect(), including 29591+ without a post-call NOP.
+        // 83 43 04 ?? 83 43 0C ?? 48 83 C4 20 5B C3
+        //          xx To 03    xx To FF (-1)
+        match = FindPattern(
+            pSearchBegin,
+            cbSearch,
+            "\x83\x43\x04\x00\x83\x43\x0C\x00\x48\x83\xC4\x20\x5B\xC3",
+            "xxx?xxx?xxxxxx"
+        );
+        if (match)
+        {
+            if (VirtualProtect(match, 8, PAGE_EXECUTE_READWRITE, &dwOldProtect))
+            {
+                match[3] = 3;
+                match[7] = (BYTE)-1;
+                VirtualProtect(match, 8, dwOldProtect, &dwOldProtect);
+            }
+        }
         else
         {
-            // CAddressBand::_GetAdjustedClientRect()
-            // 0F 1F 44 00 00 83 43 04 ?? 83 43 0C ??
-            //                         xx To 03    xx To FF (-1)
+            // 26100.9606+: inlined calculation with XORPS between the RECT adjustments.
+            // Ref: CAddressBand::_AddressBandWndProc()
             match = FindPattern(
                 pSearchBegin,
                 cbSearch,
-                "\x0F\x1F\x44\x00\x00\x83\x43\x04\x00\x83\x43\x0C",
-                "xxxxxxxx?xxx"
+                "\x83\x45\x00\x00\x0F\x57\xC0\x83\x6D\x00\x00\x0F\x11\x45\x00",
+                "xx??xxxxx??xxx?"
             );
-            if (match && VirtualProtect(match + 5, 8, PAGE_EXECUTE_READWRITE, &dwOldProtect))
+            if (match)
             {
-                match[8] = 3;
-                match[12] = (BYTE)-1;
-                VirtualProtect(match + 5, 8, dwOldProtect, &dwOldProtect);
+                if (VirtualProtect(match, 11, PAGE_EXECUTE_READWRITE, &dwOldProtect))
+                {
+                    match[3] = 3;
+                    match[10] = 1;
+                    VirtualProtect(match, 11, dwOldProtect, &dwOldProtect);
+                }
+            }
+            else
+            {
+                // CAddressBand::_AddressBandWndProc() <- CAddressBand::_GetAdjustedClientRect()
+                match = FindPattern(
+                    pSearchBegin,
+                    cbSearch,
+                    "\x83\x45\x00\x00\x83\x6D\x00\x00\x0F",
+                    "xx??xx??x"
+                );
+                if (match && VirtualProtect(match, 9, PAGE_EXECUTE_READWRITE, &dwOldProtect))
+                {
+                    match[3] = 3;
+                    match[7] = 1;
+                    VirtualProtect(match, 9, dwOldProtect, &dwOldProtect);
+                }
             }
         }
     }
@@ -9289,45 +9365,252 @@ static void PatchAddressBarSizing(PBYTE pSearchBegin, size_t cbSearch)
             VirtualProtect(match, 8, dwOldProtect, &dwOldProtect);
         }
     }*/
+#elif defined(_M_ARM64)
+    if (IsWindows11())
+    {
+        DWORD bottomOffset = 12;
+
+        // _PositionChildWindows(): inlined RECT adjustments followed by a vector copy.
+        match = FindPatternBitMask_4_(
+            pSearchBegin, cbSearch,
+            "\x08\x25\x00\x11\xE8\x03\x00\xB9\xE8\x03\x40\xB9\x08\x1D\x00\x51\xE8\x03\x00\xB9\xE7\x03\xC0\x3D\xE7\x03\x80\x3D\x00\x00\x00\xB4",
+            "\xFF\xFF\xFF\xFF\xFF\x03\xC0\xFF\xFF\x03\xC0\xFF\xFF\xFF\xFF\xFF\xFF\x03\xC0\xFF\xFF\x03\xC0\xFF\xFF\x03\xC0\xFF\x1F\x00\x00\xFF",
+            32
+        );
+        if (!match)
+        {
+            // Outlined _GetAdjustedClientRect(); follow the native BL at +16.
+            match = FindPatternBitMask_4_(
+                pSearchBegin, cbSearch,
+                "\x07\xE4\x00\x4F\xE1\x03\x00\x91\xE0\x03\x00\xAA\xE7\x03\x80\x3D\x00\x00\x00\x94\xE7\x03\xC0\x3D\x00\xB8\x40\xF9\xE7\x03\x80\x3D\x00\x00\x00\xB4",
+                "\xFF\xFF\xFF\xFF\xFF\x03\xC0\xFF\xFF\xFF\xE0\xFF\xFF\x03\xC0\xFF\x00\x00\x00\xFC\xFF\x03\xC0\xFF\x1F\xFC\xFF\xFF\xFF\x03\xC0\xFF\x1F\x00\x00\xFF",
+                36
+            );
+            if (match)
+                match = AddressBarRectArm64FromCall(match + 16);
+        }
+        if (!match)
+        {
+            // Legacy inline calculation uses W9 for RECT.bottom.
+            match = FindPatternBitMask_4_(
+                pSearchBegin, cbSearch,
+                "\x08\x25\x00\x11\xE8\x03\x00\xB9\x28\x1D\x00\x51\xE8\x03\x00\xB9\xE8\x03\x00\x91",
+                "\xFF\xFF\xFF\xFF\xFF\x03\xC0\xFF\xFF\xFF\xFF\xFF\xFF\x03\xC0\xFF\xFF\x03\xC0\xFF",
+                20
+            );
+            bottomOffset = 8;
+        }
+        PatchAddressBarRectArm64(match, bottomOffset);
+
+        // _AddressBandWndProc(): outlined helper, RECT initialization before HWND load.
+        bottomOffset = 12;
+        match = FindPatternBitMask_4_(
+            pSearchBegin, cbSearch,
+            "\x07\xE4\x00\x4F\x07\x18\x80\x3D\x01\x80\x01\x91\xE0\x03\x13\xAA\x00\x00\x00\x94\x07\xE4\x00\x4F\x07\x1C\x80\x3D\x01\xC0\x01\x91\x00\x50\x40\xF9\x00\x00\x00\x94",
+            "\xFF\xFF\xFF\xFF\x1F\xFC\xFF\xFF\x1F\xFC\xFF\xFF\xFF\xFF\xFF\xFF\x00\x00\x00\xFC\xFF\xFF\xFF\xFF\x1F\xFC\xFF\xFF\x1F\xFC\xFF\xFF\x1F\xFC\xFF\xFF\x00\x00\x00\xFC",
+            40
+        );
+        if (match)
+            match = AddressBarRectArm64FromCall(match + 16);
+        if (!match)
+        {
+            // _AddressBandWndProc(): outlined helper, HWND load before RECT initialization.
+            match = FindPatternBitMask_4_(
+                pSearchBegin, cbSearch,
+                "\x07\xE4\x00\x4F\x01\x80\x01\x91\xE0\x03\x13\xAA\x07\x18\x80\x3D\x00\x00\x00\x94\x07\xE4\x00\x4F\x00\x50\x40\xF9\x01\xC0\x01\x91\x07\x1C\x80\x3D\x00\x00\x00\x94",
+                "\xFF\xFF\xFF\xFF\x1F\xFC\xFF\xFF\xFF\xFF\xFF\xFF\x1F\xFC\xFF\xFF\x00\x00\x00\xFC\xFF\xFF\xFF\xFF\x1F\xFC\xFF\xFF\x1F\xFC\xFF\xFF\x1F\xFC\xFF\xFF\x00\x00\x00\xFC",
+                40
+            );
+            if (match)
+                match = AddressBarRectArm64FromCall(match + 16);
+        }
+        if (!match)
+        {
+            // Inlined helper with scalar reload of RECT.bottom.
+            match = FindPatternBitMask_4_(
+                pSearchBegin, cbSearch,
+                "\x08\x25\x00\x11\xE8\x03\x00\xB9\xE8\x03\x40\xB9\x08\x1D\x00\x51\xE8\x03\x00\xB9\x00\x00\x00\x94\x00\xB8\x40\xF9",
+                "\xFF\xFF\xFF\xFF\xFF\x03\xC0\xFF\xFF\x03\xC0\xFF\xFF\xFF\xFF\xFF\xFF\x03\xC0\xFF\x00\x00\x00\xFC\x1F\xFC\xFF\xFF",
+                28
+            );
+        }
+        if (!match)
+        {
+            // Legacy inline helper uses W9 for RECT.bottom.
+            match = FindPatternBitMask_4_(
+                pSearchBegin, cbSearch,
+                "\x08\x25\x00\x11\xE8\x02\x00\xB9\x28\x1D\x00\x51\xE8\x02\x00\xB9\x00\x00\x00\x94\x00\xB8\x40\xF9",
+                "\xFF\xFF\xFF\xFF\xFF\x03\xC0\xFF\xFF\xFF\xFF\xFF\xFF\x03\xC0\xFF\x00\x00\x00\xFC\x1F\xFC\xFF\xFF",
+                24
+            );
+            bottomOffset = 8;
+        }
+        PatchAddressBarRectArm64(match, bottomOffset);
+    }
+
+    // Patch only the final +16 in CAddressBand::GetBandHeight(), not its DPI arithmetic.
+    // Newest builds have a standalone helper returning ADD W0,W0,#16.
+    match = FindPatternBitMask_4_(
+        pSearchBegin, cbSearch,
+        "\x00\x40\x00\x11\xFF\x43\x00\x91\x00\x00\x00\x94",
+        "\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\x00\x00\x00\xFC",
+        12
+    );
+    if (!match)
+    {
+        // Early 28000: GetBandInfo() inlines the height calculation, then CBNZ W22.
+        match = FindPatternBitMask_4_(
+            pSearchBegin, cbSearch,
+            "\x00\x40\x00\x11\x16\x00\x00\x35\x00\x1C\x40\xF9\x00\x00\x00\xB4",
+            "\x00\xFC\xFF\xFF\x1F\x00\x00\xFF\x00\xFC\xFF\xFF\x00\x00\x00\xFF",
+            16
+        );
+    }
+    if (!match)
+    {
+        // Germanium: inline GetBandInfo(), MOV of the height to W0 before CBZ.
+        match = FindPatternBitMask_4_(
+            pSearchBegin, cbSearch,
+            "\x00\x40\x00\x11\xE0\x03\x00\x2A\x00\x00\x00\x34\x28\x00\x80\x52",
+            "\x00\xFC\xFF\xFF\xFF\xFF\xE0\xFF\x00\x00\x00\xFF\xFF\xFF\xFF\xFF",
+            16
+        );
+    }
+    if (!match)
+    {
+        // Cobalt/Nickel: CBNZ W27 excludes CBandSite's similar height addition.
+        match = FindPatternBitMask_4_(
+            pSearchBegin, cbSearch,
+            "\x00\x40\x00\x11\x1B\x00\x00\x35\x00\x1C\x40\xF9",
+            "\x00\xFC\xFF\xFF\x1F\x00\x00\xFF\x00\xFC\xFF\xFF",
+            12
+        );
+    }
+    if (!match)
+    {
+        // Older Nickel: GetBandInfo() uses CBZ W27 before setting DESKBANDINFO.
+        match = FindPatternBitMask_4_(
+            pSearchBegin, cbSearch,
+            "\x00\x40\x00\x11\x1B\x00\x00\x34\x28\x00\x80\x52\x00\x18\x00\xB9",
+            "\x00\xFC\xFF\xFF\x1F\x00\x00\xFF\xFF\xFF\xFF\xFF\x00\xFC\xFF\xFF",
+            16
+        );
+    }
+    if (match && VirtualProtect(match, sizeof(DWORD), PAGE_EXECUTE_READWRITE, &dwOldProtect))
+    {
+        // Change only ADD imm12, preserving Rd, Rn, opcode and shift.
+        *(DWORD*)match = (*(DWORD*)match & ~0x003FFC00u) | (4u << 10);
+        FlushInstructionCache(GetCurrentProcess(), match, sizeof(DWORD));
+        VirtualProtect(match, sizeof(DWORD), dwOldProtect, &dwOldProtect);
+    }
 #endif
 
     if (IsWindows11())
     {
         // Windows 11 - Patch Up button size
         // CUpBand::ScaleAndSetPadding()
-        // Inlined SHLogicalToPhysicalDPI()
-        // 41 B8 60 00 00 00 41 8D 58 B1
-        //                            xx To A8
 #if defined(_M_X64)
+        // 26100.9343+, 28000.3142+: initialize both padding dimensions before loading the HWND.
         match = FindPattern(
             pSearchBegin,
             cbSearch,
-            "\x41\xB8\x60\x00\x00\x00\x41\x8D\x58\xB1",
-            "xxxxxxxxxx"
+            "\xB8\x11\x00\x00\x00\x4C\x8D\x45\x00\x48\x8B\xF1\x89\x45\x00\x48\x8B\x49\x70\x48\x8D\x55\x00\x89\x45\x00\xE8",
+            "xxxxxxxx?xxxxx?xxxxxxx?xx?x"
         );
         if (match)
         {
-            if (VirtualProtect(match, 10, PAGE_EXECUTE_READWRITE, &dwOldProtect))
+            if (VirtualProtect(match + 1, sizeof(int), PAGE_EXECUTE_READWRITE, &dwOldProtect))
             {
-                match[9] = 0xA8; // -88: 96 - 88 = 8
-                VirtualProtect(match, 10, dwOldProtect, &dwOldProtect);
+                *(int*)(match + 1) = 8;
+                VirtualProtect(match + 1, sizeof(int), dwOldProtect, &dwOldProtect);
             }
         }
         else
         {
-            // Non-inlined SHLogicalToPhysicalDPI()
-            // 48 8B F1 48 8B 49 70 ?? ?? ?? ?? B8 ?? ?? ?? ?? // 23590, 25951
-            //                                     xxxxxxxxxxx To 8
+            // Inlined SHLogicalToPhysicalDPI()
+            // 41 B8 60 00 00 00 41 8D 58 B1
+            //                            xx To A8
             match = FindPattern(
                 pSearchBegin,
                 cbSearch,
-                "\x48\x8B\xF1\x48\x8B\x49\x70\x00\x00\x00\x00\xB8",
-                "xxxxxxx????x"
+                "\x41\xB8\x60\x00\x00\x00\x41\x8D\x58\xB1",
+                "xxxxxxxxxx"
             );
-            if (match && VirtualProtect(match, 16, PAGE_EXECUTE_READWRITE, &dwOldProtect))
+            if (match)
             {
-                *(int*)(match + 12) = 8;
-                VirtualProtect(match, 16, dwOldProtect, &dwOldProtect);
+                if (VirtualProtect(match, 10, PAGE_EXECUTE_READWRITE, &dwOldProtect))
+                {
+                    match[9] = 0xA8; // -88: 96 - 88 = 8
+                    VirtualProtect(match, 10, dwOldProtect, &dwOldProtect);
+                }
+            }
+            else
+            {
+                // Non-inlined SHLogicalToPhysicalDPI()
+                // 48 8B F1 48 8B 49 70 ?? ?? ?? ?? B8 ?? ?? ?? ?? // 23590, 25951
+                //                                     xxxxxxxxxxx To 8
+                match = FindPattern(
+                    pSearchBegin,
+                    cbSearch,
+                    "\x48\x8B\xF1\x48\x8B\x49\x70\x00\x00\x00\x00\xB8",
+                    "xxxxxxx????x"
+                );
+                if (match && VirtualProtect(match, 16, PAGE_EXECUTE_READWRITE, &dwOldProtect))
+                {
+                    *(int*)(match + 12) = 8;
+                    VirtualProtect(match, 16, dwOldProtect, &dwOldProtect);
+                }
+            }
+        }
+#elif defined(_M_ARM64)
+        size_t paddingFirstOffset = 8;
+        size_t paddingSecondOffset = 24;
+        // Newest builds inline SHLogicalToPhysicalDPI(): patch both MulDiv(17,dpi,96) inputs.
+        match = FindPatternBitMask_4_(
+            pSearchBegin, cbSearch,
+            "\x02\x0C\x80\x52\xE1\x03\x00\x2A\x20\x02\x80\x52\x00\x00\x00\x94\x02\x0C\x80\x52\xE0\x03\x00\x2A\x20\x02\x80\x52\xE1\x03\x00\x2A\x00\x00\x00\x94",
+            "\xFF\xFF\xFF\xFF\xFF\xFF\xE0\xFF\xFF\xFF\xFF\xFF\x00\x00\x00\xFC\xFF\xFF\xFF\xFF\xE0\xFF\xE0\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xE0\xFF\x00\x00\x00\xFC",
+            36
+        );
+        if (!match)
+        {
+            // Non-inlined SHLogicalToPhysicalDPI(): one MOV initializes both padding ints.
+            match = FindPatternBitMask_4_(
+                pSearchBegin, cbSearch,
+                "\x28\x02\x80\x52\xE2\x03\x00\x91\xE8\x23\x00\x29\xE1\x03\x00\x91\x00\x00\x00\x94",
+                "\xFF\xFF\xFF\xFF\xFF\x03\xC0\xFF\xFF\x7F\xC0\xFF\xFF\x03\xC0\xFF\x00\x00\x00\xFC",
+                20
+            );
+            paddingFirstOffset = 0;
+            paddingSecondOffset = 0;
+        }
+        if (!match)
+        {
+            // Cobalt/early Nickel: SHComputeDPI(), then separate X/Y MulDiv calls.
+            match = FindPatternBitMask_4_(
+                pSearchBegin, cbSearch,
+                "\xE1\x03\x40\xB9\x02\x0C\x80\x52\x20\x02\x80\x52\x00\x00\x00\x94\xE1\x03\x40\xB9\x02\x0C\x80\x52\xE0\x03\x00\x2A\x20\x02\x80\x52\x00\x00\x00\x94",
+                "\xFF\x03\xC0\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\x00\x00\x00\xFC\xFF\x03\xC0\xFF\xFF\xFF\xFF\xFF\xE0\xFF\xE0\xFF\xFF\xFF\xFF\xFF\x00\x00\x00\xFC",
+                36
+            );
+            paddingFirstOffset = 8;
+            paddingSecondOffset = 28;
+        }
+        if (match)
+        {
+            PBYTE patch = match + paddingFirstOffset;
+            SIZE_T span = paddingSecondOffset - paddingFirstOffset + sizeof(DWORD);
+            if (VirtualProtect(patch, span, PAGE_EXECUTE_READWRITE, &dwOldProtect))
+            {
+                // MOVZ imm16 only: preserve the destination register, opcode and halfword.
+                *(DWORD*)patch = (*(DWORD*)patch & ~0x001FFFE0u) | (8u << 5);
+                if (paddingSecondOffset != paddingFirstOffset)
+                {
+                    PBYTE patchSecond = match + paddingSecondOffset;
+                    *(DWORD*)patchSecond = (*(DWORD*)patchSecond & ~0x001FFFE0u) | (8u << 5);
+                }
+                FlushInstructionCache(GetCurrentProcess(), patch, span);
+                VirtualProtect(patch, span, dwOldProtect, &dwOldProtect);
             }
         }
 #endif
@@ -9335,26 +9618,56 @@ static void PatchAddressBarSizing(PBYTE pSearchBegin, size_t cbSearch)
         // Windows 11 - Revert feature flag Servicing_CFDNavButtonsTheming's effect on toolbar button size
         // Nickel: 56845961, Germanium: 52061322
 #if defined(_M_X64)
-        // Feature flag present, Nickel
-        // CAddressBand::_PositionChildWindows() <- CAddressBand::ResizeToolbarButtons()
-        // BA 04 00 00 00 0F 95 C0 84 C0 75 02 8B D6
-        //    xxxxxxxxxxx To 01 00 00 00
+        // Fused-on feature, ESI/RDI allocation (29634+).
+        // CAddressBand::ResizeToolbarButtons()
+        // Patch the SHLogicalToPhysicalDPI input imm32 at +22: 4 -> 1.
         match = FindPattern(
             pSearchBegin,
             cbSearch,
-            "\xBA\x04\x00\x00\x00\x0F\x95\xC0\x84\xC0\x75\x02\x8B\xD6",
-            "xxxxxxxxxxxxxx"
+            "\x8B\x73\x0C\x2B\x73\x04\x48\x8B\x4F\x48\x48\x8D\x54\x24\x00\x45\x33\xC0\xC7\x44\x24\x00\x04\x00\x00\x00\xE8\x00\x00\x00\x00\x2B\x74\x24\x00",
+            "xxxxxxxxxxxxxx?xxxxxx?xxxxx????xxx?"
         );
         if (match)
         {
-            match += 1; // Point to 04 00 00 00
+            match += 22;
         }
-        else
+        if (!match)
         {
-            // Feature flag present, Germanium+
+            // Fused-on feature, reordered RECT subtraction (26100.9549+).
             // CAddressBand::ResizeToolbarButtons()
-            // C7 44 24 ?? 04 00 00 00 84 C0 75 08 C7 44 24 ?? 01 00 00 00
-            //             xxxxxxxxxxx To 01 00 00 00
+            // Patch the SHLogicalToPhysicalDPI input imm32 at +16: 4 -> 1.
+            match = FindPattern(
+                pSearchBegin,
+                cbSearch,
+                "\x48\x8B\x4E\x48\x48\x8D\x54\x24\x00\x45\x33\xC0\xC7\x44\x24\x00\x04\x00\x00\x00\xE8\x00\x00\x00\x00\x8B\x5F\x0C\x2B\x5F\x04\x2B\x5C\x24\x00",
+                "xxxxxxxx?xxxxxx?xxxxx????xxxxxxxxx?"
+            );
+            if (match)
+            {
+                match += 16;
+            }
+        }
+        if (!match)
+        {
+            // Feature flag present, Nickel.
+            // CAddressBand::_PositionChildWindows() <- CAddressBand::ResizeToolbarButtons()
+            // Patch MOV EDX imm32 at +1: 4 -> 1.
+            match = FindPattern(
+                pSearchBegin,
+                cbSearch,
+                "\xBA\x04\x00\x00\x00\x0F\x95\xC0\x84\xC0\x75\x02\x8B\xD6",
+                "xxxxxxxxxxxxxx"
+            );
+            if (match)
+            {
+                match += 1;
+            }
+        }
+        if (!match)
+        {
+            // Feature flag present, Germanium+.
+            // CAddressBand::ResizeToolbarButtons()
+            // Patch the SHLogicalToPhysicalDPI input imm32 at +4: 4 -> 1.
             match = FindPattern(
                 pSearchBegin,
                 cbSearch,
@@ -9363,24 +9676,23 @@ static void PatchAddressBarSizing(PBYTE pSearchBegin, size_t cbSearch)
             );
             if (match)
             {
-                match += 4; // Point to 04 00 00 00
+                match += 4;
             }
-            else
+        }
+        if (!match)
+        {
+            // Fused-on feature (26100.7262+ / 28000.1362+).
+            // CAddressBand::ResizeToolbarButtons()
+            // Patch the SHLogicalToPhysicalDPI input imm32 at +22: 4 -> 1.
+            match = FindPattern(
+                pSearchBegin,
+                cbSearch,
+                "\x8B\x7B\x0C\x2B\x7B\x04\x48\x8B\x4E\x48\x48\x8D\x54\x24\x00\x45\x33\xC0\xC7\x44\x24\x00\x04\x00\x00\x00\xE8",
+                "xxxxxxxxxxxxxx?xxxxxx?xxxxx"
+            );
+            if (match)
             {
-                // Feature flag always enabled & removed, Germanium 26100.7262+ & Bromine 28000.1362+ (NB: Nickel never got this treatment)
-                // CAddressBand::ResizeToolbarButtons()
-                // 8B 7B 0C 2B 7B 04 48 8B 4E 48 48 8D 54 24 ?? 45 33 C0 C7 44 24 ?? 04 00 00 00 E8
-                //                                                                   xxxxxxxxxxx To 01 00 00 00
-                match = FindPattern(
-                    pSearchBegin,
-                    cbSearch,
-                    "\x8B\x7B\x0C\x2B\x7B\x04\x48\x8B\x4E\x48\x48\x8D\x54\x24\x00\x45\x33\xC0\xC7\x44\x24\x00\x04\x00\x00\x00\xE8",
-                    "xxxxxxxxxxxxxx?xxxxxx?xxxxx"
-                );
-                if (match)
-                {
-                    match += 22; // Point to 04 00 00 00
-                }
+                match += 22;
             }
         }
         if (match && VirtualProtect(match, 4, PAGE_EXECUTE_READWRITE, &dwOldProtect))
@@ -9390,28 +9702,75 @@ static void PatchAddressBarSizing(PBYTE pSearchBegin, size_t cbSearch)
         }
 #elif defined(_M_ARM64)
         DWORD insnNew = 0;
-        // Feature flag present, target register W1 (Nickel)
-        // CAddressBand::ResizeToolbarButtons()
-        // CAddressBand::_PositionChildWindows() <- CAddressBand::ResizeToolbarButtons()
-        // 81 00 80 52 02 00 00 14 21 00 80 52
-        // xxxxxxxxxxx To 21 00 80 52
+        // Fused-on feature, RECT subtraction follows the non-inlined DPI helper.
+        // CAddressBand::ResizeToolbarButtons() (26100.9343+ / 28000.3142+).
+        // Patch MOV W8,#4 at +4 to MOV W8,#1 (0x52800028).
         match = FindPattern_4_(
             pSearchBegin,
             cbSearch,
-            "\x81\x00\x80\x52\x02\x00\x00\x14\x21\x00\x80\x52",
-            "xxxxxxxxxxxx"
+            "\x60\x26\x40\xF9\x88\x00\x80\x52\x02\x00\x80\xD2\xE8\x13\x00\xB9\xE1\x43\x00\x91\x00\x00\x00\x00\x88\x06\x40\xB9\x89\x0E\x40\xB9\x29\x01\x08\x4B\xE8\x13\x40\xB9\x34\x01\x08\x4B",
+            "xxxxxxxxxxxxxxxxxxxx????xxxxxxxxxxxxxxxxxxxx"
         );
         if (match)
         {
-            match += 0; // Point to 81 00 80 52
-            insnNew = 0x52800021; // MOV W1, #1
+            match += 4;
+            insnNew = 0x52800028;
         }
-        else
+        if (!match)
         {
-            // Feature flag present, target register W8 (Germanium+)
+            // Fused-on feature, inlined DPI helper with reordered RECT subtraction.
+            // CAddressBand::_PositionChildWindows() <- CAddressBand::ResizeToolbarButtons() (26100.9606/.9616).
+            // Patch MOV W0,#4 at +8 to MOV W0,#1 (0x52800020).
+            match = FindPattern_4_(
+                pSearchBegin,
+                cbSearch,
+                "\x02\x0C\x80\x52\xE1\x03\x00\x2A\x80\x00\x80\x52\x00\x00\x00\x94\xE8\x0F\x40\xB9\x09\x01\x00\x4B\xE8\x07\x40\xB9\x34\x01\x08\x4B",
+                "xxxxxx?xxxxx???xxxxxxxxxxxxxxxxx"
+            );
+            if (match)
+            {
+                match += 8;
+                insnNew = 0x52800020;
+            }
+        }
+        if (!match)
+        {
+            // Fused-on feature, inlined DPI helper with result saved before ReportUsage.
+            // CAddressBand::ResizeToolbarButtons() (29570-29617).
+            // Patch MOV W0,#4 at +8 to MOV W0,#1 (0x52800020).
+            match = FindPattern_4_(
+                pSearchBegin,
+                cbSearch,
+                "\x02\x0C\x80\x52\xE1\x03\x00\x2A\x80\x00\x80\x52\x00\x00\x00\x94\x00\x03\x00\x2A\x00\x00\x00\x00\x00\x00\x00\x91\x02\x00\x80\x52\x21\x00\x80\x52",
+                "xxxxxx?xxxxx???x?xxx???????xxxxxxxxx"
+            );
+            if (match)
+            {
+                match += 8;
+                insnNew = 0x52800020;
+            }
+        }
+        if (!match)
+        {
+            // Feature flag present, target register W1 (Nickel).
+            // CAddressBand::_PositionChildWindows() <- CAddressBand::ResizeToolbarButtons()
+            // Patch MOV W1,#4 at +0 to MOV W1,#1 (0x52800021).
+            match = FindPattern_4_(
+                pSearchBegin,
+                cbSearch,
+                "\x81\x00\x80\x52\x02\x00\x00\x14\x21\x00\x80\x52",
+                "xxxxxxxxxxxx"
+            );
+            if (match)
+            {
+                insnNew = 0x52800021;
+            }
+        }
+        if (!match)
+        {
+            // Feature flag present, target register W8 (Germanium+).
             // CAddressBand::ResizeToolbarButtons()
-            // 88 00 80 52 02 00 00 14 28 00 80 52
-            // xxxxxxxxxxx To 28 00 80 52
+            // Patch MOV W8,#4 at +0 to MOV W8,#1 (0x52800028).
             match = FindPattern_4_(
                 pSearchBegin,
                 cbSearch,
@@ -9420,45 +9779,41 @@ static void PatchAddressBarSizing(PBYTE pSearchBegin, size_t cbSearch)
             );
             if (match)
             {
-                match += 0; // Point to 88 00 80 52
-                insnNew = 0x52800028; // MOV W8, #1
+                insnNew = 0x52800028;
             }
-            else
+        }
+        if (!match)
+        {
+            // Fused-on feature, non-inlined DPI helper (26100.7262+ / 28000.1362+).
+            // CAddressBand::ResizeToolbarButtons()
+            // Search one byte into the SUB instruction; patch +7 to MOV W8,#1 (0x52800028).
+            match = FindPattern_4_(
+                pSearchBegin + 1,
+                cbSearch - 1,
+                "\x01\x08\x4B\x00\x00\x00\x00\x88\x00\x80\x52\x02\x00\x80\xD2\x00\x13\x00\xB9\x00\x43\x00\x91\x00\x00\x00\x00\x00\x13\x40\xB9",
+                "xxx????xxxxxxxx?xxx?xxx?????xxx"
+            );
+            if (match)
             {
-                // Feature flag always enabled & removed, Germanium 26100.7262+ & Bromine 28000.1362+ (NB: Nickel never got this treatment)
-                // CAddressBand::ResizeToolbarButtons()
-                // SHLogicalToPhysicalDPI non-inlined (GE ARM64 & ARM64EC; BR ARM64EC)
-                // ?? 01 08 4B ?? ?? ?? ?? 88 00 80 52 02 00 80 D2 ?? 13 00 B9 ?? 43 00 91 ?? ?? ?? ?? ?? 13 40 B9
-                //                         xxxxxxxxxxx To 28 00 80 52
-                match = FindPattern_4_(
-                    pSearchBegin + 1,
-                    cbSearch - 1,
-                    "\x01\x08\x4B\x00\x00\x00\x00\x88\x00\x80\x52\x02\x00\x80\xD2\x00\x13\x00\xB9\x00\x43\x00\x91\x00\x00\x00\x00\x00\x13\x40\xB9",
-                    "xxx????xxxxxxxx?xxx?xxx?????xxx"
-                );
-                if (match)
-                {
-                    match += 7; // Point to 88 00 80 52
-                    insnNew = 0x52800028; // MOV W8, #1
-                }
-                else
-                {
-                    // SHLogicalToPhysicalDPI inlined (BR ARM64)
-                    // Constant "4" passed directly to 1st arg of MulDiv (W0)
-                    // 02 0C 80 52 E1 03 ?? 2A 80 00 80 52 ?? ?? ?? ?? ?? ?? ?? 4B
-                    //                         xxxxxxxxxxx To 20 00 80 52
-                    match = FindPattern_4_(
-                        pSearchBegin,
-                        cbSearch,
-                        "\x02\x0C\x80\x52\xE1\x03\x00\x2A\x80\x00\x80\x52\x00\x00\x00\x00\x00\x00\x00\x4B",
-                        "xxxxxx?xxxxx???????x"
-                    );
-                    if (match)
-                    {
-                        match += 8; // Point 80 00 80 52
-                        insnNew = 0x52800020; // MOV W0, #1
-                    }
-                }
+                match += 7;
+                insnNew = 0x52800028;
+            }
+        }
+        if (!match)
+        {
+            // Fused-on feature, inlined DPI helper (Bromine ARM64).
+            // CAddressBand::ResizeToolbarButtons()
+            // Patch MOV W0,#4 at +8 to MOV W0,#1 (0x52800020).
+            match = FindPattern_4_(
+                pSearchBegin,
+                cbSearch,
+                "\x02\x0C\x80\x52\xE1\x03\x00\x2A\x80\x00\x80\x52\x00\x00\x00\x00\x00\x00\x00\x4B",
+                "xxxxxx?xxxxx???????x"
+            );
+            if (match)
+            {
+                match += 8;
+                insnNew = 0x52800020;
             }
         }
         if (match && VirtualProtect(match, 4, PAGE_EXECUTE_READWRITE, &dwOldProtect))
@@ -12068,21 +12423,39 @@ static BOOL StartMenu_FixContextMenuXbfHijackMethod()
         return FALSE;
 
 #if defined(_M_X64)
-    // 48 8B 45 ?? 49 89 43 C8 E8 ?? ?? ?? ?? 85 C0
-    //                            ^^^^^^^^^^^
-    // Ref: CCoreServices::LoadXamlResource()
+    // 29671+: use the CApplication::LoadComponent() call site.
+    // 4C 8D 4D ?? 48 8D 45 ?? 49 8B CD 4C 8D 45 ?? 48 89 44 24 20 E8 ?? ?? ?? ?? 85 C0
+    //                                                                ^^^^^^^^^^^
+    // Ref: CApplication::LoadComponent()
     PBYTE match = FindPattern(
         pWindowsUIXamlText,
         cbWindowsUIXamlText,
-        "\x48\x8B\x45\x00\x49\x89\x43\xC8\xE8\x00\x00\x00\x00\x85\xC0",
-        "xxx?xxxxx????xx"
+        "\x4C\x8D\x4D\x00\x48\x8D\x45\x00\x49\x8B\xCD\x4C\x8D\x45\x00\x48\x89\x44\x24\x20\xE8\x00\x00\x00\x00\x85\xC0",
+        "xxx?xxx?xxxxxx?xxxxxx????xx"
     );
     if (match)
     {
-        match += 8;
+        match += 20;
         match += 5 + *(int*)(match + 1);
     }
-    else
+    if (!match)
+    {
+        // 48 8B 45 ?? 49 89 43 C8 E8 ?? ?? ?? ?? 85 C0
+        //                            ^^^^^^^^^^^
+        // Ref: CCoreServices::LoadXamlResource()
+        match = FindPattern(
+            pWindowsUIXamlText,
+            cbWindowsUIXamlText,
+            "\x48\x8B\x45\x00\x49\x89\x43\xC8\xE8\x00\x00\x00\x00\x85\xC0",
+            "xxx?xxxxx????xx"
+        );
+        if (match)
+        {
+            match += 8;
+            match += 5 + *(int*)(match + 1);
+        }
+    }
+    if (!match)
     {
         // 29553+
         // 48 8B 45 48 48 89 44 24 ?? E8 ?? ?? ?? ?? 85 C0

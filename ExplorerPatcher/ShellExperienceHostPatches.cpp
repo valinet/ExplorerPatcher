@@ -222,10 +222,10 @@ void HandleLoadedQuickActions(HMODULE hModule)
         PBYTE matchTarget = (PBYTE)FindPattern(
             pSearch, cbSearch,
             "\x48\x8B\xD0\x48\x8B\xCB\xE8\x00\x00\x00\x00\x90\x4D\x85\x00\x74\x10\x49\x8B\x00\x49\x8B\x00\x48\x8B\x40\x10\xE8\x00\x00\x00\x00\x90\x49\x8B\xCC"
-            "\xE8\x00\x00\x00\x00\x48\x8B\xD3\x48\x8B\xCE\xE8\x00\x00\x00\x00\xBA\xB8\x00\x00\x00\x8D\x4A\xE8\xFF\x15\x00\x00\x00\x00\x48\x89\x45\x00"
+            "\xE8\x00\x00\x00\x00\x48\x8B\xD3\x00\x8B\xCE\xE8\x00\x00\x00\x00\xBA\xB8\x00\x00\x00\x8D\x4A\xE8\xFF\x15\x00\x00\x00\x00\x48\x89\x45\x00"
             "\x48\x8B\xC8\xE8\x00\x00\x00\x00\x4C\x8B",
             "xxxxxxx????xxx?xxxx?xx?xxxxx????xxxx"
-            "x????xxxxxxx????xxxxxxxxxx????xxx?"
+            "x????xxx?xxx????xxxxxxxxxx????xxx?"
             "xxxx????xx"
         );
 
@@ -252,47 +252,61 @@ void HandleLoadedQuickActions(HMODULE hModule)
 
         PBYTE pfn = nullptr;
 
-        // Find source
-        // B7 17 00 F9 ?? ?? ?? ?? ?? ?? ?? ?? 01 12 80 D2 00 0F 80 D2 00 01 3F D6 A0 13 00 F9 ?? ?? ?? ?? ?? 03 00 AA
-        //                                     ^^^^^^^^^^^^^^^^^^^^^^^                         ^^^^^^^^^^^
-        // ref new QuickActions::QuickActionTemplates();
+        // 28000.2630+, 29634+: allocation arguments precede the import load.
         // Ref: QuickActions::QuickActionTemplates::Instance::get()
+        size_t sourceHeapArgsOffset = 4;
         PBYTE matchSource = (PBYTE)FindPattern_4_(
             pSearch, cbSearch,
-            "\xB7\x17\x00\xF9\x00\x00\x00\x00\x00\x00\x00\x00\x01\x12\x80\xD2\x00\x0F\x80\xD2\x00\x01\x3F\xD6\xA0\x13\x00\xF9\x00\x00\x00\x00\x00\x03\x00\xAA",
-            "xxxx????????xxxxxxxxxxxxxxxx?????xxx"
+            "\xB7\x17\x00\xF9\x01\x12\x80\xD2\x00\x0F\x80\xD2\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x3F\xD6\xA0\x13\x00\xF9\x00\x00\x00\x00\x00\x03\x00\xAA",
+            "xxxxxxxxxxxx????????xxxxxxxx?????xxx"
         );
+        if (!matchSource)
+        {
+            sourceHeapArgsOffset = 12;
+            matchSource = (PBYTE)FindPattern_4_(
+                pSearch, cbSearch,
+                "\xB7\x17\x00\xF9\x00\x00\x00\x00\x00\x00\x00\x00\x01\x12\x80\xD2\x00\x0F\x80\xD2\x00\x01\x3F\xD6\xA0\x13\x00\xF9\x00\x00\x00\x00\x00\x03\x00\xAA",
+                "xxxx????????xxxxxxxxxxxxxxxx?????xxx"
+            );
+        }
         if (matchSource)
         {
             pfn = matchSource + 28;
             pfn = (PBYTE)ARM64_FollowBL((DWORD*)pfn);
         }
 
-        // Find target
-        // E1 03 ?? AA E0 03 ?? AA ?? ?? ?? ?? 1F 20 03 D5 E0 03 ?? AA ?? ?? ?? ?? 1F 20 03 D5 E0 03 ?? AA ?? ?? ?? ??
-        //                         xxxxxxxxxxx nop
-        // E1 03 ?? AA E0 03 ?? AA ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? 01 17 80 D2 00 14 80 D2 00 01 3F D6 40 03 00 F9
-        //                                                             xxxxxxxxxxxxxxxxxxxxxxx mov x1 & mov x0
-        // ?? ?? ?? ?? ?? 03 00 AA
-        // xxxxxxxxxxx ctor call
-        // ref new QuickActions::ControlCenter::ControlCenterTemplates();
+        // 28000.2630+, 29634+: MOV X24,X0 distinguishes this from PopulateSharedResources().
         // Ref: QuickActions::QuickActionControl::QuickActionControl()
+        size_t targetHeapArgsOffset = 48;
         PBYTE matchTarget = (PBYTE)FindPattern_4_(
             pSearch, cbSearch,
             "\xE1\x03\x00\xAA\xE0\x03\x00\xAA\x00\x00\x00\x00\x1F\x20\x03\xD5\xE0\x03\x00\xAA\x00\x00\x00\x00\x1F\x20\x03\xD5\xE0\x03\x00\xAA\x00\x00\x00\x00"
-            "\xE1\x03\x00\xAA\xE0\x03\x00\xAA\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x17\x80\xD2\x00\x14\x80\xD2\x00\x01\x3F\xD6\x40\x03\x00\xF9"
-            "\x00\x00\x00\x00\x00\x03\x00\xAA",
+            "\xE1\x03\x00\xAA\xE0\x03\x00\xAA\x00\x00\x00\x00\x01\x17\x80\xD2\x00\x14\x80\xD2\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x3F\xD6\x40\x00\x00\xF9"
+            "\x00\x00\x00\x00\xF8\x03\x00\xAA",
             "xx?xxx?x????xxxxxx?x????xxxxxx?x????"
-            "xx?xxx?x????????????xxxxxxxxxxxxxxxx"
-            "?????xxx"
+            "xx?xxx?x????xxxxxxxx????????xxxxx?xx"
+            "????xxxx"
         );
+        if (!matchTarget)
+        {
+            targetHeapArgsOffset = 56;
+            matchTarget = (PBYTE)FindPattern_4_(
+                pSearch, cbSearch,
+                "\xE1\x03\x00\xAA\xE0\x03\x00\xAA\x00\x00\x00\x00\x1F\x20\x03\xD5\xE0\x03\x00\xAA\x00\x00\x00\x00\x1F\x20\x03\xD5\xE0\x03\x00\xAA\x00\x00\x00\x00"
+                "\xE1\x03\x00\xAA\xE0\x03\x00\xAA\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x17\x80\xD2\x00\x14\x80\xD2\x00\x01\x3F\xD6\x40\x03\x00\xF9"
+                "\x00\x00\x00\x00\x00\x03\x00\xAA",
+                "xx?xxx?x????xxxxxx?x????xxxxxx?x????"
+                "xx?xxx?x????????????xxxxxxxxxxxxxxxx"
+                "?????xxx"
+            );
+        }
 
         if (matchSource && matchTarget && pfn)
         {
-            DWORD* pinsnMovX1MovX0Src = (DWORD*)(matchSource + 12);
+            DWORD* pinsnMovX1MovX0Src = (DWORD*)(matchSource + sourceHeapArgsOffset);
 
             DWORD* pinsnBLLoadComponent = (DWORD*)(matchTarget + 8);
-            DWORD* pinsnMovX1MovX0Dst = (DWORD*)(matchTarget + 56);
+            DWORD* pinsnMovX1MovX0Dst = (DWORD*)(matchTarget + targetHeapArgsOffset);
             DWORD* pinsnBLTemplatesCtor = (DWORD*)(matchTarget + 72);
 
             DWORD insnBLNew = ARM64_MakeBL((int)(((UINT_PTR)pfn - (UINT_PTR)pinsnBLTemplatesCtor) / 4));
