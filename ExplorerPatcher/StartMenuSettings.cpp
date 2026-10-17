@@ -31,7 +31,7 @@ static std::vector<winrt::guid> GlobalStartData_GetPlacesFromRegistry()
 {
     std::vector<winrt::guid> places;
 
-    DWORD dwSize;
+    DWORD dwSize = 0;
     LSTATUS lRes = RegGetValueW(
         HKEY_CURRENT_USER,
         L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Start",
@@ -45,6 +45,7 @@ static std::vector<winrt::guid> GlobalStartData_GetPlacesFromRegistry()
         return places;
 
     places.resize(dwSize / sizeof(winrt::guid));
+    dwSize = static_cast<DWORD>(places.size() * sizeof(winrt::guid));
     lRes = RegGetValueW(
         HKEY_CURRENT_USER,
         L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Start",
