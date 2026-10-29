@@ -13643,8 +13643,8 @@ typedef enum EXPLORERSERVER
 EXPLORERSERVER g_explorerServer;
 
 typedef HRESULT (WINAPI *SetExplorerServerMode_t)(EXPLORERSERVER es);
-SetExplorerServerMode_t explorer_SetExplorerServerModeFunc;
-HRESULT WINAPI explorer_SetExplorerServerModeHook(EXPLORERSERVER es)
+SetExplorerServerMode_t SetExplorerServerModeFunc;
+HRESULT WINAPI SetExplorerServerModeHook(EXPLORERSERVER es)
 {
     void* retaddr = _ReturnAddress();
     if (retaddr >= (void*)g_pbExplorerText && retaddr < (void*)(g_pbExplorerText + g_cbExplorerText))
@@ -13662,15 +13662,12 @@ HRESULT WINAPI explorer_SetExplorerServerModeHook(EXPLORERSERVER es)
         }
     }
 
-    return explorer_SetExplorerServerModeFunc(es);
+    return SetExplorerServerModeFunc(es);
 }
 
-typedef void (WINAPI *ShellDDEInit_t)(BOOL fInit);
-ShellDDEInit_t explorer_ShellDDEInitFunc;
-void WINAPI explorer_ShellDDEInitHook(BOOL fInit)
+static void ExplorerInjection_InitialiseDDECalled(void* retaddr)
 {
-    void* retaddr = _ReturnAddress();
-    if (retaddr >= (void*)g_pbExplorerText && retaddr < (void*)(g_pbExplorerText + g_cbExplorerText) && fInit)
+    if (retaddr >= (void*)g_pbExplorerText && retaddr < (void*)(g_pbExplorerText + g_cbExplorerText))
     {
         static BOOL bCalled = FALSE;
         if (!bCalled)
@@ -13683,8 +13680,99 @@ void WINAPI explorer_ShellDDEInitHook(BOOL fInit)
             }
         }
     }
+}
 
-    explorer_ShellDDEInitFunc(fInit);
+typedef void (WINAPI *ShellDDEInit_t)(BOOL fInit);
+static ShellDDEInit_t ShellDDEInitFunc;
+static void WINAPI ShellDDEInitHook(BOOL fInit)
+{
+    if (fInit)
+    {
+        ExplorerInjection_InitialiseDDECalled(_ReturnAddress());
+    }
+
+    ShellDDEInitFunc(fInit);
+}
+
+// Only use this hook when InitialiseDDE is tail called from ShellDDEInit,
+// otherwise the _ReturnAddress() check would not satisfy!
+typedef void (WINAPI *InitialiseDDE_t)();
+static InitialiseDDE_t InitialiseDDEFunc;
+static void WINAPI InitialiseDDEHook()
+{
+    ExplorerInjection_InitialiseDDECalled(_ReturnAddress());
+    InitialiseDDEFunc();
+}
+
+static HRESULT ExplorerInjection_InstallHooks()
+{
+    HRESULT hr = E_NOT_SET;
+
+    // Safeguard: only do things when the hooked functions below are called from explorer.exe
+    TextSectionBeginAndSize(GetModuleHandleW(NULL), &g_pbExplorerText, &g_cbExplorerText);
+
+    HMODULE hShell32 = GetModuleHandleW(L"shell32.dll"); // explorer.exe statically imports this module
+    SetExplorerServerModeFunc = (SetExplorerServerMode_t)GetProcAddress(hShell32, MAKEINTRESOURCEA(899));
+    ShellDDEInitFunc = (ShellDDEInit_t)GetProcAddress(hShell32, MAKEINTRESOURCEA(188));
+    if (SetExplorerServerModeFunc && ShellDDEInitFunc)
+    {
+        hr = SlimDetoursTransactionBegin();
+        if (SUCCEEDED(hr))
+        {
+            // To check which mode is this explorer.exe process running with and run the limited injection routine
+            // for modes other than mode 3/desktop & tray. For example, `explorer.exe /embedding`.
+            hr = SlimDetoursAttach((void**)&SetExplorerServerModeFunc, SetExplorerServerModeHook);
+            if (SUCCEEDED(hr))
+            {
+#if defined(_M_X64)
+                // No problems on x64 so far...
+#elif defined(_M_ARM64)
+                // 27xxx changed the assembly shape of ShellDDEInit: the new tail call form cannot be
+                // trampoline-hooked. Check if it has the new shape; if it has then hook InitialiseDDE instead.
+                DWORD* pinsnShellDDEInit = (DWORD*)ShellDDEInitFunc;
+
+                if (pinsnShellDDEInit[0] == 0x34000040 /*CBZ W0, +8*/)
+                {
+                    DWORD* pinsnInitialiseDDE = ARM64_FollowB(pinsnShellDDEInit + 1); // Already checks if it is B, returns NULL if not B
+                    DWORD* pinsnUninitialiseDDE = ARM64_FollowB(pinsnShellDDEInit + 2);
+
+                    PBYTE pShell32Text;
+                    DWORD cbShell32Text;
+                    if (pinsnInitialiseDDE && pinsnUninitialiseDDE
+                        && TextSectionBeginAndSize(hShell32, &pShell32Text, &cbShell32Text)
+                        && (PBYTE)pinsnInitialiseDDE >= pShell32Text
+                        && (PBYTE)pinsnInitialiseDDE < pShell32Text + cbShell32Text
+                        && (PBYTE)pinsnUninitialiseDDE >= pShell32Text
+                        && (PBYTE)pinsnUninitialiseDDE < pShell32Text + cbShell32Text)
+                    {
+                        InitialiseDDEFunc = (InitialiseDDE_t)pinsnInitialiseDDE;
+                    }
+                }
+#endif
+                // Full injection routine (only for mode 3/desktop & tray) will be run in this function.
+                // This is called after the elevation checks which relaunches explorer if launched as admin with
+                // non-default admin account, so that we don't run our injection if we're going to be relaunched anyway.
+                if (InitialiseDDEFunc)
+                {
+                    hr = SlimDetoursAttach((void**)&InitialiseDDEFunc, InitialiseDDEHook);
+                }
+                else
+                {
+                    hr = SlimDetoursAttach((void**)&ShellDDEInitFunc, ShellDDEInitHook);
+                }
+            }
+            if (SUCCEEDED(hr))
+            {
+                hr = SlimDetoursTransactionCommit();
+            }
+            else
+            {
+                SlimDetoursTransactionAbort();
+            }
+        }
+    }
+
+    return hr;
 }
 #endif
 
@@ -13798,37 +13886,7 @@ HRESULT EntryPoint(DWORD dwMethod)
             return E_NOINTERFACE;
         }
 
-        // Safeguard: only do things when the hooked functions below are called from explorer.exe
-        TextSectionBeginAndSize(GetModuleHandleW(NULL), &g_pbExplorerText, &g_cbExplorerText);
-
-        HMODULE hShell32 = GetModuleHandleW(L"shell32.dll"); // explorer.exe is statically linked to this module
-        explorer_SetExplorerServerModeFunc = (SetExplorerServerMode_t)GetProcAddress(hShell32, MAKEINTRESOURCEA(899));
-        explorer_ShellDDEInitFunc = (ShellDDEInit_t)GetProcAddress(hShell32, MAKEINTRESOURCEA(188));
-        if (explorer_SetExplorerServerModeFunc && explorer_ShellDDEInitFunc)
-        {
-            HRESULT hr = SlimDetoursTransactionBegin();
-            if (SUCCEEDED(hr))
-            {
-                // To check which mode is this explorer.exe process running with and run the limited injection routine
-                // for modes other than mode 3/desktop & tray. For example, `explorer.exe /embedding`.
-                hr = SlimDetoursAttach((void**)&explorer_SetExplorerServerModeFunc, explorer_SetExplorerServerModeHook);
-            }
-            if (SUCCEEDED(hr))
-            {
-                // Full injection routine (only for mode 3/desktop & tray) will be run in this function.
-                // This is called after the elevation checks which relaunches explorer if launched as admin with
-                // non-default admin account, so that we don't run our injection if we're going to be relaunched anyway.
-                hr = SlimDetoursAttach((void**)&explorer_ShellDDEInitFunc, explorer_ShellDDEInitHook);
-            }
-            if (SUCCEEDED(hr))
-            {
-                SlimDetoursTransactionCommit();
-            }
-            else
-            {
-                SlimDetoursTransactionAbort();
-            }
-        }
+        ExplorerInjection_InstallHooks();
 #endif
         IncrementDLLReferenceCount(hModule);
     }
