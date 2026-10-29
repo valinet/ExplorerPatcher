@@ -12,6 +12,7 @@
 #include <wrl/wrappers/corewrappers.h>
 
 #include "ArchiveMenu.h"
+#include "StartMenuMonitorState.h"
 #include "utility.h"
 #include "hooking.h"
 #include "symbols.h"
@@ -1575,6 +1576,62 @@ BOOL Moment2PatchHardwareConfirmator(HMODULE hHardwareConfirmator, PBYTE pSearch
 #pragma region "Fix broken Windows 10 start menu positioning issues caused by 44656322"
 
 // Reverts 44656322's effects on the start menu
+extern "C" DWORD bMonitorOverride;
+
+static BOOL CALLBACK ExtractStartMenuMonitorByIndex(HMONITOR monitor, HDC hdc, LPRECT rect, LPARAM data)
+{
+    return ExtractMonitorByIndex(monitor, hdc, rect, (MonitorOverrideData*)data);
+}
+
+static HMONITOR GetConfiguredStartMenuTargetMonitor()
+{
+    POINT primaryPoint = {};
+    if (bMonitorOverride == 1)
+    {
+        return MonitorFromPoint(primaryPoint, MONITOR_DEFAULTTOPRIMARY);
+    }
+
+    if (!bMonitorOverride)
+    {
+        POINT cursorPoint;
+        if (GetCursorPos(&cursorPoint))
+        {
+            return MonitorFromPoint(cursorPoint, MONITOR_DEFAULTTONEAREST);
+        }
+        return nullptr;
+    }
+
+    MonitorOverrideData monitorData = {};
+    monitorData.cbIndex = 2;
+    monitorData.dwIndex = bMonitorOverride;
+    EnumDisplayMonitors(nullptr, nullptr, ExtractStartMenuMonitorByIndex, (LPARAM)&monitorData);
+    if (monitorData.hMonitor)
+    {
+        return monitorData.hMonitor;
+    }
+
+    return MonitorFromPoint(primaryPoint, MONITOR_DEFAULTTOPRIMARY);
+}
+
+static HRESULT GetStartMenuMonitorLayout(IImmersiveMonitor* monitor, RECT* workArea, EDGEUI_TRAYSTUCKPLACE* trayStuckPlace)
+{
+    ComPtr<IEdgeUiManager> spEdgeUiManager;
+    RETURN_IF_FAILED(IUnknown_QueryService(monitor, SID_EdgeUi, IID_PPV_ARGS(&spEdgeUiManager)));
+    RETURN_IF_FAILED(spEdgeUiManager->GetTrayStuckPlace(trayStuckPlace));
+
+    HWND hwndTray = FindWindowW(L"Shell_TrayWnd", nullptr);
+    if (hwndTray && GetPropW(hwndTray, L"IsAutoHideEnabled"))
+    {
+        RETURN_IF_FAILED(spEdgeUiManager->GetAutohideImmuneWorkArea(workArea));
+    }
+    else
+    {
+        RETURN_IF_FAILED(monitor->GetWorkArea(workArea));
+    }
+
+    return S_OK;
+}
+
 extern "C" HRESULT CStartExperienceManager_GetMonitorInformationHook(void* _this, CSingleViewShellExperience* experience, RECT* rcOutWorkArea, EDGEUI_TRAYSTUCKPLACE* outTrayStuckPlace, bool* bOutRtl, HMONITOR* hOutMonitor)
 {
     *rcOutWorkArea = {};
@@ -1589,43 +1646,71 @@ extern "C" HRESULT CStartExperienceManager_GetMonitorInformationHook(void* _this
     ComPtr<IImmersiveLauncher> spImmersiveLauncher;
     RETURN_IF_FAILED(spImmersiveShellServiceProvider->QueryService(SID_ImmersiveLauncher, IID_PPV_ARGS(&spImmersiveLauncher)));
 
-    ComPtr<IImmersiveMonitor> spImmersiveMonitor;
-    HRESULT hr = spImmersiveLauncher->GetMonitor(&spImmersiveMonitor);
+    // Official default path: the monitor currently connected to the launcher.
+    ComPtr<IImmersiveMonitor> spLauncherMonitor;
+    HRESULT hr = spImmersiveLauncher->GetMonitor(&spLauncherMonitor);
     if (FAILED(hr))
         return hr;
 
-    HMONITOR hMonitor = nullptr;
-    if (hOutMonitor)
-        hr = spImmersiveMonitor->GetHandle(&hMonitor);
-
+    HMONITOR hLauncherMonitor = nullptr;
+    hr = spLauncherMonitor->GetHandle(&hLauncherMonitor);
     if (FAILED(hr))
         return hr;
 
-    ComPtr<IEdgeUiManager> spEdgeUiManager;
-    hr = IUnknown_QueryService(spImmersiveMonitor.Get(), SID_EdgeUi, IID_PPV_ARGS(&spEdgeUiManager));
-    if (FAILED(hr))
-        return hr;
+    HMONITOR hDefaultMonitor = GetConfiguredStartMenuTargetMonitor();
+    if (!hDefaultMonitor)
+        hDefaultMonitor = hLauncherMonitor;
 
-    EDGEUI_TRAYSTUCKPLACE trayStuckPlace;
-    RETURN_IF_FAILED(spEdgeUiManager->GetTrayStuckPlace(&trayStuckPlace));
+    HMONITOR hTargetMonitor = nullptr;
+    START_MENU_MONITOR_REQUEST_ID lifecycleId = AcquireStartMenuTargetMonitor(hDefaultMonitor, &hTargetMonitor);
 
-    HWND hwndTray = FindWindowW(L"Shell_TrayWnd", nullptr);
+    ComPtr<IImmersiveMonitor> spTargetMonitor = spLauncherMonitor;
+    if (hTargetMonitor && hTargetMonitor != hLauncherMonitor)
+    {
+        ComPtr<IImmersiveMonitorManager> spImmersiveMonitorManager;
+        hr = spImmersiveShellServiceProvider->QueryService(SID_IImmersiveMonitorService, IID_PPV_ARGS(&spImmersiveMonitorManager));
+        if (SUCCEEDED(hr))
+        {
+            ComPtr<IImmersiveMonitor> spOverrideMonitor;
+            hr = spImmersiveMonitorManager->GetFromHandle(hTargetMonitor, &spOverrideMonitor);
+            if (SUCCEEDED(hr) && spOverrideMonitor)
+            {
+                spTargetMonitor = spOverrideMonitor;
+            }
+            else if (SUCCEEDED(hr))
+            {
+                hr = E_FAIL;
+            }
+        }
+        if (FAILED(hr))
+        {
+            printf("[EP] Failed to resolve Start target monitor %p (0x%08lX); using launcher monitor.\n",
+                (void*)hTargetMonitor, (unsigned long)hr);
+            hTargetMonitor = hLauncherMonitor;
+            spTargetMonitor = spLauncherMonitor;
+        }
+    }
 
     RECT rcWork;
-    if (hwndTray && GetPropW(hwndTray, L"IsAutoHideEnabled"))
+    EDGEUI_TRAYSTUCKPLACE trayStuckPlace;
+    hr = GetStartMenuMonitorLayout(spTargetMonitor.Get(), &rcWork, &trayStuckPlace);
+    if (FAILED(hr) && hTargetMonitor != hLauncherMonitor)
     {
-        RETURN_IF_FAILED(spEdgeUiManager->GetAutohideImmuneWorkArea(&rcWork));
+        printf("[EP] Failed to query Start target monitor %p (0x%08lX); using launcher monitor.\n",
+            (void*)hTargetMonitor, (unsigned long)hr);
+        hTargetMonitor = hLauncherMonitor;
+        spTargetMonitor = spLauncherMonitor;
+        hr = GetStartMenuMonitorLayout(spTargetMonitor.Get(), &rcWork, &trayStuckPlace);
     }
-    else
-    {
-        RETURN_IF_FAILED(spImmersiveMonitor->GetWorkArea(&rcWork));
-    }
+    RETURN_IF_FAILED(hr);
+
+    UpdateStartMenuTargetMonitor(lifecycleId, hTargetMonitor);
 
     *rcOutWorkArea = rcWork;
     *outTrayStuckPlace = trayStuckPlace;
     *bOutRtl = Mirror_IsThreadRTL() != FALSE;
     if (hOutMonitor)
-        *hOutMonitor = hMonitor;
+        *hOutMonitor = hTargetMonitor;
 
     return S_OK;
 }
@@ -1817,7 +1902,10 @@ HRESULT CStartExperienceManager_OnViewHiddenHook(void* eventHandler, CSingleView
         CExperienceManagerAnimationHelper_EndFunc(_this + g_SMAnimationPatchOffsets.startExperienceManager_closingAnimation);
     }
 
-    return CStartExperienceManager_OnViewHiddenFunc(eventHandler, pSender);
+    START_MENU_MONITOR_REQUEST_ID lifecycleId = GetStartMenuTargetMonitorLifecycleId();
+    HRESULT hr = CStartExperienceManager_OnViewHiddenFunc(eventHandler, pSender);
+    CompleteStartMenuTargetMonitorLifecycle(lifecycleId);
+    return hr;
 }
 
 struct StartMenuAnimationHidePatch
