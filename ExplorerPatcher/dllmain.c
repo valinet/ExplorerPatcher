@@ -855,6 +855,7 @@ CImmersiveContextMenuOwnerDrawHelper_s_ContextMenuWndProcFunc_t CImmersiveContex
 extern void ToggleLauncherTipContextMenu();
 extern LRESULT CALLBACK CLauncherTipContextMenu_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 extern void RunTwinUIPCShellPatches(symbols_addr* symbols_PTRS);
+extern void FixBatteryFlyoutAnimation(HMODULE twinui);
 
 BOOL VnPatchIAT_NonInline(HMODULE hMod, const char* libName, const char* funcName, uintptr_t hookAddr)
 {
@@ -11675,6 +11676,10 @@ DWORD Inject(BOOL bIsExplorer)
 
 
     HANDLE hTwinui = LoadLibraryExW(L"twinui.dll", NULL, LOAD_LIBRARY_SEARCH_SYSTEM32);
+    if (bOldTaskbar && global_rovi.dwBuildNumber >= 26100)
+    {
+        FixBatteryFlyoutAnimation(hTwinui);
+    }
     if (!IsWindows11())
     {
         VnPatchIAT(hTwinui, "user32.dll", "TrackPopupMenu", twinui_TrackPopupMenuHook);
