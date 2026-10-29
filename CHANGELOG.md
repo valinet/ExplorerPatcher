@@ -2,13 +2,46 @@
 
 This document includes the same release notes as in the [Releases](https://github.com/valinet/ExplorerPatcher/releases) section on GitHub.
 
+## 26100.9711.71
+
+Tested on OS builds 22621.4317 x64, 22631.7652 x64, 26100.8037 ARM64, 26300.9711 x64, 26340.9767 x64, 26100.33650 x64, 28000.3231 x64, 28120.3302 x64, and 29695.1001 x64.
+
+##### 1
+
+* ep_taskbar now detects the `ITrayUI` binary interface compatibility before being activated, and gracefully reverts back to stock taskbar when it is not compatible. (b7377e5)
+* Fixed 10 (EP) taskbar crashlooping on 29634+ x64/ARM64. (#5128)
+* Fixed 10 (EP) taskbar crashing when entering fullscreen on 26220.9343+ and 26xxx.9550+ x64/ARM64. (#5191)
+* Fixed disabling Windows 11 Explorer context menus on builds with customizable menus enabled (ID 60813048). (f646262)
+* Fixed Google weather script runtime failures. Thanks @davids5! (#5198) (7283621)
+* Pattern scan keep-ups: (9435cf9, 9045e87)
+  * Fixed Windows 10 taskbar jump list positioning fix on 26100.9343+, 28000.3032+, and 29683+ x64. (#5205)
+  * Fixed Windows 10 Alt+Tab on 26100.9606+ x64 and 28000.2630+/29634+ ARM64.
+  * Fixed Windows 10 taskbar Win+X menu command execution on 28000.2630+/29634+ ARM64.
+  * Fixed classic Microsoft IME context menus on 28000.2630+/29634+ ARM64.
+  * Fixed Windows 10 Start menu open/close animations on 28000.3172+ x64 and 28000.2630+/29634+ ARM64.
+  * Fixed Windows 10 Start menu startup crashes on 28000.2630+ ARM64.
+  * Fixed Windows 10 Start menu tile layout engine restoration on 28000.2630+/29634+ ARM64.
+  * Fixed Windows 10 Start menu "Pin to Start" and "Unpin from Start" context menu commands on 28000.2630+/29634+ ARM64.
+  * Fixed Windows 10 Start menu context menu crash fix on 29671+ x64.
+  * Fixed Windows 10 battery flyout fix on 28000.2630+ x64/ARM64, 29570+ x64, and 29634+ ARM64.
+  * Fixed File Explorer address bar shrinking and dropdown/refresh button sizing on 26100.9343+, 28000.3142+, and 29591+ x64.
+  * Fixed incomplete address bar shrinking and up button sizing in File Explorer on 22000+ ARM64.
+  * Fixed disabling rounded window corners on 28000.2630+ and 29553+ x64/ARM64.
+* Fixed memory corruption when pinning/unpinning a tile via the reimplemented "Pin to Start" shell context menu handler. (ExplorerPatcher/ep_starttiledata@d8e0df6)
+* Fixed TrayThreadBSTA fix (initially introduced in 69.1) being applied to unrelated threads (c08a7d2).
+* Fixed buffer overrun when reading a VisiblePlaces registry value whose size is not a multiple of a GUID. (dded255)
+* More granular explorer.exe injection: only full-injects on explorer.exe processes that host the desktop and taskbar. (be4e412, 945fc1f)
+  * For example, `explorer.exe /embedding` when `explorer.exe` is not running is no longer full-injected.
+  * Helps reduce false repeated crash detection activations.
+* Localized "Settings and Uninstall" in Dutch. (valinet/ExplorerPatcher-L10N@f2bdf8e)
+
 ## 26100.8457.70
 
 Tested on OS builds 22621.4317 x64, 22631.7079 x64, 26100.6899 ARM64, 26200.8457 x64, 26300.8493 x64, 26300.8758 x64, 28000.2269 ARM64, and 29617.1000 x64.
 
 ##### 1
 
-* **🚨 Important: Fixed 10 taskbar and 10 Start menu crashing on 26xxx.8474+ and 28xxx.2298+.**
+* **🚨 Important: Fixed 10 taskbar and 10 Start menu crashing on 26xxx.8474+ and 28xxx.2298+.** (#4957)
   * Due to 10 Start menu's tile layout engine being removed from `StartTileData.dll`, the 10 Start menu option has been temporarily hidden. (bf36cde, 8a5b8ba)
   * *The 10 Start menu option has been made available again in version 70.2.*
 * **Highlight:** Fixed Windows 10 battery flyout crashing on 25951+. (659c2d0)
@@ -46,7 +79,7 @@ Tested on OS builds 22621.4317 x64, 22631.7079 x64, 26100.6899 ARM64, 26200.8457
 
 ##### 4
 
-* Fixed 10 (EP) taskbar crashing on 28xxx.2298+ (26H1), x64 only. ARM64 is not affected. (#5063)
+* Fixed 10 (EP) taskbar crashing on 28xxx.2298+ (26H1), x64 only. ARM64 is not affected. (#5059, #5063)
 * Restored 10 Start tile pinning behavior on 26xxx.8474+ and 28xxx.2298+. (96839ff, 0ecde00)
 * Fixed Explorer Pin to Start/Unpin from Start context menu action behavior when 10 Start is used on 226xx.3420+. (96839ff, 0ecde00)
 * Switching between 10 and 11 Start without restarting Explorer no longer results in broken open/close animation. (f022f50, 59a6a42)
