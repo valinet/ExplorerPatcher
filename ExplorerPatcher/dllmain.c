@@ -92,6 +92,7 @@ DWORD bClockFlyoutOnWinC = FALSE;
 DWORD bUseClassicDriveGrouping = FALSE;
 DWORD dwFileExplorerCommandUI = 9999;
 DWORD bLegacyFileTransferDialog = FALSE;
+DWORD bDisableWindows11ContextMenu = FALSE;
 DWORD bDisableImmersiveContextMenu = FALSE;
 DWORD bClassicThemeMitigations = FALSE;
 DWORD bWasClassicThemeMitigationsSet = FALSE;
@@ -5875,6 +5876,41 @@ void WINAPI LoadSettings(LPARAM lParam)
             &bLegacyFileTransferDialog,
             &dwSize
         );
+        // Older versions used this undocumented COM registration override.
+        // Preserve the setting while removing the persistent key now that the behavior is implemented inside EP.
+        if (RegGetValueW(
+            HKEY_CURRENT_USER,
+            L"SOFTWARE\\Classes\\CLSID\\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\\InProcServer32",
+            L"",
+            RRF_RT_REG_SZ,
+            NULL,
+            NULL,
+            NULL
+        ) == ERROR_SUCCESS)
+        {
+            bDisableWindows11ContextMenu = TRUE;
+            RegSetValueExW(
+                hKey,
+                TEXT("DisableWindows11ContextMenu"),
+                0,
+                REG_DWORD,
+                &bDisableWindows11ContextMenu,
+                sizeof(DWORD)
+            );
+            RegDeleteTreeW(
+                HKEY_CURRENT_USER,
+                L"SOFTWARE\\Classes\\CLSID\\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}"
+            );
+        }
+        dwSize = sizeof(DWORD);
+        RegQueryValueExW(
+            hKey,
+            TEXT("DisableWindows11ContextMenu"),
+            0,
+            NULL,
+            &bDisableWindows11ContextMenu,
+            &dwSize
+        );
         dwSize = sizeof(DWORD);
         RegQueryValueExW(
             hKey,
@@ -8240,19 +8276,73 @@ DEFINE_GUID(IID_IUIRibbonFramework,
     0x4C, 0x33, 0x9C, 0xB3, 0xF5, 0xC5
 );
 
+// {86CA1AA0-34AA-4E8B-A509-50C905BAE2A2}
+DEFINE_GUID(CLSID_FileExplorerContextMenuPresenterLegacy, 0x86CA1AA0, 0x34AA, 0x4E8B, 0xA5, 0x09, 0x50, 0xC9, 0x05, 0xBA, 0xE2, 0xA2);
+
+// {51668040-5E31-4023-BBE3-149163BD80F1}
+DEFINE_GUID(CLSID_FileExplorerContextMenuPresenter, 0x51668040, 0x5E31, 0x4023, 0xBB, 0xE3, 0x14, 0x91, 0x63, 0xBD, 0x80, 0xF1);
+
+// {37A472F7-63CF-4CCF-A88B-5231A3C7D8B6}
+DEFINE_GUID(IID_FileExplorerContextMenuPresenter2, 0x37A472F7, 0x63CF, 0x4CCF, 0xA8, 0x8B, 0x52, 0x31, 0xA3, 0xC7, 0xD8, 0xB6);
+
 HRESULT ExplorerFrame_CoCreateInstanceHook(REFCLSID rclsid, LPUNKNOWN pUnkOuter, DWORD dwClsContext, REFIID riid, LPVOID* ppv)
 {
     if (IsEqualCLSID(rclsid, &CLSID_XamlIslandViewAdapter))
     {
         if (dwFileExplorerCommandUI != 0 && dwFileExplorerCommandUI != 3 && dwFileExplorerCommandUI != 4)
+        {
+            if (ppv)
+                *ppv = NULL;
             return REGDB_E_CLASSNOTREG;
+        }
     }
     else if (IsEqualCLSID(rclsid, &CLSID_UIRibbonFramework) && IsEqualIID(riid, &IID_IUIRibbonFramework))
     {
         if (dwFileExplorerCommandUI == 2)
+        {
+            if (ppv)
+                *ppv = NULL;
             return REGDB_E_CLASSNOTREG;
+        }
     }
+    else if (IsEqualIID(riid, &IID_FileExplorerContextMenuPresenter2)
+        && (IsEqualCLSID(rclsid, &CLSID_FileExplorerContextMenuPresenterLegacy)
+            || IsEqualCLSID(rclsid, &CLSID_FileExplorerContextMenuPresenter)))
+    {
+        // Allow disabling the XAML context menu in CNscTree and CShellBrowser
+        if (bDisableWindows11ContextMenu)
+        {
+            if (ppv)
+                *ppv = NULL;
+            return REGDB_E_CLASSNOTREG;
+        }
+    }
+
     return CoCreateInstance(rclsid, pUnkOuter, dwClsContext, riid, ppv);
+}
+
+// {B306C5B1-B4F2-473C-B6FF-701B246CE2D2}
+DEFINE_GUID(SID_FileExplorerContextMenuPresenter, 0xB306C5B1, 0xB4F2, 0x473C, 0xB6, 0xFF, 0x70, 0x1B, 0x24, 0x6C, 0xE2, 0xD2);
+
+// {706461D1-AC5F-4730-BFE3-CAC6CAD5EF5E}
+DEFINE_GUID(IID_FileExplorerContextMenuPresenter, 0x706461D1, 0xAC5F, 0x4730, 0xBF, 0xE3, 0xCA, 0xC6, 0xCA, 0xD5, 0xEF, 0x5E);
+
+HRESULT WINAPI shell32_IUnknown_QueryServiceHook(IUnknown* punk, REFGUID guidService, REFIID riid, void** ppvOut)
+{
+    if (IsEqualGUID(guidService, &SID_FileExplorerContextMenuPresenter)
+        && (IsEqualGUID(riid, &IID_FileExplorerContextMenuPresenter)
+            || IsEqualGUID(riid, &IID_FileExplorerContextMenuPresenter2)))
+    {
+        // Allow disabling the XAML context menu in CDefView
+        if (bDisableWindows11ContextMenu)
+        {
+            if (ppvOut)
+                *ppvOut = NULL;
+            return E_FAIL;
+        }
+    }
+
+    return IUnknown_QueryService(punk, guidService, riid, ppvOut);
 }
 
 HRESULT shell32_CoCreateInstanceHook(REFCLSID rclsid, LPUNKNOWN pUnkOuter, DWORD dwClsContext, REFIID riid, LPVOID* ppv)
@@ -9987,6 +10077,7 @@ DWORD InjectBasicFunctions(BOOL bIsExplorer, BOOL bInstall)
             {
                 HOOK_IMMERSIVE_MENUS(Shell32);
                 VnPatchDelayIAT(hShell32, "api-ms-win-core-com-l1-1-0.dll", "CoCreateInstance", shell32_CoCreateInstanceHook);
+                VnPatchDelayIAT(hShell32, "api-ms-win-shcore-comhelpers-l1-1-0.dll", "IUnknown_QueryService", shell32_IUnknown_QueryServiceHook);
             }
             VnPatchIAT(hShell32, "user32.dll", "SystemParametersInfoW", DisableImmersiveMenus_SystemParametersInfoW);
             if (!bIsExplorer)

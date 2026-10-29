@@ -213,9 +213,9 @@
 ;q
 ;b %R:1205%
 ;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_RegisterAsShellExtension"=dword:00000000
-[-HKEY_CURRENT_USER\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32]
-;d %R:1206% *
-@=""
+[HKEY_CURRENT_USER\Software\ExplorerPatcher]
+;b %R:1206% *
+"DisableWindows11ContextMenu"=dword:00000000
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;b %R:1207%
 "LegacyFileTransferDialog"=dword:00000000
