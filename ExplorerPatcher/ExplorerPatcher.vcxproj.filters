@@ -241,6 +241,9 @@
     <ClCompile Include="Taskbar10.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Taskbar10SearchBox.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="TaskbarCenter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
