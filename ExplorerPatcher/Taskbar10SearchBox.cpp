@@ -69,10 +69,12 @@ namespace InsideSearchApp
     static FrameworkElement* g_pSearchPage;
     alignas(RichEditBox) static unsigned char g_searchTextBoxStorage[sizeof(RichEditBox)];
     static RichEditBox* g_pSearchTextBox;
+    // The visible part of the panel is AppBorder, which has a margin around it inside the window
+    alignas(FrameworkElement) static unsigned char g_panelStorage[sizeof(FrameworkElement)];
+    static FrameworkElement* g_pPanel;
 
     static HWND g_hTaskbarSearchBox; // The search box on the taskbar that shows what is typed, if any
     static bool g_bOpenedWithStart; // The search app is shown with Start, with its search box at the top
-    static bool g_bWindowMoved; // We moved the search app's window since it was shown
     static bool g_bChangingPage; // Our changes to the page raise some of the events we handle; we ignore those
 
     static FrameworkElement FindElement(DependencyObject const& parent, std::wstring_view name)
@@ -235,25 +237,49 @@ namespace InsideSearchApp
         }
     }
 
-    // Moves the panel right on top of the taskbar and to the left edge of the search app's window, with square corners and
-    // no shadow
+    // Where the bottom left corner of the panel goes on the page: right on top of the taskbar, lined up with the left edge of
+    // the search box on the taskbar
+    static bool GetPanelBottomLeftOnTaskbar(winrt::Windows::Foundation::Point& bottomLeft)
+    {
+        RECT rcWindow, rcTaskbar, rcTaskbarSearchBox;
+        if (!g_pPanel || !g_hTaskbarSearchBox || !GetWindowRect(GetSearchAppWindow(), &rcWindow) || !GetWindowRect(GetAncestor(g_hTaskbarSearchBox, GA_ROOT), &rcTaskbar) || !GetWindowRect(g_hTaskbarSearchBox, &rcTaskbarSearchBox))
+        {
+            return false;
+        }
+        double scale = GetPixelsPerPageUnit();
+        bottomLeft = { (float)((rcTaskbarSearchBox.left - rcWindow.left) / scale), (float)((rcTaskbar.top - rcWindow.top) / scale) };
+        return true;
+    }
+
+    // While the search app is still laying itself out, the panel has no size yet; we come back when it does
+    static bool HasPanelBeenLaidOut()
+    {
+        return g_pPanel->ActualHeight() >= 100;
+    }
+
+    // The search app moves the panel around as it shows up, without always resizing it
+    static bool HasPanelMovedOffTaskbar()
+    {
+        winrt::Windows::Foundation::Point bottomLeft;
+        if (!GetPanelBottomLeftOnTaskbar(bottomLeft) || !HasPanelBeenLaidOut())
+        {
+            return false;
+        }
+        auto position = g_pPanel->TransformToVisual(*g_pSearchPage).TransformPoint({ 0, (float)g_pPanel->ActualHeight() });
+        return fabs(position.X - bottomLeft.X) > 0.5 || fabs(position.Y - bottomLeft.Y) > 0.5;
+    }
+
+    // Moves the panel right on top of the taskbar, lined up with the left edge of the search box on the taskbar, with square
+    // corners and no shadow
     static void AttachPanelToTaskbar()
     {
-        RECT rcWindow, rcTaskbar;
-        if (!g_hTaskbarSearchBox || !GetWindowRect(GetSearchAppWindow(), &rcWindow) || !GetWindowRect(GetAncestor(g_hTaskbarSearchBox, GA_ROOT), &rcTaskbar))
-        {
-            return;
-        }
-
-        // The visible part of the panel is AppBorder, which has a margin around it inside the window
-        auto panel = FindElement(*g_pSearchPage, L"AppBorder");
-        if (!panel)
+        winrt::Windows::Foundation::Point bottomLeft;
+        if (!GetPanelBottomLeftOnTaskbar(bottomLeft))
         {
             return;
         }
         g_pSearchPage->UpdateLayout();
-        // While the search app is still laying itself out, the panel has no size yet; we come back when it does
-        if (panel.ActualHeight() < 100)
+        if (!HasPanelBeenLaidOut())
         {
             return;
         }
@@ -265,11 +291,10 @@ namespace InsideSearchApp
             }
         }
         g_pSearchPage->UpdateLayout();
-        auto panelPosition = panel.TransformToVisual(*g_pSearchPage).TransformPoint({ 0, 0 });
-        double taskbarTop = (rcTaskbar.top - rcWindow.top) / GetPixelsPerPageUnit();
+        auto panelPosition = g_pPanel->TransformToVisual(*g_pSearchPage).TransformPoint({ 0, 0 });
         TranslateTransform offset;
-        offset.X(-panelPosition.X);
-        offset.Y(taskbarTop - (panelPosition.Y + panel.ActualHeight()));
+        offset.X(bottomLeft.X - panelPosition.X);
+        offset.Y(bottomLeft.Y - (panelPosition.Y + g_pPanel->ActualHeight()));
         for (const wchar_t* name : c_rgPanelElements)
         {
             if (auto element = FindElement(*g_pSearchPage, name))
@@ -291,51 +316,32 @@ namespace InsideSearchApp
         }
     }
 
-    static void ApplyChanges();
-
-    // The search panel of Windows 10 is at the left edge of the screen. The search app's window is there when it is shown
-    // with Start, but further right when it is shown for the search box on the taskbar, so we move it there.
-    // Moving it while the search app is still showing it makes it lose the keyboard focus, so we wait until it is in the
-    // foreground.
-    static void MoveWindowToLeftEdgeOfScreenSoon()
+    // As it shows up, the search app moves the panel without even laying it out again, so for a moment we check where the
+    // panel is before every frame
+    static void KeepPanelAttachedForAMoment()
     {
-        static bool s_bWaiting;
-        static int s_checksLeft;
-        s_checksLeft = 10;
-        if (s_bWaiting)
+        static winrt::event_token s_renderingToken;
+        static ULONGLONG s_stopTime;
+        s_stopTime = GetTickCount64() + 1000;
+        if (s_renderingToken)
         {
             return;
         }
-        s_bWaiting = true;
-        DispatcherTimer timer;
-        timer.Interval(std::chrono::milliseconds(100));
-        timer.Tick([](auto&& sender, auto&&)
+        s_renderingToken = CompositionTarget::Rendering([](auto&&, auto&&)
         {
-            IgnoringErrors([&]
+            ChangePage([]
             {
-                HWND hWindow = GetSearchAppWindow();
-                bool bInForeground = GetForegroundWindow() == hWindow;
-                if (bInForeground || !g_hTaskbarSearchBox || --s_checksLeft <= 0)
+                if (HasPanelMovedOffTaskbar())
                 {
-                    sender.as<DispatcherTimer>().Stop();
-                    s_bWaiting = false;
+                    AttachPanelToTaskbar();
                 }
-                if (!bInForeground || !g_hTaskbarSearchBox || g_bWindowMoved)
-                {
-                    return;
-                }
-                RECT rcWindow;
-                MONITORINFO monitorInfo = { sizeof(monitorInfo) };
-                if (GetWindowRect(hWindow, &rcWindow) && GetMonitorInfoW(MonitorFromWindow(hWindow, MONITOR_DEFAULTTONEAREST), &monitorInfo))
-                {
-                    SetWindowPos(hWindow, nullptr, monitorInfo.rcMonitor.left, rcWindow.top, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
-                }
-                g_bWindowMoved = true;
-                // The panel and the invisible search box are placed relative to the window
-                ChangePage(ApplyChanges);
             });
+            if (GetTickCount64() >= s_stopTime || !g_hTaskbarSearchBox)
+            {
+                IgnoringErrors([] { CompositionTarget::Rendering(s_renderingToken); });
+                s_renderingToken = {};
+            }
         });
-        timer.Start();
     }
 
     static void ApplyChanges()
@@ -379,26 +385,99 @@ namespace InsideSearchApp
             }
             searchBox.Height(0);
         }
-
-        AttachPanelToTaskbar();
-
-        RECT rcWindow;
-        GetWindowRect(hWindow, &rcWindow);
-        if (!g_bOpenedWithStart)
+        else
         {
             // Keep the invisible search box over the one on the taskbar, so that clicking it places the caret, and IME
             // windows show up next to it
+            RECT rcWindow;
+            GetWindowRect(hWindow, &rcWindow);
             double scale = GetPixelsPerPageUnit();
             searchBox.Width((rcTaskbarSearchBox.right - rcTaskbarSearchBox.left) / scale);
             searchBox.Height((rcTaskbarSearchBox.bottom - rcTaskbarSearchBox.top) / scale);
             MoveElementTo(searchBox, (rcTaskbarSearchBox.left - rcWindow.left) / scale, (rcTaskbarSearchBox.top - rcWindow.top) / scale);
         }
 
-        MONITORINFO monitorInfo = { sizeof(monitorInfo) };
-        if (!g_bWindowMoved && GetMonitorInfoW(hMonitor, &monitorInfo) && rcWindow.left != monitorInfo.rcMonitor.left)
+        // Last, as resizing the search box changes the height of the panel
+        AttachPanelToTaskbar();
+        KeepPanelAttachedForAMoment();
+    }
+
+    // Our changes are placed relative to the search app's window, so we redo them after it moves
+    static void ApplyChangesAgainSoon()
+    {
+        static bool s_bPending;
+        if (s_bPending)
         {
-            MoveWindowToLeftEdgeOfScreenSoon();
+            return;
         }
+        winrt::Windows::UI::Core::CoreWindow::GetForCurrentThread().Dispatcher().RunAsync(winrt::Windows::UI::Core::CoreDispatcherPriority::High, []
+        {
+            s_bPending = false;
+            ChangePage(ApplyChanges);
+            IgnoringErrors(SendTypedTextToExplorer);
+        });
+        s_bPending = true;
+    }
+
+    // The search app places its window at the left edge of the screen when it is shown with Start, and a little to the left
+    // of the search box on the taskbar otherwise. We move it to the left edge of the search box, so that the panel lines up
+    // with it without being cut off.
+    // Moving it while the search app is still showing it makes it lose the keyboard focus, so we wait until it is in the
+    // foreground.
+    static void LineUpWindowWithTaskbarSearchBoxSoon()
+    {
+        static bool s_bWaiting;
+        static int s_checksLeft;
+        s_checksLeft = 20;
+        if (s_bWaiting)
+        {
+            return;
+        }
+        DispatcherTimer timer;
+        timer.Interval(std::chrono::milliseconds(50));
+        timer.Tick([](auto&& sender, auto&&)
+        {
+            IgnoringErrors([&]
+            {
+                HWND hWindow = GetSearchAppWindow();
+                bool bInForeground = GetForegroundWindow() == hWindow;
+                if (bInForeground || --s_checksLeft <= 0)
+                {
+                    sender.as<DispatcherTimer>().Stop();
+                    s_bWaiting = false;
+                }
+                RECT rcWindow, rcTaskbarSearchBox;
+                if (bInForeground && g_hTaskbarSearchBox && GetWindowRect(hWindow, &rcWindow) && GetWindowRect(g_hTaskbarSearchBox, &rcTaskbarSearchBox) && rcWindow.left != rcTaskbarSearchBox.left)
+                {
+                    SetWindowPos(hWindow, nullptr, rcTaskbarSearchBox.left, rcWindow.top, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOOWNERZORDER | SWP_NOACTIVATE);
+                }
+            });
+        });
+        timer.Start();
+        s_bWaiting = true;
+    }
+
+    // The search app's window is moved and resized from another process, without WM_WINDOWPOSCHANGING, so we can only
+    // follow up once it has moved
+    static LRESULT CALLBACK SearchAppWindowSubclassProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData)
+    {
+        if (uMsg == WM_WINDOWPOSCHANGED)
+        {
+            auto pPosition = (const WINDOWPOS*)lParam;
+            if (!(pPosition->flags & SWP_NOMOVE))
+            {
+                IgnoringErrors(LineUpWindowWithTaskbarSearchBoxSoon);
+            }
+            if (g_hTaskbarSearchBox && (pPosition->flags & (SWP_NOMOVE | SWP_NOSIZE)) != (SWP_NOMOVE | SWP_NOSIZE))
+            {
+                IgnoringErrors(ApplyChangesAgainSoon);
+            }
+        }
+        else if (uMsg == WM_NCDESTROY)
+        {
+            RemoveWindowSubclass(hWnd, SearchAppWindowSubclassProc, uIdSubclass);
+        }
+        return DefSubclassProc(hWnd, uMsg, wParam, lParam);
     }
 
     static void Initialize()
@@ -410,12 +489,14 @@ namespace InsideSearchApp
         }
         auto searchPage = window.Content().as<FrameworkElement>();
         auto searchTextBox = FindElement(searchPage, L"SearchTextBox").try_as<RichEditBox>();
-        if (!searchTextBox)
+        auto panel = FindElement(searchPage, L"AppBorder");
+        if (!searchTextBox || !panel)
         {
             return;
         }
         g_pSearchPage = ::new (g_searchPageStorage) FrameworkElement(searchPage);
         g_pSearchTextBox = ::new (g_searchTextBoxStorage) RichEditBox(searchTextBox);
+        g_pPanel = ::new (g_panelStorage) FrameworkElement(panel);
 
         // Our event handlers must outlive the hook, which goes away when explorer.exe exits
         IncrementDLLReferenceCount(hModule);
@@ -441,7 +522,6 @@ namespace InsideSearchApp
             }
             else
             {
-                g_bWindowMoved = false;
                 ChangePage(UndoChanges);
             }
             IgnoringErrors(SendTypedTextToExplorer);
@@ -449,13 +529,11 @@ namespace InsideSearchApp
         // The search app does not always raise VisibilityChanged when it shows up again
         window.Activated([](auto&&, winrt::Windows::UI::Core::WindowActivatedEventArgs const& args)
         {
-            if (args.WindowActivationState() == winrt::Windows::UI::Core::CoreWindowActivationState::Deactivated)
+            if (args.WindowActivationState() != winrt::Windows::UI::Core::CoreWindowActivationState::Deactivated)
             {
-                g_bWindowMoved = false;
-                return;
+                ChangePage(ApplyChanges);
+                IgnoringErrors(SendTypedTextToExplorer);
             }
-            ChangePage(ApplyChanges);
-            IgnoringErrors(SendTypedTextToExplorer);
         });
         // The layout also changes while the search app is shown, e.g. when clicking the search box with Start open
         if (auto rootGrid = FindElement(searchPage, L"RootGrid"))
@@ -472,20 +550,21 @@ namespace InsideSearchApp
                 }
             }
         }
-        searchPage.SizeChanged([](auto&&, auto&&)
+        // The search app lays out and moves the panel some time after it shows up
+        searchPage.LayoutUpdated([](auto&&, auto&&)
         {
-            if (g_hTaskbarSearchBox)
+            ChangePage([]
             {
-                ChangePage(ApplyChanges);
-            }
+                if (HasPanelMovedOffTaskbar())
+                {
+                    AttachPanelToTaskbar();
+                }
+            });
         });
-        // The panel only gets its size some time after the search app shows up
-        if (auto panel = FindElement(searchPage, L"AppBorder"))
-        {
-            panel.SizeChanged([](auto&&, auto&&) { ChangePage(AttachPanelToTaskbar); });
-        }
+        SetWindowSubclass(GetSearchAppWindow(), SearchAppWindowSubclassProc, 0, 0);
         ChangePage(ApplyChanges);
         IgnoringErrors(SendTypedTextToExplorer);
+        LineUpWindowWithTaskbarSearchBoxSoon();
     }
 }
 
