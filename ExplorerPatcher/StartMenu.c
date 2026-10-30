@@ -506,22 +506,32 @@ static HRESULT STDMETHODCALLTYPE WindowsUdk_UI_Shell_ITaskbarSettings_GetLocatio
     DWORD* pLocation // Left Top Right Bottom
 );
 
-static DWORD GetTaskbarSearchMode() // Hidden SearchIcon SearchBox
+// Values of WindowsUdk.UI.Shell.TaskbarSearchMode and TaskbarLocation
+#define TASKBAR_SEARCH_MODE_ICON 1
+#define TASKBAR_SEARCH_MODE_BOX 2
+#define TASKBAR_LOCATION_BOTTOM 3
+// Value of SearchboxTaskbarMode for "Search box"
+#define SEARCHBOX_TASKBAR_MODE_BOX 2
+
+static DWORD GetTaskbarSearchMode()
 {
-    // When told that the search box is shown on the taskbar, the search app (SearchHost.exe) does not show a search box
-    // at the top of its window, and puts its text box over the one on the taskbar instead, like on Windows 10 (see
-    // Taskbar10SearchBox.cpp). It only does so for bottom taskbars.
+    // When told that the taskbar shows a search box, the Windows 11 search app (SearchHost.exe) does not show a search
+    // box at the top of its panel, and puts its text box over the one on the taskbar instead, like on Windows 10 (see
+    // Taskbar10SearchBox.cpp). It only does so for bottom taskbars, and we only tell it for the Windows 10
+    // (ExplorerPatcher) taskbar; with the other taskbar styles, we keep reporting a search icon as before.
     extern DWORD bOldTaskbar;
-    DWORD dwSearchboxTaskbarMode = 0, dwTaskbarSmallIcons = 0, dwLocation = 3, dwSize = sizeof(DWORD);
+    if (bOldTaskbar < 2 || !IsWindows11())
+    {
+        return TASKBAR_SEARCH_MODE_ICON;
+    }
+    DWORD dwSearchboxTaskbarMode = 0, dwTaskbarSmallIcons = 0, dwLocation = TASKBAR_LOCATION_BOTTOM, dwSize = sizeof(DWORD);
     RegGetValueW(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Search", L"SearchboxTaskbarMode", RRF_RT_REG_DWORD, NULL, &dwSearchboxTaskbarMode, &dwSize);
     dwSize = sizeof(DWORD);
     RegGetValueW(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", L"TaskbarSmallIcons", RRF_RT_REG_DWORD, NULL, &dwTaskbarSmallIcons, &dwSize);
     WindowsUdk_UI_Shell_ITaskbarSettings_GetLocation(NULL, &dwLocation);
-    if (bOldTaskbar >= 2 && dwSearchboxTaskbarMode == 2 && !dwTaskbarSmallIcons && dwLocation == 3)
-    {
-        return 2;
-    }
-    return 1;
+    // The Windows 10 taskbar shows a search box only with "Search box" and normal size icons
+    bool bShowsSearchBox = dwSearchboxTaskbarMode == SEARCHBOX_TASKBAR_MODE_BOX && !dwTaskbarSmallIcons;
+    return bShowsSearchBox && dwLocation == TASKBAR_LOCATION_BOTTOM ? TASKBAR_SEARCH_MODE_BOX : TASKBAR_SEARCH_MODE_ICON;
 }
 
 static HRESULT STDMETHODCALLTYPE WindowsUdk_UI_Shell_ITaskbarSettings6_GetEffectiveSearchMode(
