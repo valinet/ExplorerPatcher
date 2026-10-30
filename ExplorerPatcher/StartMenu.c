@@ -501,12 +501,35 @@ typedef struct instanceof_WindowsUdk_UI_Shell_ITaskbarSettings3 // : IInspectabl
 } WindowsUdk_UI_Shell_ITaskbarSettings3;
 static const WindowsUdk_UI_Shell_ITaskbarSettings3 instanceof_WindowsUdk_UI_Shell_ITaskbarSettings3 = { instanceof_WindowsUdk_UI_Shell_ITaskbarSettings3Vtbl };
 
+static HRESULT STDMETHODCALLTYPE WindowsUdk_UI_Shell_ITaskbarSettings_GetLocation(
+    void* instanceof_WindowsUdk_UI_Shell_ITaskbarSettings,
+    DWORD* pLocation // Left Top Right Bottom
+);
+
+static DWORD GetTaskbarSearchMode() // Hidden SearchIcon SearchBox
+{
+    // When told that the search box is shown on the taskbar, the search app (SearchHost.exe) does not show a search box
+    // at the top of its window, and puts its text box over the one on the taskbar instead, like on Windows 10 (see
+    // Taskbar10SearchBox.cpp). It only does so for bottom taskbars.
+    extern DWORD bOldTaskbar;
+    DWORD dwSearchboxTaskbarMode = 0, dwTaskbarSmallIcons = 0, dwLocation = 3, dwSize = sizeof(DWORD);
+    RegGetValueW(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Search", L"SearchboxTaskbarMode", RRF_RT_REG_DWORD, NULL, &dwSearchboxTaskbarMode, &dwSize);
+    dwSize = sizeof(DWORD);
+    RegGetValueW(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", L"TaskbarSmallIcons", RRF_RT_REG_DWORD, NULL, &dwTaskbarSmallIcons, &dwSize);
+    WindowsUdk_UI_Shell_ITaskbarSettings_GetLocation(NULL, &dwLocation);
+    if (bOldTaskbar >= 2 && dwSearchboxTaskbarMode == 2 && !dwTaskbarSmallIcons && dwLocation == 3)
+    {
+        return 2;
+    }
+    return 1;
+}
+
 static HRESULT STDMETHODCALLTYPE WindowsUdk_UI_Shell_ITaskbarSettings6_GetEffectiveSearchMode(
     void* instanceof_WindowsUdk_UI_Shell_ITaskbarSettings6,
     DWORD* pEffectiveSearchMode
 )
 {
-    *pEffectiveSearchMode = 1;
+    *pEffectiveSearchMode = GetTaskbarSearchMode();
     return 0;
 }
 
@@ -609,7 +632,7 @@ static HRESULT STDMETHODCALLTYPE WindowsUdk_UI_Shell_ITaskbarSettings_GetSearchM
     DWORD* pSearchMode
 )
 {
-    *pSearchMode = 1;
+    *pSearchMode = GetTaskbarSearchMode();
     return 0;
 }
 

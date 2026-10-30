@@ -1207,6 +1207,16 @@ void UpdateStartMenuPositioning(LPARAM loIsShouldInitializeArray_hiIsShouldRoIni
     }
 }
 
+// The search mode we report along with the positioning depends on settings other than TaskbarAl (StartMenu.c)
+void RequestStartMenuPositioningUpdate()
+{
+    HWND hWnd = FindWindowW(L"Shell_TrayWnd", NULL);
+    if (hWnd)
+    {
+        PostMessageW(hWnd, RegisterWindowMessageW(L"UpdateStartMenuPositioning_" _T(EP_CLSID)), 0, 0);
+    }
+}
+
 __declspec(dllexport) unsigned __int64 FindTaskbarLayoutTokenByHMONITOR(HMONITOR hMonitor)
 {
     for (DWORD i = 0; i < dwMonitorCount; i++)
@@ -1220,6 +1230,7 @@ __declspec(dllexport) unsigned __int64 FindTaskbarLayoutTokenByHMONITOR(HMONITOR
 }
 #else
 void UpdateStartMenuPositioning(LPARAM loIsShouldInitializeArray_hiIsShouldRoInitialize) {}
+void RequestStartMenuPositioningUpdate() {}
 #endif
 #pragma endregion
 
@@ -2073,6 +2084,15 @@ INT64 Shell_TrayWndSubclassProc(
             }
             break;
         }
+    }
+
+    if (uMsg >= 0xC000 && uMsg <= 0xFFFF && uMsg == RegisterWindowMessageW(L"UpdateStartMenuPositioning_" _T(EP_CLSID)))
+    {
+        if (bIsPrimaryTaskbar)
+        {
+            UpdateStartMenuPositioning(MAKELPARAM(TRUE, FALSE));
+        }
+        return 0;
     }
 
     if (uMsg >= 0xC000 && uMsg <= 0xFFFF && uMsg == RegisterWindowMessageW(L"Windows11ContextMenu_" _T(EP_CLSID)))
@@ -4033,6 +4053,32 @@ LRESULT explorer_SendMessageW(HWND hWndx, UINT uMsg, WPARAM wParam, LPARAM lPara
     }
     return SendMessageW(hWndx, uMsg, wParam, lParam);
 }
+#endif
+#pragma endregion
+
+
+#pragma region "Keep the taskbar search box visible while Search is open"
+#if WITH_MAIN_PATCHER
+// When the search app is shown, the Windows 10 taskbar search box (TrayDummySearchControl) arms a 900 ms timer and
+// hides itself once it fires, because the Windows 10 search app used to draw its own search box on top of it.
+// The Windows 11 search app (SearchHost) does not do that, so the search box would just disappear from the taskbar
+// while searching. Not arming that timer keeps the search box in place, under the text that the search app shows over
+// it (see Taskbar10SearchBox.cpp).
+UINT_PTR explorer_SetTimerHook(HWND hWnd, UINT_PTR nIDEvent, UINT uElapse, TIMERPROC lpTimerFunc)
+{
+    if (hWnd && nIDEvent == 1 && uElapse == 900 && !lpTimerFunc)
+    {
+        WCHAR wszClassName[32];
+        if (GetClassNameW(hWnd, wszClassName, ARRAYSIZE(wszClassName)) && !wcscmp(wszClassName, L"TrayDummySearchControl"))
+        {
+            return nIDEvent;
+        }
+    }
+    return SetTimer(hWnd, nIDEvent, uElapse, lpTimerFunc);
+}
+
+// Taskbar10SearchBox.cpp
+void Taskbar10SearchBox_Initialize();
 #endif
 #pragma endregion
 
@@ -7011,6 +7057,7 @@ void WINAPI Explorer_RefreshUI(int src)
             {
                 dwTaskbarSmallIcons = dwTemp;
                 UpdateSearchBox();
+                RequestStartMenuPositioningUpdate();
             }
             dwTemp = 0;
             dwSize = sizeof(DWORD);
@@ -7110,6 +7157,7 @@ void WINAPI Explorer_RefreshUI(int src)
                 dwSearchboxTaskbarMode = dwTemp;
                 dwRefreshMask |= REFRESHUI_CENTER;
                 UpdateSearchBox();
+                RequestStartMenuPositioningUpdate();
             }
         }
     }
@@ -11650,10 +11698,17 @@ DWORD Inject(BOOL bIsExplorer)
         VnPatchIAT(hMyTaskbar, "user32.dll", "LoadMenuW", explorer_LoadMenuW);
         VnPatchIAT(hMyTaskbar, "user32.dll", "SendMessageW", explorer_SendMessageW);
         VnPatchIAT(hMyTaskbar, "user32.dll", "SetRect", explorer_SetRect);
+        VnPatchIAT(hMyTaskbar, "user32.dll", "SetTimer", explorer_SetTimerHook);
         VnPatchIAT(hMyTaskbar, "user32.dll", "TrackPopupMenuEx", explorer_TrackPopupMenuExHook);
         VnPatchIAT(hMyTaskbar, "user32.dll", MAKEINTRESOURCEA(2005), explorer_SetChildWindowNoActivateHook);
 
         VnPatchIAT(hMyTaskbar, "uxtheme.dll", MAKEINTRESOURCEA(126), PeopleBand_DrawTextWithGlowHook);
+
+        // Type in the Windows 10 search box instead of in a search box at the top of the Windows 11 search app
+        if (bOldTaskbar >= 2 && IsWindows11())
+        {
+            Taskbar10SearchBox_Initialize();
+        }
 
         Win10TaskbarHooks_PatchEPTaskbarVtables(hMyTaskbar);
     }
