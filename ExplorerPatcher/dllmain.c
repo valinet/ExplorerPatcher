@@ -1935,6 +1935,39 @@ LRESULT CALLBACK Shell_TrayWndMouseProc(
 
 ITrayUIHost* g_pTrayUIHost;
 
+#define WM_TASKBAND_FILLDISPLAYCHANGEDATA 0x344
+
+static BOOL ShouldDeclineWorkAreaPrediction()
+{
+    HWND hWndTray = FindWindowW(L"Shell_TrayWnd", NULL);
+    if (!hWndTray || FindWindowW(L"Shell_SecondaryTrayWnd", NULL))
+    {
+        return FALSE;
+    }
+    MONITORINFO mi = { sizeof(MONITORINFO) };
+    return GetMonitorInfoW(MonitorFromWindow(hWndTray, MONITOR_DEFAULTTOPRIMARY), &mi) && !(mi.dwFlags & MONITORINFOF_PRIMARY);
+}
+
+INT64 TaskBandSubclassProc(
+    _In_ HWND   hWnd,
+    _In_ UINT   uMsg,
+    _In_ WPARAM wParam,
+    _In_ LPARAM lParam,
+    UINT_PTR    uIdSubclass,
+    DWORD_PTR   dwRefData
+)
+{
+    if (uMsg == WM_NCDESTROY)
+    {
+        RemoveWindowSubclass(hWnd, TaskBandSubclassProc, TaskBandSubclassProc);
+    }
+    else if (uMsg == WM_TASKBAND_FILLDISPLAYCHANGEDATA && ShouldDeclineWorkAreaPrediction())
+    {
+        return 0;
+    }
+    return DefSubclassProc(hWnd, uMsg, wParam, lParam);
+}
+
 INT64 Shell_TrayWndSubclassProc(
     _In_ HWND   hWnd,
     _In_ UINT   uMsg,
@@ -7255,6 +7288,10 @@ HWND CreateWindowExWHook(
     else if (bIsExplorerProcess && (*((WORD*)&(lpClassName)+1)) && !wcscmp(lpClassName, L"Shell_SecondaryTrayWnd"))
     {
         SetWindowSubclass(hWnd, Shell_TrayWndSubclassProc, Shell_TrayWndSubclassProc, FALSE);
+    }
+    else if (bIsExplorerProcess && (*((WORD*)&(lpClassName)+1)) && !wcscmp(lpClassName, L"MSTaskSwWClass"))
+    {
+        SetWindowSubclass(hWnd, TaskBandSubclassProc, TaskBandSubclassProc, 0);
     }
     else if (bIsExplorerProcess && (*((WORD*)&(lpClassName)+1)) && !_wcsicmp(lpClassName, L"ReBarWindow32") && hWndParent == FindWindowW(L"Shell_TrayWnd", NULL))
     {
