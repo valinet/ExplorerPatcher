@@ -8282,9 +8282,6 @@ DEFINE_GUID(CLSID_FileExplorerContextMenuPresenterLegacy, 0x86CA1AA0, 0x34AA, 0x
 // {51668040-5E31-4023-BBE3-149163BD80F1}
 DEFINE_GUID(CLSID_FileExplorerContextMenuPresenter, 0x51668040, 0x5E31, 0x4023, 0xBB, 0xE3, 0x14, 0x91, 0x63, 0xBD, 0x80, 0xF1);
 
-// {37A472F7-63CF-4CCF-A88B-5231A3C7D8B6}
-DEFINE_GUID(IID_FileExplorerContextMenuPresenter2, 0x37A472F7, 0x63CF, 0x4CCF, 0xA8, 0x8B, 0x52, 0x31, 0xA3, 0xC7, 0xD8, 0xB6);
-
 HRESULT ExplorerFrame_CoCreateInstanceHook(REFCLSID rclsid, LPUNKNOWN pUnkOuter, DWORD dwClsContext, REFIID riid, LPVOID* ppv)
 {
     if (IsEqualCLSID(rclsid, &CLSID_XamlIslandViewAdapter))
@@ -8305,9 +8302,8 @@ HRESULT ExplorerFrame_CoCreateInstanceHook(REFCLSID rclsid, LPUNKNOWN pUnkOuter,
             return REGDB_E_CLASSNOTREG;
         }
     }
-    else if (IsEqualIID(riid, &IID_FileExplorerContextMenuPresenter2)
-        && (IsEqualCLSID(rclsid, &CLSID_FileExplorerContextMenuPresenterLegacy)
-            || IsEqualCLSID(rclsid, &CLSID_FileExplorerContextMenuPresenter)))
+    else if (IsEqualCLSID(rclsid, &CLSID_FileExplorerContextMenuPresenterLegacy)
+        || IsEqualCLSID(rclsid, &CLSID_FileExplorerContextMenuPresenter))
     {
         // Allow disabling the XAML context menu in CNscTree and CShellBrowser
         if (bDisableWindows11ContextMenu)
@@ -8324,14 +8320,9 @@ HRESULT ExplorerFrame_CoCreateInstanceHook(REFCLSID rclsid, LPUNKNOWN pUnkOuter,
 // {B306C5B1-B4F2-473C-B6FF-701B246CE2D2}
 DEFINE_GUID(SID_FileExplorerContextMenuPresenter, 0xB306C5B1, 0xB4F2, 0x473C, 0xB6, 0xFF, 0x70, 0x1B, 0x24, 0x6C, 0xE2, 0xD2);
 
-// {706461D1-AC5F-4730-BFE3-CAC6CAD5EF5E}
-DEFINE_GUID(IID_FileExplorerContextMenuPresenter, 0x706461D1, 0xAC5F, 0x4730, 0xBF, 0xE3, 0xCA, 0xC6, 0xCA, 0xD5, 0xEF, 0x5E);
-
 HRESULT WINAPI shell32_IUnknown_QueryServiceHook(IUnknown* punk, REFGUID guidService, REFIID riid, void** ppvOut)
 {
-    if (IsEqualGUID(guidService, &SID_FileExplorerContextMenuPresenter)
-        && (IsEqualGUID(riid, &IID_FileExplorerContextMenuPresenter)
-            || IsEqualGUID(riid, &IID_FileExplorerContextMenuPresenter2)))
+    if (IsEqualGUID(guidService, &SID_FileExplorerContextMenuPresenter))
     {
         // Allow disabling the XAML context menu in CDefView
         if (bDisableWindows11ContextMenu)
