@@ -579,6 +579,21 @@ void LaunchNetworkTargets(DWORD dwTarget)
         );
     }
 }
+
+void LaunchSoundTargets(DWORD dwTarget)
+{
+    if (dwTarget == 2)
+    {
+        ShellExecuteW(
+            NULL,
+            L"open",
+            L"ms-actioncenter:controlcenter/volume",
+            NULL,
+            NULL,
+            SW_SHOWNORMAL
+        );
+    }
+}
 #endif
 #pragma endregion
 
@@ -2271,6 +2286,42 @@ LSTATUS sndvolsso_RegGetValueW(
     }
     return RegGetValueW(hkey, lpSubKey, lpValue, dwFlags, pdwType, pvData, pcbData);
 }
+
+HRESULT sndvolsso_CoCreateInstanceHook(
+    REFCLSID  rclsid,
+    LPUNKNOWN pUnkOuter,
+    DWORD     dwClsContext,
+    REFIID    riid,
+    LPVOID* ppv
+)
+{
+    DWORD dwVal = 0, dwSize = sizeof(DWORD);
+    if (IsEqualGUID(rclsid, &CLSID_ImmersiveShell) &&
+        IsEqualGUID(riid, &IID_IServiceProvider) &&
+        SHRegGetValueFromHKCUHKLMFunc)
+    {
+        SHRegGetValueFromHKCUHKLMFunc(
+            TEXT("SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\MTCUVC"),
+            TEXT("EnableMtcUvc"),
+            SRRF_RT_REG_DWORD,
+            NULL,
+            &dwVal,
+            (LPDWORD)(&dwSize)
+        );
+        if (dwVal == 2 && IsWindows11SoundFlyoutAvailable())
+        {
+            LaunchSoundTargets(dwVal);
+            return E_NOINTERFACE;
+        }
+    }
+    return CoCreateInstance(
+        rclsid,
+        pUnkOuter,
+        dwClsContext,
+        riid,
+        ppv
+    );
+}
 #endif
 #pragma endregion
 
@@ -3075,6 +3126,10 @@ void PatchSndvolsso()
     funchook = NULL;
 
     VnPatchIAT(hSndvolsso, "api-ms-win-core-registry-l1-1-0.dll", "RegGetValueW", sndvolsso_RegGetValueW);
+    if (IsWindows11SoundFlyoutAvailable())
+    {
+        VnPatchIAT(hSndvolsso, "api-ms-win-core-com-l1-1-0.dll", "CoCreateInstance", sndvolsso_CoCreateInstanceHook);
+    }
 #ifdef USE_PRIVATE_INTERFACES
     if (bSkinIcons)
     {
