@@ -2515,9 +2515,8 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                         }
                         else if (!wcscmp(name, L"EnableMtcUvc"))
                         {
-                            if (IsWindows11() && global_rovi.dwBuildNumber < 25281)
+                            if (IsWindows11() && !IsWindows11SoundFlyoutAvailable())
                             {
-                                // Hide the win11 sound flyout as an option before 25281 as the path for accessing it does not exist in previous builds
                                 GUI_RemoveChoiceEntry(hMenu, 2); // Windows 11 flyout
                             }
                         }

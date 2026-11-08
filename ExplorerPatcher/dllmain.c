@@ -2308,7 +2308,7 @@ HRESULT sndvolsso_CoCreateInstanceHook(
             &dwVal,
             (LPDWORD)(&dwSize)
         );
-        if (dwVal == 2 && global_rovi.dwBuildNumber >= 25281)
+        if (dwVal == 2 && IsWindows11SoundFlyoutAvailable())
         {
             LaunchSoundTargets(dwVal);
             return E_NOINTERFACE;
@@ -3126,7 +3126,7 @@ void PatchSndvolsso()
     funchook = NULL;
 
     VnPatchIAT(hSndvolsso, "api-ms-win-core-registry-l1-1-0.dll", "RegGetValueW", sndvolsso_RegGetValueW);
-    if (global_rovi.dwBuildNumber >= 25281)
+    if (IsWindows11SoundFlyoutAvailable())
     {
         VnPatchIAT(hSndvolsso, "api-ms-win-core-com-l1-1-0.dll", "CoCreateInstance", sndvolsso_CoCreateInstanceHook);
     }
