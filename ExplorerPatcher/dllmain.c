@@ -865,25 +865,41 @@ void ReportSuccessfulAnimationPatching()
 {
 #if WITH_SMA_PATCH_REPORT
     PSID pMainSid = NULL;
-    GetLogonSid(&pMainSid);
-    PSID pSecondaySid = NULL;
-    DeriveAppContainerSidFromAppContainerName(L"Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy", &pSecondaySid);
+    PSID pSecondarySid = NULL;
     PSECURITY_DESCRIPTOR pSecurityDescriptor = NULL;
-    if (PrepareSecurityDescriptor(pMainSid, STANDARD_RIGHTS_ALL | MUTEX_ALL_ACCESS, pSecondaySid, SYNCHRONIZE, &pSecurityDescriptor))
+    if (!GetLogonSid(&pMainSid))
     {
-        SECURITY_ATTRIBUTES SecurityAttributes;
-        ZeroMemory(&SecurityAttributes, sizeof(SecurityAttributes));
-        SecurityAttributes.nLength = sizeof(SECURITY_ATTRIBUTES);
-        SecurityAttributes.bInheritHandle = FALSE;
-        SecurityAttributes.lpSecurityDescriptor = pSecurityDescriptor;
-        if (CreateMutexW(&SecurityAttributes, FALSE, _T(EPStart10_AnimationsPatched)))
-        {
-            printf("[SMA] Advertising successful animations patching.\n");
-        }
-        free(pSecurityDescriptor);
+        printf("[SMA] GetLogonSid failed (error %lu).\n", GetLastError());
+        goto Cleanup;
     }
-    if (pMainSid) free(pMainSid);
-    if (pSecondaySid) FreeSid(pSecondaySid);
+    HRESULT hr = DeriveAppContainerSidFromAppContainerName(L"Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy", &pSecondarySid);
+    if (FAILED(hr))
+    {
+        printf("[SMA] DeriveAppContainerSidFromAppContainerName failed (HRESULT 0x%08lX).\n", (DWORD)hr);
+        goto Cleanup;
+    }
+    if (!PrepareSecurityDescriptor(pMainSid, STANDARD_RIGHTS_ALL | MUTEX_ALL_ACCESS, pSecondarySid, SYNCHRONIZE, &pSecurityDescriptor))
+    {
+        printf("[SMA] PrepareSecurityDescriptor failed (error %lu).\n", GetLastError());
+        goto Cleanup;
+    }
+    SECURITY_ATTRIBUTES SecurityAttributes;
+    ZeroMemory(&SecurityAttributes, sizeof(SecurityAttributes));
+    SecurityAttributes.nLength = sizeof(SECURITY_ATTRIBUTES);
+    SecurityAttributes.bInheritHandle = FALSE;
+    SecurityAttributes.lpSecurityDescriptor = pSecurityDescriptor;
+    if (CreateMutexW(&SecurityAttributes, FALSE, _T(EPStart10_AnimationsPatched)))
+    {
+        printf("[SMA] Advertising successful animations patching.\n");
+    }
+    else
+    {
+        printf("[SMA] CreateMutexW failed (error %lu).\n", GetLastError());
+    }
+Cleanup:
+    free(pSecurityDescriptor);
+    free(pMainSid);
+    if (pSecondarySid) FreeSid(pSecondarySid);
 #endif
 }
 #endif

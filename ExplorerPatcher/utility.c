@@ -1704,46 +1704,76 @@ BOOL IsRedesignedWin11StartMenu()
 BOOL GetLogonSid(PSID* ppsid)
 {
     BOOL bSuccess = FALSE;
-    HANDLE hToken = INVALID_HANDLE_VALUE;
+    HANDLE hToken = NULL;
     DWORD dwLength = 0;
+    DWORD dwError = ERROR_SUCCESS;
     PTOKEN_GROUPS ptg = NULL;
+    PSID pSid = NULL;
 
-    if (NULL == ppsid)
-        goto Cleanup;
+    if (ppsid == NULL)
+    {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return FALSE;
+    }
+    *ppsid = NULL;
 
     if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &hToken))
-        goto Cleanup;
-
-    if (!GetTokenInformation(hToken, TokenLogonSid, (LPVOID)ptg, 0, &dwLength))
     {
-        if (GetLastError() != ERROR_INSUFFICIENT_BUFFER)
-            goto Cleanup;
-
-        ptg = (PTOKEN_GROUPS)calloc(1, dwLength);
+        dwError = GetLastError();
+        goto Cleanup;
     }
 
-    if (ptg == NULL)
+    if (GetTokenInformation(hToken, TokenLogonSid, NULL, 0, &dwLength))
+    {
+        dwError = ERROR_INVALID_DATA;
+        goto Cleanup;
+    }
+    dwError = GetLastError();
+    if (dwError != ERROR_INSUFFICIENT_BUFFER)
         goto Cleanup;
 
-    if (!GetTokenInformation(hToken, TokenLogonSid, (LPVOID)ptg, dwLength, &dwLength) || ptg->GroupCount != 1)
+    ptg = (PTOKEN_GROUPS)malloc(dwLength);
+    if (ptg == NULL)
+    {
+        dwError = ERROR_NOT_ENOUGH_MEMORY;
         goto Cleanup;
+    }
+
+    if (!GetTokenInformation(hToken, TokenLogonSid, ptg, dwLength, &dwLength))
+    {
+        dwError = GetLastError();
+        goto Cleanup;
+    }
+    if (ptg->GroupCount != 1)
+    {
+        dwError = ERROR_INVALID_DATA;
+        goto Cleanup;
+    }
 
     dwLength = GetLengthSid(ptg->Groups[0].Sid);
-    *ppsid = (PSID)calloc(1, dwLength);
-    if (*ppsid == NULL)
-        goto Cleanup;
-    if (!CopySid(dwLength, *ppsid, ptg->Groups[0].Sid))
+    pSid = (PSID)malloc(dwLength);
+    if (pSid == NULL)
     {
-        free((LPVOID)*ppsid);
+        dwError = ERROR_NOT_ENOUGH_MEMORY;
+        goto Cleanup;
+    }
+    if (!CopySid(dwLength, pSid, ptg->Groups[0].Sid))
+    {
+        dwError = GetLastError();
         goto Cleanup;
     }
 
+    *ppsid = pSid;
+    pSid = NULL;
     bSuccess = TRUE;
 
 Cleanup:
-    if (ptg != NULL)
-        free((LPVOID)ptg);
-
+    free(pSid);
+    free(ptg);
+    if (hToken != NULL)
+        CloseHandle(hToken);
+    if (!bSuccess)
+        SetLastError(dwError);
     return bSuccess;
 }
 
@@ -1752,15 +1782,26 @@ Cleanup:
 BOOL PrepareSecurityDescriptor(PSID pMainSid, DWORD dwMainPermissions, PSID pSecondarySid, DWORD dwSecondayPermissions, PSECURITY_DESCRIPTOR* ppSD)
 {
     BOOL bSuccess = FALSE;
-    DWORD dwRes = ERROR_SUCCESS;
+    DWORD dwError = ERROR_SUCCESS;
+    DWORD dwLength = 0;
     PACL pACL = NULL;
+    SECURITY_DESCRIPTOR absoluteSD;
     PSECURITY_DESCRIPTOR pSD = NULL;
     EXPLICIT_ACCESS ea[2];
 
+    if (ppSD == NULL)
+    {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return FALSE;
+    }
+    *ppSD = NULL;
     if (pMainSid == NULL || pSecondarySid == NULL)
+    {
+        dwError = ERROR_INVALID_PARAMETER;
         goto Cleanup;
+    }
 
-    ZeroMemory(&ea, 2 * sizeof(EXPLICIT_ACCESS));
+    ZeroMemory(&ea, sizeof(ea));
     ea[0].grfAccessPermissions = dwMainPermissions;
     ea[0].grfAccessMode = SET_ACCESS;
     ea[0].grfInheritance = NO_INHERITANCE;
@@ -1774,30 +1815,51 @@ BOOL PrepareSecurityDescriptor(PSID pMainSid, DWORD dwMainPermissions, PSID pSec
     ea[1].Trustee.TrusteeType = TRUSTEE_IS_USER;
     ea[1].Trustee.ptstrName = (LPTSTR)pSecondarySid;
 
-    dwRes = SetEntriesInAclW(2, ea, NULL, &pACL);
-    if (dwRes != ERROR_SUCCESS)
+    dwError = SetEntriesInAclW(2, ea, NULL, &pACL);
+    if (dwError != ERROR_SUCCESS)
         goto Cleanup;
 
-    pSD = (PSECURITY_DESCRIPTOR)calloc(1, SECURITY_DESCRIPTOR_MIN_LENGTH);
-    if (NULL == pSD)
+    if (!InitializeSecurityDescriptor(&absoluteSD, SECURITY_DESCRIPTOR_REVISION))
+    {
+        dwError = GetLastError();
         goto Cleanup;
+    }
+    if (!SetSecurityDescriptorDacl(&absoluteSD, TRUE, pACL, FALSE))
+    {
+        dwError = GetLastError();
+        goto Cleanup;
+    }
 
-    if (!InitializeSecurityDescriptor(pSD, SECURITY_DESCRIPTOR_REVISION))
+    // Copy the DACL into the returned allocation before releasing the temporary ACL.
+    if (MakeSelfRelativeSD(&absoluteSD, NULL, &dwLength))
+    {
+        dwError = ERROR_INVALID_DATA;
         goto Cleanup;
-
-    if (!SetSecurityDescriptorDacl(pSD, TRUE, pACL, FALSE))
+    }
+    dwError = GetLastError();
+    if (dwError != ERROR_INSUFFICIENT_BUFFER)
         goto Cleanup;
+    pSD = (PSECURITY_DESCRIPTOR)malloc(dwLength);
+    if (pSD == NULL)
+    {
+        dwError = ERROR_NOT_ENOUGH_MEMORY;
+        goto Cleanup;
+    }
+    if (!MakeSelfRelativeSD(&absoluteSD, pSD, &dwLength))
+    {
+        dwError = GetLastError();
+        goto Cleanup;
+    }
 
     *ppSD = pSD;
     pSD = NULL;
     bSuccess = TRUE;
 Cleanup:
-
-    if (pACL)
+    if (pACL != NULL)
         LocalFree(pACL);
-    if (pSD)
-        free(pSD);
-
+    free(pSD);
+    if (!bSuccess)
+        SetLastError(dwError);
     return bSuccess;
 }
 #endif
