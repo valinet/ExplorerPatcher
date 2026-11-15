@@ -11014,11 +11014,38 @@ LSTATUS pnidui_RegGetValueW(HKEY hkey, LPCWSTR lpSubKey, LPCWSTR lpValue, DWORD 
     return status;
 }
 
+static BOOL CALLBACK pnidui_FindVanWindow(HWND hWnd, LPARAM lParam)
+{
+    if (GetPropW(hWnd, L"View Available Networks"))
+    {
+        *(HWND*)lParam = hWnd;
+        return FALSE;
+    }
+    return TRUE;
+}
+
+// Implementation based on 22621.3527 VAN.dll's HideVAN
+static void pnidui_HideVAN(void)
+{
+    UINT message = RegisterWindowMessageW(L"WM_VANUI_HIDE");
+    if (message)
+    {
+        HWND hWnd = NULL;
+        EnumChildWindows(NULL, pnidui_FindVanWindow, (LPARAM)&hWnd);
+        if (hWnd)
+        {
+            PostMessageW(hWnd, message, 0, 0);
+        }
+    }
+}
+
 void PatchPnidui(HMODULE hPnidui)
 {
     VnPatchIAT(hPnidui, "api-ms-win-core-com-l1-1-0.dll", "CoCreateInstance", pnidui_CoCreateInstanceHook);
     if (global_rovi.dwBuildNumber >= 25236)
     {
+        // Captive portal cleanup calls HideVAN; delay loading the removed VAN.dll crashes Explorer (#5235)
+        VnPatchDelayIAT(hPnidui, "van.dll", "HideVAN", pnidui_HideVAN);
         VnPatchIAT(hPnidui, "api-ms-win-core-registry-l1-1-0.dll", "RegGetValueW", pnidui_RegGetValueW);
     }
     VnPatchIAT(hPnidui, "user32.dll", "TrackPopupMenu", pnidui_TrackPopupMenuHook);
