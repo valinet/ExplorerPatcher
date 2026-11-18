@@ -6,6 +6,9 @@
 
 #include <stdio.h>
 
+#define EP_WEATHER_TIMER_MICROSOFT_ICON 21
+#define EP_WEATHER_TIMER_MICROSOFT_ICON_DELAY 50
+
 RTL_OSVERSIONINFOW global_rovi;
 DWORD32 global_ubr;
 SYSTEMTIME stLastUpdate;
@@ -380,6 +383,17 @@ static LPWSTR _epw_Weather_BuildMicrosoftScript(LPCWSTR assets)
     return script;
 }
 
+static HRESULT _epw_Weather_RunDataScript(EPWeather* _this, LPCWSTR script)
+{
+    if (!_this->pCoreWebView2) return E_FAIL;
+    GenericObjectWithThis* callback = GenericObjectWithThis_MakeAndInitialize(
+        &EPWeather_ICoreWebView2ExecuteScriptCompletedHandlerVtbl, _this, L"pCoreWebView2ExecuteScriptCompletedHandler");
+    if (!callback) return E_OUTOFMEMORY;
+    HRESULT hr = _this->pCoreWebView2->lpVtbl->ExecuteScript(_this->pCoreWebView2, script, callback);
+    if (FAILED(hr)) callback->lpVtbl->Release(callback);
+    return hr;
+}
+
 HRESULT STDMETHODCALLTYPE _epw_Weather_ExecuteDataScript(EPWeather* _this)
 {
     HRESULT hr = S_OK;
@@ -395,13 +409,7 @@ HRESULT STDMETHODCALLTYPE _epw_Weather_ExecuteDataScript(EPWeather* _this)
         LPWSTR microsoftScript = assets ? _epw_Weather_BuildMicrosoftScript(assets) : NULL;
         free(assets);
         LPCWSTR script = microsoftScript ? microsoftScript : ep_weather_provider_google_script10;
-        hr = E_FAIL;
-        if (_this->pCoreWebView2)
-        {
-            GenericObjectWithThis* callback =
-                GenericObjectWithThis_MakeAndInitialize(&EPWeather_ICoreWebView2ExecuteScriptCompletedHandlerVtbl, _this, L"pCoreWebView2ExecuteScriptCompletedHandler");
-            if (callback) hr = _this->pCoreWebView2->lpVtbl->ExecuteScript(_this->pCoreWebView2, script, callback);
-        }
+        hr = _epw_Weather_RunDataScript(_this, script);
         free(microsoftScript);
         if (FAILED(hr))
         {
@@ -596,9 +604,23 @@ HRESULT STDMETHODCALLTYPE ICoreWebView2_ExecuteScriptCompleted(GenericObjectWith
     {
         BOOL bOk = FALSE;
         LONG64 dwProvider = InterlockedAdd64(&_this->dwProvider, 0);
-        if (dwProvider == EP_WEATHER_PROVIDER_GOOGLE)
+        if (dwProvider == EP_WEATHER_PROVIDER_GOOGLE && SUCCEEDED(hr) && pResultObjectAsJson)
         {
-            if (!_wcsicmp(pResultObjectAsJson, L"\"run_part_2\""))
+            if (!_wcsicmp(pResultObjectAsJson, L"\"wait_for_microsoft_icon\""))
+            {
+                if (SetTimer(_this->hWnd, EP_WEATHER_TIMER_MICROSOFT_ICON, EP_WEATHER_TIMER_MICROSOFT_ICON_DELAY, NULL))
+                {
+                    _this2->lpVtbl->Release(_this2);
+                    return S_OK;
+                }
+            }
+            else if (!_wcsicmp(pResultObjectAsJson, L"\"icon_page_changed\""))
+            {
+                // NavigationCompleted starts extraction for the new document.
+                _this2->lpVtbl->Release(_this2);
+                return S_OK;
+            }
+            else if (!_wcsicmp(pResultObjectAsJson, L"\"run_part_2\""))
             {
                 //_this->pCoreWebView2->lpVtbl->OpenDevToolsWindow(_this->pCoreWebView2);
 
@@ -1015,6 +1037,17 @@ LRESULT CALLBACK epw_Weather_WindowProc(_In_ HWND hWnd, _In_ UINT uMsg, _In_ WPA
             KillTimer(_this->hWnd, EP_WEATHER_TIMER_EXECUTEDATASCRIPT);
         }
         return 0;
+    }
+    else if (uMsg == WM_TIMER && wParam == EP_WEATHER_TIMER_MICROSOFT_ICON)
+    {
+        KillTimer(_this->hWnd, EP_WEATHER_TIMER_MICROSOFT_ICON);
+        if (InterlockedAdd64(&_this->dwIconPack, 0) != EP_WEATHER_ICONPACK_MICROSOFT)
+        {
+            return _epw_Weather_ExecuteDataScript(_this);
+        }
+        HRESULT hr = _epw_Weather_RunDataScript(_this, L"window.ep_weather_microsoft_icon_stage?.() ?? 'icon_page_changed'");
+        if (FAILED(hr)) InterlockedExchange64(&_this->bBrowserBusy, FALSE);
+        return hr;
     }
     else if (uMsg == EP_WEATHER_WM_REBOUND_BROWSER)
     {

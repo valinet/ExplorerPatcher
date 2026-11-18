@@ -113,6 +113,7 @@ window.ep_weather_reset_microsoft_icons?.();\n\
 window.final_im = 0;\n\
 let is_first_time = true;\n\
 let ep_weather_microsoft_active = true;\n\
+let pendingCurrentIcon = null;\n\
 const ep_weather_replaced_icons = new Map();\n\
 function IsDay(has_time, hrs, mins) {\n\
 var weatherLink = document.querySelector('.YfftMc a[href], a.YfftMc[href]');\n\
@@ -155,93 +156,84 @@ const is_day1 = IsDay(0, 0, 0);\n\
 
 LPCWSTR ep_weather_provider_google_script010 = L"\
 function replaceImage(im, is_day) {\n\
-if (!im || !im.src || ep_weather_replaced_icons.get(im)?.replacement === im.src) return;\n\
+if (!im || !im.src) return;\n\
+const previous = ep_weather_replaced_icons.get(im);\n\
+if (previous) {\n\
+    if (im.src === previous.replacement) return;\n\
+    restoreForecastSize(im, previous.dimensions);\n\
+    ep_weather_replaced_icons.delete(im);\n\
+}\n\
+if (im === currentIcon) pendingCurrentIcon = null;\n\
 const originalSrc = im.src;\n\
 const svgName = ep_google_svg_name(originalSrc);\n\
 const svgIcon = svgName && Object.hasOwn(ep_google_svg_icons, svgName) && ep_google_svg_icons[svgName];\n\
 const src = svgIcon ? '/' + svgIcon[0] + '.png' : originalSrc;\n\
 if (svgIcon) is_day = !svgName.includes('_night');\n\
-if (is_day == null) return;\n\
+const dayOrNight = (day, night) => is_day == null ? null : (is_day ? day : night);\n\
 let final_img = 0;\n\
 if (       src.endsWith('/sunny_s_cloudy.png') || src.endsWith('AAAAAAAAAAAAAAAA+Pf6Bm5v6/1bJGiwAAAAAElFTkSuQmCC') || src.endsWith('MYe78v+ACIiACIiACJTEEyDCTi8sMWUSAAAAAElFTkSuQmCC')) {\n\
-    if (is_day) final_img = 'mostly-sunny-day';\n\
-    else        final_img = 'mostly-sunny-night';\n\
+    final_img = dayOrNight('mostly-sunny-day', 'mostly-sunny-night');\n\
 } else if (src.endsWith('/sunny.png')          || src.endsWith('Ls8fJgAAAAAAAADg1nkDlR7XfJiH1ggAAAAASUVORK5CYII=') || src.endsWith('NzjYbzHpLqUCFKCAJfkAq7RimK7qUtAAAAAASUVORK5CYII=')) {\n\
-    if (is_day) final_img = 'sunny';\n\
-    else        final_img = 'clear-night';\n\
+    final_img = dayOrNight('sunny', 'clear-night');\n\
 } else if (src.endsWith('/cloudy.png')         || src.endsWith('AiAAAiAAAiAAAiAAl48fFVnRpiVnD+AAAAAASUVORK5CYII=') || src.endsWith('gAAIgAAIgAAIgAC86wECCuvGtH3EIQAAAABJRU5ErkJggg==')) {\n\
-    if (is_day) final_img = 'cloudy';\n\
-    else        final_img = 'cloudy';\n\
+    final_img = 'cloudy';\n\
 } else if (src.endsWith('/rain_s_cloudy.png')  || src.endsWith('CQABIAAEgAAQAAJAAB6iPy4FckaI/hnJAAAAAElFTkSuQmCC') || src.endsWith('lFRe7S+mBtAAGkADeFsvKpKWeAy6FowAAAAASUVORK5CYII=')) {\n\
-    if (is_day) final_img = 'light-rain';\n\
-    else        final_img = 'light-rain';\n\
+    final_img = 'light-rain';\n\
 } else if (src.endsWith('/cloudy_s_rain.png')  || src.endsWith('1S6F6f8CBIAAEAACcEP9AsAciK6YtipuAAAAAElFTkSuQmCC') || src.endsWith('A8DsIAvZ0J98BEAA//oBqG5a70gUjuIAAAAASUVORK5CYII=')) {\n\
-    if (is_day) final_img = 'light-rain';\n\
-    else        final_img = 'light-rain';\n\
+    final_img = 'light-rain';\n\
 } else if (src.endsWith('/rain_light.png')     || src.endsWith('LTAzVDExOjEzOjA0KzAyOjAw/lWSQAAAAABJRU5ErkJggg==') || src.endsWith('LTAzVDExOjEzOjA0KzAyOjAw/lWSQAAAAABJRU5ErkJggg==')) {\n\
-    if (is_day) final_img = 'light-rain';\n\
-    else        final_img = 'light-rain';\n\
+    final_img = 'light-rain';\n\
 } else if (src.endsWith('/rain.png')           || src.endsWith('FEABFEABFEABFOB3fgDsHp230RVQOwAAAABJRU5ErkJggg==') || src.endsWith('MeRa9W/WClABKkAFiKofRnoGaQBkK9wAAAAASUVORK5CYII=')) {\n\
-    if (is_day) final_img = 'rain';\n\
-    else        final_img = 'rain';\n\
+    final_img = 'rain';\n\
 } else if (src.endsWith('/rain_heavy.png')     || src.endsWith('oP1rrAFoABqABqAS/QFSaJKDZ1ZY3QAAAABJRU5ErkJggg==') || src.endsWith('U4t1idb1T/0FcAF86g/VgX+0644VVAAAAABJRU5ErkJggg==')) {\n\
-    if (is_day) final_img = 'rain';\n\
-    else        final_img = 'rain';\n\
+    final_img = 'rain';\n\
 } else if (src.endsWith('/thunderstorms.png')  || src.endsWith('6n+NVQAVQAVQAfwS/QNrOJYuXyjUGAAAAABJRU5ErkJggg==') || src.endsWith('DTTcSfRpAO//1L8B/hnAD9B4AcpTDEFdAAAAAElFTkSuQmCC')) {\n\
-    if (is_day) final_img = 'thunderstorms';\n\
-    else        final_img = 'thunderstorms';\n\
+    final_img = 'thunderstorms';\n\
 } else if (src.endsWith('/cloudy_s_sunny.png') || src.endsWith('gAAQAAJAAAgAASAATqNfCT6dqrbpoPYAAAAASUVORK5CYII=') || src.endsWith('VwAEQAAEQAAEQAD+KcA3AodABBLnBp0AAAAASUVORK5CYII=')) {\n\
-    if (is_day) final_img = 'mostly-cloudy-day';\n\
-    else        final_img = 'mostly-cloudy-night';\n\
+    final_img = dayOrNight('mostly-cloudy-day', 'mostly-cloudy-night');\n\
 ";
 
 LPCWSTR ep_weather_provider_google_script011 = L"\
 } else if (src.endsWith('/partly_cloudy.png')  || src.endsWith('AlAACkABKAAFoABOp1+6Bd0LJ+BorgAAAABJRU5ErkJggg==') || src.endsWith('UD8fqAJVoApUgSrwqfwCJ6xaZshM+xMAAAAASUVORK5CYII=')) {\n\
-    if (is_day) final_img = 'partly-cloudy-day';\n\
-    else        final_img = 'partly-cloudy-night';\n\
+    final_img = dayOrNight('partly-cloudy-day', 'partly-cloudy-night');\n\
 } else if (src.endsWith('/sunny_s_rain.png')   || src.endsWith('+/JUWP5fQAAIAAEgAA6iPyWP6kEiMYUSAAAAAElFTkSuQmCC') || src.endsWith('EphMZLo+8U++KBAFpnwBEAqlYwd30/wAAAAASUVORK5CYII=')) {\n\
-    if (is_day) final_img = 'sun-showers-day';\n\
-    else        final_img = 'sun-showers-night';\n\
+    final_img = dayOrNight('sun-showers-day', 'sun-showers-night');\n\
 } else if (src.endsWith('/rain_s_sunny.png')   || src.endsWith('gAgQASJABIgAESACXpxfGkmKjZKKoRQAAAAASUVORK5CYII=') || src.endsWith('S30fyJ+YskAWyAJZIIUf+u496Ifu2YkAAAAASUVORK5CYII=')) {\n\
-    if (is_day) final_img = 'sun-showers-day';\n\
-    else        final_img = 'sun-showers-night';\n\
+    final_img = dayOrNight('sun-showers-day', 'sun-showers-night');\n\
 } else if (src.endsWith('/fog.png')            || src.endsWith('/wsIQAACEIAABCCAb6hfRzSoz4hgnE4AAAAASUVORK5CYII=') || src.endsWith('EC30ZRbiv5QMwAAM8PF6AtMRIwMJwimNAAAAAElFTkSuQmCC')) {\n\
-    if (is_day) final_img = 'fog';\n\
-    else        final_img = 'fog';\n\
+    final_img = 'fog';\n\
 } else if (src.endsWith('/snow.png')           || src.endsWith('dMq/xgqAAqAAKABW4g+Q1luByt+ugAAAAABJRU5ErkJggg==') || src.endsWith('kKRD6Xzx+qvBCyCw/ABgjEYCwIT8wQAAAABJRU5ErkJggg==')) {\n\
-    if (is_day) final_img = 'snow';\n\
-    else        final_img = 'snow';\n\
+    final_img = 'snow';\n\
 } else if (src.endsWith('/snow_heavy.png')     || src.endsWith('+jJWB6R/m0sAEoAEIBb7BcA+hV/gbM+pAAAAAElFTkSuQmCC') || src.endsWith('cUH9DYB6xvNfDZ4GIuMbUY1SYGBaleEAAAAASUVORK5CYII=')) {\n\
-    if (is_day) final_img = 'heavy-snow';\n\
-    else        final_img = 'heavy-snow';\n\
+    final_img = 'heavy-snow';\n\
 } else if (src.endsWith('/snow_light.png')     || src.endsWith('AP5lhgAEIAABCEAAAnzlBYgKVujL4rwkAAAAAElFTkSuQmCC') || src.endsWith('88Tmfn8L1e/EFVABFZA0LkcjEH9Eoxa+AAAAAElFTkSuQmCC')) {\n\
-    if (is_day) final_img = 'snow';\n\
-    else        final_img = 'snow';\n\
+    final_img = 'snow';\n\
 } else if (src.endsWith('/snow_s_cloudy.png')  || src.endsWith('SwMAAAAAAAAAAAAAAFxEL1Fe7CEOIBaKAAAAAElFTkSuQmCC') || src.endsWith('lfcC1L+YKkAFqAAVIFa/mfArO5CvUjAAAAAASUVORK5CYII=')) {\n\
-    if (is_day) final_img = 'snow-showers-day';\n\
-    else        final_img = 'snow-showers-night';\n\
+    final_img = dayOrNight('snow-showers-day', 'snow-showers-night');\n\
 } else if (src.endsWith('/snow_s_rain.png')    || src.endsWith('+Lc4AAAAAAAAAAAA+AGv/oIwYDUGyQAAAABJRU5ErkJggg==') || src.endsWith('1/kcsNXU/8gqQAWoAGXpGzmRTGmgvhAvAAAAAElFTkSuQmCC')) {\n\
-    if (is_day) final_img = 'snow-and-rain';\n\
-    else        final_img = 'snow-and-rain';\n\
+    final_img = 'snow-and-rain';\n\
 } else if (src.endsWith('/cloudy_s_snow.png')  || src.endsWith('ASAABIAAEAACQABepj8dv4hCnMCVbgAAAABJRU5ErkJggg==') || src.endsWith('EuzIGPqHhgAIgAAIAE1vnG7TKhwgdU4AAAAASUVORK5CYII=')) {\n\
-    if (is_day) final_img = 'snow-showers-day';\n\
-    else        final_img = 'snow-showers-night';\n\
+    final_img = dayOrNight('snow-showers-day', 'snow-showers-night');\n\
 } else if (src.endsWith('/rain_s_snow.png')    || src.endsWith('ABAAAkAACAABIAAEwIfoF/D2gpORVfhJAAAAAElFTkSuQmCC') || src.endsWith('i/HUv5gqQAWoABUgWj/U6dmtXHN0sAAAAABJRU5ErkJggg==')) {\n\
-    if (is_day) final_img = 'rain-and-snow';\n\
-    else        final_img = 'rain-and-snow';\n\
+    final_img = 'rain-and-snow';\n\
 }\n\
 const png = ep_weather_microsoft_icons[final_img];\n\
 if (png) {\n\
     const replacement = new Image();\n\
+    const current = im === currentIcon;\n\
+    if (current) pendingCurrentIcon = replacement;\n\
     replacement.src = 'data:image/png;base64,' + png;\n\
     replacement.decode().then(() => {\n\
         if (!ep_weather_microsoft_active || im.src !== originalSrc) return;\n\
-        const dimensions = [im.getAttribute('width'), im.getAttribute('height')];\n\
+        if (current && (pendingCurrentIcon !== replacement || im !== ep_weather_icon())) return;\n\
+        const dimensions = current ? null : [im.getAttribute('width'), im.getAttribute('height')];\n\
         ep_weather_replaced_icons.set(im, { original: originalSrc, replacement: replacement.src, dimensions });\n\
-        if (im === ep_weather_icon()) window.final_im = replacement;\n\
+        if (current) window.final_im = replacement;\n\
         else { im.width = 48; im.height = 48; }\n\
         im.src = replacement.src;\n\
-    }).catch(() => {});\n\
+    }).catch(() => {}).finally(() => {\n\
+        if (pendingCurrentIcon === replacement) pendingCurrentIcon = null;\n\
+    });\n\
 }\n\
 }\n\
 ";
@@ -305,6 +297,14 @@ function ep_google_svg_name(src) {\n\
 
 LPCWSTR ep_weather_provider_google_script03 = L"\
 const currentIcon = ep_weather_icon();\n\
+function restoreForecastSize(image, dimensions) {\n\
+    if (!dimensions) return;\n\
+    ['width', 'height'].forEach((name, index) => {\n\
+        if (image.getAttribute(name) !== '48') return;\n\
+        if (dimensions[index] === null) image.removeAttribute(name);\n\
+        else image.setAttribute(name, dimensions[index]);\n\
+    });\n\
+}\n\
 replaceImage(currentIcon, is_day1);\n\
 const observer = new MutationObserver(changes => {\n\
     for (const { target } of changes) {\n\
@@ -327,21 +327,25 @@ for (const element of document.getElementsByClassName('uW5pk')) {\n\
     replaceImage(icon, 1);\n\
     observer.observe(icon, {attributeFilter: ['src']});\n\
 }\n\
+const decodeDeadline = performance.now() + 1000;\n\
+window.ep_weather_microsoft_icon_stage = () => {\n\
+    if (pendingCurrentIcon && performance.now() < decodeDeadline) return 'wait_for_microsoft_icon';\n\
+    // A timed-out decode must leave the same Google image in the flyout and taskbar.\n\
+    pendingCurrentIcon = null;\n\
+    return 'run_part_0';\n\
+};\n\
 window.ep_weather_reset_microsoft_icons = () => {\n\
     ep_weather_microsoft_active = false;\n\
     observer.disconnect();\n\
     for (const [image, { original, replacement, dimensions }] of ep_weather_replaced_icons) {\n\
-        if (image.src !== replacement) continue;\n\
-        image.src = original;\n\
-        ['width', 'height'].forEach((name, index) => {\n\
-            if (dimensions[index] === null) image.removeAttribute(name);\n\
-            else image.setAttribute(name, dimensions[index]);\n\
-        });\n\
+        if (image.src === replacement) image.src = original;\n\
+        restoreForecastSize(image, dimensions);\n\
     }\n\
+    window.ep_weather_microsoft_icon_stage = null;\n\
     window.ep_weather_reset_microsoft_icons = null;\n\
     window.final_im = 0;\n\
 };\n\
-return \"run_part_0\";\n\
+return window.ep_weather_microsoft_icon_stage();\n\
 ";
 
 LPCWSTR ep_weather_provider_google_script = L"\
