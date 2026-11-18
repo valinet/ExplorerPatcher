@@ -387,12 +387,13 @@ HRESULT STDMETHODCALLTYPE _epw_Weather_ExecuteDataScript(EPWeather* _this)
     if (dwProvider == EP_WEATHER_PROVIDER_GOOGLE)
     {
         LONG64 dwIconPack = InterlockedAdd64(&_this->dwIconPack, 0);
-        LPCWSTR assets = NULL;
+        LPWSTR assets = NULL;
         if (dwIconPack == EP_WEATHER_ICONPACK_MICROSOFT && !epw_Weather_GetMicrosoftIconScript(&assets))
         {
             return S_FALSE;
         }
         LPWSTR microsoftScript = assets ? _epw_Weather_BuildMicrosoftScript(assets) : NULL;
+        free(assets);
         LPCWSTR script = microsoftScript ? microsoftScript : ep_weather_provider_google_script10;
         hr = E_FAIL;
         if (_this->pCoreWebView2)

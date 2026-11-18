@@ -46,7 +46,10 @@ static const struct
 static SRWLOCK epWeatherIconsLock = SRWLOCK_INIT;
 static ULONGLONG epWeatherIconsStarted;
 static BOOL epWeatherIconsLoading;
-static LPWSTR epWeatherIconScript;
+static BOOL epWeatherIconsHaveBatch;
+static size_t epWeatherIconsCached;
+static LPWSTR epWeatherIconPngs[ARRAYSIZE(epWeatherIconSources)];
+static size_t epWeatherNextIcon;
 
 static DWORD epw_Weather_ReadIcon(HINTERNET connection, LPCWSTR path, BYTE* buffer, DWORD capacity, ULONGLONG deadline)
 {
@@ -85,14 +88,10 @@ static DWORD epw_Weather_ReadIcon(HINTERNET connection, LPCWSTR path, BYTE* buff
     return 0;
 }
 
-static LPWSTR epw_Weather_DownloadMicrosoftIconScript(void)
+static void epw_Weather_DownloadMissingMicrosoftIcons(void)
 {
-    const WCHAR prefix[] = L"const ep_weather_microsoft_icons = {\n";
     BYTE png[EP_WEATHER_ICON_MAX_BYTES + 1];
     WCHAR base64[((EP_WEATHER_ICON_MAX_BYTES + 2) / 3) * 4 + 1];
-    size_t capacity = ARRAYSIZE(prefix) + ARRAYSIZE(epWeatherIconSources) * (ARRAYSIZE(base64) + 64) + 4;
-    LPWSTR script = malloc(capacity * sizeof(WCHAR));
-    if (!script) return NULL;
 
     HINTERNET session = WinHttpOpen(L"ExplorerPatcher Weather", WINHTTP_ACCESS_TYPE_AUTOMATIC_PROXY,
         WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
@@ -102,38 +101,68 @@ static LPWSTR epw_Weather_DownloadMicrosoftIconScript(void)
         connection = WinHttpConnect(session, L"user-images.githubusercontent.com", INTERNET_DEFAULT_HTTPS_PORT, 0);
     }
 
-    size_t used = ARRAYSIZE(prefix) - 1;
-    wcscpy_s(script, capacity, prefix);
     ULONGLONG deadline = epWeatherIconsStarted + EP_WEATHER_ICON_WAIT_MS;
-    for (size_t i = 0; connection && i < ARRAYSIZE(epWeatherIconSources) && GetTickCount64() < deadline; ++i)
+    for (size_t attempt = 0; connection && attempt < ARRAYSIZE(epWeatherIconSources) && GetTickCount64() < deadline; ++attempt)
     {
+        size_t i = epWeatherNextIcon;
+        epWeatherNextIcon = (i + 1) % ARRAYSIZE(epWeatherIconSources);
+        // Only the worker writes the cache. The renderer reads it under the lock.
+        if (epWeatherIconPngs[i]) continue;
         DWORD size = epw_Weather_ReadIcon(connection, epWeatherIconSources[i].path, png, sizeof(png), deadline);
         DWORD cchBase64 = ARRAYSIZE(base64);
-        if (!size || !CryptBinaryToStringW(png, size, CRYPT_STRING_BASE64 | CRYPT_STRING_NOCRLF, base64, &cchBase64))
+        if (size && CryptBinaryToStringW(png, size, CRYPT_STRING_BASE64 | CRYPT_STRING_NOCRLF, base64, &cchBase64))
         {
-            continue;
+            LPWSTR encoded = _wcsdup(base64);
+            if (encoded)
+            {
+                AcquireSRWLockExclusive(&epWeatherIconsLock);
+                epWeatherIconPngs[i] = encoded;
+                ++epWeatherIconsCached;
+                ReleaseSRWLockExclusive(&epWeatherIconsLock);
+            }
         }
-        int count = swprintf_s(script + used, capacity - used, L"    '%s': '%s',\n", epWeatherIconSources[i].name, base64);
-        if (count < 0) break;
-        used += count;
     }
     if (connection) WinHttpCloseHandle(connection);
     if (session) WinHttpCloseHandle(session);
-    if (used == ARRAYSIZE(prefix) - 1)
+}
+
+// The caller holds a shared lock so all entries belong to one cache snapshot.
+static LPWSTR epw_Weather_BuildIconCacheScript(void)
+{
+    if (!epWeatherIconsCached) return NULL;
+    const WCHAR prefix[] = L"const ep_weather_microsoft_icons = {\n";
+    const WCHAR suffix[] = L"};\n";
+    size_t capacity = ARRAYSIZE(prefix) - 1 + ARRAYSIZE(suffix);
+    for (size_t i = 0; i < ARRAYSIZE(epWeatherIconSources); ++i)
     {
-        free(script);
-        return NULL;
+        if (!epWeatherIconPngs[i]) continue;
+        capacity += wcslen(epWeatherIconSources[i].name) + wcslen(epWeatherIconPngs[i]) + ARRAYSIZE(L"'': '',\n") - 1;
     }
-    wcscpy_s(script + used, capacity - used, L"};\n");
-    LPWSTR resized = realloc(script, (used + ARRAYSIZE(L"};\n")) * sizeof(WCHAR));
-    return resized ? resized : script;
+    LPWSTR script = malloc(capacity * sizeof(WCHAR));
+    if (!script) return NULL;
+
+    size_t used = ARRAYSIZE(prefix) - 1;
+    memcpy(script, prefix, used * sizeof(WCHAR));
+    for (size_t i = 0; i < ARRAYSIZE(epWeatherIconSources); ++i)
+    {
+        if (!epWeatherIconPngs[i]) continue;
+        int count = swprintf_s(script + used, capacity - used, L"'%ls': '%ls',\n", epWeatherIconSources[i].name, epWeatherIconPngs[i]);
+        if (count < 0)
+        {
+            free(script);
+            return NULL;
+        }
+        used += count;
+    }
+    memcpy(script + used, suffix, sizeof(suffix));
+    return script;
 }
 
 static DWORD WINAPI epw_Weather_DownloadMicrosoftIconsThread(LPVOID module)
 {
-    LPWSTR script = epw_Weather_DownloadMicrosoftIconScript();
+    epw_Weather_DownloadMissingMicrosoftIcons();
     AcquireSRWLockExclusive(&epWeatherIconsLock);
-    epWeatherIconScript = script;
+    epWeatherIconsHaveBatch = epWeatherIconsCached != 0;
     epWeatherIconsLoading = FALSE;
     ReleaseSRWLockExclusive(&epWeatherIconsLock);
     FreeLibraryAndExitThread(module, 0);
@@ -143,7 +172,7 @@ void epw_Weather_PrefetchMicrosoftIcons(void)
 {
     AcquireSRWLockExclusive(&epWeatherIconsLock);
     ULONGLONG now = GetTickCount64();
-    if (!epWeatherIconScript && !epWeatherIconsLoading &&
+    if (epWeatherIconsCached < ARRAYSIZE(epWeatherIconSources) && !epWeatherIconsLoading &&
         (!epWeatherIconsStarted || now - epWeatherIconsStarted >= EP_WEATHER_ICON_RETRY_MS))
     {
         epWeatherIconsStarted = now;
@@ -161,17 +190,17 @@ void epw_Weather_PrefetchMicrosoftIcons(void)
     ReleaseSRWLockExclusive(&epWeatherIconsLock);
 }
 
-BOOL epw_Weather_GetMicrosoftIconScript(LPCWSTR* script)
+BOOL epw_Weather_GetMicrosoftIconScript(LPWSTR* script)
 {
     epw_Weather_PrefetchMicrosoftIcons();
     AcquireSRWLockShared(&epWeatherIconsLock);
-    *script = epWeatherIconScript;
-    BOOL ready = !epWeatherIconsLoading || GetTickCount64() - epWeatherIconsStarted >= EP_WEATHER_ICON_WAIT_MS;
+    BOOL ready = epWeatherIconsHaveBatch || !epWeatherIconsLoading || GetTickCount64() - epWeatherIconsStarted >= EP_WEATHER_ICON_WAIT_MS;
+    *script = ready ? epw_Weather_BuildIconCacheScript() : NULL;
     ReleaseSRWLockShared(&epWeatherIconsLock);
     return ready;
 }
 
 void epw_Weather_FreeMicrosoftIconScript(void)
 {
-    free(epWeatherIconScript);
+    for (size_t i = 0; i < ARRAYSIZE(epWeatherIconPngs); ++i) free(epWeatherIconPngs[i]);
 }

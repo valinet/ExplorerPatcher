@@ -12,7 +12,7 @@
     L"}\n"
 
 LPCWSTR ep_weather_provider_google_script10 = EP_WEATHER_GOOGLE_ICON_HELPER
-    L"window.ep_weather_final_image = null; \"run_part_0\";";
+    L"window.ep_weather_reset_microsoft_icons?.(); var final_im = 0; \"run_part_0\";";
 
 // reference: https://github.com/Triggertrap/sun-js
 LPCWSTR ep_weather_provider_google_script00 = L"\
@@ -109,19 +109,11 @@ Math.mod = function(a, b) {\n\
 }\n\
 \n\
 \n\
-var is_first_time = 1;\n\
-window.ep_weather_final_image = null;\n\
-var final_img2 = 0;\n\
-var final_int;\n\
-var final_cnt = 0;\n\
-function ep_set_final_img(){\n\
-//ep_weather_icon().src = final_img2;\n\
-//final_cnt++;\n\
-//if (final_cnt == 20)\n\
-is_first_time=0;\n\
-clearInterval(final_int);\n\
-}\n\
-const ep_weather_replaced_sources = new Set();\n\
+window.ep_weather_reset_microsoft_icons?.();\n\
+window.final_im = 0;\n\
+let is_first_time = true;\n\
+let ep_weather_microsoft_active = true;\n\
+const ep_weather_replaced_icons = new Map();\n\
 function IsDay(has_time, hrs, mins) {\n\
 var weatherLink = document.querySelector('.YfftMc a[href], a.YfftMc[href]');\n\
 if (!weatherLink) return null;\n\
@@ -158,12 +150,12 @@ sunset.setMilliseconds(0);\n\
 if (!Number.isFinite(sunrise.getTime()) || !Number.isFinite(sunset.getTime())) return null;\n\
 return (current >= sunrise && current < sunset) ? 1 : 0;\n\
 }\n\
-is_day1 = IsDay(0, 0, 0);\n\
+const is_day1 = IsDay(0, 0, 0);\n\
 ";
 
 LPCWSTR ep_weather_provider_google_script010 = L"\
 function replaceImage(im, is_day) {\n\
-if (!im || !im.src || ep_weather_replaced_sources.has(im.src)) return;\n\
+if (!im || !im.src || ep_weather_replaced_icons.get(im)?.replacement === im.src) return;\n\
 const originalSrc = im.src;\n\
 const svgName = ep_google_svg_name(originalSrc);\n\
 const svgIcon = svgName && Object.hasOwn(ep_google_svg_icons, svgName) && ep_google_svg_icons[svgName];\n\
@@ -243,10 +235,11 @@ if (png) {\n\
     const replacement = new Image();\n\
     replacement.src = 'data:image/png;base64,' + png;\n\
     replacement.decode().then(() => {\n\
-        if (im.src !== originalSrc) return;\n\
-        if (im === ep_weather_icon()) window.ep_weather_final_image = replacement;\n\
+        if (!ep_weather_microsoft_active || im.src !== originalSrc) return;\n\
+        const dimensions = [im.getAttribute('width'), im.getAttribute('height')];\n\
+        ep_weather_replaced_icons.set(im, { original: originalSrc, replacement: replacement.src, dimensions });\n\
+        if (im === ep_weather_icon()) window.final_im = replacement;\n\
         else { im.width = 48; im.height = 48; }\n\
-        ep_weather_replaced_sources.add(replacement.src);\n\
         im.src = replacement.src;\n\
     }).catch(() => {});\n\
 }\n\
@@ -257,39 +250,39 @@ LPCWSTR ep_weather_provider_google_script020 = L"\
 // Google Search serves these SVGs both by URL and as base64 data URIs.\n\
 // Each fingerprint is the base64 length and FNV-1a hash of an asset's light or dark variant.\n\
 const ep_google_svg_icons = {\n\
-    sunny: ['sunny', '1188:5c38525b', '1196:ad502638'],\n\
-    clear_night: ['sunny', '724:5cac18ed', '724:2e128e7c'],\n\
-    mostly_sunny: ['sunny_s_cloudy', '1956:eaf3d53d', '1948:e2bc8c81'],\n\
-    mostly_clear_night: ['sunny_s_cloudy', '1460:15cf1d97', '1460:b11be506'],\n\
-    sunny_with_cloudy: ['sunny_s_cloudy', '3564:18f56424', '1848:77ec5d18'],\n\
-    partly_cloudy: ['partly_cloudy', '1860:3f6e2617', '1860:7c5ea34c'],\n\
-    partly_cloudy_night: ['partly_cloudy', '1452:12e1f41a', '1396:90a3b966'],\n\
-    mostly_cloudy_day: ['cloudy_s_sunny', '1980:67fe695e', '1980:e11d8c02'],\n\
-    mostly_cloudy_night: ['cloudy_s_sunny', '1436:9e978951', '1388:03ce68d6'],\n\
-    cloudy_with_sunny: ['cloudy_s_sunny', '3176:45d8cdb0', '1756:d6352238'],\n\
-    cloudy: ['cloudy', '3772:dae58750', '852:8f9c6fca'],\n\
-    drizzle: ['rain_light', '3940:27059ac8', '916:dbf42ba6'],\n\
-    cloudy_with_rain: ['rain_light', '2744:fb3aa119', '1084:ce27a72b'],\n\
-    rain_with_cloudy: ['rain_light', '3160:4d295634', '1124:5691de5b'],\n\
-    rain_showers: ['rain', '1324:d05e9bb6', '1220:5d68be67'],\n\
-    heavy_rain: ['rain_heavy', '1624:1a916eac', '1520:214352fd'],\n\
-    sunny_with_rain: ['sunny_s_rain', '1772:3df379be', '1520:86323c41'],\n\
-    rain_with_sunny: ['rain_s_sunny', '1740:81aa196b', '1504:f964ea1b'],\n\
-    thunderstorms: ['thunderstorms', '1632:637d63fd', '1528:503b6133'],\n\
-    strong_thunderstorms: ['thunderstorms', '2304:ad188c8d', '2208:0cc9848c'],\n\
-    flurries: ['snow_light', '4140:54ce1738', '1072:19e918f0'],\n\
-    snow_showers: ['snow', '1884:eb884f97', '1780:4c06edb7'],\n\
-    heavy_snow: ['snow_heavy', '2568:bd6f1703', '2460:fad6df5b'],\n\
-    blizzard: ['snow_heavy', '920:883ce325', '912:b20de39a'],\n\
-    blowing_snow: ['snow', '640:4836bbd0', '1264:676c6acd'],\n\
-    cloudy_with_snow: ['cloudy_s_snow', '4588:638eaa3c', '3056:39b134ff'],\n\
-    snow_with_cloudy: ['snow_s_cloudy', '5092:4030e150', '1924:189ba0e7'],\n\
-    scattered_snow_showers_day: ['cloudy_s_snow', '2888:043e603d', '2836:314cb616'],\n\
-    scattered_snow_showers_night: ['cloudy_s_snow', '2440:43389152', '2376:de783832'],\n\
-    sunny_with_snow: ['cloudy_s_snow', '3272:79e3e016', '3284:bc234b62'],\n\
-    snow_with_sunny: ['snow_s_cloudy', '3708:ae80fb34', '2228:9aa42376'],\n\
-    snow_with_rain: ['snow_s_rain', '3296:dfc18ad5', '1564:9b03636f'],\n\
-    rain_with_snow: ['rain_s_snow', '3160:9f905065', '2904:b6dcb9de'],\n\
+    sunny: ['sunny', '1160:96c17eb2', '1164:fd8a0da3', '1172:d2193429', '1188:5c38525b', '1192:cab06be9', '1196:ad502638', '844:49c6786f', '844:ec73f8f9'],\n\
+    clear_night: ['sunny', '492:00c0081e', '492:cfb3c3ec', '724:02b3e26a', '724:2e128e7c', '724:5cac18ed', '724:d06d1957', '756:48d8b615', '756:d2ae81e2'],\n\
+    mostly_sunny: ['sunny_s_cloudy', '1948:383bff75', '1948:e2bc8c81', '1956:c80963c0', '1956:eaf3d53d', '2012:18d6a535', '2412:1dbbf038', '2412:3699ff9d', '3100:933c2d6d'],\n\
+    mostly_clear_night: ['sunny_s_cloudy', '1000:561fad38', '1000:7f54c77a', '1460:15cf1d97', '1460:b11be506', '1488:f6de586f', '1600:10b4f624', '1600:912ab3cc'],\n\
+    sunny_with_cloudy: ['sunny_s_cloudy', '1848:77ec5d18', '1980:c49c8b6b', '3564:18f56424', '3668:df225ccc'],\n\
+    partly_cloudy: ['partly_cloudy', '1860:3f6e2617', '1860:7c5ea34c', '1960:f2208656', '1980:4e7b2d43', '1980:aa22a4a0', '2224:630be2cc', '2224:f1939b42', '2908:4ac687cc'],\n\
+    partly_cloudy_night: ['partly_cloudy', '1396:90a3b966', '1452:12e1f41a', '1480:89119207', '1560:59201b0e', '1560:8b0e0bdb', '960:08b3c448', '960:e5da217f'],\n\
+    mostly_cloudy_day: ['cloudy_s_sunny', '1980:67fe695e', '1980:e11d8c02', '2104:da6812bd'],\n\
+    mostly_cloudy_night: ['cloudy_s_sunny', '1000:4bf2e984', '1388:03ce68d6', '1436:9e978951', '1464:69e92352', '1584:6e57101d', '1584:abf19278', '984:efba1b7a'],\n\
+    cloudy_with_sunny: ['cloudy_s_sunny', '1756:ba146916', '1756:d6352238', '3176:31dede11', '3176:45d8cdb0'],\n\
+    cloudy: ['cloudy', '1016:0499de37', '1016:387f211f', '3772:dae58750', '3796:59d9197d', '660:db41bd8c', '676:f8d386b6', '852:8f9c6fca', '852:cf4e99f5'],\n\
+    drizzle: ['rain_light', '1472:502a42be', '1472:8d33df45', '3940:27059ac8', '3968:4b133faa', '868:df86965a', '880:eb483959', '916:b91b30b8', '916:dbf42ba6'],\n\
+    cloudy_with_rain: ['rain_light', '1084:5cc9b352', '1084:ce27a72b', '2744:8d145adb', '2744:fb3aa119'],\n\
+    rain_with_cloudy: ['rain_light', '1124:36453880', '1124:5691de5b', '3132:2e91e8c7', '3160:4d295634'],\n\
+    rain_showers: ['rain', '1220:5d68be67', '1324:d05e9bb6'],\n\
+    heavy_rain: ['rain_heavy', '1520:214352fd', '1520:72f99a21', '1624:1a916eac', '1624:a84de534', '1700:c76cb181', '1700:cbd80607', '3856:a16a89fe', '3856:cabd899f'],\n\
+    sunny_with_rain: ['sunny_s_rain', '1520:86323c41', '1648:c03b6d07', '1772:3df379be', '1900:32c400c4'],\n\
+    rain_with_sunny: ['rain_s_sunny', '1504:9e37d4e4', '1504:f964ea1b', '1740:7f672427', '1740:81aa196b'],\n\
+    thunderstorms: ['thunderstorms', '1464:7e1be2ac', '1464:9f63ea81', '1528:503b6133', '1556:aab26e24', '1632:637d63fd', '1656:972a87d1'],\n\
+    strong_thunderstorms: ['thunderstorms', '1100:7311ee29', '1100:f493d73d', '1876:3d74d56a', '1876:659212f5', '2208:0cc9848c', '2288:90e3ca64', '2304:ad188c8d', '2384:fee6631e'],\n\
+    flurries: ['snow_light', '1072:19e918f0', '1124:c311f48c', '1140:0c75f89c', '1464:34906cea', '1464:b9b88f68', '3088:2789c5c3', '4140:54ce1738', '6184:6e0d34f9'],\n\
+    snow_showers: ['snow', '1704:6fc0dc7f', '1704:8641b0b5', '1780:4c06edb7', '1884:eb884f97'],\n\
+    heavy_snow: ['snow_heavy', '12580:a136d3aa', '12684:dcb97e06', '2288:3a5d805f', '2288:b887e8a6', '2460:fad6df5b', '2568:bd6f1703', '3068:2b9727f7', '3068:c534a3f5'],\n\
+    blizzard: ['snow_heavy', '1456:5dba8fef', '1460:af191314', '912:6fbfcc7d', '912:b20de39a', '920:883ce325', '948:74f0f0c9'],\n\
+    blowing_snow: ['snow', '1264:676c6acd', '1320:8fb7afb0', '640:4836bbd0', '668:f3314c9a', '940:4f1a9d98', '940:d219a794', '940:d6cf8248'],\n\
+    cloudy_with_snow: ['cloudy_s_snow', '3056:39b134ff', '3056:ac292dca', '4588:638eaa3c', '4588:6996002d'],\n\
+    snow_with_cloudy: ['snow_s_cloudy', '1924:189ba0e7', '1952:c295bbb7', '5092:4030e150', '5092:4bb5c07d'],\n\
+    scattered_snow_showers_day: ['cloudy_s_snow', '2836:314cb616', '2888:043e603d', '8968:7622b343'],\n\
+    scattered_snow_showers_night: ['cloudy_s_snow', '2376:de783832', '2440:43389152', '8548:1958d052'],\n\
+    sunny_with_snow: ['cloudy_s_snow', '3272:79e3e016', '3284:bc234b62', '3404:d2e5b830', '3416:ce567951'],\n\
+    snow_with_sunny: ['snow_s_cloudy', '2228:9aa42376', '2360:bdccb039', '3708:ae80fb34', '3840:e2a5769e'],\n\
+    snow_with_rain: ['snow_s_rain', '1564:9b03636f', '1716:2fe16b24', '3296:dfc18ad5', '3428:3b299806'],\n\
+    rain_with_snow: ['rain_s_snow', '2904:5dd79dc8', '2904:b6dcb9de', '3160:9f905065', '3160:f0ed9ad7'],\n\
 };\n\
 const ep_google_svg_names = new Map();\n\
 for (const [name, [, ...fingerprints]] of Object.entries(ep_google_svg_icons)) {\n\
@@ -313,22 +306,20 @@ function ep_google_svg_name(src) {\n\
 LPCWSTR ep_weather_provider_google_script03 = L"\
 const currentIcon = ep_weather_icon();\n\
 replaceImage(currentIcon, is_day1);\n\
-window.ep_weather_icon_observer?.disconnect();\n\
 const observer = new MutationObserver(changes => {\n\
     for (const { target } of changes) {\n\
-        if (ep_weather_replaced_sources.has(target.src)) continue;\n\
+        if (ep_weather_replaced_icons.get(target)?.replacement === target.src) continue;\n\
         if (target !== currentIcon) {\n\
             replaceImage(target, 1);\n\
             continue;\n\
         }\n\
-        window.ep_weather_final_image = null;\n\
+        window.final_im = 0;\n\
         const time = document.getElementById('wob_dts')?.innerText.match(/(\\d+):(\\d+)/);\n\
         const isDay = time ? (is_first_time ? is_day1 : IsDay(1, Number(time[1]), Number(time[2]))) : 1;\n\
-        is_first_time = 0;\n\
+        is_first_time = false;\n\
         replaceImage(target, isDay);\n\
     }\n\
 });\n\
-window.ep_weather_icon_observer = observer;\n\
 observer.observe(currentIcon, {attributeFilter: ['src']});\n\
 for (const element of document.getElementsByClassName('uW5pk')) {\n\
     const icon = element.querySelector('img');\n\
@@ -336,6 +327,20 @@ for (const element of document.getElementsByClassName('uW5pk')) {\n\
     replaceImage(icon, 1);\n\
     observer.observe(icon, {attributeFilter: ['src']});\n\
 }\n\
+window.ep_weather_reset_microsoft_icons = () => {\n\
+    ep_weather_microsoft_active = false;\n\
+    observer.disconnect();\n\
+    for (const [image, { original, replacement, dimensions }] of ep_weather_replaced_icons) {\n\
+        if (image.src !== replacement) continue;\n\
+        image.src = original;\n\
+        ['width', 'height'].forEach((name, index) => {\n\
+            if (dimensions[index] === null) image.removeAttribute(name);\n\
+            else image.setAttribute(name, dimensions[index]);\n\
+        });\n\
+    }\n\
+    window.ep_weather_reset_microsoft_icons = null;\n\
+    window.final_im = 0;\n\
+};\n\
 return \"run_part_0\";\n\
 ";
 
@@ -419,7 +424,7 @@ if (!unit.includes(p)) {\n\
     Array.from(document.getElementsByClassName('wob-unit')[0].getElementsByTagName('a')).filter(e => e.className == 'wob_t').filter(e => e.innerText.includes(p))[0].click();\n\
     unit = 'x';\n\
 }\n\
-ep_result = ep_weather_getData(\nwindow.ep_weather_final_image || ep_weather_icon(), %d, %d, unit);\n\
+ep_result = ep_weather_getData(\n(final_im != 0) ? final_im : ep_weather_icon(), %d, %d, unit);\n\
 return \"run_part_2\";\n\
 }\n\
 ep_weather_part1();\n\

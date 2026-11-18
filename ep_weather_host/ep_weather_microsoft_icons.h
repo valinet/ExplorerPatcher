@@ -4,7 +4,8 @@
 #include <windows.h>
 
 void epw_Weather_PrefetchMicrosoftIcons(void);
-BOOL epw_Weather_GetMicrosoftIconScript(LPCWSTR* script);
+// On success the caller owns the snapshot, if one is available.
+BOOL epw_Weather_GetMicrosoftIconScript(LPWSTR* script);
 void epw_Weather_FreeMicrosoftIconScript(void);
 
 #endif
