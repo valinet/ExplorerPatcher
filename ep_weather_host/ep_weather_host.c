@@ -1,4 +1,5 @@
 #include "ep_weather_host.h"
+#include "resource.h"
 #include "ep_weather_provider_google_html.h"
 #include "ep_weather_provider_google_script.h"
 #include "ep_weather_error_html.h"
@@ -363,6 +364,46 @@ HRESULT STDMETHODCALLTYPE _epw_Weather_NavigateToProvider(EPWeather* _this)
     return hr;
 }
 
+static LPWSTR _epw_Weather_BuildOpenIconScript(void)
+{
+    const WORD resourceIds[] = {IDR_WEATHER_OPEN_ARTWORK, IDR_WEATHER_OPEN_CONDITIONS, IDR_WEATHER_OPEN_RENDER};
+    const WCHAR prefix[] = EP_WEATHER_GOOGLE_ICON_HELPER L"(() => {\n";
+    const WCHAR suffix[] = L"\n})();";
+    const char* resources[ARRAYSIZE(resourceIds)];
+    DWORD lengths[ARRAYSIZE(resourceIds)];
+    size_t capacity = ARRAYSIZE(prefix) + ARRAYSIZE(suffix);
+
+    for (size_t i = 0; i < ARRAYSIZE(resourceIds); ++i)
+    {
+        HRSRC resource = FindResourceW(epw_hModule, MAKEINTRESOURCEW(resourceIds[i]), RT_RCDATA);
+        if (!resource) return NULL;
+        HGLOBAL contents = LoadResource(epw_hModule, resource);
+        resources[i] = contents ? LockResource(contents) : NULL;
+        lengths[i] = SizeofResource(epw_hModule, resource);
+        if (!resources[i] || !lengths[i] || lengths[i] > INT_MAX) return NULL;
+        capacity += lengths[i] + 1;
+    }
+
+    LPWSTR script = malloc(capacity * sizeof(WCHAR));
+    if (!script) return NULL;
+    size_t offset = ARRAYSIZE(prefix) - 1;
+    memcpy(script, prefix, offset * sizeof(WCHAR));
+    for (size_t i = 0; i < ARRAYSIZE(resourceIds); ++i)
+    {
+        int chars = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, resources[i], (int)lengths[i],
+            script + offset, (int)lengths[i]);
+        if (!chars)
+        {
+            free(script);
+            return NULL;
+        }
+        offset += chars;
+        script[offset++] = L'\n';
+    }
+    memcpy(script + offset, suffix, sizeof(suffix));
+    return script;
+}
+
 HRESULT STDMETHODCALLTYPE _epw_Weather_ExecuteDataScript(EPWeather* _this)
 {
     HRESULT hr = S_OK;
@@ -372,39 +413,35 @@ HRESULT STDMETHODCALLTYPE _epw_Weather_ExecuteDataScript(EPWeather* _this)
     }
     else if (dwProvider == EP_WEATHER_PROVIDER_GOOGLE)
     {
-        LPWSTR wszScriptData = malloc(sizeof(WCHAR) * EP_WEATHER_PROVIDER_GOOGLE_SCRIPT_LEN);
-        if (wszScriptData)
+        LONG64 dwIconPack = InterlockedAdd64(&_this->dwIconPack, 0);
+        LPWSTR customScript = NULL;
+        if (dwIconPack == EP_WEATHER_ICONPACK_OPEN)
         {
-            LONG64 dwIconPack = InterlockedAdd(&_this->dwIconPack, 0);
-            if (dwIconPack == EP_WEATHER_ICONPACK_MICROSOFT)
-            {
-                swprintf_s(wszScriptData, EP_WEATHER_PROVIDER_GOOGLE_SCRIPT_LEN, L"%s%s%s%s%s%s", ep_weather_provider_google_script00, ep_weather_provider_google_script010, ep_weather_provider_google_script011, ep_weather_provider_google_script020, ep_weather_provider_google_script021, ep_weather_provider_google_script03);
-            }
-            else if (dwIconPack == EP_WEATHER_ICONPACK_GOOGLE)
-            {
-                swprintf_s(wszScriptData, EP_WEATHER_PROVIDER_GOOGLE_SCRIPT_LEN, ep_weather_provider_google_script10);
-            }
-            //wprintf(L"%s\n", _this->wszScriptData);
-            if (_this->pCoreWebView2)
-            {
-                GenericObjectWithThis* pCoreWebView2ExecuteScriptCompletedHandler =
-                    GenericObjectWithThis_MakeAndInitialize(&EPWeather_ICoreWebView2ExecuteScriptCompletedHandlerVtbl, _this, L"pCoreWebView2ExecuteScriptCompletedHandler");
-                if (!pCoreWebView2ExecuteScriptCompletedHandler) hr = E_FAIL;
-                else hr = _this->pCoreWebView2->lpVtbl->ExecuteScript(_this->pCoreWebView2, wszScriptData, pCoreWebView2ExecuteScriptCompletedHandler);
-            }
-            else
-            {
-                hr = E_FAIL;
-            }
-            if (FAILED(hr))
-            {
-                InterlockedExchange64(&_this->bBrowserBusy, FALSE);
-            }
-            free(wszScriptData);
+            customScript = _epw_Weather_BuildOpenIconScript();
         }
-        else
+        else if (dwIconPack == EP_WEATHER_ICONPACK_MICROSOFT)
         {
-            hr = E_OUTOFMEMORY;
+            customScript = malloc(sizeof(WCHAR) * EP_WEATHER_PROVIDER_GOOGLE_SCRIPT_LEN);
+            if (customScript && swprintf_s(customScript, EP_WEATHER_PROVIDER_GOOGLE_SCRIPT_LEN, L"%s%s%s%s%s%s",
+                ep_weather_provider_google_script00, ep_weather_provider_google_script010, ep_weather_provider_google_script011,
+                ep_weather_provider_google_script020, ep_weather_provider_google_script021, ep_weather_provider_google_script03) < 0)
+            {
+                free(customScript);
+                customScript = NULL;
+            }
+        }
+        LPCWSTR script = customScript ? customScript : ep_weather_provider_google_script10;
+        hr = E_FAIL;
+        if (_this->pCoreWebView2)
+        {
+            GenericObjectWithThis* callback =
+                GenericObjectWithThis_MakeAndInitialize(&EPWeather_ICoreWebView2ExecuteScriptCompletedHandlerVtbl, _this, L"pCoreWebView2ExecuteScriptCompletedHandler");
+            if (callback) hr = _this->pCoreWebView2->lpVtbl->ExecuteScript(_this->pCoreWebView2, script, callback);
+        }
+        free(customScript);
+        if (FAILED(hr))
+        {
+            InterlockedExchange64(&_this->bBrowserBusy, FALSE);
         }
     }
     return hr;

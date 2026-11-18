@@ -350,6 +350,7 @@ function ep_weather_getData(image, w, h, ch) {\n\
   return res;\n\
 }\n\
 var ep_result;\n\
+function ep_weather_part1() {\n\
 let unit = Array.from(document.getElementsByClassName('wob-unit')[0].getElementsByTagName('span')).filter(e => e.className == 'wob_t')[0].innerText;\n\
 let p = '%c';\n\
 if (!unit.includes(p)) {\n\
@@ -357,7 +358,6 @@ if (!unit.includes(p)) {\n\
     unit = 'x';\n\
 }\n\
 ep_result = ep_weather_getData(\n(final_im != 0) ? final_im : ep_weather_icon(), %d, %d, unit);\n\
-function ep_weather_part1() {\n\
 return \"run_part_2\";\n\
 }\n\
 ep_weather_part1();\n\
@@ -372,21 +372,18 @@ window.scrollTo(LeftScroll, TopScroll);\n\
         };\n\
 }\n\
 function ep_weather_part2() {\n\
-let h = document.getElementsByClassName(\"ULSxyf\")[0].offsetHeight;\n\
-////document.getElementsByClassName(\"google-weather-place\")[0].style.height = h + 'px';\n\
-////document.getElementsByClassName(\"google-weather-crop\")[0].style.height = h + 'px';\n\
-//if (1) for (let j = 0; j < document.styleSheets.length; j++) changeCSSStyle(j, '.wob_ds', 'background-color', '#303134');\n\
-document.getElementsByClassName(\"KFFQ0c\")[0].style.display = 'none';\n\
-if (document.getElementsByClassName(\"QS5gu sy4vM\").length > 1) { document.getElementsByClassName(\"QS5gu sy4vM\")[1].click(); return \"run_part_1\"; }\n\
-if (document.getElementsByClassName(\"Gfzyee VDgVie DKlyaf Loxgyb\").length > 1) { document.getElementsByClassName(\"Gfzyee VDgVie DKlyaf Loxgyb\")[1].click(); return \"run_part_1\"; }\n\
-//document.getElementById(\"search\").scrollIntoView(true);\n\
-return ep_result;\n\
-}\n\
 let banner1 = document.getElementById(\"taw\"); if (banner1) { banner1.style = \"display: none\"; }\n\
 let wob_gsp = document.getElementById(\"wob_gsp\"); if (wob_gsp) { wob_gsp.style = \"width: 648.04px\"; }\n\
 let weird_line = document.getElementsByClassName(\"v5jHUb\")[0]; if (weird_line) { weird_line.style = \"display: none\"; }\n\
 let slim_appbar = document.getElementById(\"slim_appbar\"); if (slim_appbar) { slim_appbar.style = \"display: none\"; }\n\
 scrolldisable();\n\
+const header = document.getElementsByClassName('KFFQ0c')[0];\n\
+if (header) header.style.display = 'none';\n\
+if (document.getElementsByClassName(\"QS5gu sy4vM\").length > 1) { document.getElementsByClassName(\"QS5gu sy4vM\")[1].click(); return \"run_part_1\"; }\n\
+if (document.getElementsByClassName(\"Gfzyee VDgVie DKlyaf Loxgyb\").length > 1) { document.getElementsByClassName(\"Gfzyee VDgVie DKlyaf Loxgyb\")[1].click(); return \"run_part_1\"; }\n\
+//document.getElementById(\"search\").scrollIntoView(true);\n\
+return ep_result;\n\
+}\n\
 ep_weather_part2();\n\
 ";
 #endif
