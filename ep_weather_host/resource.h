@@ -4,6 +4,7 @@
 #define IDR_WEATHER_OPEN_ARTWORK 101
 #define IDR_WEATHER_OPEN_CONDITIONS 102
 #define IDR_WEATHER_OPEN_RENDER 103
+#define IDR_WEATHER_OPEN_FORECAST 104
 
 // Next default values for new objects
 // 

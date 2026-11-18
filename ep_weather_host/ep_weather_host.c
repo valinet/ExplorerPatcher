@@ -366,7 +366,7 @@ HRESULT STDMETHODCALLTYPE _epw_Weather_NavigateToProvider(EPWeather* _this)
 
 static LPWSTR _epw_Weather_BuildOpenIconScript(void)
 {
-    const WORD resourceIds[] = {IDR_WEATHER_OPEN_ARTWORK, IDR_WEATHER_OPEN_CONDITIONS, IDR_WEATHER_OPEN_RENDER};
+    const WORD resourceIds[] = {IDR_WEATHER_OPEN_ARTWORK, IDR_WEATHER_OPEN_CONDITIONS, IDR_WEATHER_OPEN_FORECAST, IDR_WEATHER_OPEN_RENDER};
     const WCHAR prefix[] = EP_WEATHER_GOOGLE_ICON_HELPER L"(() => {\n";
     const WCHAR suffix[] = L"\n})();";
     const char* resources[ARRAYSIZE(resourceIds)];

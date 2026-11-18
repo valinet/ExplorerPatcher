@@ -107,6 +107,9 @@ const epOpenWeatherNames = {
 // Length and FNV-1a fingerprint of a known inline PNG or SVG base64 payload.
 // Identical bytes with conflicting condition labels take the neutral icon.
 const epOpenWeatherFingerprints = {
+    // Directional forecast SVGs observed in Kagoshima and Seoul.
+    "2808:d3682d1f": "sequence:rain:overcast",
+    "2856:d9a4f478": "sequence:overcast:rain",
     "1000:4bf2e984": "mostly-cloudy-night",
     "1000:561fad38": "mostly-clear-night",
     "1000:7f54c77a": "mostly-clear-night",

@@ -77,6 +77,13 @@ const epOpenWeatherArtwork = (() => {
             line('M8 28h32m-27 6h22M7 40h34', ink, 4.4),
             line('M8 28h32m-27 6h22M7 40h34', '#edb381', 2.5),
         ])],
+        'smoke': [layer([
+            line('M6 35h28c10 0 12-11 4-14-3-1-6-.5-8 2M9 27h14c8 0 10-10 3-13-3-1-6 0-8 2M10 19c-5-4-1-10 5-9', ink, 7),
+            line('M6 35h28c10 0 12-11 4-14-3-1-6-.5-8 2M9 27h14c8 0 10-10 3-13-3-1-6 0-8 2M10 19c-5-4-1-10 5-9', '#a1a6b0', 4.5),
+        ])],
+        'blowing-dust': [layer(gusts, 1, -2, .87), layer([
+            solid('m9 33 3 2-3 2-2-2Zm9 4 2 2-2 2-2-2Zm12-3 3 2-3 2-2-2Zm7 6 2 1-2 2-2-2Z', amber),
+        ])],
         'wind': [layer(gusts)],
         'drizzle': [lowCloud, ...drops([[16, 35, .64], [24, 39, .64], [32, 35, .64]])],
         'rain': [lowCloud, ...drops(threeRain)],
@@ -85,13 +92,19 @@ const epOpenWeatherArtwork = (() => {
         'rain-showers-day': [dayTop, layer(cloud, 5, 2, .92), ...drops([[19, 37, .9], [30, 40, .9], [39, 36, .85]])],
         'rain-showers-night': [nightTop, layer(cloud, 5, 2, .92), ...drops([[19, 37, .9], [30, 40, .9], [39, 36, .85]])],
         'freezing-rain': [lowCloud, ...drops([[13, 36], [33, 36]]), layer(pellet, 23, 41)],
+        'freezing-drizzle': [lowCloud, ...drops([[13, 35, .65], [33, 35, .65]]), layer(pellet, 23, 40)],
         'icy': [layer([
             solid('M24 5 41 17v18l-17 9L7 35V17Z', '#b6e6f5'),
             line('m24 6 4 15 12-3M8 18l15 7 1 18m4-22 12 13M8 34l14-9', '#65aecb', 2.2),
             line('m12 18 12-8 1 7', '#f3fdff', 2.1),
         ])],
         'rain-and-snow': [lowCloud, ...drops([[13, 37], [33, 36]]), layer(flake, 23, 40)],
+        'snow-and-rain': [lowCloud, ...flakes([[13, 37], [33, 36]]), layer(dropShape, 23, 40)],
+        'wintry-mix': [lowCloud, layer(flake, 13, 36), layer(dropShape, 24, 41), layer(pellet, 35, 36)],
         'sleet-hail': [lowCloud, layer(pellet, 13, 36), layer(pellet, 24, 41), layer(pellet, 35, 36)],
+        'hail': [lowCloud, layer([
+            solid('M10 36a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0Zm11 5a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0Zm11-5a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0Z', violet),
+        ])],
         'flurries': [lowCloud, ...flakes([[17, 35, .73], [28, 40, .73]])],
         'snow': [lowCloud, ...flakes(threeSnow)],
         'heavy-snow': [lowCloud, ...flakes([[10, 36], [20, 41], [29, 35], [38, 41]])],
@@ -128,3 +141,28 @@ const epOpenWeatherArtwork = (() => {
         ])],
     };
 })();
+
+function epOpenWeatherLayers(name) {
+    const [relation, first, second] = name.split(':');
+    if (!first) return epOpenWeatherArtwork[name] ?? epOpenWeatherArtwork.unknown;
+
+    const place = (icon, left, top, size) => epOpenWeatherArtwork[icon].map(({ shapes, x, y, scale }) =>
+        ({ shapes, x: left + x * size, y: top + y * size, scale: scale * size }));
+
+    const markers = {
+        sequence: 'M20 24h8m-3-3 3 3-3 3',
+        together: 'M21 24h6m-3-3v6',
+        intermittent: 'M19 30h.1m3.9 0h.1m3.9 0h.1',
+        brief: 'M23 30h.1',
+    };
+    const marker = markers[relation];
+    const smallSecond = relation === 'brief' || relation === 'intermittent';
+    return [
+        ...place(first, 0, smallSecond ? 7 : 12, smallSecond ? .49 : .43),
+        ...place(second, smallSecond ? 28 : 27, smallSecond ? 20 : 12, smallSecond ? .38 : .43),
+        { x: 0, y: 0, scale: 1, shapes: [
+            { path: marker, fill: null, stroke: '#182c3b', width: 4.7 },
+            { path: marker, fill: null, stroke: '#bce6e9', width: 2.5 },
+        ] },
+    ];
+}

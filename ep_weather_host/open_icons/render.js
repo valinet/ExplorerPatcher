@@ -28,7 +28,7 @@ function epOpenWeatherDraw(name) {
     const context = canvas.getContext('2d');
     context.lineCap = 'round';
     context.lineJoin = 'round';
-    for (const { shapes, x, y, scale } of epOpenWeatherArtwork[name]) {
+    for (const { shapes, x, y, scale } of epOpenWeatherLayers(name)) {
         context.save();
         context.translate(x, y);
         context.scale(scale, scale);
@@ -54,12 +54,20 @@ state.observer?.disconnect();
 
 function epOpenWeatherReplace(image) {
     const prior = state.images.get(image);
-    if (prior?.display === image.src) return prior.canvas;
-    const name = epOpenWeatherIconName(image.src);
+    const label = image.alt;
+    const painted = prior?.artwork.display === image.src;
+    if (painted && prior.label === label) return prior.artwork.canvas;
+    const source = painted ? prior.source : image.src;
+    const name = epOpenWeatherForecastIcon(label, epOpenWeatherIconName(source));
     if (!state.artwork.has(name)) state.artwork.set(name, epOpenWeatherDraw(name));
     const artwork = state.artwork.get(name);
-    state.images.set(image, artwork);
-    image.src = artwork.display;
+    const tooltip = image.getAttribute('title');
+    if (!tooltip || tooltip === prior?.label) {
+        if (label) image.title = label;
+        else if (tooltip) image.removeAttribute('title');
+    }
+    state.images.set(image, { artwork, source, label, name });
+    if (image.src !== artwork.display) image.src = artwork.display;
     return artwork.canvas;
 }
 
@@ -73,7 +81,7 @@ window.final_im = 0;
 const current = ep_weather_icon();
 epOpenWeatherRefresh();
 state.observer = new MutationObserver(epOpenWeatherRefresh);
-const observe = { subtree: true, childList: true, attributeFilter: ['src'] };
+const observe = { subtree: true, childList: true, attributeFilter: ['src', 'alt'] };
 state.observer.observe(document.getElementById('wob_wc') || current, observe);
 const forecast = document.querySelector('.wob_df')?.parentElement;
 if (forecast) state.observer.observe(forecast, observe);
