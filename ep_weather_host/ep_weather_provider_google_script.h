@@ -4,10 +4,18 @@
 // many thanks to https://stackoverflow.com/questions/23202966/google-weather-widget-on-my-website
 #define EP_WEATHER_PROVIDER_GOOGLE_SCRIPT_LEN 30000
 
-LPCWSTR ep_weather_provider_google_script10 = L"var final_im = 0; function ep_weather_part0() { return \"run_part_0\"; }; ep_weather_part0();";
+#define EP_WEATHER_GOOGLE_ICON_HELPER \
+    L"function ep_weather_icon() {\n" \
+    L"    var im = document.querySelector('#wob_wc img') || document.querySelector('img.YQ4gaf.zr758c');\n" \
+    L"    if (!im) { throw new Error('Google weather icon not found; page layout may have changed'); }\n" \
+    L"    return im;\n" \
+    L"}\n"
+
+LPCWSTR ep_weather_provider_google_script10 = EP_WEATHER_GOOGLE_ICON_HELPER
+    L"var final_im = 0; function ep_weather_part0() { return \"run_part_0\"; }; ep_weather_part0();";
 
 // reference: https://github.com/Triggertrap/sun-js
-LPCWSTR ep_weather_provider_google_script00 = L"\
+LPCWSTR ep_weather_provider_google_script00 = EP_WEATHER_GOOGLE_ICON_HELPER L"\
 Date.prototype.sunrise = function(latitude, longitude, zenith) {\n\
 	return this.sunriseSet(latitude, longitude, true, zenith);\n\
 }\n\
@@ -101,11 +109,6 @@ Math.mod = function(a, b) {\n\
 }\n\
 \n\
 \n\
-function ep_weather_icon() {\n\
-    var im = document.querySelector('#wob_wc img') || document.querySelector('img.YQ4gaf.zr758c');\n\
-    if (!im) { throw new Error('Google weather icon not found; page layout may have changed'); }\n\
-    return im;\n\
-}\n\
 var is_first_time = 1;\n\
 var final_im = 0;\n\
 var final_img2 = 0;\n\
