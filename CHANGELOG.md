@@ -4,7 +4,7 @@ This document includes the same release notes as in the [Releases](https://githu
 
 ## 26100.9711.71
 
-Tested on OS builds 22621.4317 x64, 22631.7652 x64, 26100.8037 ARM64, 26300.9711 x64, 26340.9767 x64, 26100.33650 x64, 28000.3231 x64, 28120.3302 x64, and 29695.1001 x64.
+Tested on OS builds 22621.4317 x64, 22631.7652 x64, 26100.8037 ARM64, 26300.9711 x64, 26340.9767 x64, 26100.33650 x64, 28000.3231 x64, 28120.3302 x64, 29695.1001 x64, and 29698.1000 x64.
 
 ##### 1
 
@@ -34,6 +34,20 @@ Tested on OS builds 22621.4317 x64, 22631.7652 x64, 26100.8037 ARM64, 26300.9711
   * For example, `explorer.exe /embedding` when `explorer.exe` is not running is no longer full-injected.
   * Helps reduce false repeated crash detection activations.
 * Localized "Settings and Uninstall" in Dutch. (valinet/ExplorerPatcher-L10N@f2bdf8e)
+
+##### 2
+
+* Fixed ep_taskbar's display safe area publisher crashing Explorer on builds 26220.9757/26340.9767/28220.9836/26340.9843 due to an under the hood change by Microsoft. (#5209)
+* Fixed ep_taskbar's system tray crashing Explorer when attempting to show the tooltip of invalid tray icons.
+* Fixed Explorer crashing when opening a network's web sign-in page with the Windows 10 taskbar. (e1a04505) (#5235)
+* Fixed Explorer exiting unexpectedly while reading symbols when the user-folder path contains non-ASCII characters. Thanks @HosisoraLing! (valinet/libvalinet@797404f) (#2186)
+* Fixed disabling Windows 11 context menus in Explorer's navigation pane on 22000, 22621 builds before 22621.4974, 22631 builds before 22631.4974, and 26100 builds before 26100.3323 (x64/ARM64). (2e7f744)
+* Fixed Windows 10 Start menu closing animations not activating on some systems. (79d4c2f) (#5229)
+* Pattern scan keep-ups:
+  * Fixed Windows 10 Start menu alignment with top or side taskbars on ARM64 builds with movable taskbar code but with that feature disabled, such as 28000.3231. (e45df36) (#5240)
+  * Fixed Windows 10 taskbar Win+X power commands on 26220.9757+ and 26340.9767+ ARM64. (98f4497)
+  * Fixed Explorer address bar shrinking causing crashes on 29695+ x64. (98f4497)
+  * Fixed Explorer and taskbar menu skinning/unskinning on 28000.2630+ and 29634+ ARM64. (98f4497)
 
 ## 26100.8457.70
 
