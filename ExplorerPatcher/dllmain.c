@@ -2537,34 +2537,37 @@ static void HookImmersiveMenuFunctions(
         "xxxxxxxxxxxxxxxxx????xxx????xxx????xxxxxx????xx?????xxx"
     );
 #elif defined(_M_ARM64)
-    // ?? ?? 40 F9 43 03 1C 32 E4 03 ?? AA ?? ?? FF 97
-    //                                     ^^^^^^^^^^^
-    // Ref: ImmersiveContextMenuHelper::ApplyOwnerDrawToMenu()
-    PBYTE match = (PBYTE)FindPattern_4_(
-        pText + 2, cbText - 2,
-        "\x40\xF9\x43\x03\x1C\x32\xE4\x03\x00\xAA\x00\x00\xFF\x97",
-        "xxxxxxxx?x??xx"
+    // Recursive ApplyOwnerDrawToMenu() call, newest scheduling first. 29634+
+    // hoist options | 0x10 and reload W3 from the stack; older builds compute it here.
+    // Mask source registers and the entire BL immediate, not its direction/distance.
+    PBYTE match = (PBYTE)FindPatternBitMask_4_(
+        pText, cbText,
+        "\xE3\x03\x40\xB9\xE4\x03\x00\xAA\xE2\x03\x00\xAA\x00\x00\x00\x94\xE8\x03\x40\xB9\x00\x28\x00\xF9",
+        "\xFF\x03\xC0\xFF\xFF\xFF\xE0\xFF\xFF\xFF\xE0\xFF\x00\x00\x00\xFC\xFF\x03\xC0\xFF\x00\xFC\xFF\xFF",
+        24
     );
+    if (!match)
+    {
+        match = (PBYTE)FindPatternBitMask_4_(
+            pText, cbText,
+            "\x03\x00\x1C\x32\xE4\x03\x00\xAA\xE2\x03\x00\xAA\x00\x00\x00\x94",
+            "\x1F\xFC\xFF\xFF\xFF\xFF\xE0\xFF\xFF\xFF\xE0\xFF\x00\x00\x00\xFC",
+            16
+        );
+    }
+    if (!match)
+    {
+        match = (PBYTE)FindPatternBitMask_4_(
+            pText, cbText,
+            "\x02\x00\x40\xF9\x03\x00\x1C\x32\xE4\x03\x00\xAA\x00\x00\x00\x94",
+            "\x1F\x00\xC0\xFF\x1F\xFC\xFF\xFF\xFF\xFF\xE0\xFF\x00\x00\x00\xFC",
+            16
+        );
+    }
     if (match)
     {
-        match += 10;
+        match += 12;
         match = (PBYTE)ARM64_FollowBL((DWORD*)match);
-    }
-    else
-    {
-        // 43 03 1C 32 E4 03 ?? AA E2 03 ?? AA ?? ?? FF 97 // 27938
-        //                                     ^^^^^^^^^^^
-        // Ref: ImmersiveContextMenuHelper::ApplyOwnerDrawToMenu()
-        match = (PBYTE)FindPattern_4_(
-            pText, cbText,
-            "\x43\x03\x1C\x32\xE4\x03\x00\xAA\xE2\x03\x00\xAA\x00\x00\xFF\x97",
-            "xxxxxx?xxx?x??xx"
-        );
-        if (match)
-        {
-            match += 12;
-            match = (PBYTE)ARM64_FollowBL((DWORD*)match);
-        }
     }
 #endif
     if (match)
@@ -9194,7 +9197,8 @@ static void PatchAddressBarSizing(PBYTE pSearchBegin, size_t cbSearch)
     if (IsWindows11())
     {
         // 26100.9343+, 28000.3142+: _PositionChildWindows() calls _GetAdjustedClientRect().
-        // Follow the CALL at +14; the helper's RECT adjustments start at +25.
+        // Follow the CALL at +14. 29695+ drops its helper's redundant CALL prefix and post-call NOP:
+        // search the RECT adjustments at +19 first, then the older +25 layout.
         match = FindPattern(
             pSearchBegin,
             cbSearch,
@@ -9203,8 +9207,13 @@ static void PatchAddressBarSizing(PBYTE pSearchBegin, size_t cbSearch)
         );
         if (match)
         {
-            match += 19 + *(int*)(match + 15) + 25;
-            if (VirtualProtect(match, 8, PAGE_EXECUTE_READWRITE, &dwOldProtect))
+            match += 19 + *(int*)(match + 15);
+            match = FindPattern(
+                match + 19, 20,
+                "\x83\x43\x04\x00\x83\x43\x0C\x00\x48\x83\xC4\x20\x5B\xC3",
+                "xxx?xxx?xxxxxx"
+            );
+            if (match && VirtualProtect(match, 8, PAGE_EXECUTE_READWRITE, &dwOldProtect))
             {
                 match[3] = 3;
                 match[7] = (BYTE)-1;
