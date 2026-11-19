@@ -39,7 +39,7 @@ Tested on OS builds 22621.4317 x64, 22631.7652 x64, 26100.8037 ARM64, 26300.9711
 
 * Fixed ep_taskbar's display safe area publisher crashing Explorer on builds 26220.9757/26340.9767/28220.9836/26340.9843 due to an under the hood change by Microsoft. (#5209)
 * Fixed ep_taskbar's system tray crashing Explorer when attempting to show the tooltip of invalid tray icons.
-* Fixed Explorer crashing when opening a network's web sign-in page with the Windows 10 taskbar. (e1a04505) (#5235)
+* Fixed Explorer crashing when opening a network's web sign-in page with the Windows 10 taskbar. (e1a0450) (#5235)
 * Fixed Explorer exiting unexpectedly while reading symbols when the user-folder path contains non-ASCII characters. Thanks @HosisoraLing! (valinet/libvalinet@797404f) (#2186)
 * Fixed disabling Windows 11 context menus in Explorer's navigation pane on 22000, 22621 builds before 22621.4974, 22631 builds before 22631.4974, and 26100 builds before 26100.3323 (x64/ARM64). (2e7f744)
 * Fixed Windows 10 Start menu closing animations not activating on some systems. (79d4c2f) (#5229)
