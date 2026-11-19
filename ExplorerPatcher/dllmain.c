@@ -10780,6 +10780,25 @@ EP_TASKBAR_FEATURES GetEPTaskbarFeatures()
     return eptf;
 }
 
+// ep_taskbar is based on the Windows 10 taskbar, which predates the Windows 11 "Show flashing on taskbar apps"
+// setting (TaskbarFlashing). Honor it by turning HSHELL_FLASH into HSHELL_REDRAW when it is disabled, so the button
+// is only repainted instead of being marked as requesting attention.
+typedef INT64 (*CTaskBand__HandleShellHook_t)(void* _this, int iCode, INT64 lParam);
+CTaskBand__HandleShellHook_t CTaskBand__HandleShellHookFunc;
+INT64 CTaskBand__HandleShellHookHook(void* _this, int iCode, INT64 lParam)
+{
+    if (iCode == HSHELL_FLASH)
+    {
+        DWORD dwTaskbarFlashing = 1;
+        if (SUCCEEDED(SHRegGetDWORD(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", L"TaskbarFlashing", &dwTaskbarFlashing))
+            && dwTaskbarFlashing == 0)
+        {
+            iCode = HSHELL_REDRAW;
+        }
+    }
+    return CTaskBand__HandleShellHookFunc(_this, iCode, lParam);
+}
+
 HMODULE PrepareAlternateTaskbarImplementation(symbols_addr* symbols_PTRS, BOOL* pbTaskbarLoadSuccess)
 {
     *pbTaskbarLoadSuccess = FALSE;
@@ -10868,6 +10887,24 @@ HMODULE PrepareAlternateTaskbarImplementation(symbols_addr* symbols_PTRS, BOOL* 
                 else
                 {
                     printf("[TB] Failed to hook TrayUI_CreateInstance()\n");
+                }
+            }
+        }
+
+        if (*pbTaskbarLoadSuccess && IsWindows11())
+        {
+            CTaskBand__HandleShellHookFunc = (CTaskBand__HandleShellHook_t)GetProcAddress(hMyTaskbar, "?_HandleShellHook@CTaskBand@@IEAA_JH_J@Z");
+            if (CTaskBand__HandleShellHookFunc)
+            {
+                int rv = funchook_prepare(
+                    funchook,
+                    (void**)&CTaskBand__HandleShellHookFunc,
+                    CTaskBand__HandleShellHookHook
+                );
+                if (rv != 0)
+                {
+                    CTaskBand__HandleShellHookFunc = NULL;
+                    printf("[TB] Failed to hook CTaskBand::_HandleShellHook()\n");
                 }
             }
         }
