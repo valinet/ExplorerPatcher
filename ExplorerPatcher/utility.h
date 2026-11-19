@@ -1181,7 +1181,7 @@ __forceinline DWORD ARM64_DecodeLDRIMMW(DWORD insnLDRIMMW)
     if (ARM64_ReadBits(insnLDRIMMW, 31, 22) != 0b1011100101)
         return (DWORD)-1;
     DWORD imm12 = ARM64_ReadBits(insnLDRIMMW, 21, 10);
-    return imm12;
+    return imm12 << 2;
 }
 
 inline UINT_PTR ARM64_DecodeADRLEx(
