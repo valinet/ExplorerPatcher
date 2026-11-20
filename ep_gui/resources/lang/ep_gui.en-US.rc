@@ -85,6 +85,7 @@ BEGIN
     IDS_TB_ICONSIZE_1           "Small"
     IDS_TB_ICONSIZE_0           "Large (default)"
     IDS_TB_ALTIMPL_NOTICE       "Important notice regarding ExplorerPatcher's taskbar implementation (online)"
+    IDS_TB_FIXWORKAREA          "Automatically repair the desktop work area after the display wakes or changes mode"
 
     IDS_TRAY                    "System tray"
 

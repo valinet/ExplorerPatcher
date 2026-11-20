@@ -79,6 +79,8 @@
 ;x 3 %R:1034%
 ;x 7 %R:1035%
 "MMOldTaskbarAl"=dword:00000000
+;b %R:1049%
+"FixWorkAreaAfterDisplayReinit"=dword:00000001
 ;g Taskbar_Windows10Section
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
 ;c 3 %R:1037%
