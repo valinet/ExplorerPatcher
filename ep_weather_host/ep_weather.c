@@ -1,3 +1,4 @@
+#include "ep_weather_microsoft_icons.h"
 #include "ep_weather.h"
 #include "ep_weather_factory.h"
 #include "ep_weather_host.h"
@@ -309,6 +310,7 @@ BOOL WINAPI DllMain(
     case DLL_THREAD_DETACH:
         break;
     case DLL_PROCESS_DETACH:
+        if (!lpvReserved) epw_Weather_FreeMicrosoftIconScript();
         break;
     }
     return TRUE;

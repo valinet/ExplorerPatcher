@@ -4,7 +4,15 @@
 // many thanks to https://stackoverflow.com/questions/23202966/google-weather-widget-on-my-website
 #define EP_WEATHER_PROVIDER_GOOGLE_SCRIPT_LEN 30000
 
-LPCWSTR ep_weather_provider_google_script10 = L"var final_im = 0; function ep_weather_part0() { return \"run_part_0\"; }; ep_weather_part0();";
+#define EP_WEATHER_GOOGLE_ICON_HELPER \
+    L"function ep_weather_icon() {\n" \
+    L"    var im = document.querySelector('#wob_wc img') || document.querySelector('img.YQ4gaf.zr758c');\n" \
+    L"    if (!im) { throw new Error('Google weather icon not found; page layout may have changed'); }\n" \
+    L"    return im;\n" \
+    L"}\n"
+
+LPCWSTR ep_weather_provider_google_script10 = EP_WEATHER_GOOGLE_ICON_HELPER
+    L"window.ep_weather_reset_microsoft_icons?.(); var final_im = 0; \"run_part_0\";";
 
 // reference: https://github.com/Triggertrap/sun-js
 LPCWSTR ep_weather_provider_google_script00 = L"\
@@ -101,32 +109,12 @@ Math.mod = function(a, b) {\n\
 }\n\
 \n\
 \n\
-function ep_weather_icon() {\n\
-    var im = document.querySelector('#wob_wc img') || document.querySelector('img.YQ4gaf.zr758c');\n\
-    if (!im) { throw new Error('Google weather icon not found; page layout may have changed'); }\n\
-    return im;\n\
-}\n\
-var is_first_time = 1;\n\
-var final_im = 0;\n\
-var final_img2 = 0;\n\
-var final_int;\n\
-var final_cnt = 0;\n\
-function ep_set_final_img(){\n\
-//ep_weather_icon().src = final_img2;\n\
-//final_cnt++;\n\
-//if (final_cnt == 20)\n\
-is_first_time=0;\n\
-clearInterval(final_int);\n\
-}\n\
-function ep_download_image_blob(url) {\n\
-    var request = new XMLHttpRequest();\n\
-    request.open('GET', url, false);\n\
-    request.overrideMimeType('text/plain; charset=x-user-defined');\n\
-    request.send(null);\n\
-    var binary = new Uint8Array(request.responseText.length);\n\
-    for(var i=0;i<request.responseText.length;i++){ binary[i] = request.responseText.charCodeAt(i) & 0xff; }\n\
-    return URL.createObjectURL(new Blob([binary.buffer]));\n\
-}\n\
+window.ep_weather_reset_microsoft_icons?.();\n\
+window.final_im = 0;\n\
+let is_first_time = true;\n\
+let ep_weather_microsoft_active = true;\n\
+let pendingCurrentIcon = null;\n\
+const ep_weather_replaced_icons = new Map();\n\
 function IsDay(has_time, hrs, mins) {\n\
 var weatherLink = document.querySelector('.YfftMc a[href], a.YfftMc[href]');\n\
 if (!weatherLink) return null;\n\
@@ -163,115 +151,201 @@ sunset.setMilliseconds(0);\n\
 if (!Number.isFinite(sunrise.getTime()) || !Number.isFinite(sunset.getTime())) return null;\n\
 return (current >= sunrise && current < sunset) ? 1 : 0;\n\
 }\n\
-is_day1 = IsDay(0, 0, 0);\n\
+const is_day1 = IsDay(0, 0, 0);\n\
 ";
 
 LPCWSTR ep_weather_provider_google_script010 = L"\
 function replaceImage(im, is_day) {\n\
-var final_img = 0;\n\
-if (!im || !im.src || is_day == null) { return; }\n\
-if (       im.src.endsWith('/sunny_s_cloudy.png') || im.src.endsWith('AAAAAAAAAAAAAAAA+Pf6Bm5v6/1bJGiwAAAAAElFTkSuQmCC') || im.src.endsWith('MYe78v+ACIiACIiACJTEEyDCTi8sMWUSAAAAAElFTkSuQmCC')) {\n\
-    if (is_day) final_img = ep_download_image_blob('https://user-images.githubusercontent.com/6503598/156949438-4e0c0e0d-67bc-4c76-b75e-e0ffcead3f48.png');\n\
-    else        final_img = ep_download_image_blob('https://user-images.githubusercontent.com/6503598/156949442-63f14d44-ec0e-40b2-aa1b-8e4a27ec10f5.png');\n\
-} else if (im.src.endsWith('/sunny.png')          || im.src.endsWith('Ls8fJgAAAAAAAADg1nkDlR7XfJiH1ggAAAAASUVORK5CYII=') || im.src.endsWith('NzjYbzHpLqUCFKCAJfkAq7RimK7qUtAAAAAASUVORK5CYII=')) {\n\
-    if (is_day) final_img = ep_download_image_blob('https://user-images.githubusercontent.com/6503598/156949449-9320c6f5-15ef-4c17-9e72-740708f4828c.png');\n\
-    else        final_img = ep_download_image_blob('https://user-images.githubusercontent.com/6503598/156949451-269d02a3-08cb-4237-9789-f1e60fdc723d.png');\n\
-} else if (im.src.endsWith('/cloudy.png')         || im.src.endsWith('AiAAAiAAAiAAAiAAl48fFVnRpiVnD+AAAAAASUVORK5CYII=') || im.src.endsWith('gAAIgAAIgAAIgAC86wECCuvGtH3EIQAAAABJRU5ErkJggg==')) {\n\
-    if (is_day) final_img = ep_download_image_blob('https://user-images.githubusercontent.com/6503598/156949452-f347fe27-5005-48f2-9c9a-899bb7b8825e.png');\n\
-    else        final_img = ep_download_image_blob('https://user-images.githubusercontent.com/6503598/156949452-f347fe27-5005-48f2-9c9a-899bb7b8825e.png');\n\
-} else if (im.src.endsWith('/rain_s_cloudy.png')  || im.src.endsWith('CQABIAAEgAAQAAJAAB6iPy4FckaI/hnJAAAAAElFTkSuQmCC') || im.src.endsWith('lFRe7S+mBtAAGkADeFsvKpKWeAy6FowAAAAASUVORK5CYII=')) {\n\
-    if (is_day) final_img = ep_download_image_blob('https://user-images.githubusercontent.com/6503598/156949458-dc66775d-8bb9-4d04-838e-7f550d305c26.png');\n\
-    else        final_img = ep_download_image_blob('https://user-images.githubusercontent.com/6503598/156949458-dc66775d-8bb9-4d04-838e-7f550d305c26.png');\n\
-} else if (im.src.endsWith('/cloudy_s_rain.png')  || im.src.endsWith('1S6F6f8CBIAAEAACcEP9AsAciK6YtipuAAAAAElFTkSuQmCC') || im.src.endsWith('A8DsIAvZ0J98BEAA//oBqG5a70gUjuIAAAAASUVORK5CYII=')) {\n\
-    if (is_day) final_img = ep_download_image_blob('https://user-images.githubusercontent.com/6503598/156949458-dc66775d-8bb9-4d04-838e-7f550d305c26.png');\n\
-    else        final_img = ep_download_image_blob('https://user-images.githubusercontent.com/6503598/156949458-dc66775d-8bb9-4d04-838e-7f550d305c26.png');\n\
-} else if (im.src.endsWith('/rain_light.png')     || im.src.endsWith('LTAzVDExOjEzOjA0KzAyOjAw/lWSQAAAAABJRU5ErkJggg==') || im.src.endsWith('LTAzVDExOjEzOjA0KzAyOjAw/lWSQAAAAABJRU5ErkJggg==')) {\n\
-    if (is_day) final_img = ep_download_image_blob('https://user-images.githubusercontent.com/6503598/156949458-dc66775d-8bb9-4d04-838e-7f550d305c26.png');\n\
-    else        final_img = ep_download_image_blob('https://user-images.githubusercontent.com/6503598/156949458-dc66775d-8bb9-4d04-838e-7f550d305c26.png');\n\
-} else if (im.src.endsWith('/rain.png')           || im.src.endsWith('FEABFEABFEABFOB3fgDsHp230RVQOwAAAABJRU5ErkJggg==') || im.src.endsWith('MeRa9W/WClABKkAFiKofRnoGaQBkK9wAAAAASUVORK5CYII=')) {\n\
-    if (is_day) final_img = ep_download_image_blob('https://user-images.githubusercontent.com/6503598/156949460-7c132d89-efb7-457f-8810-9bf235f5737f.png');\n\
-    else        final_img = ep_download_image_blob('https://user-images.githubusercontent.com/6503598/156949460-7c132d89-efb7-457f-8810-9bf235f5737f.png');\n\
-} else if (im.src.endsWith('/rain_heavy.png')     || im.src.endsWith('oP1rrAFoABqABqAS/QFSaJKDZ1ZY3QAAAABJRU5ErkJggg==') || im.src.endsWith('U4t1idb1T/0FcAF86g/VgX+0644VVAAAAABJRU5ErkJggg==')) {\n\
-    if (is_day) final_img = ep_download_image_blob('https://user-images.githubusercontent.com/6503598/156949460-7c132d89-efb7-457f-8810-9bf235f5737f.png');\n\
-    else        final_img = ep_download_image_blob('https://user-images.githubusercontent.com/6503598/156949460-7c132d89-efb7-457f-8810-9bf235f5737f.png');\n\
-} else if (im.src.endsWith('/thunderstorms.png')  || im.src.endsWith('6n+NVQAVQAVQAfwS/QNrOJYuXyjUGAAAAABJRU5ErkJggg==') || im.src.endsWith('DTTcSfRpAO//1L8B/hnAD9B4AcpTDEFdAAAAAElFTkSuQmCC')) {\n\
-    if (is_day) final_img = ep_download_image_blob('https://user-images.githubusercontent.com/6503598/156949450-7e03a3f5-580e-4414-aaeb-3a0898afd1da.png');\n\
-    else        final_img = ep_download_image_blob('https://user-images.githubusercontent.com/6503598/156949450-7e03a3f5-580e-4414-aaeb-3a0898afd1da.png');\n\
-} else if (im.src.endsWith('/cloudy_s_sunny.png') || im.src.endsWith('gAAQAAJAAAgAASAATqNfCT6dqrbpoPYAAAAASUVORK5CYII=') || im.src.endsWith('VwAEQAAEQAAEQAD+KcA3AodABBLnBp0AAAAASUVORK5CYII=')) {\n\
-    if (is_day) final_img = ep_download_image_blob('https://user-images.githubusercontent.com/6503598/156949462-f50c21dd-85dd-4d9c-a4eb-516e6cddfb1f.png');\n\
-    else        final_img = ep_download_image_blob('https://user-images.githubusercontent.com/6503598/156949463-a427edfb-3d7f-4167-bd6f-f5019c482ea1.png');\n\
+if (!im || !im.src) return;\n\
+const previous = ep_weather_replaced_icons.get(im);\n\
+if (previous) {\n\
+    if (im.src === previous.replacement) return;\n\
+    restoreForecastSize(im, previous.dimensions);\n\
+    ep_weather_replaced_icons.delete(im);\n\
+}\n\
+if (im === currentIcon) pendingCurrentIcon = null;\n\
+const originalSrc = im.src;\n\
+const svgName = ep_google_svg_name(originalSrc);\n\
+const svgIcon = svgName && Object.hasOwn(ep_google_svg_icons, svgName) && ep_google_svg_icons[svgName];\n\
+const src = svgIcon ? '/' + svgIcon[0] + '.png' : originalSrc;\n\
+if (svgIcon) is_day = !svgName.includes('_night');\n\
+const dayOrNight = (day, night) => is_day == null ? null : (is_day ? day : night);\n\
+let final_img = 0;\n\
+if (       src.endsWith('/sunny_s_cloudy.png') || src.endsWith('AAAAAAAAAAAAAAAA+Pf6Bm5v6/1bJGiwAAAAAElFTkSuQmCC') || src.endsWith('MYe78v+ACIiACIiACJTEEyDCTi8sMWUSAAAAAElFTkSuQmCC')) {\n\
+    final_img = dayOrNight('mostly-sunny-day', 'mostly-sunny-night');\n\
+} else if (src.endsWith('/sunny.png')          || src.endsWith('Ls8fJgAAAAAAAADg1nkDlR7XfJiH1ggAAAAASUVORK5CYII=') || src.endsWith('NzjYbzHpLqUCFKCAJfkAq7RimK7qUtAAAAAASUVORK5CYII=')) {\n\
+    final_img = dayOrNight('sunny', 'clear-night');\n\
+} else if (src.endsWith('/cloudy.png')         || src.endsWith('AiAAAiAAAiAAAiAAl48fFVnRpiVnD+AAAAAASUVORK5CYII=') || src.endsWith('gAAIgAAIgAAIgAC86wECCuvGtH3EIQAAAABJRU5ErkJggg==')) {\n\
+    final_img = 'cloudy';\n\
+} else if (src.endsWith('/rain_s_cloudy.png')  || src.endsWith('CQABIAAEgAAQAAJAAB6iPy4FckaI/hnJAAAAAElFTkSuQmCC') || src.endsWith('lFRe7S+mBtAAGkADeFsvKpKWeAy6FowAAAAASUVORK5CYII=')) {\n\
+    final_img = 'light-rain';\n\
+} else if (src.endsWith('/cloudy_s_rain.png')  || src.endsWith('1S6F6f8CBIAAEAACcEP9AsAciK6YtipuAAAAAElFTkSuQmCC') || src.endsWith('A8DsIAvZ0J98BEAA//oBqG5a70gUjuIAAAAASUVORK5CYII=')) {\n\
+    final_img = 'light-rain';\n\
+} else if (src.endsWith('/rain_light.png')     || src.endsWith('LTAzVDExOjEzOjA0KzAyOjAw/lWSQAAAAABJRU5ErkJggg==') || src.endsWith('LTAzVDExOjEzOjA0KzAyOjAw/lWSQAAAAABJRU5ErkJggg==')) {\n\
+    final_img = 'light-rain';\n\
+} else if (src.endsWith('/rain.png')           || src.endsWith('FEABFEABFEABFOB3fgDsHp230RVQOwAAAABJRU5ErkJggg==') || src.endsWith('MeRa9W/WClABKkAFiKofRnoGaQBkK9wAAAAASUVORK5CYII=')) {\n\
+    final_img = 'rain';\n\
+} else if (src.endsWith('/rain_heavy.png')     || src.endsWith('oP1rrAFoABqABqAS/QFSaJKDZ1ZY3QAAAABJRU5ErkJggg==') || src.endsWith('U4t1idb1T/0FcAF86g/VgX+0644VVAAAAABJRU5ErkJggg==')) {\n\
+    final_img = 'rain';\n\
+} else if (src.endsWith('/thunderstorms.png')  || src.endsWith('6n+NVQAVQAVQAfwS/QNrOJYuXyjUGAAAAABJRU5ErkJggg==') || src.endsWith('DTTcSfRpAO//1L8B/hnAD9B4AcpTDEFdAAAAAElFTkSuQmCC')) {\n\
+    final_img = 'thunderstorms';\n\
+} else if (src.endsWith('/cloudy_s_sunny.png') || src.endsWith('gAAQAAJAAAgAASAATqNfCT6dqrbpoPYAAAAASUVORK5CYII=') || src.endsWith('VwAEQAAEQAAEQAD+KcA3AodABBLnBp0AAAAASUVORK5CYII=')) {\n\
+    final_img = dayOrNight('mostly-cloudy-day', 'mostly-cloudy-night');\n\
 ";
 
 LPCWSTR ep_weather_provider_google_script011 = L"\
-} else if (im.src.endsWith('/partly_cloudy.png')  || im.src.endsWith('AlAACkABKAAFoABOp1+6Bd0LJ+BorgAAAABJRU5ErkJggg==') || im.src.endsWith('UD8fqAJVoApUgSrwqfwCJ6xaZshM+xMAAAAASUVORK5CYII=')) {\n\
-    if (is_day) final_img = ep_download_image_blob('https://user-images.githubusercontent.com/6503598/156949465-54dd31c6-7e3a-464a-8e64-8b54b6fb7a65.png');\n\
-    else        final_img = ep_download_image_blob('https://user-images.githubusercontent.com/6503598/156949461-1f058cf3-6fdd-4aeb-80b7-68fa27b02845.png');\n\
-} else if (im.src.endsWith('/sunny_s_rain.png')   || im.src.endsWith('+/JUWP5fQAAIAAEgAA6iPyWP6kEiMYUSAAAAAElFTkSuQmCC') || im.src.endsWith('EphMZLo+8U++KBAFpnwBEAqlYwd30/wAAAAASUVORK5CYII=')) {\n\
-    if (is_day) final_img = ep_download_image_blob('https://user-images.githubusercontent.com/6503598/156949443-062a0fa9-88c1-4e07-b6b1-8e52ff64f4f3.png');\n\
-    else        final_img = ep_download_image_blob('https://user-images.githubusercontent.com/6503598/156949444-d3aea936-4c22-4f17-a201-02155396684d.png');\n\
-} else if (im.src.endsWith('/rain_s_sunny.png')   || im.src.endsWith('gAgQASJABIgAESACXpxfGkmKjZKKoRQAAAAASUVORK5CYII=') || im.src.endsWith('S30fyJ+YskAWyAJZIIUf+u496Ifu2YkAAAAASUVORK5CYII=')) {\n\
-    if (is_day) final_img = ep_download_image_blob('https://user-images.githubusercontent.com/6503598/156949443-062a0fa9-88c1-4e07-b6b1-8e52ff64f4f3.png');\n\
-    else        final_img = ep_download_image_blob('https://user-images.githubusercontent.com/6503598/156949444-d3aea936-4c22-4f17-a201-02155396684d.png');\n\
-} else if (im.src.endsWith('/fog.png')            || im.src.endsWith('/wsIQAACEIAABCCAb6hfRzSoz4hgnE4AAAAASUVORK5CYII=') || im.src.endsWith('EC30ZRbiv5QMwAAM8PF6AtMRIwMJwimNAAAAAElFTkSuQmCC')) {\n\
-    if (is_day) final_img = ep_download_image_blob('https://user-images.githubusercontent.com/6503598/156949454-81d5d47d-1f33-4859-a112-5a64ceb549a1.png');\n\
-    else        final_img = ep_download_image_blob('https://user-images.githubusercontent.com/6503598/156949454-81d5d47d-1f33-4859-a112-5a64ceb549a1.png');\n\
-} else if (im.src.endsWith('/snow.png')           || im.src.endsWith('dMq/xgqAAqAAKABW4g+Q1luByt+ugAAAAABJRU5ErkJggg==') || im.src.endsWith('kKRD6Xzx+qvBCyCw/ABgjEYCwIT8wQAAAABJRU5ErkJggg==')) {\n\
-    if (is_day) final_img = ep_download_image_blob('https://user-images.githubusercontent.com/6503598/156949459-dfe70eba-6c2c-4b1c-b51b-27c13ce7c08c.png');\n\
-    else        final_img = ep_download_image_blob('https://user-images.githubusercontent.com/6503598/156949459-dfe70eba-6c2c-4b1c-b51b-27c13ce7c08c.png');\n\
-} else if (im.src.endsWith('/snow_heavy.png')     || im.src.endsWith('+jJWB6R/m0sAEoAEIBb7BcA+hV/gbM+pAAAAAElFTkSuQmCC') || im.src.endsWith('cUH9DYB6xvNfDZ4GIuMbUY1SYGBaleEAAAAASUVORK5CYII=')) {\n\
-    if (is_day) final_img = ep_download_image_blob('https://user-images.githubusercontent.com/6503598/156949456-04a4bdbd-ff3b-4484-bb30-8909baff8aa8.png');\n\
-    else        final_img = ep_download_image_blob('https://user-images.githubusercontent.com/6503598/156949456-04a4bdbd-ff3b-4484-bb30-8909baff8aa8.png');\n\
-} else if (im.src.endsWith('/snow_light.png')     || im.src.endsWith('AP5lhgAEIAABCEAAAnzlBYgKVujL4rwkAAAAAElFTkSuQmCC') || im.src.endsWith('88Tmfn8L1e/EFVABFZA0LkcjEH9Eoxa+AAAAAElFTkSuQmCC')) {\n\
-    if (is_day) final_img = ep_download_image_blob('https://user-images.githubusercontent.com/6503598/156949459-dfe70eba-6c2c-4b1c-b51b-27c13ce7c08c.png');\n\
-    else        final_img = ep_download_image_blob('https://user-images.githubusercontent.com/6503598/156949459-dfe70eba-6c2c-4b1c-b51b-27c13ce7c08c.png');\n\
-} else if (im.src.endsWith('/snow_s_cloudy.png')  || im.src.endsWith('SwMAAAAAAAAAAAAAAFxEL1Fe7CEOIBaKAAAAAElFTkSuQmCC') || im.src.endsWith('lfcC1L+YKkAFqAAVIFa/mfArO5CvUjAAAAAASUVORK5CYII=')) {\n\
-    if (is_day) final_img = ep_download_image_blob('https://user-images.githubusercontent.com/6503598/156949447-a6658710-567e-4977-9316-a80007df3076.png');\n\
-    else        final_img = ep_download_image_blob('https://user-images.githubusercontent.com/6503598/156949448-cd1b69af-4028-4153-8e40-288526577b58.png');\n\
-} else if (im.src.endsWith('/snow_s_rain.png')    || im.src.endsWith('+Lc4AAAAAAAAAAAA+AGv/oIwYDUGyQAAAABJRU5ErkJggg==') || im.src.endsWith('1/kcsNXU/8gqQAWoAGXpGzmRTGmgvhAvAAAAAElFTkSuQmCC')) {\n\
-    if (is_day) final_img = ep_download_image_blob('https://user-images.githubusercontent.com/6503598/156950233-ccaadb4a-2e9a-4934-b41c-acd36a7f0d9c.png');\n\
-    else        final_img = ep_download_image_blob('https://user-images.githubusercontent.com/6503598/156950233-ccaadb4a-2e9a-4934-b41c-acd36a7f0d9c.png');\n\
-} else if (im.src.endsWith('/cloudy_s_snow.png')  || im.src.endsWith('ASAABIAAEAACQABepj8dv4hCnMCVbgAAAABJRU5ErkJggg==') || im.src.endsWith('EuzIGPqHhgAIgAAIAE1vnG7TKhwgdU4AAAAASUVORK5CYII=')) {\n\
-    if (is_day) final_img = ep_download_image_blob('https://user-images.githubusercontent.com/6503598/156949447-a6658710-567e-4977-9316-a80007df3076.png');\n\
-    else        final_img = ep_download_image_blob('https://user-images.githubusercontent.com/6503598/156949448-cd1b69af-4028-4153-8e40-288526577b58.png');\n\
-} else if (im.src.endsWith('/rain_s_snow.png')    || im.src.endsWith('ABAAAkAACAABIAAEwIfoF/D2gpORVfhJAAAAAElFTkSuQmCC') || im.src.endsWith('i/HUv5gqQAWoABUgWj/U6dmtXHN0sAAAAABJRU5ErkJggg==')) {\n\
-    if (is_day) final_img = ep_download_image_blob('https://user-images.githubusercontent.com/6503598/156949445-60d12efa-a21d-40e0-b9a8-1b7a84e58944.png');\n\
-    else        final_img = ep_download_image_blob('https://user-images.githubusercontent.com/6503598/156949445-60d12efa-a21d-40e0-b9a8-1b7a84e58944.png');\n\
+} else if (src.endsWith('/partly_cloudy.png')  || src.endsWith('AlAACkABKAAFoABOp1+6Bd0LJ+BorgAAAABJRU5ErkJggg==') || src.endsWith('UD8fqAJVoApUgSrwqfwCJ6xaZshM+xMAAAAASUVORK5CYII=')) {\n\
+    final_img = dayOrNight('partly-cloudy-day', 'partly-cloudy-night');\n\
+} else if (src.endsWith('/sunny_s_rain.png')   || src.endsWith('+/JUWP5fQAAIAAEgAA6iPyWP6kEiMYUSAAAAAElFTkSuQmCC') || src.endsWith('EphMZLo+8U++KBAFpnwBEAqlYwd30/wAAAAASUVORK5CYII=')) {\n\
+    final_img = dayOrNight('sun-showers-day', 'sun-showers-night');\n\
+} else if (src.endsWith('/rain_s_sunny.png')   || src.endsWith('gAgQASJABIgAESACXpxfGkmKjZKKoRQAAAAASUVORK5CYII=') || src.endsWith('S30fyJ+YskAWyAJZIIUf+u496Ifu2YkAAAAASUVORK5CYII=')) {\n\
+    final_img = dayOrNight('sun-showers-day', 'sun-showers-night');\n\
+} else if (src.endsWith('/fog.png')            || src.endsWith('/wsIQAACEIAABCCAb6hfRzSoz4hgnE4AAAAASUVORK5CYII=') || src.endsWith('EC30ZRbiv5QMwAAM8PF6AtMRIwMJwimNAAAAAElFTkSuQmCC')) {\n\
+    final_img = 'fog';\n\
+} else if (src.endsWith('/snow.png')           || src.endsWith('dMq/xgqAAqAAKABW4g+Q1luByt+ugAAAAABJRU5ErkJggg==') || src.endsWith('kKRD6Xzx+qvBCyCw/ABgjEYCwIT8wQAAAABJRU5ErkJggg==')) {\n\
+    final_img = 'snow';\n\
+} else if (src.endsWith('/snow_heavy.png')     || src.endsWith('+jJWB6R/m0sAEoAEIBb7BcA+hV/gbM+pAAAAAElFTkSuQmCC') || src.endsWith('cUH9DYB6xvNfDZ4GIuMbUY1SYGBaleEAAAAASUVORK5CYII=')) {\n\
+    final_img = 'heavy-snow';\n\
+} else if (src.endsWith('/snow_light.png')     || src.endsWith('AP5lhgAEIAABCEAAAnzlBYgKVujL4rwkAAAAAElFTkSuQmCC') || src.endsWith('88Tmfn8L1e/EFVABFZA0LkcjEH9Eoxa+AAAAAElFTkSuQmCC')) {\n\
+    final_img = 'snow';\n\
+} else if (src.endsWith('/snow_s_cloudy.png')  || src.endsWith('SwMAAAAAAAAAAAAAAFxEL1Fe7CEOIBaKAAAAAElFTkSuQmCC') || src.endsWith('lfcC1L+YKkAFqAAVIFa/mfArO5CvUjAAAAAASUVORK5CYII=')) {\n\
+    final_img = dayOrNight('snow-showers-day', 'snow-showers-night');\n\
+} else if (src.endsWith('/snow_s_rain.png')    || src.endsWith('+Lc4AAAAAAAAAAAA+AGv/oIwYDUGyQAAAABJRU5ErkJggg==') || src.endsWith('1/kcsNXU/8gqQAWoAGXpGzmRTGmgvhAvAAAAAElFTkSuQmCC')) {\n\
+    final_img = 'snow-and-rain';\n\
+} else if (src.endsWith('/cloudy_s_snow.png')  || src.endsWith('ASAABIAAEAACQABepj8dv4hCnMCVbgAAAABJRU5ErkJggg==') || src.endsWith('EuzIGPqHhgAIgAAIAE1vnG7TKhwgdU4AAAAASUVORK5CYII=')) {\n\
+    final_img = dayOrNight('snow-showers-day', 'snow-showers-night');\n\
+} else if (src.endsWith('/rain_s_snow.png')    || src.endsWith('ABAAAkAACAABIAAEwIfoF/D2gpORVfhJAAAAAElFTkSuQmCC') || src.endsWith('i/HUv5gqQAWoABUgWj/U6dmtXHN0sAAAAABJRU5ErkJggg==')) {\n\
+    final_img = 'rain-and-snow';\n\
 }\n\
-if (final_img != 0) {\n\
-    if (im !== ep_weather_icon()) { im.width = 48; im.height = 48; }\n\
-    im.src = final_img;\n\
+const png = ep_weather_microsoft_icons[final_img];\n\
+if (png) {\n\
+    const replacement = new Image();\n\
+    const current = im === currentIcon;\n\
+    if (current) pendingCurrentIcon = replacement;\n\
+    replacement.src = 'data:image/png;base64,' + png;\n\
+    replacement.decode().then(() => {\n\
+        if (!ep_weather_microsoft_active || im.src !== originalSrc) return;\n\
+        if (current && (pendingCurrentIcon !== replacement || im !== ep_weather_icon())) return;\n\
+        const dimensions = current ? null : [im.getAttribute('width'), im.getAttribute('height')];\n\
+        ep_weather_replaced_icons.set(im, { original: originalSrc, replacement: replacement.src, dimensions });\n\
+        if (current) window.final_im = replacement;\n\
+        else { im.width = 48; im.height = 48; }\n\
+        im.src = replacement.src;\n\
+    }).catch(() => {}).finally(() => {\n\
+        if (pendingCurrentIcon === replacement) pendingCurrentIcon = null;\n\
+    });\n\
 }\n\
 }\n\
 ";
 
 LPCWSTR ep_weather_provider_google_script020 = L"\
-";
-
-LPCWSTR ep_weather_provider_google_script021 = L"\
+// Google Search serves these SVGs both by URL and as base64 data URIs.\n\
+// Each fingerprint is the base64 length and FNV-1a hash of an asset's light or dark variant.\n\
+const ep_google_svg_icons = {\n\
+    sunny: ['sunny', '1160:96c17eb2', '1164:fd8a0da3', '1172:d2193429', '1188:5c38525b', '1192:cab06be9', '1196:ad502638', '844:49c6786f', '844:ec73f8f9'],\n\
+    clear_night: ['sunny', '492:00c0081e', '492:cfb3c3ec', '724:02b3e26a', '724:2e128e7c', '724:5cac18ed', '724:d06d1957', '756:48d8b615', '756:d2ae81e2'],\n\
+    mostly_sunny: ['sunny_s_cloudy', '1948:383bff75', '1948:e2bc8c81', '1956:c80963c0', '1956:eaf3d53d', '2012:18d6a535', '2412:1dbbf038', '2412:3699ff9d', '3100:933c2d6d'],\n\
+    mostly_clear_night: ['sunny_s_cloudy', '1000:561fad38', '1000:7f54c77a', '1460:15cf1d97', '1460:b11be506', '1488:f6de586f', '1600:10b4f624', '1600:912ab3cc'],\n\
+    sunny_with_cloudy: ['sunny_s_cloudy', '1848:77ec5d18', '1980:c49c8b6b', '3564:18f56424', '3668:df225ccc'],\n\
+    partly_cloudy: ['partly_cloudy', '1860:3f6e2617', '1860:7c5ea34c', '1960:f2208656', '1980:4e7b2d43', '1980:aa22a4a0', '2224:630be2cc', '2224:f1939b42', '2908:4ac687cc'],\n\
+    partly_cloudy_night: ['partly_cloudy', '1396:90a3b966', '1452:12e1f41a', '1480:89119207', '1560:59201b0e', '1560:8b0e0bdb', '960:08b3c448', '960:e5da217f'],\n\
+    mostly_cloudy_day: ['cloudy_s_sunny', '1980:67fe695e', '1980:e11d8c02', '2104:da6812bd'],\n\
+    mostly_cloudy_night: ['cloudy_s_sunny', '1000:4bf2e984', '1388:03ce68d6', '1436:9e978951', '1464:69e92352', '1584:6e57101d', '1584:abf19278', '984:efba1b7a'],\n\
+    cloudy_with_sunny: ['cloudy_s_sunny', '1756:ba146916', '1756:d6352238', '3176:31dede11', '3176:45d8cdb0'],\n\
+    cloudy: ['cloudy', '1016:0499de37', '1016:387f211f', '3772:dae58750', '3796:59d9197d', '660:db41bd8c', '676:f8d386b6', '852:8f9c6fca', '852:cf4e99f5'],\n\
+    drizzle: ['rain_light', '1472:502a42be', '1472:8d33df45', '3940:27059ac8', '3968:4b133faa', '868:df86965a', '880:eb483959', '916:b91b30b8', '916:dbf42ba6'],\n\
+    cloudy_with_rain: ['rain_light', '1084:5cc9b352', '1084:ce27a72b', '2744:8d145adb', '2744:fb3aa119'],\n\
+    rain_with_cloudy: ['rain_light', '1124:36453880', '1124:5691de5b', '3132:2e91e8c7', '3160:4d295634'],\n\
+    rain_showers: ['rain', '1220:5d68be67', '1324:d05e9bb6'],\n\
+    heavy_rain: ['rain_heavy', '1520:214352fd', '1520:72f99a21', '1624:1a916eac', '1624:a84de534', '1700:c76cb181', '1700:cbd80607', '3856:a16a89fe', '3856:cabd899f'],\n\
+    sunny_with_rain: ['sunny_s_rain', '1520:86323c41', '1648:c03b6d07', '1772:3df379be', '1900:32c400c4'],\n\
+    rain_with_sunny: ['rain_s_sunny', '1504:9e37d4e4', '1504:f964ea1b', '1740:7f672427', '1740:81aa196b'],\n\
+    thunderstorms: ['thunderstorms', '1464:7e1be2ac', '1464:9f63ea81', '1528:503b6133', '1556:aab26e24', '1632:637d63fd', '1656:972a87d1'],\n\
+    strong_thunderstorms: ['thunderstorms', '1100:7311ee29', '1100:f493d73d', '1876:3d74d56a', '1876:659212f5', '2208:0cc9848c', '2288:90e3ca64', '2304:ad188c8d', '2384:fee6631e'],\n\
+    flurries: ['snow_light', '1072:19e918f0', '1124:c311f48c', '1140:0c75f89c', '1464:34906cea', '1464:b9b88f68', '3088:2789c5c3', '4140:54ce1738', '6184:6e0d34f9'],\n\
+    snow_showers: ['snow', '1704:6fc0dc7f', '1704:8641b0b5', '1780:4c06edb7', '1884:eb884f97'],\n\
+    heavy_snow: ['snow_heavy', '12580:a136d3aa', '12684:dcb97e06', '2288:3a5d805f', '2288:b887e8a6', '2460:fad6df5b', '2568:bd6f1703', '3068:2b9727f7', '3068:c534a3f5'],\n\
+    blizzard: ['snow_heavy', '1456:5dba8fef', '1460:af191314', '912:6fbfcc7d', '912:b20de39a', '920:883ce325', '948:74f0f0c9'],\n\
+    blowing_snow: ['snow', '1264:676c6acd', '1320:8fb7afb0', '640:4836bbd0', '668:f3314c9a', '940:4f1a9d98', '940:d219a794', '940:d6cf8248'],\n\
+    cloudy_with_snow: ['cloudy_s_snow', '3056:39b134ff', '3056:ac292dca', '4588:638eaa3c', '4588:6996002d'],\n\
+    snow_with_cloudy: ['snow_s_cloudy', '1924:189ba0e7', '1952:c295bbb7', '5092:4030e150', '5092:4bb5c07d'],\n\
+    scattered_snow_showers_day: ['cloudy_s_snow', '2836:314cb616', '2888:043e603d', '8968:7622b343'],\n\
+    scattered_snow_showers_night: ['cloudy_s_snow', '2376:de783832', '2440:43389152', '8548:1958d052'],\n\
+    sunny_with_snow: ['cloudy_s_snow', '3272:79e3e016', '3284:bc234b62', '3404:d2e5b830', '3416:ce567951'],\n\
+    snow_with_sunny: ['snow_s_cloudy', '2228:9aa42376', '2360:bdccb039', '3708:ae80fb34', '3840:e2a5769e'],\n\
+    snow_with_rain: ['snow_s_rain', '1564:9b03636f', '1716:2fe16b24', '3296:dfc18ad5', '3428:3b299806'],\n\
+    rain_with_snow: ['rain_s_snow', '2904:5dd79dc8', '2904:b6dcb9de', '3160:9f905065', '3160:f0ed9ad7'],\n\
+};\n\
+const ep_google_svg_names = new Map();\n\
+for (const [name, [, ...fingerprints]] of Object.entries(ep_google_svg_icons)) {\n\
+    for (const fingerprint of fingerprints) ep_google_svg_names.set(fingerprint, name);\n\
+}\n\
+function ep_google_svg_name(src) {\n\
+    const prefix = 'data:image/svg+xml;base64,';\n\
+    if (src.startsWith(prefix)) {\n\
+        let hash = 2166136261;\n\
+        for (let i = prefix.length; i < src.length; ++i) {\n\
+            hash = Math.imul(hash ^ src.charCodeAt(i), 16777619);\n\
+        }\n\
+        const fingerprint = (src.length - prefix.length) + ':' + (hash >>> 0).toString(16).padStart(8, '0');\n\
+        return ep_google_svg_names.get(fingerprint);\n\
+    }\n\
+    const match = /^https:\\/\\/(?:www|ssl)\\.gstatic\\.com\\/weather\\/conditions\\/v\\d+\\/svg\\/([a-z_]+)_(?:light|dark)\\.svg(?:[?#]|$)/.exec(src);\n\
+    return match && match[1];\n\
+}\n\
 ";
 
 LPCWSTR ep_weather_provider_google_script03 = L"\
-replaceImage(ep_weather_icon(), is_day1);\n\
-for (const element of document.getElementsByClassName(\"uW5pk\")){ replaceImage(element.children[0], 1); }\n\
-var observer = new MutationObserver((changes) => {\n\
-  changes.forEach(change => {\n\
-      if(change.attributeName.includes('src') && (ep_weather_icon().src.includes('gstatic.com') || ep_weather_icon().src.includes('data:image/png;base64,'))){\n\
-        let includes_time = document.getElementById(\"wob_dts\").innerText.includes(\":\");\n\
-        if (includes_time) {\n\
-            let sp = document.getElementById(\"wob_dts\").innerText.split(':');\n\
-            let hrs = parseInt(sp[0].split(' ')[1]);\n\
-            let mins = parseInt(sp[1]);\n\
-            if (is_first_time) { replaceImage(ep_weather_icon(), is_day1); is_first_time = 0 }\n\
-            else replaceImage(ep_weather_icon(), IsDay(1, hrs, mins));\n\
-        } else { replaceImage(ep_weather_icon(), 1); }\n\
-      }\n\
-  });\n\
-});\n\
-observer.observe(ep_weather_icon(), {attributes : true});\n\
-function ep_weather_part0() {\n\
-return \"run_part_0\";\n\
+const currentIcon = ep_weather_icon();\n\
+function restoreForecastSize(image, dimensions) {\n\
+    if (!dimensions) return;\n\
+    ['width', 'height'].forEach((name, index) => {\n\
+        if (image.getAttribute(name) !== '48') return;\n\
+        if (dimensions[index] === null) image.removeAttribute(name);\n\
+        else image.setAttribute(name, dimensions[index]);\n\
+    });\n\
 }\n\
-ep_weather_part0();\n\
+replaceImage(currentIcon, is_day1);\n\
+const observer = new MutationObserver(changes => {\n\
+    for (const { target } of changes) {\n\
+        if (ep_weather_replaced_icons.get(target)?.replacement === target.src) continue;\n\
+        if (target !== currentIcon) {\n\
+            replaceImage(target, 1);\n\
+            continue;\n\
+        }\n\
+        window.final_im = 0;\n\
+        const time = document.getElementById('wob_dts')?.innerText.match(/(\\d+):(\\d+)/);\n\
+        const isDay = time ? (is_first_time ? is_day1 : IsDay(1, Number(time[1]), Number(time[2]))) : 1;\n\
+        is_first_time = false;\n\
+        replaceImage(target, isDay);\n\
+    }\n\
+});\n\
+observer.observe(currentIcon, {attributeFilter: ['src']});\n\
+for (const element of document.getElementsByClassName('uW5pk')) {\n\
+    const icon = element.querySelector('img');\n\
+    if (!icon) continue;\n\
+    replaceImage(icon, 1);\n\
+    observer.observe(icon, {attributeFilter: ['src']});\n\
+}\n\
+const decodeDeadline = performance.now() + 1000;\n\
+window.ep_weather_microsoft_icon_stage = () => {\n\
+    if (pendingCurrentIcon && performance.now() < decodeDeadline) return 'wait_for_microsoft_icon';\n\
+    // A timed-out decode must leave the same Google image in the flyout and taskbar.\n\
+    pendingCurrentIcon = null;\n\
+    return 'run_part_0';\n\
+};\n\
+window.ep_weather_reset_microsoft_icons = () => {\n\
+    ep_weather_microsoft_active = false;\n\
+    observer.disconnect();\n\
+    for (const [image, { original, replacement, dimensions }] of ep_weather_replaced_icons) {\n\
+        if (image.src === replacement) image.src = original;\n\
+        restoreForecastSize(image, dimensions);\n\
+    }\n\
+    window.ep_weather_microsoft_icon_stage = null;\n\
+    window.ep_weather_reset_microsoft_icons = null;\n\
+    window.final_im = 0;\n\
+};\n\
+return window.ep_weather_microsoft_icon_stage();\n\
 ";
 
 LPCWSTR ep_weather_provider_google_script = L"\
@@ -347,6 +421,7 @@ function ep_weather_getData(image, w, h, ch) {\n\
   return res;\n\
 }\n\
 var ep_result;\n\
+function ep_weather_part1() {\n\
 let unit = Array.from(document.getElementsByClassName('wob-unit')[0].getElementsByTagName('span')).filter(e => e.className == 'wob_t')[0].innerText;\n\
 let p = '%c';\n\
 if (!unit.includes(p)) {\n\
@@ -354,7 +429,6 @@ if (!unit.includes(p)) {\n\
     unit = 'x';\n\
 }\n\
 ep_result = ep_weather_getData(\n(final_im != 0) ? final_im : ep_weather_icon(), %d, %d, unit);\n\
-function ep_weather_part1() {\n\
 return \"run_part_2\";\n\
 }\n\
 ep_weather_part1();\n\
@@ -369,21 +443,18 @@ window.scrollTo(LeftScroll, TopScroll);\n\
         };\n\
 }\n\
 function ep_weather_part2() {\n\
-let h = document.getElementsByClassName(\"ULSxyf\")[0].offsetHeight;\n\
-////document.getElementsByClassName(\"google-weather-place\")[0].style.height = h + 'px';\n\
-////document.getElementsByClassName(\"google-weather-crop\")[0].style.height = h + 'px';\n\
-//if (1) for (let j = 0; j < document.styleSheets.length; j++) changeCSSStyle(j, '.wob_ds', 'background-color', '#303134');\n\
-document.getElementsByClassName(\"KFFQ0c\")[0].style.display = 'none';\n\
-if (document.getElementsByClassName(\"QS5gu sy4vM\").length > 1) { document.getElementsByClassName(\"QS5gu sy4vM\")[1].click(); return \"run_part_1\"; }\n\
-if (document.getElementsByClassName(\"Gfzyee VDgVie DKlyaf Loxgyb\").length > 1) { document.getElementsByClassName(\"Gfzyee VDgVie DKlyaf Loxgyb\")[1].click(); return \"run_part_1\"; }\n\
-//document.getElementById(\"search\").scrollIntoView(true);\n\
-return ep_result;\n\
-}\n\
 let banner1 = document.getElementById(\"taw\"); if (banner1) { banner1.style = \"display: none\"; }\n\
 let wob_gsp = document.getElementById(\"wob_gsp\"); if (wob_gsp) { wob_gsp.style = \"width: 648.04px\"; }\n\
 let weird_line = document.getElementsByClassName(\"v5jHUb\")[0]; if (weird_line) { weird_line.style = \"display: none\"; }\n\
 let slim_appbar = document.getElementById(\"slim_appbar\"); if (slim_appbar) { slim_appbar.style = \"display: none\"; }\n\
 scrolldisable();\n\
+const header = document.getElementsByClassName('KFFQ0c')[0];\n\
+if (header) header.style.display = 'none';\n\
+if (document.getElementsByClassName(\"QS5gu sy4vM\").length > 1) { document.getElementsByClassName(\"QS5gu sy4vM\")[1].click(); return \"run_part_1\"; }\n\
+if (document.getElementsByClassName(\"Gfzyee VDgVie DKlyaf Loxgyb\").length > 1) { document.getElementsByClassName(\"Gfzyee VDgVie DKlyaf Loxgyb\")[1].click(); return \"run_part_1\"; }\n\
+//document.getElementById(\"search\").scrollIntoView(true);\n\
+return ep_result;\n\
+}\n\
 ep_weather_part2();\n\
 ";
 #endif

@@ -18,6 +18,9 @@
     <ClCompile Include="ep_weather_host.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="ep_weather_microsoft_icons.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="ep_weather_factory.c">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -36,6 +39,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ep_weather_host.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ep_weather_microsoft_icons.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ep_weather_utility.h">
