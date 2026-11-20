@@ -98,6 +98,14 @@ inline BOOL IsWindows11Version22H2Build2134OrHigher()
     return global_rovi.dwBuildNumber == 22621 && global_ubr >= 2134;
 }
 
+inline BOOL IsWindows11SoundFlyoutAvailable()
+{
+    if (!global_rovi.dwMajorVersion) global_ubr = VnGetOSVersionAndUBR(&global_rovi);
+    if (global_rovi.dwBuildNumber >= 25281) return TRUE;
+    if (global_rovi.dwBuildNumber >= 22621) return global_ubr >= 2506;
+    return FALSE;
+}
+
 #ifdef __cplusplus
 }
 #endif

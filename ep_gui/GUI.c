@@ -2513,6 +2513,13 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                 GUI_RemoveChoiceEntry(hMenu, 2); // Windows 8 flyout
                             }
                         }
+                        else if (!wcscmp(name, L"EnableMtcUvc"))
+                        {
+                            if (IsWindows11() && !IsWindows11SoundFlyoutAvailable())
+                            {
+                                GUI_RemoveChoiceEntry(hMenu, 2); // Windows 11 flyout
+                            }
+                        }
                         HKEY hKey = NULL;
                         wchar_t* matchHKLM = wcsstr(section, L"HKEY_LOCAL_MACHINE");
                         BOOL bIsHKLM = matchHKLM && (matchHKLM - section) < 3;
