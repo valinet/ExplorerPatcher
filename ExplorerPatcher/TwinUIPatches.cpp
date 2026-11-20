@@ -1633,6 +1633,82 @@ extern "C" HRESULT CStartExperienceManager_GetMonitorInformationHook(void* _this
 #pragma endregion
 
 
+#pragma region "Fix battery flyout opening animation"
+
+#if defined(_M_X64)
+static thread_local bool g_bOpeningBatteryFlyout;
+static HRESULT (*TrayFlyout_OnViewUncloakingFunc)(void* handler, CSingleViewShellExperience* sender);
+static HRESULT (*TrayFlyout_AnimationBeginFunc)(void* helper, void* view, DWORD target,
+    const RECT* beginSource, const RECT* beginDestination, const RECT* endSource, const RECT* endDestination, const RECT* clip);
+
+static HRESULT TrayFlyout_AnimationBeginHook(void* helper, void* view, DWORD target,
+    const RECT* beginSource, const RECT* beginDestination, const RECT* endSource, const RECT* endDestination, const RECT* clip)
+{
+    // The battery content can shrink during its initial layout. The launcher
+    // transition retains the old bounds, drawing the flyout above the taskbar
+    // until the transition ends. Let this flyout appear at its actual bounds.
+    if (g_bOpeningBatteryFlyout && (target & 0x200000))
+        return S_OK;
+
+    return TrayFlyout_AnimationBeginFunc(helper, view, target, beginSource, beginDestination, endSource, endDestination, clip);
+}
+
+static HRESULT TrayFlyout_OnViewUncloakingHook(void* handler, CSingleViewShellExperience* sender)
+{
+    bool previous = g_bOpeningBatteryFlyout;
+    auto restore = wil::scope_exit([previous] { g_bOpeningBatteryFlyout = previous; });
+    g_bOpeningBatteryFlyout = sender && !wcscmp(sender->_experience.GetRawBuffer(nullptr), L"Windows.Internal.ShellExperience.TrayBatteryFlyout");
+    return TrayFlyout_OnViewUncloakingFunc(handler, sender);
+}
+#endif
+
+EXTERN_C void FixBatteryFlyoutAnimation(HMODULE twinui)
+{
+#if defined(_M_X64)
+    static bool patched;
+    PBYTE text;
+    DWORD size;
+    if (patched || !twinui || !TextSectionBeginAndSize(twinui, &text, &size))
+        return;
+
+    // CBaseTrayFlyoutExperienceManager::OnViewUncloaking calls
+    // CExperienceManagerAnimationHelper::Begin. Include the opening flag
+    // (bts r8d, 15h): OnViewCloaking has an otherwise identical prefix.
+    const char pattern[] =
+        "\x48\x8B\x53\x30\x48\x8D\x81\x70\x01\x00\x00\x48\x89\x44\x24\x38"
+        "\x41\x0F\xBA\xE8\x15\x48\x83\x64\x24\x30\x00\x48\x81\xC1\x08\x01\x00\x00"
+        "\x48\x83\x64\x24\x28\x00\x45\x33\xC9\x48\x83\x64\x24\x20\x00\xE8\x00\x00\x00\x00";
+    const char mask[] = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx????";
+    static_assert(sizeof(pattern) == sizeof(mask));
+    PBYTE match = (PBYTE)FindPattern(text, size, pattern, mask);
+    if (!match || FindPattern(match + 1, size - (DWORD)(match + 1 - text), pattern, mask))
+        return;
+
+    DWORD64 imageBase;
+    PRUNTIME_FUNCTION function = RtlLookupFunctionEntry((DWORD64)match, &imageBase, nullptr);
+    INT_PTR beginAddress = (INT_PTR)(match + 54) + *(int*)(match + 50);
+    if (!function || imageBase != (DWORD64)twinui ||
+        beginAddress < (INT_PTR)text || beginAddress >= (INT_PTR)(text + size) ||
+        imageBase + function->BeginAddress < (DWORD64)text ||
+        imageBase + function->EndAddress < (DWORD64)(match + sizeof(pattern) - 1))
+        return;
+
+    TrayFlyout_AnimationBeginFunc = reinterpret_cast<decltype(TrayFlyout_AnimationBeginFunc)>(beginAddress);
+    TrayFlyout_OnViewUncloakingFunc = reinterpret_cast<decltype(TrayFlyout_OnViewUncloakingFunc)>(imageBase + function->BeginAddress);
+    if (funchook_prepare(funchook, (void**)&TrayFlyout_AnimationBeginFunc, TrayFlyout_AnimationBeginHook))
+        return;
+    if (funchook_prepare(funchook, (void**)&TrayFlyout_OnViewUncloakingFunc, TrayFlyout_OnViewUncloakingHook))
+    {
+        SlimDetoursInlineHook(FALSE, (void**)&TrayFlyout_AnimationBeginFunc, TrayFlyout_AnimationBeginHook);
+        return;
+    }
+    patched = true;
+#endif
+}
+
+#pragma endregion
+
+
 #pragma region "Fix Windows 10 start menu animation on 22000.65+"
 
 static struct
