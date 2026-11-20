@@ -49,6 +49,10 @@ Tested on OS builds 22621.4317 x64, 22631.7652 x64, 26100.8037 ARM64, 26300.9711
   * Fixed Explorer address bar shrinking causing crashes on 29695+ x64. (98f4497)
   * Fixed Explorer and taskbar menu skinning/unskinning on 28000.2630+ and 29634+ ARM64. (98f4497)
 
+##### 3
+
+* Fixed leaked registry handles in UBR retrieval code. (b5c7609, valinet/libvalinet@a44465d, valinet/sws@e18b076)
+
 ## 26100.8457.70
 
 Tested on OS builds 22621.4317 x64, 22631.7079 x64, 26100.6899 ARM64, 26200.8457 x64, 26300.8493 x64, 26300.8758 x64, 28000.2269 ARM64, and 29617.1000 x64.
