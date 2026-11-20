@@ -436,9 +436,10 @@
 ;x 1 %R:1538%
 ;x 2 %R:1539%
 "WeatherTheme"=dword:00000000
-;c 2 %R:1544%
+;c 3 %R:1544%
 ;x 0 %R:1545%
 ;x 1 %R:1546%
+;x 2 ExplorerPatcher
 "WeatherIconPack"=dword:00000000
 ;c 2 %R:1547%
 ;x 0 %R:1548%

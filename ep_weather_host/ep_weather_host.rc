@@ -19,6 +19,11 @@
 LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 #pragma code_page(1252)
 
+IDR_WEATHER_OPEN_ARTWORK RCDATA "open_icons\\artwork.js"
+IDR_WEATHER_OPEN_CONDITIONS RCDATA "open_icons\\conditions.js"
+IDR_WEATHER_OPEN_FORECAST RCDATA "open_icons\\forecast.js"
+IDR_WEATHER_OPEN_RENDER RCDATA "open_icons\\render.js"
+
 #ifdef APSTUDIO_INVOKED
 /////////////////////////////////////////////////////////////////////////////
 //

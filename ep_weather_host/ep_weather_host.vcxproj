@@ -315,6 +315,11 @@
     <Midl Include="..\ep_weather_host_stub\ep_weather_host.idl" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="open_icons\artwork.js" />
+    <None Include="open_icons\conditions.js" />
+    <None Include="open_icons\forecast.js" />
+    <None Include="open_icons\render.js" />
+    <None Include="open_icons\CC0-1.0.txt" />
     <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
