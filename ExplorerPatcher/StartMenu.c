@@ -501,12 +501,45 @@ typedef struct instanceof_WindowsUdk_UI_Shell_ITaskbarSettings3 // : IInspectabl
 } WindowsUdk_UI_Shell_ITaskbarSettings3;
 static const WindowsUdk_UI_Shell_ITaskbarSettings3 instanceof_WindowsUdk_UI_Shell_ITaskbarSettings3 = { instanceof_WindowsUdk_UI_Shell_ITaskbarSettings3Vtbl };
 
+static HRESULT STDMETHODCALLTYPE WindowsUdk_UI_Shell_ITaskbarSettings_GetLocation(
+    void* instanceof_WindowsUdk_UI_Shell_ITaskbarSettings,
+    DWORD* pLocation // Left Top Right Bottom
+);
+
+// Values of WindowsUdk.UI.Shell.TaskbarSearchMode and TaskbarLocation
+#define TASKBAR_SEARCH_MODE_ICON 1
+#define TASKBAR_SEARCH_MODE_BOX 2
+#define TASKBAR_LOCATION_BOTTOM 3
+// Value of SearchboxTaskbarMode for "Search box"
+#define SEARCHBOX_TASKBAR_MODE_BOX 2
+
+static DWORD GetTaskbarSearchMode()
+{
+    // When told that the taskbar shows a search box, the Windows 11 search app (SearchHost.exe) does not show a search
+    // box at the top of its panel, and puts its text box over the one on the taskbar instead, like on Windows 10 (see
+    // Taskbar10SearchBox.cpp). It only does so for bottom taskbars, and we only tell it for the Windows 10
+    // (ExplorerPatcher) taskbar; with the other taskbar styles, we keep reporting a search icon as before.
+    extern DWORD bOldTaskbar;
+    if (bOldTaskbar < 2 || !IsWindows11())
+    {
+        return TASKBAR_SEARCH_MODE_ICON;
+    }
+    DWORD dwSearchboxTaskbarMode = 0, dwTaskbarSmallIcons = 0, dwLocation = TASKBAR_LOCATION_BOTTOM, dwSize = sizeof(DWORD);
+    RegGetValueW(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Search", L"SearchboxTaskbarMode", RRF_RT_REG_DWORD, NULL, &dwSearchboxTaskbarMode, &dwSize);
+    dwSize = sizeof(DWORD);
+    RegGetValueW(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", L"TaskbarSmallIcons", RRF_RT_REG_DWORD, NULL, &dwTaskbarSmallIcons, &dwSize);
+    WindowsUdk_UI_Shell_ITaskbarSettings_GetLocation(NULL, &dwLocation);
+    // The Windows 10 taskbar shows a search box only with "Search box" and normal size icons
+    bool bShowsSearchBox = dwSearchboxTaskbarMode == SEARCHBOX_TASKBAR_MODE_BOX && !dwTaskbarSmallIcons;
+    return bShowsSearchBox && dwLocation == TASKBAR_LOCATION_BOTTOM ? TASKBAR_SEARCH_MODE_BOX : TASKBAR_SEARCH_MODE_ICON;
+}
+
 static HRESULT STDMETHODCALLTYPE WindowsUdk_UI_Shell_ITaskbarSettings6_GetEffectiveSearchMode(
     void* instanceof_WindowsUdk_UI_Shell_ITaskbarSettings6,
     DWORD* pEffectiveSearchMode
 )
 {
-    *pEffectiveSearchMode = 1;
+    *pEffectiveSearchMode = GetTaskbarSearchMode();
     return 0;
 }
 
@@ -609,7 +642,7 @@ static HRESULT STDMETHODCALLTYPE WindowsUdk_UI_Shell_ITaskbarSettings_GetSearchM
     DWORD* pSearchMode
 )
 {
-    *pSearchMode = 1;
+    *pSearchMode = GetTaskbarSearchMode();
     return 0;
 }
 
