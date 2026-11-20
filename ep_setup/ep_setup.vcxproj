@@ -247,6 +247,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\ExplorerPatcher\utility.c" />
+    <ClCompile Include="appverifier.c" />
     <ClCompile Include="ep_setup.c" />
     <ClCompile Include="..\libs\zlib\contrib\minizip\ioapi.c" />
     <ClCompile Include="..\libs\zlib\contrib\minizip\unzip.c">
@@ -281,6 +282,7 @@
     <PackFile Include="..\build\$(Configuration)\$(Platform)\ep_gui.dll" Condition="Exists('$(SolutionDir)\build\$(Configuration)\$(Platform)\ep_gui.dll')" />
     <PackFile Include="..\build\$(Configuration)\$(Platform)\ep_startmenu.dll" Condition="Exists('$(SolutionDir)\build\$(Configuration)\$(Platform)\ep_startmenu.dll')" />
     <PackFile Include="..\build\$(Configuration)\$(Platform)\ep_starttiledata.dll" Condition="Exists('$(SolutionDir)\build\$(Configuration)\$(Platform)\ep_starttiledata.dll')" />
+    <PackFile Include="..\build\$(Configuration)\$(Platform)\ep_verifier.dll" Condition="'$(Platform)'=='x64' Or '$(Platform)'=='ARM64'" />
     <PackFile Include="..\build\$(Configuration)\$(Platform)\ep_taskbar.rs2.dll" Condition="Exists('$(SolutionDir)\build\$(Configuration)\$(Platform)\ep_taskbar.rs2.dll')" />
     <PackFile Include="..\build\$(Configuration)\$(Platform)\ep_taskbar.fe.dll" Condition="Exists('$(SolutionDir)\build\$(Configuration)\$(Platform)\ep_taskbar.fe.dll')" />
     <PackFile Include="..\build\$(Configuration)\$(Platform)\ep_taskbar.co.dll" Condition="Exists('$(SolutionDir)\build\$(Configuration)\$(Platform)\ep_taskbar.co.dll')" />
@@ -290,6 +292,9 @@
     <PackFile Include="..\build\$(Configuration)\$(Platform)\ep_weather_host.dll" Condition="Exists('$(SolutionDir)\build\$(Configuration)\$(Platform)\ep_weather_host.dll')" />
     <PackFile Include="..\build\$(Configuration)\$(Platform)\ep_weather_host_stub.dll" Condition="Exists('$(SolutionDir)\build\$(Configuration)\$(Platform)\ep_weather_host_stub.dll')" />
   </ItemGroup>
+  <Target Name="BuildAppVerifier" BeforeTargets="PrepareForBuild" Condition="'$(Platform)'=='x64' Or '$(Platform)'=='ARM64'">
+    <MSBuild Projects="$(MSBuildThisFileDirectory)..\ep_verifier\ep_verifier.vcxproj" Properties="Configuration=$(Configuration);Platform=$(Platform)" />
+  </Target>
   <Target Name="GetCommitHash" AfterTargets="PrepareForBuild">
     <Exec Command="git rev-parse --short HEAD" Condition="'$(GitCommitHashShort)' == '0000000'">
       <Output TaskParameter="ConsoleOutput" PropertyName="GitCommitHashShort" />
@@ -364,6 +369,7 @@
     </Task>
   </UsingTask>
   <Target Name="CreateZip" BeforeTargets="ResourceCompile">
+    <RemoveDir Directories="..\build\$(Configuration)\$(Platform)\ep_setup_files" />
     <MakeDir Directories="..\build\$(Configuration)\$(Platform)\ep_setup_files" />
     <DownloadFile DestinationFolder="..\build\$(Configuration)\$(Platform)\ep_setup_files\pnidui" DestinationFileName="pnidui.dll" SourceUrl="https://msdl.microsoft.com/download/symbols/pnidui.dll/F717CABC20B000/pnidui.dll" SkipUnchangedFiles="true" Retries="3" Condition="'$(Platform)' == 'x64'" />
     <DownloadFile DestinationFolder="..\build\$(Configuration)\$(Platform)\ep_setup_files\pnidui" DestinationFileName="pnidui.dll" SourceUrl="https://msdl.microsoft.com/download/symbols/pnidui.dll/63AF842D210000/pnidui.dll" SkipUnchangedFiles="true" Retries="3" Condition="'$(Platform)' == 'ARM64'" />
