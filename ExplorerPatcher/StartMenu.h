@@ -10,8 +10,6 @@
 #include <winstring.h>
 #include "utility.h"
 
-#pragma comment(lib, "ntdll.lib")
-EXTERN_C NTSYSAPI PIMAGE_NT_HEADERS NTAPI RtlImageNtHeader(PVOID);
 
 extern DWORD bMonitorOverride;
 extern DWORD bOpenAtLogon;
@@ -199,14 +197,6 @@ DWORD OpenStartOnCurentMonitorThread(OpenStartOnCurentMonitorThreadParams* unuse
 typedef DWORD OpenStartAtLogonThreadParams;
 DWORD OpenStartAtLogonThread(OpenStartAtLogonThreadParams* unused);
 
-typedef struct _HookStartMenuParams
-{
-    HMODULE hModule;
-    DWORD dwTimeout;
-    wchar_t wszModulePath[MAX_PATH];
-    FARPROC proc;
-} HookStartMenuParams;
-DWORD WINAPI HookStartMenu(HookStartMenuParams* params);
 
 typedef interface WindowsUdk_UI_Shell_TaskbarLayoutStatics WindowsUdk_UI_Shell_TaskbarLayoutStatics;
 typedef interface WindowsUdk_UI_Shell_TaskbarLayoutManager WindowsUdk_UI_Shell_TaskbarLayoutManager;

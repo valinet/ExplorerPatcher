@@ -6,6 +6,7 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #include <Shlwapi.h>
 #pragma comment(lib, "Shlwapi.lib")
 #include "resources/resource.h"
+#include "appverifier.h"
 #include "../ExplorerPatcher/utility.h"
 #include "../version.h"
 #include <zlib.h>
@@ -619,6 +620,8 @@ __declspec(noinline) BOOL InstallResource(BOOL bInstall, HMODULE hInstance, unzF
         unzCloseCurrentFile(zipFile);
     return bRet;
 }
+
+
 
 const WCHAR* GetSystemLanguages()
 {
@@ -1315,10 +1318,38 @@ int WINAPI wWinMain(
             }
         }
         if (CHECK_OK(bOk)) bOk = InstallResource(bInstall, hInstance, zipFile, PRODUCT_NAME ".IA-32.dll", wszPath, _T(PRODUCT_NAME) L".IA-32.dll");
+#if defined(_M_X64) || defined(_M_ARM64)
 #if defined(_M_X64)
-        if (CHECK_OK(bOk)) bOk = InstallResource(bInstall, hInstance, zipFile, PRODUCT_NAME ".amd64.dll", wszPath, _T(PRODUCT_NAME) L".amd64.dll");
-#elif defined(_M_ARM64)
-        if (CHECK_OK(bOk)) bOk = InstallResource(bInstall, hInstance, zipFile, PRODUCT_NAME ".arm64.dll", wszPath, _T(PRODUCT_NAME) L".arm64.dll");
+        if (CHECK_OK(bOk))
+        {
+            bOk = InstallResource(bInstall, hInstance, zipFile, PRODUCT_NAME ".amd64.dll", wszPath, _T(PRODUCT_NAME) L".amd64.dll");
+        }
+#else
+        if (CHECK_OK(bOk))
+        {
+            bOk = InstallResource(bInstall, hInstance, zipFile, PRODUCT_NAME ".arm64.dll", wszPath, _T(PRODUCT_NAME) L".arm64.dll");
+        }
+#endif
+        if (CHECK_OK(bOk) && (!bInstall || IsWindows11()))
+        {
+            WCHAR wszSystemDirectory[MAX_PATH];
+            if (!GetSystemDirectoryW(wszSystemDirectory, ARRAYSIZE(wszSystemDirectory)))
+            {
+                bOk = FALSE;
+            }
+            if (CHECK_OK(bOk) && !bInstall)
+            {
+                bOk = ConfigureAppVerifier(FALSE, L"SearchHost.exe", L"ep_verifier.dll");
+            }
+            if (CHECK_OK(bOk))
+            {
+                bOk = InstallResource(bInstall, hInstance, zipFile, "ep_verifier.dll", wszSystemDirectory, L"ep_verifier.dll");
+            }
+            if (CHECK_OK(bOk) && bInstall)
+            {
+                bOk = ConfigureAppVerifier(TRUE, L"SearchHost.exe", L"ep_verifier.dll");
+            }
+        }
 #endif
         if (CHECK_OK(bOk)) bOk = InstallResource(bInstall, hInstance, zipFile, "ep_gui.dll", wszPath, L"ep_gui.dll");
         if (CHECK_OK(bOk)) bOk = DeleteResource(wszPath, L"ep_dwm.exe"); // We renamed it to ep_dwm_svc.exe due to Microsoft imposing 24H2 upgrade blocks
