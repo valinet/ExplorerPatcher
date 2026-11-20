@@ -1,7 +1,10 @@
 #include "StartMenu.h"
+#include "StartMenuMonitorState.h"
 
 void OpenStartOnMonitor(HMONITOR monitor)
 {
+    START_MENU_MONITOR_REQUEST_ID monitorRequestId = BeginStartMenuTargetMonitorRequest();
+
     HRESULT hr = S_OK;
     IUnknown* pImmersiveShell = NULL;
     hr = CoCreateInstance(
@@ -38,16 +41,27 @@ void OpenStartOnMonitor(HMONITOR monitor)
             if (pLauncher)
             {
                 BOOL bIsVisible = FALSE;
-                pLauncher->lpVtbl->IsVisible(pLauncher, &bIsVisible);
+                hr = pLauncher->lpVtbl->IsVisible(pLauncher, &bIsVisible);
                 if (SUCCEEDED(hr))
                 {
                     if (!bIsVisible)
                     {
-                        if (pMonitor)
+                        if (PublishStartMenuTargetMonitorRequest(monitorRequestId, monitor))
                         {
-                            pLauncher->lpVtbl->ConnectToMonitor(pLauncher, pMonitor);
+                            if (pMonitor)
+                            {
+                                pLauncher->lpVtbl->ConnectToMonitor(pLauncher, pMonitor);
+                            }
+                            hr = pLauncher->lpVtbl->ShowStartView(pLauncher, 11, 0);
+                            if (FAILED(hr))
+                            {
+                                CancelStartMenuTargetMonitorRequest(monitorRequestId);
+                            }
+                            else
+                            {
+                                ConfirmStartMenuTargetMonitorRequest(monitorRequestId);
+                            }
                         }
-                        pLauncher->lpVtbl->ShowStartView(pLauncher, 11, 0);
                     }
                     else
                     {
