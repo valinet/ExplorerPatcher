@@ -3,6 +3,12 @@
         <Condiguration Condition="'$(Condiguration)' == ''">Release</Condiguration>
     </PropertyGroup>
     <ItemGroup>
+        <SubprojectsToBuild Include="ep_verifier\ep_verifier.vcxproj">
+            <Properties>Configuration=$(Condiguration);Platform=x64</Properties>
+        </SubprojectsToBuild>
+        <SubprojectsToBuild Include="ep_verifier\ep_verifier.vcxproj">
+            <Properties>Configuration=$(Condiguration);Platform=ARM64</Properties>
+        </SubprojectsToBuild>
         <SubprojectsToBuild Include="ep_starttiledata\ep_starttiledata.slnx" Condition="Exists('ep_starttiledata\ep_starttiledata.slnx')">
             <Properties>Configuration=$(Condiguration);Platform=x64</Properties>
         </SubprojectsToBuild>
