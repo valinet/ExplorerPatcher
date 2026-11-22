@@ -7,31 +7,44 @@ __declspec(dllimport) NTSTATUS NTAPI RtlCreateUserThread(HANDLE, PSECURITY_DESCR
 __declspec(dllimport) NTSTATUS NTAPI LdrLoadDll(PWSTR, PULONG, PUNICODE_STRING, PVOID*);
 __declspec(dllimport) NTSTATUS NTAPI LdrGetProcedureAddress(PVOID, PANSI_STRING, ULONG, PVOID*);
 
+#define DLL_PROCESS_VERIFIER 4
+
 typedef void (NTAPI *PROVIDER_DLL_CALLBACK)(PWSTR, PVOID, SIZE_T, PVOID);
 typedef void (NTAPI *PROVIDER_HEAP_CALLBACK)(PVOID, SIZE_T);
-typedef struct { PWSTR name; DWORD flags; PVOID address; PVOID thunks; } PROVIDER_DLL;
-typedef struct {
+
+typedef struct
+{
+    PWSTR name;
+    DWORD flags;
+    PVOID address;
+    PVOID thunks;
+} PROVIDER_DLL;
+
+typedef struct
+{
     DWORD size;
     PROVIDER_DLL* dlls;
-    PROVIDER_DLL_CALLBACK load, unload;
+    PROVIDER_DLL_CALLBACK dllLoad, dllUnload;
     PWSTR image;
-    DWORD flags, debug;
-    PVOID trace, heapCreate, heapDestroy;
+    DWORD flags, debugFlags;
+    PVOID stackTrace, heapCreate, heapDestroy;
     PROVIDER_HEAP_CALLBACK heapFree;
 } PROVIDER_DESCRIPTOR;
 
 static PROVIDER_DLL emptyDlls[1];
-static void NTAPI OnLoad(PWSTR n, PVOID b, SIZE_T s, PVOID r)
+
+static void NTAPI OnLoad(PWSTR dllName, PVOID dllBase, SIZE_T dllSize, PVOID reserved)
 {
 }
 
-static void NTAPI OnUnload(PWSTR n, PVOID b, SIZE_T s, PVOID r)
+static void NTAPI OnUnload(PWSTR dllName, PVOID dllBase, SIZE_T dllSize, PVOID reserved)
 {
 }
 
-static void NTAPI OnHeapFree(PVOID b, SIZE_T s)
+static void NTAPI OnHeapFree(PVOID allocation, SIZE_T size)
 {
 }
+
 static PROVIDER_DESCRIPTOR descriptor = { sizeof(PROVIDER_DESCRIPTOR), emptyDlls, OnLoad, OnUnload, 0, 0, 0, 0, 0, 0, OnHeapFree };
 
 static NTSTATUS NTAPI InitializeSearch(PVOID unused)
@@ -65,8 +78,11 @@ static NTSTATUS NTAPI InitializeSearch(PVOID unused)
     {
         return 0;
     }
-    for (unsigned i = 0; i < sizeof(dllSuffix) / sizeof(WCHAR); ++i) path[length + i] = dllSuffix[i];
-    UNICODE_STRING dll = { (USHORT)((length + sizeof(dllSuffix) / sizeof(WCHAR) - 1) * sizeof(WCHAR)), (USHORT)((length + sizeof(dllSuffix) / sizeof(WCHAR)) * sizeof(WCHAR)), path };
+    for (unsigned i = 0; i < ARRAYSIZE(dllSuffix); ++i)
+    {
+        path[length + i] = dllSuffix[i];
+    }
+    UNICODE_STRING dll = { (USHORT)((length + ARRAYSIZE(dllSuffix) - 1) * sizeof(WCHAR)), (USHORT)((length + ARRAYSIZE(dllSuffix)) * sizeof(WCHAR)), path };
     if (LdrLoadDll(NULL, NULL, &dll, &epModule) >= 0 &&
         LdrGetProcedureAddress(epModule, &entry, 0, &address) >= 0)
     {
@@ -77,7 +93,7 @@ static NTSTATUS NTAPI InitializeSearch(PVOID unused)
 
 BOOL WINAPI VerifierEntry(HINSTANCE instance, DWORD reason, PVOID reserved)
 {
-    if (reason == 4)
+    if (reason == DLL_PROCESS_VERIFIER)
     {
         *(PROVIDER_DESCRIPTOR**)reserved = &descriptor;
     }

@@ -1,7 +1,97 @@
 #include <Windows.h>
 #include <wctype.h>
-#include "../ExplorerPatcher/utility.h"
+#include <string.h>
+#include <wchar.h>
 #include "appverifier.h"
+
+static const WCHAR marker[] = L"ExplorerPatcherVerifierFlagOwned";
+static const WCHAR createdFlagMarker[] = L"ExplorerPatcherVerifierCreatedGlobalFlag";
+
+typedef struct
+{
+    DWORD value;
+    BOOL present;
+} OPTIONAL_DWORD;
+
+typedef struct
+{
+    WCHAR providers[32768];
+    BOOL hadProviders;
+    OPTIONAL_DWORD flags, owned, createdFlag;
+} VERIFIER_SNAPSHOT;
+
+static LSTATUS DeleteValueIfPresent(HKEY key, LPCWSTR name)
+{
+    LSTATUS status = RegDeleteValueW(key, name);
+    return status == ERROR_FILE_NOT_FOUND ? ERROR_SUCCESS : status;
+}
+
+static LSTATUS ReadOptionalDword(HKEY key, LPCWSTR name, OPTIONAL_DWORD* original)
+{
+    DWORD type = 0, bytes = sizeof(original->value);
+    LSTATUS status = RegQueryValueExW(key, name, NULL, &type, (BYTE*)&original->value, &bytes);
+    original->present = status == ERROR_SUCCESS;
+    if (status == ERROR_FILE_NOT_FOUND)
+    {
+        original->value = 0;
+        return ERROR_SUCCESS;
+    }
+    if (status == ERROR_SUCCESS && (type != REG_DWORD || bytes != sizeof(original->value)))
+    {
+        return ERROR_INVALID_DATA;
+    }
+    return status;
+}
+
+static void RestoreOptionalDword(HKEY key, LPCWSTR name, const OPTIONAL_DWORD* original)
+{
+    if (original->present)
+    {
+        RegSetValueExW(key, name, 0, REG_DWORD, (const BYTE*)&original->value, sizeof(original->value));
+    }
+    else
+    {
+        RegDeleteValueW(key, name);
+    }
+}
+
+static void RestoreVerifierValues(HKEY key, const VERIFIER_SNAPSHOT* original)
+{
+    if (original->hadProviders)
+    {
+        RegSetValueExW(key, L"VerifierDlls", 0, REG_SZ, (const BYTE*)original->providers,
+            (DWORD)((wcslen(original->providers) + 1) * sizeof(WCHAR)));
+    }
+    else
+    {
+        RegDeleteValueW(key, L"VerifierDlls");
+    }
+    RestoreOptionalDword(key, L"GlobalFlag", &original->flags);
+    RestoreOptionalDword(key, marker, &original->owned);
+    RestoreOptionalDword(key, createdFlagMarker, &original->createdFlag);
+}
+
+static WCHAR* FindProvider(WCHAR* providers, LPCWSTR verifierDll, size_t length)
+{
+    for (WCHAR* cursor = providers; *cursor;)
+    {
+        while (*cursor && iswspace(*cursor))
+        {
+            ++cursor;
+        }
+        WCHAR* begin = cursor;
+        while (*cursor && !iswspace(*cursor))
+        {
+            ++cursor;
+        }
+        if ((size_t)(cursor - begin) == length && !_wcsnicmp(begin, verifierDll, length))
+        {
+            return begin;
+        }
+    }
+    return NULL;
+}
+
 // Preserve other verifier providers and unrelated IFEO values.
 BOOL ConfigureAppVerifier(BOOL install, LPCWSTR targetImage, LPCWSTR verifierDll)
 {
@@ -13,8 +103,6 @@ BOOL ConfigureAppVerifier(BOOL install, LPCWSTR targetImage, LPCWSTR verifierDll
         return FALSE;
     }
 
-    static const WCHAR marker[] = L"ExplorerPatcherVerifierFlagOwned";
-    static const WCHAR createdFlagMarker[] = L"ExplorerPatcherVerifierCreatedGlobalFlag";
     HKEY key = NULL;
     LSTATUS status = install ? RegCreateKeyExW(HKEY_LOCAL_MACHINE, keyName, 0, NULL, 0, KEY_QUERY_VALUE | KEY_SET_VALUE | KEY_WOW64_64KEY, NULL, &key, NULL)
                              : RegOpenKeyExW(HKEY_LOCAL_MACHINE, keyName, 0, KEY_QUERY_VALUE | KEY_SET_VALUE | KEY_WOW64_64KEY, &key);
@@ -28,10 +116,11 @@ BOOL ConfigureAppVerifier(BOOL install, LPCWSTR targetImage, LPCWSTR verifierDll
         return FALSE;
     }
 
-    WCHAR providers[32768] = {0};
+    VERIFIER_SNAPSHOT original = {0};
+    WCHAR providers[ARRAYSIZE(original.providers)] = {0};
     DWORD type = 0, bytes = sizeof(providers);
     status = RegQueryValueExW(key, L"VerifierDlls", NULL, &type, (BYTE*)providers, &bytes);
-    BOOL hadProviders = status == ERROR_SUCCESS;
+    original.hadProviders = status == ERROR_SUCCESS;
     if (status == ERROR_FILE_NOT_FOUND)
     {
         status = ERROR_SUCCESS;
@@ -41,82 +130,32 @@ BOOL ConfigureAppVerifier(BOOL install, LPCWSTR targetImage, LPCWSTR verifierDll
     {
         status = ERROR_INVALID_DATA;
     }
-    DWORD flags = 0, flagType = 0, flagSize = sizeof(flags);
-    BOOL hadFlags = FALSE;
     if (status == ERROR_SUCCESS)
     {
-        LSTATUS flagStatus = RegQueryValueExW(key, L"GlobalFlag", NULL, &flagType, (BYTE*)&flags, &flagSize);
-        hadFlags = flagStatus == ERROR_SUCCESS;
-        if (flagStatus == ERROR_FILE_NOT_FOUND)
-        {
-            flags = 0;
-        }
-        else if (flagStatus != ERROR_SUCCESS || flagType != REG_DWORD || flagSize != sizeof(flags))
-        {
-            status = flagStatus == ERROR_SUCCESS ? ERROR_INVALID_DATA : flagStatus;
-        }
+        status = ReadOptionalDword(key, L"GlobalFlag", &original.flags);
     }
-    DWORD owned = 0, ownedSize = sizeof(owned), ownedType = 0;
-    BOOL hadOwner = FALSE;
     if (status == ERROR_SUCCESS)
     {
-        LSTATUS ownerStatus = RegQueryValueExW(key, marker, NULL, &ownedType, (BYTE*)&owned, &ownedSize);
-        hadOwner = ownerStatus == ERROR_SUCCESS;
-        if (ownerStatus == ERROR_FILE_NOT_FOUND)
-        {
-            owned = 0;
-        }
-        else if (ownerStatus != ERROR_SUCCESS || ownedType != REG_DWORD || ownedSize != sizeof(owned))
-        {
-            status = ownerStatus == ERROR_SUCCESS ? ERROR_INVALID_DATA : ownerStatus;
-        }
+        status = ReadOptionalDword(key, marker, &original.owned);
     }
-    DWORD createdFlag = 0, createdFlagSize = sizeof(createdFlag), createdFlagType = 0;
-    BOOL hadCreatedFlagMarker = FALSE;
     if (status == ERROR_SUCCESS)
     {
-        LSTATUS createdStatus = RegQueryValueExW(key, createdFlagMarker, NULL, &createdFlagType, (BYTE*)&createdFlag, &createdFlagSize);
-        hadCreatedFlagMarker = createdStatus == ERROR_SUCCESS;
-        if (createdStatus == ERROR_FILE_NOT_FOUND)
-        {
-            createdFlag = 0;
-        }
-        else if (createdStatus != ERROR_SUCCESS || createdFlagType != REG_DWORD || createdFlagSize != sizeof(createdFlag))
-        {
-            status = createdStatus == ERROR_SUCCESS ? ERROR_INVALID_DATA : createdStatus;
-        }
+        status = ReadOptionalDword(key, createdFlagMarker, &original.createdFlag);
     }
-
-    WCHAR originalProviders[ARRAYSIZE(providers)];
     if (status == ERROR_SUCCESS)
     {
-        wcscpy_s(originalProviders, ARRAYSIZE(originalProviders), providers);
+        wcscpy_s(original.providers, ARRAYSIZE(original.providers), providers);
     }
-    DWORD originalFlags = flags;
+    DWORD flags = original.flags.value;
+    size_t verifierLength = wcslen(verifierDll);
     BOOL writeAttempted = FALSE;
     WCHAR* found = NULL;
     if (status == ERROR_SUCCESS)
     {
-        for (WCHAR* cursor = providers; *cursor;)
-        {
-            while (*cursor && iswspace(*cursor))
-            {
-                ++cursor;
-            }
-            WCHAR* begin = cursor;
-            while (*cursor && !iswspace(*cursor))
-            {
-                ++cursor;
-            }
-            if ((size_t)(cursor - begin) == wcslen(verifierDll) && !_wcsnicmp(begin, verifierDll, wcslen(verifierDll)))
-            {
-                found = begin;
-                break;
-            }
-        }
+        found = FindProvider(providers, verifierDll, verifierLength);
         if (install && !found)
         {
-            size_t len = wcslen(providers), count = wcslen(verifierDll);
+            size_t len = wcslen(providers), count = verifierLength;
             if (len + (len ? 1 : 0) + count + 1 > ARRAYSIZE(providers))
             {
                 status = ERROR_INSUFFICIENT_BUFFER;
@@ -132,7 +171,7 @@ BOOL ConfigureAppVerifier(BOOL install, LPCWSTR targetImage, LPCWSTR verifierDll
         }
         else if (!install && found)
         {
-            WCHAR* end = found + wcslen(verifierDll);
+            WCHAR* end = found + verifierLength;
             while (*end && iswspace(*end))
             {
                 ++end;
@@ -154,11 +193,7 @@ BOOL ConfigureAppVerifier(BOOL install, LPCWSTR targetImage, LPCWSTR verifierDll
         }
         else
         {
-            status = RegDeleteValueW(key, L"VerifierDlls");
-            if (status == ERROR_FILE_NOT_FOUND)
-            {
-                status = ERROR_SUCCESS;
-            }
+            status = DeleteValueIfPresent(key, L"VerifierDlls");
         }
         if (status == ERROR_SUCCESS && install && !(flags & 0x100))
         {
@@ -166,17 +201,13 @@ BOOL ConfigureAppVerifier(BOOL install, LPCWSTR targetImage, LPCWSTR verifierDll
             status = RegSetValueExW(key, marker, 0, REG_DWORD, (BYTE*)&one, sizeof(one));
             if (status == ERROR_SUCCESS)
             {
-                if (!hadFlags)
+                if (!original.flags.present)
                 {
                     status = RegSetValueExW(key, createdFlagMarker, 0, REG_DWORD, (BYTE*)&one, sizeof(one));
                 }
                 else
                 {
-                    status = RegDeleteValueW(key, createdFlagMarker);
-                    if (status == ERROR_FILE_NOT_FOUND)
-                    {
-                        status = ERROR_SUCCESS;
-                    }
+                    status = DeleteValueIfPresent(key, createdFlagMarker);
                 }
             }
             if (status == ERROR_SUCCESS)
@@ -185,7 +216,7 @@ BOOL ConfigureAppVerifier(BOOL install, LPCWSTR targetImage, LPCWSTR verifierDll
                 status = RegSetValueExW(key, L"GlobalFlag", 0, REG_DWORD, (BYTE*)&flags, sizeof(flags));
             }
         }
-        else if (status == ERROR_SUCCESS && !install && owned)
+        else if (status == ERROR_SUCCESS && !install && original.owned.value)
         {
             // Another verifier configuration may use the bit even without a
             // custom provider list. Do not disable it when VerifierFlags exists.
@@ -198,13 +229,9 @@ BOOL ConfigureAppVerifier(BOOL install, LPCWSTR targetImage, LPCWSTR verifierDll
             if (status == ERROR_SUCCESS && !providers[0] && verifierFlagsStatus == ERROR_FILE_NOT_FOUND)
             {
                 flags &= ~0x100;
-                if (createdFlag && flags == 0)
+                if (original.createdFlag.value && flags == 0)
                 {
-                    status = RegDeleteValueW(key, L"GlobalFlag");
-                    if (status == ERROR_FILE_NOT_FOUND)
-                    {
-                        status = ERROR_SUCCESS;
-                    }
+                    status = DeleteValueIfPresent(key, L"GlobalFlag");
                 }
                 else
                 {
@@ -213,19 +240,11 @@ BOOL ConfigureAppVerifier(BOOL install, LPCWSTR targetImage, LPCWSTR verifierDll
             }
             if (status == ERROR_SUCCESS)
             {
-                LSTATUS s = RegDeleteValueW(key, marker);
-                if (s != ERROR_SUCCESS && s != ERROR_FILE_NOT_FOUND)
-                {
-                    status = s;
-                }
+                status = DeleteValueIfPresent(key, marker);
             }
-            if (status == ERROR_SUCCESS && createdFlag)
+            if (status == ERROR_SUCCESS && original.createdFlag.value)
             {
-                LSTATUS s = RegDeleteValueW(key, createdFlagMarker);
-                if (s != ERROR_SUCCESS && s != ERROR_FILE_NOT_FOUND)
-                {
-                    status = s;
-                }
+                status = DeleteValueIfPresent(key, createdFlagMarker);
             }
         }
     }
@@ -233,38 +252,7 @@ BOOL ConfigureAppVerifier(BOOL install, LPCWSTR targetImage, LPCWSTR verifierDll
     {
         // Restore the exact values captured before this attempt. Keep the
         // original error code so the setup can report failure.
-        if (hadProviders)
-        {
-            RegSetValueExW(key, L"VerifierDlls", 0, REG_SZ, (BYTE*)originalProviders, (DWORD)((wcslen(originalProviders) + 1) * sizeof(WCHAR)));
-        }
-        else
-        {
-            RegDeleteValueW(key, L"VerifierDlls");
-        }
-        if (hadFlags)
-        {
-            RegSetValueExW(key, L"GlobalFlag", 0, REG_DWORD, (BYTE*)&originalFlags, sizeof(originalFlags));
-        }
-        else
-        {
-            RegDeleteValueW(key, L"GlobalFlag");
-        }
-        if (hadOwner)
-        {
-            RegSetValueExW(key, marker, 0, REG_DWORD, (BYTE*)&owned, sizeof(owned));
-        }
-        else
-        {
-            RegDeleteValueW(key, marker);
-        }
-        if (hadCreatedFlagMarker)
-        {
-            RegSetValueExW(key, createdFlagMarker, 0, REG_DWORD, (BYTE*)&createdFlag, sizeof(createdFlag));
-        }
-        else
-        {
-            RegDeleteValueW(key, createdFlagMarker);
-        }
+        RestoreVerifierValues(key, &original);
     }
     RegCloseKey(key);
     if (status != ERROR_SUCCESS)

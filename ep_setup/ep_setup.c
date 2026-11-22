@@ -621,8 +621,6 @@ __declspec(noinline) BOOL InstallResource(BOOL bInstall, HMODULE hInstance, unzF
     return bRet;
 }
 
-
-
 const WCHAR* GetSystemLanguages()
 {
     wchar_t* wszLanguagesBuffer = NULL;
