@@ -21,31 +21,42 @@ body {\n\
   align-items: center;\n\
 }\n\
 @media (prefers-color-scheme: dark) {\n\
-  .refreshLink   { color: #43a7ff; }\n\
+  a   { color: #43a7ff; }\n\
 }\n\
 @media (prefers-color-scheme: light) {\n\
-  .refreshLink   { color: #096bda; }\n\
+  a   { color: #096bda; }\n\
 }\n\
-a:link {\n\
+a:link,a:visited {\n\
   text-decoration: none;\n\
 }\n\
-a:visited {\n\
-  text-decoration: none;\n\
-}\n\
-a:hover {\n\
+a:hover,a:active {\n\
   text-decoration: underline;\n\
 }\n\
-a:active {\n\
-  text-decoration: underline;\n\
-}\n\
+.newsIcon {user-select: none;-webkit-user-select: none;}\n\
 </style>\n\
+<script>window.addEventListener('dragstart', (e) => e.preventDefault());</script>\n\
+<script>fetch(\"https://www.google.com/gen_204\",{mode:\"no-cors\",cache:\"no-store\"}).then(()=>{const e=document.querySelector(\".refreshWarn\");e&&(e.style.display=\"block\"),setTimeout(()=>{window.location.href=\"epweather://refresh\"},300000)}).catch(e=>{console.log(\"Cant load gen204:\",e)});</script>\n\
 </head>\n\
-<body><center>\n\
-<h1>&#128240;</h1>\n\
+<body><center><div class=\"mainPage\">\n\
+<a class=\"googleLogin\"style=\"position: absolute;top: 0;left: 50%;transform: translateX(-50%);width: 100%;\">Google thinks you're bot? Click here to login with Google Account</a>\n\
+<h1 class=\"newsIcon\">&#128240;</h1>\n\
 <h2>Unable to load weather information</h2>\n\
 <p>Make sure that the location you have entered is correct.<br/>\n\
 Verify that you are connected to the Internet.</p>\n\
-<a class=\"refreshLink\" href=\"epweather://refresh\">Reload</a>\n\
-</center></body>\n\
+</div>\n\
+<div class=\"ep_GoogleLogin\" style=\"display:none;\">\n\
+<h1 class=\"newsIcon\">&#x1F510;</h1>\n\
+<h2>Google Account Login</h2>\n\
+<p>Click Google login button below and a new window will appear.</p>\n\
+<p>After you logged in, close the window and click the reload button.</p>\n\
+<p>ExplorerPatcher Never shares your data with anyone. All data is saved locally, which you can clean in EP Settings.</p>\n\
+<a class=\"LoginLink\" href=\"https://accounts.google.com/login\" onclick=\"window.open(this.href, '_blank', 'width=800,height=600'); return false;\">Google Login</a>\n\
+<center style=\"height: 5px;\"></center>\n\
+</div>\n\
+<p class=\"refreshWarn\" style=\"display:none;\">Weather will reload after 5 minutes.</p>\n\
+<a class=\"refreshLink\" href=\"epweather://refresh\">Reload now</a>\n\
+</center>\n\
+<script>document.querySelector(\".googleLogin\").addEventListener(\"click\",function(e){e.preventDefault(),document.querySelector(\".mainPage\").style.display=\"none\",document.querySelector(\".ep_GoogleLogin\").style.display=\"block\"});</script>\n\
+</body>\n\
 </html>";
 #endif
