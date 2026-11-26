@@ -45,7 +45,7 @@ a:hover,a:active {\n\
 Verify that you are connected to the Internet.</p>\n\
 </div>\n\
 <div class=\"ep_GoogleLogin\" style=\"display:none;\">\n\
-<h3>Google Account Login</h2>\n\
+<h3>Google Account Login</h3>\n\
 <p>If Captcha appearing try to login into your Google Account by scrolling below and clicking Google Login</p>\n\
 <p>A Login page will appear. Log in and after the account page appears, close it and comeback to weather and click reload.</p>\n\
 <p>If error still appears it may be broken due Google changes or your settings.</p>\n\
