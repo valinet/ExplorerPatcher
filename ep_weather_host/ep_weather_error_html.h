@@ -38,18 +38,18 @@ a:hover,a:active {\n\
 <script>fetch(\"https://www.google.com/gen_204\",{mode:\"no-cors\",cache:\"no-store\"}).then(()=>{const e=document.querySelector(\".refreshWarn\");e&&(e.style.display=\"block\"),setTimeout(()=>{window.location.href=\"epweather://refresh\"},300000)}).catch(e=>{console.log(\"Cant load gen204:\",e)});</script>\n\
 </head>\n\
 <body><center><div class=\"mainPage\">\n\
-<a class=\"googleLogin\"style=\"position: absolute;top: 0;left: 50%;transform: translateX(-50%);width: 100%;\">Google thinks you're bot? Click here to login with Google Account</a>\n\
+<a class=\"googleLogin\"style=\"position: absolute;top: 0;left: 50%;transform: translateX(-50%);width: 100%;\">Google captcha appears? Click here to login into Google Account.</a>\n\
 <h1 class=\"newsIcon\">&#128240;</h1>\n\
 <h2>Unable to load weather information</h2>\n\
 <p>Make sure that the location you have entered is correct.<br/>\n\
 Verify that you are connected to the Internet.</p>\n\
 </div>\n\
 <div class=\"ep_GoogleLogin\" style=\"display:none;\">\n\
-<h1 class=\"newsIcon\">&#x1F510;</h1>\n\
-<h2>Google Account Login</h2>\n\
-<p>Click Google login button below and a new window will appear.</p>\n\
-<p>After you logged in, close the window and click the reload button.</p>\n\
-<p>ExplorerPatcher Never shares your data with anyone. All data is saved locally, which you can clean in EP Settings.</p>\n\
+<h3>Google Account Login</h2>\n\
+<p>If Captcha appearing try to login into your Google Account by scrolling below and clicking Google Login</p>\n\
+<p>A Login page will appear. Log in and after the account page appears, close it and comeback to weather and click reload.</p>\n\
+<p>If error still appears it may be broken due Google changes or your settings.</p>\n\
+<p>ExplorerPatcher will never share your data with anyone. All data is stored locally in WebView and can be deleted in EP Settings.</p>\n\
 <a class=\"LoginLink\" href=\"https://accounts.google.com/login\" onclick=\"window.open(this.href, '_blank', 'width=800,height=600'); return false;\">Google Login</a>\n\
 <center style=\"height: 5px;\"></center>\n\
 </div>\n\
