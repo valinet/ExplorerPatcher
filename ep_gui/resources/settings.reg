@@ -655,8 +655,30 @@
 "DisableOfficeHotkeys"=dword:00000000
 ;b %R:1709% *
 "DisableWinFHotkey"=dword:00000000
-;b %R:1710%
+;c 3 %R:1728%
+;x 0 %R:1729%
+;x 1 %R:1730%
+;x 2 %R:1731%
 ;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_DisableRoundedCorners"=dword:00000000
+;s Other_WindowCornerRadius IsCustomWindowCorners
+;w %R:1732%
+;%R:1733%
+;%R:1734%
+;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_WindowCornerRadius"=""
+;g Other_WindowCornerRadius
+;s Other_SmallCorners IsCornerRadiusSupported
+;c 3 %R:1735%
+;x 0 %R:1736%
+;x 1 %R:1737%
+;x 2 %R:1738%
+;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_SmallCorners"=dword:00000000
+;s Other_SmallCornerRadius IsCustomSmallCorners
+;w %R:1739%
+;%R:1740%
+;%R:1741%
+;"Virtualized_{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_SmallCornerRadius"=""
+;g Other_SmallCornerRadius
+;g Other_SmallCorners
 [HKEY_CURRENT_USER\Software\ExplorerPatcher]
 ;b %R:1711% *
 "DisableAeroSnapQuadrants"=dword:00000000

@@ -196,6 +196,30 @@ BOOL IsColorSchemeChangeMessage(LPARAM lParam)
     }
     return is;
 }
+s
+static void GUI_StoreWindowCornersIfMissing()
+{
+    DWORD dwValue = 0, dwSize = sizeof(DWORD);
+    if (RegGetValueW(HKEY_CURRENT_USER, _T(REGPATH), L"WindowCorners", RRF_RT_DWORD, NULL, &dwValue, &dwSize) != ERROR_SUCCESS)
+    {
+        dwValue = IsDWMServiceRunning() ? EP_DWM_CORNERS_NOTROUNDED : EP_DWM_CORNERS_DEFAULT;
+        RegSetKeyValueW(HKEY_CURRENT_USER, _T(REGPATH), L"WindowCorners", REG_DWORD, &dwValue, sizeof(DWORD));
+    }
+}
+
+static DWORD GUI_GetCornersChoice(LPCWSTR pwszName, DWORD dwIfStopped, DWORD dwIfMissing)
+{
+    if (!IsDWMServiceRunning())
+    {
+        return dwIfStopped;
+    }
+    DWORD dwValue = 0, dwSize = sizeof(DWORD);
+    if (RegGetValueW(HKEY_CURRENT_USER, _T(REGPATH), pwszName, RRF_RT_DWORD, NULL, &dwValue, &dwSize) != ERROR_SUCCESS)
+    {
+        return dwIfMissing;
+    }
+    return dwValue;
+}
 
 LSTATUS GUI_Internal_RegSetValueExW(
     HKEY       hKey,
@@ -418,7 +442,31 @@ LSTATUS GUI_Internal_RegSetValueExW(
     }
     else if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_DisableRoundedCorners"))
     {
-        return RegisterDWMService(*(DWORD*)lpData, 0);
+        RegSetKeyValueW(HKEY_CURRENT_USER, _T(REGPATH), L"WindowCorners", REG_DWORD, lpData, sizeof(DWORD));
+        return ApplyDWMServiceSettings();
+    }
+    else if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_SmallCorners"))
+    {
+        GUI_StoreWindowCornersIfMissing();
+        RegSetKeyValueW(HKEY_CURRENT_USER, _T(REGPATH), L"SmallCorners", REG_DWORD, lpData, sizeof(DWORD));
+        return ApplyDWMServiceSettings();
+    }
+    else if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_WindowCornerRadius") || !wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_SmallCornerRadius"))
+    {
+        LPCWSTR pwszName = !wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_WindowCornerRadius") ? L"WindowCornerRadius" : L"SmallCornerRadius";
+        if (!((LPCWSTR)lpData)[0])
+        {
+            RegDeleteKeyValueW(HKEY_CURRENT_USER, _T(REGPATH), pwszName);
+        }
+        else if (ParseCornerRadius((LPCWSTR)lpData) < 0)
+        {
+            return ERROR_INVALID_DATA;
+        }
+        else
+        {
+            RegSetKeyValueW(HKEY_CURRENT_USER, _T(REGPATH), pwszName, REG_SZ, lpData, cbData);
+        }
+        return ApplyDWMServiceSettings();
     }
     else if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_FileExplorerCommandUI"))
     {
@@ -667,31 +715,21 @@ LSTATUS GUI_Internal_RegQueryValueExW(
     }
     else if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_DisableRoundedCorners"))
     {
-        HANDLE h_exists = CreateEventW(NULL, FALSE, FALSE, _T(EP_DWM_EVENTNAME));
-        if (h_exists)
-        {
-            if (GetLastError() == ERROR_ALREADY_EXISTS)
-            {
-                *(DWORD*)lpData = 1;
-            }
-            else
-            {
-                *(DWORD*)lpData = 0;
-            }
-            CloseHandle(h_exists);
-        }
-        else
-        {
-            if (GetLastError() == ERROR_ACCESS_DENIED)
-            {
-                *(DWORD*)lpData = 1;
-            }
-            else
-            {
-                *(DWORD*)lpData = 0;
-            }
-        }
+        *(DWORD*)lpData = GUI_GetCornersChoice(L"WindowCorners", EP_DWM_CORNERS_DEFAULT, EP_DWM_CORNERS_NOTROUNDED);
         return ERROR_SUCCESS;
+    }
+    else if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_SmallCorners"))
+    {
+        *(DWORD*)lpData = GUI_GetCornersChoice(L"SmallCorners", EP_DWM_SMALLCORNERS_SAMEASWINDOWS, EP_DWM_SMALLCORNERS_SAMEASWINDOWS);
+        return ERROR_SUCCESS;
+    }
+    else if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_WindowCornerRadius"))
+    {
+        return RegGetValueW(HKEY_CURRENT_USER, _T(REGPATH), L"WindowCornerRadius", RRF_RT_REG_SZ, NULL, lpData, lpcbData);
+    }
+    else if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_SmallCornerRadius"))
+    {
+        return RegGetValueW(HKEY_CURRENT_USER, _T(REGPATH), L"SmallCornerRadius", RRF_RT_REG_SZ, NULL, lpData, lpcbData);
     }
     else if (!wcscmp(lpValueName, L"Virtualized_" _T(EP_CLSID) L"_FileExplorerCommandUI"))
     {
@@ -1147,6 +1185,11 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                 else if (!_stricmp(funcName, "IsWindows11Version22H2OrHigher") && !IsWindows11Version22H2OrHigher()) bSkipLines = TRUE;
                 else if (!_stricmp(funcName, "!IsWindows11Version22H2OrHigher") && IsWindows11Version22H2OrHigher()) bSkipLines = TRUE;
                 else if (!_stricmp(funcName, "!(IsWindows11Version22H2OrHigher&&!IsOldTaskbar)") && (IsWindows11Version22H2OrHigher() && GUI_GetTaskbarStyle(TRUE) == 0)) bSkipLines = TRUE;
+                else if (!_stricmp(funcName, "IsCustomWindowCorners") && GUI_GetCornersChoice(L"WindowCorners", EP_DWM_CORNERS_DEFAULT, EP_DWM_CORNERS_NOTROUNDED) != EP_DWM_CORNERS_CUSTOM) bSkipLines = TRUE;
+                else if (!_stricmp(funcName, "IsCustomSmallCorners") && GUI_GetCornersChoice(L"SmallCorners", EP_DWM_SMALLCORNERS_SAMEASWINDOWS, EP_DWM_SMALLCORNERS_SAMEASWINDOWS) != EP_DWM_SMALLCORNERS_CUSTOM) bSkipLines = TRUE;
+#if !defined(_M_X64)
+                else if (!_stricmp(funcName, "IsCornerRadiusSupported")) bSkipLines = TRUE;
+#endif
 #if 1
                 else if (!_stricmp(funcName, "LogonLogoffShutdownSoundsAvailable")) bSkipLines = TRUE;
 #endif
@@ -2505,6 +2548,12 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                 GUI_RemoveChoiceEntry(hMenu, 2); // Windows 10 (ExplorerPatcher)
                             }
                         }
+#if !defined(_M_X64)
+                        else if (!wcscmp(name, L"Virtualized_" _T(EP_CLSID) L"_DisableRoundedCorners"))
+                        {
+                            GUI_RemoveChoiceEntry(hMenu, EP_DWM_CORNERS_CUSTOM);
+                        }
+#endif
                         else if (!wcscmp(name, L"ReplaceVan"))
                         {
                             if (IsWindows11Build25346OrHigher())
@@ -2841,6 +2890,10 @@ static BOOL GUI_Build(HDC hDC, HWND hwnd, POINT pt)
                                                 wszAnswer,
                                                 (wcslen(wszAnswer) + 1) * sizeof(WCHAR)
                                             );
+                                        }
+                                        else if (!wcsncmp(name, L"Virtualized_" _T(EP_CLSID), 50))
+                                        {
+                                            GUI_RegSetValueExW(hKey, name, 0, REG_SZ, L"", sizeof(WCHAR));
                                         }
                                         else
                                         {

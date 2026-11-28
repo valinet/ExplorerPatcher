@@ -613,6 +613,89 @@ void ToggleTaskbarAutohide()
     }
 }
 
+BOOL IsDWMServiceRunning()
+{
+    BOOL bIsRunning = FALSE;
+    HANDLE h_exists = CreateEventW(NULL, FALSE, FALSE, _T(EP_DWM_EVENTNAME));
+    if (h_exists)
+    {
+        bIsRunning = GetLastError() == ERROR_ALREADY_EXISTS;
+        CloseHandle(h_exists);
+    }
+    else
+    {
+        bIsRunning = GetLastError() == ERROR_ACCESS_DENIED;
+    }
+    return bIsRunning;
+}
+
+int ParseCornerRadius(LPCWSTR pwszValue)
+{
+    WCHAR* pwszEnd = NULL;
+    long value = wcstol(pwszValue, &pwszEnd, 10);
+    return pwszEnd != pwszValue && !*pwszEnd && value >= 0 && value <= EP_DWM_MAX_CORNER_RADIUS ? (int)value : -1;
+}
+
+static int GetCornerRadiusSetting(LPCWSTR pwszName, int defaultRadius)
+{
+    WCHAR wszValue[16];
+    DWORD dwSize = sizeof(wszValue);
+    if (RegGetValueW(HKEY_CURRENT_USER, _T(REGPATH), pwszName, RRF_RT_REG_SZ, NULL, wszValue, &dwSize) != ERROR_SUCCESS)
+    {
+        return defaultRadius;
+    }
+    int radius = ParseCornerRadius(wszValue);
+    return radius < 0 ? defaultRadius : radius;
+}
+
+BOOL GetDWMServiceArguments(WCHAR* pwszArguments, size_t cchArguments)
+{
+    DWORD dwWindowCorners = 0, dwSmallCorners = 0, dwSize = sizeof(DWORD);
+    if (RegGetValueW(HKEY_CURRENT_USER, _T(REGPATH), L"WindowCorners", RRF_RT_DWORD, NULL, &dwWindowCorners, &dwSize) != ERROR_SUCCESS)
+    {
+        dwWindowCorners = EP_DWM_CORNERS_NOTROUNDED;
+    }
+    dwSize = sizeof(DWORD);
+    if (RegGetValueW(HKEY_CURRENT_USER, _T(REGPATH), L"SmallCorners", RRF_RT_DWORD, NULL, &dwSmallCorners, &dwSize) != ERROR_SUCCESS)
+    {
+        dwSmallCorners = EP_DWM_SMALLCORNERS_SAMEASWINDOWS;
+    }
+
+    pwszArguments[0] = 0;
+    if (dwWindowCorners == EP_DWM_CORNERS_NOTROUNDED && dwSmallCorners == EP_DWM_SMALLCORNERS_SAMEASWINDOWS)
+    {
+        return TRUE;
+    }
+#if defined(_M_X64)
+    int windowRadius = -1;
+    if (dwWindowCorners == EP_DWM_CORNERS_NOTROUNDED)
+    {
+        windowRadius = 0;
+    }
+    else if (dwWindowCorners == EP_DWM_CORNERS_CUSTOM)
+    {
+        windowRadius = GetCornerRadiusSetting(L"WindowCornerRadius", 8);
+    }
+    int smallRadius = -1;
+    if (dwSmallCorners == EP_DWM_SMALLCORNERS_SAMEASWINDOWS)
+    {
+        smallRadius = windowRadius;
+    }
+    else if (dwSmallCorners == EP_DWM_SMALLCORNERS_CUSTOM)
+    {
+        smallRadius = GetCornerRadiusSetting(L"SmallCornerRadius", 4);
+    }
+    if (windowRadius < 0 && smallRadius < 0)
+    {
+        return FALSE;
+    }
+    swprintf_s(pwszArguments, cchArguments, L" %d %d", windowRadius, smallRadius);
+    return TRUE;
+#else
+    return dwWindowCorners == EP_DWM_CORNERS_NOTROUNDED;
+#endif
+}
+
 LSTATUS RegisterDWMService(DWORD dwDesiredState, DWORD dwOverride)
 {
     WCHAR wszPath[MAX_PATH];
@@ -623,26 +706,48 @@ LSTATUS RegisterDWMService(DWORD dwDesiredState, DWORD dwOverride)
     GetSystemDirectoryW(wszSCPath, MAX_PATH);
     wcscat_s(wszSCPath, MAX_PATH, L"\\sc.exe");
 
+    WCHAR wszNetPath[MAX_PATH];
+    GetSystemDirectoryW(wszNetPath, MAX_PATH);
+    wcscat_s(wszNetPath, MAX_PATH, L"\\net.exe");
+
     WCHAR wszRundll32[MAX_PATH];
     SHGetFolderPathW(NULL, SPECIAL_FOLDER, NULL, SHGFP_TYPE_CURRENT, wszRundll32);
     wcscat_s(wszRundll32, MAX_PATH, _T(APP_RELATIVE_PATH));
     wcscat_s(wszRundll32, MAX_PATH, L"\\ep_dwm_svc.exe");
+
+    WCHAR wszServiceArguments[32];
+    GetDWMServiceArguments(wszServiceArguments, ARRAYSIZE(wszServiceArguments));
+
+    BOOL bStart = !dwOverride || dwOverride == 3;
+    WCHAR wszStop[MAX_PATH * 2] = L"";
+    if (bStart)
+    {
+        swprintf_s(wszStop, MAX_PATH * 2, L"\"%s\" stop " _T(EP_DWM_SERVICENAME) L" & ", wszNetPath);
+    }
 
     WCHAR wszArgumentsRegister[MAX_PATH * 10];
     swprintf_s(
         wszArgumentsRegister,
         MAX_PATH * 10,
         L"/c \""
-        L"\"%s\" create " _T(EP_DWM_SERVICENAME) L" binPath= \"\\\"%s\\\" %s\" DisplayName= \"ExplorerPatcher Desktop Window Manager Service\" start= auto & "
+        L"\"%s\" create " _T(EP_DWM_SERVICENAME) L" binPath= \"\\\"%s\\\" %s%s\" DisplayName= \"ExplorerPatcher Desktop Window Manager Service\" start= auto & "
+        L"\"%s\" config " _T(EP_DWM_SERVICENAME) L" binPath= \"\\\"%s\\\" %s%s\" & "
         L"\"%s\" description " _T(EP_DWM_SERVICENAME) L" \"Service for managing aspects related to the Desktop Window Manager.\" & "
+        L"%s"
         L"\"%s\" %s " _T(EP_DWM_SERVICENAME)
         L"\"",
         wszSCPath,
         wszRundll32,
         _T(EP_DWM_SERVICENAME) L" " _T(EP_DWM_EVENTNAME),
+        wszServiceArguments,
         wszSCPath,
+        wszRundll32,
+        _T(EP_DWM_SERVICENAME) L" " _T(EP_DWM_EVENTNAME),
+        wszServiceArguments,
         wszSCPath,
-        (!dwOverride || dwOverride == 3) ? L"start" : L"query"
+        wszStop,
+        wszSCPath,
+        bStart ? L"start" : L"query"
     );
     WCHAR wszArgumentsUnRegister[MAX_PATH * 10];
     swprintf_s(
@@ -664,16 +769,7 @@ LSTATUS RegisterDWMService(DWORD dwDesiredState, DWORD dwOverride)
     }
     else
     {
-        HANDLE h_exists = CreateEventW(NULL, FALSE, FALSE, _T(EP_DWM_EVENTNAME));
-        if (h_exists)
-        {
-            bAreRoundedCornersDisabled = GetLastError() == ERROR_ALREADY_EXISTS;
-            CloseHandle(h_exists);
-        }
-        else
-        {
-            bAreRoundedCornersDisabled = GetLastError() == ERROR_ACCESS_DENIED;
-        }
+        bAreRoundedCornersDisabled = IsDWMServiceRunning();
         if ((bAreRoundedCornersDisabled && dwDesiredState) || (!bAreRoundedCornersDisabled && !dwDesiredState))
         {
             return FALSE;
@@ -697,6 +793,16 @@ LSTATUS RegisterDWMService(DWORD dwDesiredState, DWORD dwOverride)
         CloseHandle(ShExecInfo.hProcess);
     }
     return TRUE;
+}
+
+LSTATUS ApplyDWMServiceSettings()
+{
+    WCHAR wszServiceArguments[32];
+    if (GetDWMServiceArguments(wszServiceArguments, ARRAYSIZE(wszServiceArguments)))
+    {
+        return RegisterDWMService(1, 3);
+    }
+    return RegisterDWMService(0, 0);
 }
 
 #ifndef EP_BUILD_SETUP

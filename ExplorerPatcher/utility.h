@@ -310,7 +310,23 @@ void LaunchPropertiesGUI(HMODULE hModule);
 
 BOOL SystemShutdown(BOOL reboot);
 
+#define EP_DWM_CORNERS_DEFAULT 0
+#define EP_DWM_CORNERS_NOTROUNDED 1
+#define EP_DWM_CORNERS_CUSTOM 2
+#define EP_DWM_SMALLCORNERS_SAMEASWINDOWS 0
+#define EP_DWM_SMALLCORNERS_DEFAULT 1
+#define EP_DWM_SMALLCORNERS_CUSTOM 2
+#define EP_DWM_MAX_CORNER_RADIUS 64
+
+BOOL IsDWMServiceRunning();
+
+int ParseCornerRadius(LPCWSTR pwszValue);
+
+BOOL GetDWMServiceArguments(WCHAR* pwszArguments, size_t cchArguments);
+
 LSTATUS RegisterDWMService(DWORD dwDesiredState, DWORD dwOverride);
+
+LSTATUS ApplyDWMServiceSettings();
 
 char* StrReplaceAllA(const char* s, const char* oldW, const char* newW, int* dwNewSize);
 
