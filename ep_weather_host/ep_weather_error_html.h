@@ -21,31 +21,30 @@ body {\n\
   align-items: center;\n\
 }\n\
 @media (prefers-color-scheme: dark) {\n\
-  .refreshLink   { color: #43a7ff; }\n\
+  a   { color: #43a7ff; }\n\
 }\n\
 @media (prefers-color-scheme: light) {\n\
-  .refreshLink   { color: #096bda; }\n\
+  a   { color: #096bda; }\n\
 }\n\
-a:link {\n\
+a:link,a:visited {\n\
   text-decoration: none;\n\
 }\n\
-a:visited {\n\
-  text-decoration: none;\n\
-}\n\
-a:hover {\n\
+a:hover,a:active {\n\
   text-decoration: underline;\n\
 }\n\
-a:active {\n\
-  text-decoration: underline;\n\
-}\n\
+.newsIcon {user-select: none;-webkit-user-select: none;}\n\
 </style>\n\
+<script>window.addEventListener('dragstart', (e) => e.preventDefault());</script>\n\
+<script>fetch(\"https://www.google.com/gen_204\",{mode:\"no-cors\",cache:\"no-store\"}).then(()=>{const e=document.querySelector(\".refreshWarn\");e&&(e.style.display=\"block\"),setTimeout(()=>{window.location.href=\"epweather://refresh\"},300000)}).catch(e=>{console.log(\"Cant load gen204:\",e)});</script>\n\
 </head>\n\
 <body><center>\n\
-<h1>&#128240;</h1>\n\
+<h1 class=\"newsIcon\">&#128240;</h1>\n\
 <h2>Unable to load weather information</h2>\n\
 <p>Make sure that the location you have entered is correct.<br/>\n\
 Verify that you are connected to the Internet.</p>\n\
-<a class=\"refreshLink\" href=\"epweather://refresh\">Reload</a>\n\
-</center></body>\n\
+<p class=\"refreshWarn\" style=\"display:none;\">Weather will reload in 5 minutes.</p>\n\
+<a class=\"refreshLink\" href=\"epweather://refresh\">Reload now</a>\n\
+</center>\n\
+</body>\n\
 </html>";
 #endif
